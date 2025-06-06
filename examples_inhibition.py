@@ -10,61 +10,15 @@ from matplotlib import pyplot as plt
 
 #%% Inhibition examples initialization
 
-# Competitive inhibition
-# S0 < KM, S0 ~= E0, high KD
-# -----------------
-inhib_label = 'competitive'
-# Initial concentrations
-E_conc = 1e-4
-S_conc = 1e-4
-I_CI_conc = 1e-2
-I_NCI_conc = 0
-I_UCI_conc = 0
-I_MBI_conc = 0
-
-# Core enzyme parameters
-kcat = 32.
-kon = 1e4
-koff = 1e1
-KM = (koff+kcat)/kon
-
-# Inhibition kinetics parameters
-kon_CI = 1e4
-koff_CI = 1e2
-kcat_CI = 1e4
-
-kon_ei=1e4
-koff_ei=1e2
-kon_es_esi=1e4
-koff_es_esi=1e2
-kon_ei_esi=1e4
-koff_ei_esi=1e2
-
-kon_es_esi = 1e4
-koff_es_esi = 1e2
-
-kon_MBI = 1e4
-koff_MBI = 1e2
-kstabilize_MBI = 32.
-
-# Simulation parameters
-t0 = 0.
-tmax = 7200
-dt = 5e-2
-max_abs_remaining_substrate = 1e-6
-max_rel_substrate_depletion = None
-include_substrate_in_complex_for_max = True
-
-
-# # Non-Competitive inhibition
+# # Competitive inhibition
 # # S0 < KM, S0 ~= E0, high KD
 # # -----------------
-# inhib_label = 'non-competitive'
+# inhib_label = 'competitive'
 # # Initial concentrations
 # E_conc = 1e-4
 # S_conc = 1e-4
-# I_CI_conc = 0
-# I_NCI_conc = 1e-3
+# I_CI_conc = 1e-2
+# I_NCI_conc = 0
 # I_UCI_conc = 0
 # I_MBI_conc = 0
 
@@ -91,6 +45,52 @@ include_substrate_in_complex_for_max = True
 
 # kon_MBI = 1e4
 # koff_MBI = 1e2
+# kstabilize_MBI = 32.
+
+# # Simulation parameters
+# t0 = 0.
+# tmax = 7200
+# dt = 5e-2
+# max_abs_remaining_substrate = 1e-6
+# max_rel_substrate_depletion = None
+# include_substrate_in_complex_for_max = True
+
+
+# # Non-Competitive inhibition
+# # S0 < KM, S0 ~= E0, high KD
+# # -----------------
+# inhib_label = 'non-competitive'
+# # Initial concentrations
+# E_conc = 1e-4
+# S_conc = 1e-4
+# I_CI_conc = 0
+# I_NCI_conc = 1e-3
+# I_UCI_conc = 0
+# I_MBI_conc = 0
+
+# # Core enzyme parameters
+# kcat = 32.
+# kon = 1e4
+# koff = 1e1
+# KM = (koff+kcat)/kon
+
+# # Inhibition kinetics parameters
+# kon_CI = 1e4
+# koff_CI = 1e2
+# kcat_CI = 1e4
+
+# kon_ei=1e4
+# koff_ei=1e1
+# kon_es_esi=1e4
+# koff_es_esi=1e1
+# kon_ei_esi=1e4
+# koff_ei_esi=1e1
+
+# kon_es_esi = 1e4
+# koff_es_esi = 1e1
+
+# kon_MBI = 1e4
+# koff_MBI = 1e1
 # kstabilize_MBI = 32.
 
 # # Simulation parameters
@@ -122,21 +122,21 @@ include_substrate_in_complex_for_max = True
 
 # # Inhibition kinetics parameters
 # kon_CI = 1e4
-# koff_CI = 1e2
+# koff_CI = 1e1
 # kcat_CI = 1e4
 
 # kon_ei=1e4
-# koff_ei=1e2
+# koff_ei=1e1
 # kon_es_esi=1e4
-# koff_es_esi=1e2
+# koff_es_esi=1e1
 # kon_ei_esi=1e4
-# koff_ei_esi=1e2
+# koff_ei_esi=1e1
 
 # kon_es_esi = 1e4
-# koff_es_esi = 1e2
+# koff_es_esi = 1e1
 
 # kon_MBI = 1e4
-# koff_MBI = 1e2
+# koff_MBI = 1e1
 # kstabilize_MBI = 32.
 
 # # Simulation parameters
@@ -148,50 +148,50 @@ include_substrate_in_complex_for_max = True
 # include_substrate_in_complex_for_max = True
 
 
-# # "Mechanism-Based" inhibition
-# # S0 < KM, S0 ~= E0, high KD
-# # -----------------
-# inhib_label = '"mechanism-based"'
-# # Initial concentrations
-# E_conc = 1e-4
-# S_conc = 1e-4
-# I_CI_conc = 0
-# I_NCI_conc = 0
-# I_UCI_conc = 0
-# I_MBI_conc = 1e-2
+# "Mechanism-Based" inhibition
+# S0 < KM, S0 ~= E0, high KD
+# -----------------
+inhib_label = '"mechanism-based"'
+# Initial concentrations
+E_conc = 1e-4
+S_conc = 1e-4
+I_CI_conc = 0
+I_NCI_conc = 0
+I_UCI_conc = 0
+I_MBI_conc = 1e-4
 
-# # Core enzyme parameters
-# kcat = 32.
-# kon = 1e4
-# koff = 1e1
-# KM = (koff+kcat)/kon
+# Core enzyme parameters
+kcat = 32.
+kon = 1e4
+koff = 1e1
+KM = (koff+kcat)/kon
 
-# # Inhibition kinetics parameters
-# kon_CI = 1e4
-# koff_CI = 1e2
-# kcat_CI = 1e4
+# Inhibition kinetics parameters
+kon_CI = 1e4
+koff_CI = 1e2
+kcat_CI = 1e4
 
-# kon_ei=1e4
-# koff_ei=1e2
-# kon_es_esi=1e4
-# koff_es_esi=1e2
-# kon_ei_esi=1e4
-# koff_ei_esi=1e2
+kon_ei=1e4
+koff_ei=1e2
+kon_es_esi=1e4
+koff_es_esi=1e2
+kon_ei_esi=1e4
+koff_ei_esi=1e2
 
-# kon_es_esi = 1e4
-# koff_es_esi = 1e2
+kon_es_esi = 1e4
+koff_es_esi = 1e2
 
-# kon_MBI = 1e4
-# koff_MBI = 1e2
-# kstabilize_MBI = 32.
+kon_MBI = 1e4
+koff_MBI = 1e1
+kstabilize_MBI = 32.
 
-# # Simulation parameters
-# t0 = 0.
-# tmax = 7200
-# dt = 5e-2
-# max_abs_remaining_substrate = 1e-6
-# max_rel_substrate_depletion = None
-# include_substrate_in_complex_for_max = True
+# Simulation parameters
+t0 = 0.
+tmax = 7200
+dt = 5e-2
+max_abs_remaining_substrate = 1e-6
+max_rel_substrate_depletion = None
+include_substrate_in_complex_for_max = True
 
 #%%
 print(S_conc, KM)
@@ -202,7 +202,7 @@ sp_sys = SpeciesSystem('multipurpose_sp_sys', ['E', 'S', 'ES', 'P',
                                                'I_CI', 'EI_CI', 'Q',
                                                'I_NCI', 'EI_NCI', 'ESI_NCI',
                                                'I_UCI', 'ESI_UCI',
-                                               'I_MBI', 'EI_MCI_unstable', 'EI_MCI_stable',
+                                               'I_MBI', 'EI_MBI_unstable', 'EI_MBI_stable',
                                                
                                                ],
                        concentrations=[E_conc, S_conc, 0., 0., 
@@ -248,9 +248,11 @@ multipurpose_rxn_sys = RxnSys(ID='multipurpose_rxn_sys',
                                   CI_rxns, 
                                   NCI_rxns, 
                                   UCI_rxns,
+                                  MBI_rxns,
                                   ], 
                        species_system=sp_sys)
 
+#%%
 def simulate(t0=t0, tmax=tmax, dt=dt,
              max_rel_substrate_depletion=max_rel_substrate_depletion,
              max_abs_remaining_substrate=max_abs_remaining_substrate,
@@ -262,6 +264,8 @@ def simulate(t0=t0, tmax=tmax, dt=dt,
     Ps = [sp_sys.concentrations[3]]
     Qs = [sp_sys.concentrations[6]]
     ESI_NCIs = [sp_sys.concentrations[9]]
+    EI_MBI_unstables = [sp_sys.concentrations[13]]
+    EI_MBI_stables = [sp_sys.concentrations[14]]
     
     max_rem_S = 0.
     if max_rel_substrate_depletion is not None:
@@ -280,12 +284,15 @@ def simulate(t0=t0, tmax=tmax, dt=dt,
         Ps.append(sp_sys.concentrations[3])
         Qs.append(sp_sys.concentrations[6])
         ESI_NCIs.append(sp_sys.concentrations[9])
+        EI_MBI_unstables.append(sp_sys.concentrations[13])
+        EI_MBI_stables.append(sp_sys.concentrations[14])
         ts.append(ts[-1] + dt)
     return np.array(ts), np.array(Es), np.array(Ss),\
            np.array(ESs), np.array(Ps), np.array(Qs),\
-           np.array(ESI_NCIs)
+           np.array(ESI_NCIs),\
+           np.array(EI_MBI_unstables), np.array(EI_MBI_stables)
 
-ts, Es, Ss, ESs, Ps, Qs, ESI_NCIs = simulate()
+ts, Es, Ss, ESs, Ps, Qs, ESI_NCIs, EI_MBI_unstables, EI_MBI_stables = simulate()
 
 # # enzyme material balance check
 # np.allclose(np.ones(len(Es))*Es[0], Es+ESs)
@@ -309,7 +316,7 @@ sp_sys = SpeciesSystem('multipurpose_sp_sys', ['E', 'S', 'ES', 'P',
                                                'I_CI', 'EI_CI', 'Q',
                                                'I_NCI', 'EI_NCI', 'ESI_NCI',
                                                'I_UCI', 'ESI_UCI',
-                                               'I_MBI', 'EI_MCI_unstable', 'EI_MCI_stable',
+                                               'I_MBI', 'EI_MBI_unstable', 'EI_MBI_stable',
                                                
                                                ],
                        concentrations=[E_conc, S_conc, 0., 0., 
