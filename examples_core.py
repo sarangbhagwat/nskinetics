@@ -52,19 +52,19 @@ from matplotlib import pyplot as plt
 # S0 >> KM, S0 >> E0, high KD
 # -----------------
 # Initial concentrations
-E_conc = 1e-3
-S_conc = 1e-1
+E_conc = 1e-4
+S_conc = 1e-4
 
 # Core enzyme parameters
 kcat = 32.
-kon = 1e4
+kon = 12
 koff = 1e1
 KM = (koff+kcat)/kon
 
 # Simulation parameters
 t0 = 0.
-tmax = 500
-dt = 5e-2
+tmax = 30*3600
+dt = 0.1
 max_abs_remaining_substrate = 1e-6
 max_rel_substrate_depletion = None
 include_substrate_in_complex_for_max = True
@@ -148,6 +148,7 @@ def simulate(t0=t0, tmax=tmax, dt=dt,
              max_rel_substrate_depletion=max_rel_substrate_depletion,
              max_abs_remaining_substrate=max_abs_remaining_substrate,
              include_substrate_in_complex_for_max=include_substrate_in_complex_for_max):
+
     ts = [t0]
     Es = [sp_sys.concentrations[0]]
     Ss = [sp_sys.concentrations[1]]
@@ -186,7 +187,7 @@ ts, Es, Ss, ESs, Ps, Qs, ESI_NCIs = simulate()
 # np.allclose(np.ones(len(Ss))*Ss[0], Ss+Ps)
 
 plt.plot(ts, Ss, label='nonsteady')
-plt.xlim(0, 250)
+plt.xlim(0, 45000)
 plt.xlabel('time [s]')
 plt.ylabel('Substrate concentration [mol/L]')
 plt.legend()
@@ -228,13 +229,85 @@ def simulate_SS_MM(t0=t0, tmax=tmax, dt=dt,
         ts.append(ts[-1] + dt)
     return ts, Es, Ss, Ps
 
-ts, Es, Ss, Ps = simulate_SS_MM()
+ts_steady, Es_steady, Ss_steady, Ps_steady = simulate_SS_MM()
 
-plt.plot(ts, Ss, label='steady')
-plt.xlim(0, 250)
+plt.plot(ts_steady, Ss_steady, label='steady')
+plt.xlim(0, 45000)
 plt.xlabel('time [s]')
 plt.ylabel('Substrate concentration [mol/L]')
+
+#%%
+from scipy.integrate import solve_ivp
+
+sp_sys.concentrations = np.array([E_conc, S_conc, 0., 0., 
+                I_CI_conc, 0., 0.,
+                I_NCI_conc, 0., 0.,
+                I_UCI_conc, 0.,
+                I_MBI_conc, 0., 0.,
+                ])
+    
+def ode_system_RHS(t, concs):
+    concs[np.where(concs<0)] = 0. #  not needed with a low enough atol
+    sp_sys.concentrations = concs
+    # dconcs_dt = MM_rxns.get_dconcs_dt()
+    # print(t)
+    # print(concs[:4])
+    # print(dconcs_dt[:4])
+    # print('\n')
+    # if np.any(concs<0): breakpoint()
+    return multipurpose_rxn_sys.get_dconcs_dt()
+
+def S_obj_f(t, concs, S=max_abs_remaining_substrate):
+    return concs[1]-S
+
+sol = solve_ivp(ode_system_RHS, 
+                t_span=[t0, tmax], 
+                y0=sp_sys.concentrations,
+                # t_eval=np.arange(0., 5.1, 0.1)*1000,
+                # t_eval=[1000, 5000],
+                atol=1e-12, # <= 1e-6*max(sp_sys.concentrations)
+                rtol=1e-6, # 1e-6
+                # the solver keeps the local error estimates less than atol + rtol * abs(y)
+                events=S_obj_f,
+                method='LSODA',
+                dense_output=False)
+
+plt.plot(sol.t, sol.y[1, :], label='nonsteady_ode')
+plt.xlim(0, 45000)
+plt.xlabel('time [s]')
+plt.ylabel('Substrate concentration [mol/L]')
+
 
 plt.legend()
 plt.show()
 
+#%%
+def f_ode():
+    sp_sys.concentrations = np.random.random(1)*np.array([E_conc, S_conc, 0., 0., 
+                    I_CI_conc, 0., 0.,
+                    I_NCI_conc, 0., 0.,
+                    I_UCI_conc, 0.,
+                    I_MBI_conc, 0., 0.,
+                    ])
+    
+    sol = solve_ivp(ode_system_RHS, 
+                    t_span=[t0, tmax], 
+                    y0=sp_sys.concentrations,
+                    # t_eval=np.arange(0., 5.1, 0.1)*1000,
+                    # t_eval=[1000, 5000],
+                    atol=1e-12, # <= 1e-6*max(sp_sys.concentrations)
+                    rtol=1e-6, # 1e-6
+                    # the solver keeps the local error estimates less than atol + rtol * abs(y)
+                    events=S_obj_f,
+                    method='LSODA',
+                    # method='BDF',
+                    dense_output=False)
+
+def f_sim():
+    sp_sys.concentrations = np.random.random(1)*np.array([E_conc, S_conc, 0., 0., 
+                    I_CI_conc, 0., 0.,
+                    I_NCI_conc, 0., 0.,
+                    I_UCI_conc, 0.,
+                    I_MBI_conc, 0., 0.,
+                    ])
+    simulate()

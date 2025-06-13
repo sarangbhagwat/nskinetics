@@ -14,7 +14,7 @@ __all__ = ('Reaction', 'Rxn',
 
 #%% One-way reaction
 
-# @njit(cache=True)
+@njit(cache=True)
 def oneway_dconcs_dt(k, species_concs_vector, rxn_stoichs):
     # -----------------------------------------
     # for a one-way reaction,
@@ -95,7 +95,7 @@ class Reaction():
 Rxn = Reaction
 
 #%% Reversible reaction
-# @njit(cache=True)
+@njit(cache=True)
 def rev_dconcs_dt(kf, kb, species_concs_vector, rxn_stoichs):
     # -----------------------------------------
     # for a one-way reaction,

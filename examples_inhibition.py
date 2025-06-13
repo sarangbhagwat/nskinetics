@@ -10,50 +10,50 @@ from matplotlib import pyplot as plt
 
 #%% Inhibition examples initialization
 
-# # Competitive inhibition
-# # S0 < KM, S0 ~= E0, high KD
-# # -----------------
-# inhib_label = 'competitive'
-# # Initial concentrations
-# E_conc = 1e-4
-# S_conc = 1e-4
-# I_CI_conc = 1e-2
-# I_NCI_conc = 0
-# I_UCI_conc = 0
-# I_MBI_conc = 0
+# Competitive inhibition
+# S0 < KM, S0 ~= E0, high KD
+# -----------------
+inhib_label = 'competitive'
+# Initial concentrations
+E_conc = 1e-4
+S_conc = 1e-4
+I_CI_conc = 1e-2
+I_NCI_conc = 0
+I_UCI_conc = 0
+I_MBI_conc = 0
 
-# # Core enzyme parameters
-# kcat = 32.
-# kon = 1e4
-# koff = 1e1
-# KM = (koff+kcat)/kon
+# Core enzyme parameters
+kcat = 32.
+kon = 1e4
+koff = 1e1
+KM = (koff+kcat)/kon
 
-# # Inhibition kinetics parameters
-# kon_CI = 1e4
-# koff_CI = 1e2
-# kcat_CI = 1e4
+# Inhibition kinetics parameters
+kon_CI = 1e4
+koff_CI = 1e1
+kcat_CI = 1e4
 
-# kon_ei=1e4
-# koff_ei=1e2
-# kon_es_esi=1e4
-# koff_es_esi=1e2
-# kon_ei_esi=1e4
-# koff_ei_esi=1e2
+kon_ei=1e4
+koff_ei=1e1
+kon_es_esi=1e4
+koff_es_esi=1e1
+kon_ei_esi=1e4
+koff_ei_esi=1e1
 
-# kon_es_esi = 1e4
-# koff_es_esi = 1e2
+kon_es_esi = 1e4
+koff_es_esi = 1e1
 
-# kon_MBI = 1e4
-# koff_MBI = 1e2
-# kstabilize_MBI = 32.
+kon_MBI = 1e4
+koff_MBI = 1e1
+kstabilize_MBI = 32.
 
-# # Simulation parameters
-# t0 = 0.
-# tmax = 7200
-# dt = 5e-2
-# max_abs_remaining_substrate = 1e-6
-# max_rel_substrate_depletion = None
-# include_substrate_in_complex_for_max = True
+# Simulation parameters
+t0 = 0.
+tmax = 7200
+dt = 5e-2
+max_abs_remaining_substrate = 1e-6
+max_rel_substrate_depletion = None
+include_substrate_in_complex_for_max = True
 
 
 # # Non-Competitive inhibition
@@ -76,7 +76,7 @@ from matplotlib import pyplot as plt
 
 # # Inhibition kinetics parameters
 # kon_CI = 1e4
-# koff_CI = 1e2
+# koff_CI = 1e1
 # kcat_CI = 1e4
 
 # kon_ei=1e4
@@ -148,50 +148,50 @@ from matplotlib import pyplot as plt
 # include_substrate_in_complex_for_max = True
 
 
-# "Mechanism-Based" inhibition
-# S0 < KM, S0 ~= E0, high KD
-# -----------------
-inhib_label = '"mechanism-based"'
-# Initial concentrations
-E_conc = 1e-4
-S_conc = 1e-4
-I_CI_conc = 0
-I_NCI_conc = 0
-I_UCI_conc = 0
-I_MBI_conc = 1e-4
+# # "Mechanism-Based" inhibition
+# # S0 < KM, S0 ~= E0, high KD
+# # -----------------
+# inhib_label = '"mechanism-based"'
+# # Initial concentrations
+# E_conc = 1e-4
+# S_conc = 1e-4
+# I_CI_conc = 0
+# I_NCI_conc = 0
+# I_UCI_conc = 1e-3
+# I_MBI_conc = 1e-4
 
-# Core enzyme parameters
-kcat = 32.
-kon = 1e4
-koff = 1e1
-KM = (koff+kcat)/kon
+# # Core enzyme parameters
+# kcat = 32.
+# kon = 1e4
+# koff = 1e1
+# KM = (koff+kcat)/kon
 
-# Inhibition kinetics parameters
-kon_CI = 1e4
-koff_CI = 1e2
-kcat_CI = 1e4
+# # Inhibition kinetics parameters
+# kon_CI = 1e4
+# koff_CI = 1e1
+# kcat_CI = 1e4
 
-kon_ei=1e4
-koff_ei=1e2
-kon_es_esi=1e4
-koff_es_esi=1e2
-kon_ei_esi=1e4
-koff_ei_esi=1e2
+# kon_ei=1e4
+# koff_ei=1e1
+# kon_es_esi=1e4
+# koff_es_esi=1e1
+# kon_ei_esi=1e4
+# koff_ei_esi=1e1
 
-kon_es_esi = 1e4
-koff_es_esi = 1e2
+# kon_es_esi = 1e4
+# koff_es_esi = 1e1
 
-kon_MBI = 1e4
-koff_MBI = 1e1
-kstabilize_MBI = 32.
+# kon_MBI = 1e4
+# koff_MBI = 1e1
+# kstabilize_MBI = 32
 
-# Simulation parameters
-t0 = 0.
-tmax = 7200
-dt = 5e-2
-max_abs_remaining_substrate = 1e-6
-max_rel_substrate_depletion = None
-include_substrate_in_complex_for_max = True
+# # Simulation parameters
+# t0 = 0.
+# tmax = 7200
+# dt = 5e-2
+# max_abs_remaining_substrate = 1e-6
+# max_rel_substrate_depletion = None
+# include_substrate_in_complex_for_max = True
 
 #%%
 print(S_conc, KM)
