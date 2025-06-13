@@ -186,14 +186,18 @@ ts, Es, Ss, ESs, Ps, Qs, ESI_NCIs = simulate()
 # # substrate and product material balance check
 # np.allclose(np.ones(len(Ss))*Ss[0], Ss+Ps)
 
-plt.plot(ts, Ss, label='nonsteady')
-plt.xlim(0, 45000)
+plt.plot(ts, Ss, label='nonsteady', linestyle='dashed',
+         zorder=2, color='blue', 
+         # alpha=0.4,
+         )
+plt.ylim(0, 1.1*S_conc)
+plt.xlim(0, ts[-1])
 plt.xlabel('time [s]')
 plt.ylabel('Substrate concentration [mol/L]')
 plt.legend()
 
 
-#%% Example - STEADY state Michaelis Menten
+#%% Example - STEADY state Michaelis Menten used for non-steady system
 
 SS_MM_sp_sys = SpeciesSystem('SS_M', ['E', 'S','P',],
                        concentrations=[E_conc, S_conc, 0.,
@@ -231,8 +235,55 @@ def simulate_SS_MM(t0=t0, tmax=tmax, dt=dt,
 
 ts_steady, Es_steady, Ss_steady, Ps_steady = simulate_SS_MM()
 
-plt.plot(ts_steady, Ss_steady, label='steady')
-plt.xlim(0, 45000)
+plt.plot(ts_steady, Ss_steady, label='steady', linestyle='dashed',
+         zorder=2, color='orange')
+plt.ylim(0, 1.1*S_conc)
+plt.xlim(0, ts[-1])
+plt.xlabel('time [s]')
+plt.ylabel('Substrate concentration [mol/L]')
+
+#%%
+from scipy.integrate import solve_ivp
+
+sp_sys.concentrations = np.array([E_conc, S_conc, 0., 0., 
+                I_CI_conc, 0., 0.,
+                I_NCI_conc, 0., 0.,
+                I_UCI_conc, 0.,
+                I_MBI_conc, 0., 0.,
+                ])
+    
+def ode_system_RHS(t, concs):
+    concs[np.where(concs<0)] = 0. #  not needed with a low enough atol
+    sp_sys.concentrations = concs
+    # dconcs_dt = MM_rxns.get_dconcs_dt()
+    # print(t)
+    # print(concs[:4])
+    # print(dconcs_dt[:4])
+    # print('\n')
+    # if np.any(concs<0): breakpoint()
+    return multipurpose_rxn_sys.get_dconcs_dt()
+
+def S_obj_f(t, concs, S=max_abs_remaining_substrate):
+    return concs[1]-S
+
+sol = solve_ivp(ode_system_RHS, 
+                t_span=[t0, tmax], 
+                y0=sp_sys.concentrations,
+                # t_eval=np.arange(0., 5.1, 0.1)*1000,
+                # t_eval=[1000, 5000],
+                atol=1e-12, # <= 1e-6*max(sp_sys.concentrations)
+                rtol=1e-6, # 1e-6
+                # the solver keeps the local error estimates less than atol + rtol * abs(y)
+                events=S_obj_f,
+                # method='LSODA',
+                dense_output=False)
+
+plt.plot(sol.t, sol.y[1, :], label='nonsteady_ode_RK', linestyle='solid',
+         zorder=2, color='gray', 
+         # linewidth=0.5,
+         )
+plt.ylim(0, 1.1*S_conc)
+plt.xlim(0, ts[-1])
 plt.xlabel('time [s]')
 plt.ylabel('Substrate concentration [mol/L]')
 
@@ -272,18 +323,42 @@ sol = solve_ivp(ode_system_RHS,
                 method='LSODA',
                 dense_output=False)
 
-plt.plot(sol.t, sol.y[1, :], label='nonsteady_ode')
-plt.xlim(0, 45000)
+plt.plot(sol.t, sol.y[1, :], label='nonsteady_ode_BDF-stiffness', linestyle='solid',
+         zorder=2, color='green', 
+         # linewidth=0.5,
+         )
+plt.ylim(0, 1.1*S_conc)
+plt.xlim(0, ts[-1])
 plt.xlabel('time [s]')
 plt.ylabel('Substrate concentration [mol/L]')
-
 
 plt.legend()
 plt.show()
 
 #%%
-def f_ode():
-    sp_sys.concentrations = np.random.random(1)*np.array([E_conc, S_conc, 0., 0., 
+def f_ode_RK_nonsteady():
+    sp_sys.concentrations = np.array([E_conc, S_conc, 0., 0., 
+                    I_CI_conc, 0., 0.,
+                    I_NCI_conc, 0., 0.,
+                    I_UCI_conc, 0.,
+                    I_MBI_conc, 0., 0.,
+                    ])
+    
+    sol = solve_ivp(ode_system_RHS, 
+                    t_span=[t0, tmax], 
+                    y0=sp_sys.concentrations,
+                    # t_eval=np.arange(0., 5.1, 0.1)*1000,
+                    # t_eval=[1000, 5000],
+                    atol=1e-12, # <= 1e-6*max(sp_sys.concentrations)
+                    rtol=1e-6, # 1e-6
+                    # the solver keeps the local error estimates less than atol + rtol * abs(y)
+                    events=S_obj_f,
+                    # method='LSODA',
+                    # method='BDF',
+                    dense_output=False)
+
+def f_ode_BDF_S_nonsteady():
+    sp_sys.concentrations = np.array([E_conc, S_conc, 0., 0., 
                     I_CI_conc, 0., 0.,
                     I_NCI_conc, 0., 0.,
                     I_UCI_conc, 0.,
@@ -302,12 +377,21 @@ def f_ode():
                     method='LSODA',
                     # method='BDF',
                     dense_output=False)
-
-def f_sim():
-    sp_sys.concentrations = np.random.random(1)*np.array([E_conc, S_conc, 0., 0., 
+    
+def f_sim_nonsteady():
+    sp_sys.concentrations = np.array([E_conc, S_conc, 0., 0., 
                     I_CI_conc, 0., 0.,
                     I_NCI_conc, 0., 0.,
                     I_UCI_conc, 0.,
                     I_MBI_conc, 0., 0.,
                     ])
     simulate()
+
+def f_sim_steady():
+    sp_sys.concentrations = np.array([E_conc, S_conc, 0., 0., 
+                    I_CI_conc, 0., 0.,
+                    I_NCI_conc, 0., 0.,
+                    I_UCI_conc, 0.,
+                    I_MBI_conc, 0., 0.,
+                    ])
+    simulate_SS_MM()
