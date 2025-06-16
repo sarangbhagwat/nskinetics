@@ -9,13 +9,14 @@ __version__ = '0.0.1'
 # %% Initialize NSKinetics 
 
 from . import species
+from .species import *
 from . import reactions
-from . import steady
-from . import nonsteady
+from .reactions import *
+from . import reaction_systems 
+from .reaction_systems import *
 
 __all__ = (
      *species.__all__,
      *reactions.__all__,
-     *steady.__all__,
-     *nonsteady.__all__,
+     *reaction_systems.__all__,
      )

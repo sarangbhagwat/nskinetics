@@ -6,11 +6,13 @@ Created on Mon May 26 13:50:14 2025
 """
 import numpy as np
 from matplotlib import pyplot as plt
-from .species import SpeciesSystem
-from .reactions import Rxn, RevRxn, RxnSys
+from ..species import SpeciesSystem
+from ..reactions import Rxn, RevRxn
+from .reaction_system import RxnSys
 
 __all__ = ('EnzymeSubstrateProduct', 'ESP', 'CompetitiveInhibition',
-           'NonCompetitiveInhibition', 'UnCompetitiveInhibition',
+           'NonCompetitiveInhibition', 
+           'UnCompetitiveInhibition',
            'MechanismBasedInhibition')
 
 #%% Core enzyme-catalyzed reaction system (can also be used for competitive inhibition)

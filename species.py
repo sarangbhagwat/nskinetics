@@ -6,7 +6,7 @@ Created on Thu May 29 17:37:32 2025
 """
 import numpy as np
 
-__all__ = ('Species, SpeciesSystem')
+__all__ = ('Species', 'SpeciesSystem',)
 
 #%% Species and species system
 

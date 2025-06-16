@@ -8,9 +8,8 @@ Created on Thu May 29 17:39:02 2025
 import numpy as np
 from numba import njit
 
-__all__ = ('Reaction', 'Rxn',
-           'ReversibleReaction', 'RevRxn',
-           'ReactionSystem', 'RxnSys')
+__all__ = ('Reaction', 'Rxn', 'IrreversibleReaction', 'IrrevRxn',
+           'ReversibleReaction', 'RevRxn',)
 
 #%% One-way reaction
 
@@ -92,7 +91,7 @@ class Reaction():
                            species_concs_vector=self.species_system.concentrations, 
                            rxn_stoichs=self.stoichiometry)
 
-Rxn = Reaction
+Rxn = IrreversibleReaction = IrrevRxn = Reaction
 
 #%% Reversible reaction
 @njit(cache=True)
@@ -183,31 +182,3 @@ class ReversibleReaction():
         
 RevRxn = ReversibleReaction
 
-#%% Reaction system
-
-class ReactionSystem():
-    """
-    Abstract class for a system of reactions.
-    
-    Parameters
-    ----------
-    ID : str
-        ID.
-    reactions : list
-        List of Rxn, ReversibleRxn, or RxnSystem objects.
-    species_system : SpeciesSystem
-        A SpeciesSystem object containing all species
-        involved in this system of reactions.
-    """
-    def __init__(self, ID, reactions, species_system):
-        self.ID = ID
-        self.reactions = reactions
-        self.species_system = species_system
-    
-    def get_dconcs_dt(self):
-        reactions = self.reactions
-        # species_concs_vector = self.species_system.all_sps
-        # breakpoint()
-        return np.sum([r.get_dconcs_dt() for r in reactions], axis=0)
-
-RxnSys = ReactionSystem

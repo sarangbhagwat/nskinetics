@@ -1,8 +1,8 @@
-from nskinetics.species import SpeciesSystem
-from nskinetics.reactions import RxnSys
-from nskinetics.nonsteady import EnzymeSubstrateProduct,\
+from nskinetics import SpeciesSystem
+from nskinetics import RxnSys
+from nskinetics import EnzymeSubstrateProduct,\
     CompetitiveInhibition, NonCompetitiveInhibition, UnCompetitiveInhibition
-from nskinetics.steady import MichaelisMenten
+from nskinetics import MichaelisMenten
 
 import numpy as np
 from matplotlib import pyplot as plt 
