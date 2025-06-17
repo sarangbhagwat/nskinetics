@@ -34,6 +34,9 @@ class SpeciesSystem():
     all_sps : list
         List of Species objects or strings. 
         If the latter, new Species objects will be created.
+    concentrations : list or np.ndarray
+        Concentrations of species, indexed the same way as
+        all_sps. 
     """
     def __init__(self, ID, all_sps, concentrations):
         self.ID = ID
@@ -48,9 +51,18 @@ class SpeciesSystem():
         self.all_sps = processed_all_sps
         self.concentrations = np.array(concentrations)
         
-    def get_indices(self, some_sps):
+    def indices(self, some_sps):
         all_sps = self.all_sps
         indices = [all_sps.index(i) for i in some_sps]
         return indices
     
-        
+    def index(self, sp):
+        return self.all_sps.index(sp)
+    
+    def index_from_ID(self, sp_ID):
+        index = 0
+        all_sps = self.all_sps
+        for i in all_sps:
+            if i.ID==sp_ID:
+                return index
+            index += 1
