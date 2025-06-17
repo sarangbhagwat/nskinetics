@@ -102,7 +102,7 @@ sp_sys = SpeciesSystem('multipurpose_sp_sys', ['E', 'S', 'ES', 'P',
                                                'I_CI', 'EI_CI', 'Q',
                                                'I_NCI', 'EI_NCI', 'ESI_NCI',
                                                'I_UCI', 'ESI_UCI',
-                                               'I_MBI', 'EI_MCI_unstable', 'EI_MCI_stable',
+                                               'I_MBI', 'EI_MBI_unstable', 'EI_MBI_stable',
                                                
                                                ],
                        concentrations=[E_conc, S_conc, 0., 0., 
@@ -146,8 +146,6 @@ multipurpose_rxn_sys = RxnSys(ID='multipurpose_rxn_sys',
 
 
 #%%
-from scipy.integrate import solve_ivp
-
 sp_sys.concentrations = np.array([E_conc, S_conc, 0., 0., 
                 I_CI_conc, 0., 0.,
                 I_NCI_conc, 0., 0.,
@@ -183,7 +181,7 @@ sp_sys.concentrations = np.array([E_conc, S_conc, 0., 0.,
 
 sol = multipurpose_rxn_sys.solve(t_span=[t0, tmax], 
                                  sp_conc_for_events={'S':max_abs_remaining_substrate})
-
+#%%
 plt.plot(sol.t, sol.y[1, :], label='nonsteady_ODE_LSODA', linestyle='solid',
          zorder=2, color='green', 
          # linewidth=0.5,

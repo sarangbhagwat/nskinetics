@@ -102,7 +102,7 @@ sp_sys = SpeciesSystem('multipurpose_sp_sys', ['E', 'S', 'ES', 'P',
                                                'I_CI', 'EI_CI', 'Q',
                                                'I_NCI', 'EI_NCI', 'ESI_NCI',
                                                'I_UCI', 'ESI_UCI',
-                                               'I_MBI', 'EI_MCI_unstable', 'EI_MCI_stable',
+                                               'I_MBI', 'EI_MBI_unstable', 'EI_MBI_stable',
                                                
                                                ],
                        concentrations=[E_conc, S_conc, 0., 0., 

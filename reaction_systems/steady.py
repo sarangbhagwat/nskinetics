@@ -14,7 +14,6 @@ __all__ = ('MichaelisMenten',)
 #%% Michaelis Menten (STEADY-state only)
 # (Do NOT use in non-steady state systems)
 
-#!!!
 @njit(cache=True)
 def steady_MM_dconcs_dt(kcat, KM, species_concs_vector, 
                         e_index, s_index,

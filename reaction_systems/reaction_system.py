@@ -80,7 +80,8 @@ class ReactionSystem():
         if y0 is None:
             y0 = concentrations
         if sp_conc_for_events is not None:
-            events = []
+            if events is None:
+                events = []
             code = 'y = concs[index] - S'
             for sp, conc in sp_conc_for_events.items():
                 index = sp_sys.index_from_ID(sp) if isinstance(sp, str) else sp_sys.index(sp)
@@ -90,20 +91,19 @@ class ReactionSystem():
                                                          'y': None}
                                               ))
         def ode_system_RHS(t, concs):
-            concs[np.where(concs<0)] = 0. # not needed with a low enough atol
+            concs[np.where(concs<0)] = 0. # not strictly necessary with a low enough atol
             sp_sys.concentrations = concs
             return get_dconcs_dt()
         
-        sol = solve_ivp(ode_system_RHS, 
-                        t_span=t_span, 
-                        y0=y0,
-                        t_eval=t_eval,
-                        atol=atol, # <= 1e-6*max(sp_sys.concentrations)
-                        rtol=atol, # 1e-6
-                        # the solver keeps the local error estimates less than atol + rtol * abs(y)
-                        events=events,
-                        method=method,
-                        dense_output=dense_output)
-        return sol
+        return solve_ivp(ode_system_RHS, 
+                         t_span=t_span, 
+                         y0=y0,
+                         t_eval=t_eval,
+                         atol=atol, # recommended: <= 1e-6*max(sp_sys.concentrations)
+                         rtol=atol, # recommended: 1e-6
+                         # the solver keeps the local error estimates less than atol + rtol * abs(y)
+                         events=events,
+                         method=method,
+                         dense_output=dense_output)
     
 RxnSys = ReactionSystem
