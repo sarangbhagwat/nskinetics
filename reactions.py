@@ -209,6 +209,7 @@ class Reaction(AbstractReaction):
                  chem_equation=None,
                  stoichiometry=None,
                  exponents=None,
+                 get_exponents_from_stoich=False,
                  ):
         AbstractReaction.__init__(self, ID, 
                      species_system,
@@ -218,8 +219,13 @@ class Reaction(AbstractReaction):
         stoich=self.stoichiometry
         self.kf = kf
         self.kb = kb
-        self.exponents = exponents if exponents is not None\
-            else np.ones(len(stoich))
+        if exponents is None:
+            if get_exponents_from_stoich:
+                self.exponents = np.abs(len(stoich))
+            else:
+                self.exponents = np.ones(len(stoich))
+        else:
+            self.exponents = exponents
         self.reactant_indices = np.where(stoich<0)
         self.product_indices = np.where(stoich>0)
         
