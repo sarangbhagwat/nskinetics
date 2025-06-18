@@ -10,7 +10,8 @@ from numba import njit
 from warnings import warn
 
 __all__ = ('Reaction', 'Rxn', 'IrreversibleReaction', 'IrrevRxn',
-           'ReversibleReaction', 'RevRxn',)
+           'ReversibleReaction', 'RevRxn',
+           'ChemicalEquation')
 
 #%% Abstract chemical equation class
 class ChemicalEquation():
@@ -182,6 +183,9 @@ class Reaction(AbstractReaction):
     stoichiometry: array, optional
         Array (of length equal to species_system.concentrations) of 
         stoichiometry float values.
+    exponents: array, optional
+        Array (of length equal to species_system.concentrations) of 
+        rate law exponent float values.
     kf : float
         forward reaction rate constant.
     kb : float, optional
@@ -197,7 +201,7 @@ class Reaction(AbstractReaction):
                  reactants=None, products=None,
                  chem_equation=None,
                  stoichiometry=None,
-                 exponents=None
+                 exponents=None,
                  ):
         AbstractReaction.__init__(self, ID, 
                      species_system,
@@ -222,5 +226,4 @@ class Reaction(AbstractReaction):
                          product_indices=self.product_indices)
 
 Rxn = IrreversibleReaction = ReversibleReaction = IrrevRxn = RevRxn = Reaction
-
 
