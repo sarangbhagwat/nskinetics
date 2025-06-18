@@ -49,8 +49,9 @@ class ChemicalEquation():
     def stoichiometry(self, new_stoichiometry):
         self._stoichiometry = new_stoichiometry
         if self.paired_obj is not None:
-            warn(f'Replaced {self.ID} stoichiometry with {new_stoichiometry}, but this does not match the paired_obj stoichiometry: {self.paired_obj.stoichiometry}.',
-                 RuntimeWarning)
+            if not self.paired_obj.stoichiometry==new_stoichiometry:
+                warn(f'Replaced {self.ID} stoichiometry with {new_stoichiometry}, but this does not match the paired_obj stoichiometry: {self.paired_obj.stoichiometry}.',
+                     RuntimeWarning)
 
 #%% Abstract reaction class
 class AbstractReaction():
