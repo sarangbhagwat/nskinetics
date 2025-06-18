@@ -30,9 +30,15 @@ class ChemicalEquation():
         lhs = ''
         rhs = ''
         for chem, stoich in zip(self.species_system.all_sps, self.stoichiometry):
-            if stoich<0: lhs+= str(stoich) + ' ' + chem.ID
-            elif stoich>0: rhs+= str(stoich) + ' ' + chem.ID
-        return lhs + ' -> ' + rhs
+            
+            if stoich<0: 
+                if not lhs=='': lhs+= ' + '
+                lhs+= str(-stoich) + ' ' + chem.ID
+            elif stoich>0: 
+                if not rhs=='': rhs+= ' + '
+                rhs+= str(stoich) + ' ' + chem.ID
+        return 'ChemicalEquation(' + lhs + ' -> ' + rhs + ')'
+    
     def __repr__(self):
         return self.__str__()
     
@@ -224,6 +230,23 @@ class Reaction(AbstractReaction):
                          rxn_exps=self.exponents,
                          reactant_indices=self.reactant_indices,
                          product_indices=self.product_indices)
-
+    
+    def __str__(self):
+        lhs = ''
+        rhs = ''
+        arrow = '->' if self.kb==0. else '<->'
+        for chem, stoich in zip(self.species_system.all_sps, self.stoichiometry):
+            
+            if stoich<0: 
+                if not lhs=='': lhs+= ' + '
+                lhs+= str(-stoich) + ' ' + chem.ID
+            elif stoich>0: 
+                if not rhs=='': rhs+= ' + '
+                rhs+= str(stoich) + ' ' + chem.ID
+        return 'Reaction(' + lhs + ' ' + arrow + ' ' + rhs + ')'
+    
+    def __repr__(self):
+        return self.__str__()
+    
 Rxn = IrreversibleReaction = ReversibleReaction = IrrevRxn = RevRxn = Reaction
 

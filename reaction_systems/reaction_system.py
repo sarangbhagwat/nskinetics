@@ -7,6 +7,7 @@ Created on Thu May 29 17:39:02 2025
 
 import numpy as np
 from scipy.integrate import solve_ivp
+from matplotlib import pyplot as plt
 
 __all__ = ('ReactionSystem', 'RxnSys')
 
@@ -56,7 +57,8 @@ class ReactionSystem():
         self.ID = ID
         self.reactions = reactions
         self.species_system = species_system
-    
+        self._solution = None # stored solution from the most recent time 'solve' was called
+        
     def get_dconcs_dt(self):
         reactions = self.reactions
         # species_concs_vector = self.species_system.all_sps
@@ -95,7 +97,7 @@ class ReactionSystem():
             sp_sys.concentrations = concs
             return get_dconcs_dt()
         
-        return solve_ivp(ode_system_RHS, 
+        self._solution = sol = solve_ivp(ode_system_RHS, 
                          t_span=t_span, 
                          y0=y0,
                          t_eval=t_eval,
@@ -105,5 +107,33 @@ class ReactionSystem():
                          events=events,
                          method=method,
                          dense_output=dense_output)
+        return sol
     
+    def plot_solution(self, show_events=True, sps_to_include=None):
+        if sps_to_include is None:
+            sps_to_include = []
+        
+        sol = self._solution
+        t, y = sol.t, sol.y
+        t_events, y_events = sol.t_events, sol.y_events
+        all_sps = self.species_system.all_sps
+        
+        fig, ax = plt.subplots()
+        
+        for i, sp in zip(range(len(all_sps)), all_sps):
+            if sp in sps_to_include or sp.ID in sps_to_include:
+                ax.plot(t, y[i, :], label=sp.ID,
+                        linestyle='solid',
+                        linewidth=1.)
+        ax.set_xlabel('Time [s]')
+        ax.set_ylabel('Concentration [mol/L]')
+        plt.legend(loc='upper left', bbox_to_anchor=(1.05, 1))
+        
+        if show_events:
+            ylim = ax.get_ylim()
+            ax.vlines(t_events, ylim[0], ylim[1], 
+                      linestyles='dashed', linewidth=0.5)
+            
+        plt.show()
+        
 RxnSys = ReactionSystem
