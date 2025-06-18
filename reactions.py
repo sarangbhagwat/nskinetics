@@ -7,14 +7,44 @@ Created on Thu May 29 17:39:02 2025
 
 import numpy as np
 from numba import njit
+from warnings import warn
 
 __all__ = ('Reaction', 'Rxn', 'IrreversibleReaction', 'IrrevRxn',
            'ReversibleReaction', 'RevRxn',)
 
 #%% Abstract chemical equation class
-# class ChemicalEquation():
-#     def __init__(self, ID, ):
+class ChemicalEquation():
+    def __init__(self, ID, 
+                 species_system, 
+                 stoichiometry=None, 
+                 paired_obj=None, # can pass an object that has a parameter 'stoichiometry'
+                 ):
+        self.ID = ID
+        self.species_system = species_system
+        self._stoichiometry = stoichiometry if stoichiometry is not None\
+            else paired_obj.stoichiometry
+        self.paired_obj = paired_obj
         
+    def __str__(self):
+        lhs = ''
+        rhs = ''
+        for chem, stoich in zip(self.species_system.all_sps, self.stoichiometry):
+            if stoich<0: lhs+= str(stoich) + ' ' + chem.ID
+            elif stoich>0: rhs+= str(stoich) + ' ' + chem.ID
+        return lhs + ' -> ' + rhs
+    def __repr__(self):
+        return self.__str__()
+    
+    @property
+    def stoichiometry(self):
+        return self._stoichiometry
+    @stoichiometry.setter
+    def stoichiometry(self, new_stoichiometry):
+        self._stoichiometry = new_stoichiometry
+        if self.paired_obj is not None:
+            warn(f'Replaced {self.ID} stoichiometry with {new_stoichiometry}, but this does not match the paired_obj stoichiometry: {self.paired_obj.stoichiometry}.',
+                 RuntimeWarning)
+
 #%% Abstract reaction class
 class AbstractReaction():
     """ 
@@ -84,24 +114,39 @@ class AbstractReaction():
                 self.stoichiometry = chem_equation.stoichiometry
         else:
             self.stoichiometry = stoichiometry
-            
+        
+        if self.chem_equation is None:
+            self.chem_equation = ChemicalEquation(ID=ID+'_eqn', 
+                                                  species_system=species_system,
+                                                  stoichiometry=self.stoichiometry)
+        
 #%% Reaction class
 
 @njit(cache=True)
-def dconcs_dt(kf, kb, species_concs_vector, rxn_stoichs):
+def dconcs_dt(kf, kb, species_concs_vector, rxn_stoichs, rxn_exps,
+              reactant_indices, product_indices):
     # -----------------------------------------
     # for a one-way reaction,
     # returns array of temporal rates of change 
     # in the concentrations of given species
     # (- denotes decrease, + denotes increase)
     # -----------------------------------------
-    # 1-stoichiometry-equivalent change for reactant concs
-    change = kf*np.prod(species_concs_vector[np.where(rxn_stoichs<0.)]) - kb*np.prod(species_concs_vector[np.where(rxn_stoichs>0.)])
+    
+    # 'change' is the 1-stoichiometry-equivalent change for reactant concs
+    
+    # change = 0
+    # if np.all(rxn_exps==1.):
+    # change = kf*np.prod(species_concs_vector[reactant_indices]) -\
+    #     kb*np.prod(species_concs_vector[product_indices])
+    # else:
+    change = kf*np.prod(np.power(species_concs_vector[reactant_indices], rxn_exps[reactant_indices])) -\
+        kb*np.prod(np.power(species_concs_vector[product_indices], rxn_exps[product_indices]))
+    
     # if change is too great, cap it to
     # the limiting reactant conc
     temp_vector = np.copy(species_concs_vector)
-    temp_vector += change*rxn_stoichs
     # breakpoint()
+    temp_vector += change*rxn_stoichs
     if np.any(temp_vector<0):
         tv_stoich_adj = temp_vector/np.abs(rxn_stoichs)
         tv_stoich_adj[np.where(np.isinf(tv_stoich_adj))] = 0.
@@ -116,7 +161,13 @@ class Reaction(AbstractReaction):
     Can describe a one-way/irreversible reaction 
     (using kf; kb set to zero by default) OR a 
     reversible reaction (using kf and kb).
-
+    
+    In addition to the above, initialization must include 
+    exactly ONE of the following sets of optional arguments:
+        (a) reactants and products; OR
+        (b) chem_equation; OR
+        (c) stoichiometry
+        
     Parameters
     ----------
     ID : str, optional
@@ -146,20 +197,29 @@ class Reaction(AbstractReaction):
                  reactants=None, products=None,
                  chem_equation=None,
                  stoichiometry=None,
+                 exponents=None
                  ):
         AbstractReaction.__init__(self, ID, 
                      species_system,
                      reactants=reactants, products=products,
                      chem_equation=chem_equation,
                      stoichiometry=stoichiometry,)
+        stoich=self.stoichiometry
         self.kf = kf
         self.kb = kb
+        self.exponents = exponents if exponents is not None\
+            else np.ones(len(stoich))
+        self.reactant_indices = np.where(stoich<0)
+        self.product_indices = np.where(stoich>0)
         
     def get_dconcs_dt(self):
         return dconcs_dt(kf=self.kf, 
                          kb=self.kb,
                          species_concs_vector=self.species_system.concentrations, 
-                         rxn_stoichs=self.stoichiometry)
+                         rxn_stoichs=self.stoichiometry,
+                         rxn_exps=self.exponents,
+                         reactant_indices=self.reactant_indices,
+                         product_indices=self.product_indices)
 
 Rxn = IrreversibleReaction = ReversibleReaction = IrrevRxn = RevRxn = Reaction
 

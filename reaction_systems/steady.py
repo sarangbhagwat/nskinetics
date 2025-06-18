@@ -4,10 +4,9 @@ Created on Thu May 29 17:32:54 2025
 
 @author: sarangbhagwat
 """
-from .nonsteady import SpeciesSystem
+
 import numpy as np
 from numba import njit
-from matplotlib import pyplot as plt
 
 __all__ = ('MichaelisMenten',)
 
