@@ -13,17 +13,11 @@ __all__ = ('Reaction', 'Rxn', 'IrreversibleReaction', 'IrrevRxn',
 
 #%% Abstract chemical equation class
 # class ChemicalEquation():
-#     def __init__(self, ID, ):
-        
+#     def __init__(self, ID, )
 #%% Abstract reaction class
 class AbstractReaction():
     """ 
-    Abstract class to define stoichiometries for a chemical reaction.
-    In addition to required arguments, initialization must include 
-    exactly ONE of the following sets of optional arguments:
-        (a) reactants and products; OR
-        (b) chem_equation; OR
-        (c) stoichiometry
+    Abstract class for a chemical reaction.
     Parameters
     ----------
     ID : str, optional
@@ -85,10 +79,82 @@ class AbstractReaction():
         else:
             self.stoichiometry = stoichiometry
             
-#%% Reaction class
+#%% One-way reaction
 
 @njit(cache=True)
-def dconcs_dt(kf, kb, species_concs_vector, rxn_stoichs):
+def oneway_dconcs_dt(k, species_concs_vector, rxn_stoichs):
+    # -----------------------------------------
+    # for a one-way reaction,
+    # returns array of temporal rates of change 
+    # in the concentrations of given species
+    # (- denotes decrease, + denotes increase)
+    # -----------------------------------------
+    # 1-stoichiometry-equivalent change for reactant concs
+    change = k*np.prod(species_concs_vector[np.where(rxn_stoichs<0.)])
+    temp_vector = np.copy(species_concs_vector)
+    temp_vector += change*rxn_stoichs
+    # breakpoint()
+    if np.any(temp_vector<0):
+        tv_stoich_adj = temp_vector/np.abs(rxn_stoichs)
+        tv_stoich_adj[np.where(np.isinf(tv_stoich_adj))] = 0.
+        tv_stoich_adj[np.where(np.isnan(tv_stoich_adj))] = 0.
+        limiting_reactant_index = np.where(tv_stoich_adj==np.min(tv_stoich_adj))[0][0]
+        # print(limiting_reactant_index)
+        # try: 
+        change = species_concs_vector[limiting_reactant_index]/np.abs(rxn_stoichs[limiting_reactant_index]) # limiting reactant conc. adjusted by stoichiometry
+        # except:
+        #     breakpoint()
+    return change * rxn_stoichs
+
+
+class Reaction(AbstractReaction):
+    """ 
+    Class for a one-way reaction.
+    Using this class to make reversible reactions
+    is not recommended as this will slow computation.
+    Parameters
+    ----------
+    ID : str, optional
+        ID.
+    reactants : dict, optional
+        Key: reactant name as string; Value: stoichiometry as float or integer.
+    products : dict, optional
+        Key: product name as string; Value: stoichiometry as float or integer.
+    chem_equation: Object, optional
+        Must have a parameter 'stoichiometry' containing an array (of length 
+        equal to species_system.concentrations) of stoichiometry float values.
+    stoichiometry: array, optional
+        Array (of length equal to species_system.concentrations) of 
+        stoichiometry float values.
+    k : float
+        rate constant.
+    species_system: SpeciesSystem object
+        System of chemical species including at least those involved in this
+        reaction.
+    """
+    def __init__(self, ID, 
+                 k, species_system,
+                 reactants=None, products=None,
+                 chem_equation=None,
+                 stoichiometry=None,
+                 ):
+        AbstractReaction.__init__(self, ID, 
+                     species_system,
+                     reactants=reactants, products=products,
+                     chem_equation=chem_equation,
+                     stoichiometry=stoichiometry,)
+        self.k = k
+        
+    def get_dconcs_dt(self):
+        return oneway_dconcs_dt(k=self.k, 
+                           species_concs_vector=self.species_system.concentrations, 
+                           rxn_stoichs=self.stoichiometry)
+
+Rxn = IrreversibleReaction = IrrevRxn = Reaction
+
+#%% Reversible reaction
+@njit(cache=True)
+def rev_dconcs_dt(kf, kb, species_concs_vector, rxn_stoichs):
     # -----------------------------------------
     # for a one-way reaction,
     # returns array of temporal rates of change 
@@ -103,20 +169,25 @@ def dconcs_dt(kf, kb, species_concs_vector, rxn_stoichs):
     temp_vector += change*rxn_stoichs
     # breakpoint()
     if np.any(temp_vector<0):
+        # breakpoint()
         tv_stoich_adj = temp_vector/np.abs(rxn_stoichs)
         tv_stoich_adj[np.where(np.isinf(tv_stoich_adj))] = 0.
         tv_stoich_adj[np.where(np.isnan(tv_stoich_adj))] = 0.
         limiting_reactant_index = np.where(tv_stoich_adj==np.min(tv_stoich_adj))[0][0]
+        # print(limiting_reactant_index)
+        # try: 
         change = species_concs_vector[limiting_reactant_index]/np.abs(rxn_stoichs[limiting_reactant_index]) # limiting reactant conc. adjusted by stoichiometry
-    return change * rxn_stoichs
+        # except:
+        #     breakpoint()
+    return  change * rxn_stoichs
 
-class Reaction(AbstractReaction):
-    """ 
-    Class for a chemical reaction with defined kinetics.
-    Can describe a one-way/irreversible reaction 
-    (using kf; kb set to zero by default) OR a 
-    reversible reaction (using kf and kb).
 
+class ReversibleReaction(AbstractReaction):
+    """
+    Class for a reversible reaction. 
+    Using this class for irreversible reactions by setting kb=0
+    is not recommended as this will slow computation (use Rxn instead).
+    
     Parameters
     ----------
     ID : str, optional
@@ -132,17 +203,15 @@ class Reaction(AbstractReaction):
         Array (of length equal to species_system.concentrations) of 
         stoichiometry float values.
     kf : float
-        forward reaction rate constant.
-    kb : float, optional
-        backward reaction rate constant.
+        rate constant for forward reaction.
+    kb : float
+        rate constant for backward reaction.
     species_system: SpeciesSystem object
         System of chemical species including at least those involved in this
         reaction.
     """
     def __init__(self, ID, 
-                 species_system,
-                 kf,
-                 kb=0.,
+                 kf, kb, species_system,
                  reactants=None, products=None,
                  chem_equation=None,
                  stoichiometry=None,
@@ -156,11 +225,10 @@ class Reaction(AbstractReaction):
         self.kb = kb
         
     def get_dconcs_dt(self):
-        return dconcs_dt(kf=self.kf, 
-                         kb=self.kb,
-                         species_concs_vector=self.species_system.concentrations, 
-                         rxn_stoichs=self.stoichiometry)
-
-Rxn = IrreversibleReaction = ReversibleReaction = IrrevRxn = RevRxn = Reaction
-
+        return rev_dconcs_dt(kf=self.kf, 
+                             kb=self.kb,
+                             species_concs_vector=self.species_system.concentrations, 
+                             rxn_stoichs=self.stoichiometry)
+        
+RevRxn = ReversibleReaction
 

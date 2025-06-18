@@ -52,12 +52,15 @@ class EnzymeSubstrateProduct(RxnSys):
     """
     def __init__(self, 
                  ID, 
-                 enzyme, 
-                 substrate, 
-                 es_complex,
-                 product, 
                  kon, koff, kcat,
-                 species_system):
+                 species_system,
+                 enzyme=None, 
+                 substrate=None, 
+                 es_complex=None,
+                 product=None, 
+                 chem_equations=None,
+                 stoichiometries=None):
+        
         self.loading_rxn = loading_rxn = RevRxn(ID=ID+'_load', 
                                    reactants=[enzyme, substrate], 
                                    products=[es_complex],
@@ -66,7 +69,7 @@ class EnzymeSubstrateProduct(RxnSys):
         self.catalyzed_rxn = catalyzed_rxn = Rxn(ID=ID+'_cat',
                            reactants=[es_complex],
                            products=[enzyme, product],
-                           k=kcat,
+                           kf=kcat,
                            species_system=species_system)
         
         RxnSys.__init__(self, ID=ID, 
@@ -94,10 +97,10 @@ class EnzymeSubstrateProduct(RxnSys):
         
     @property
     def kcat(self):
-        return self.catalyzed_rxn.k
+        return self.catalyzed_rxn.kf
     @kcat.setter
     def kcat(self, kcat):
-        self.catalyzed_rxn.k = kcat
+        self.catalyzed_rxn.kf = kcat
     
 CompetitiveInhibition = ESP = EnzymeSubstrateProduct
 
@@ -351,7 +354,7 @@ class MechanismBasedInhibition(RxnSys):
         self.stabilizing_rxn = stabilizing_rxn = Rxn(ID=ID+'_stabilize',
                            reactants=[ei_unstable_complex],
                            products=[ei_stable_complex],
-                           k=kstabilize,
+                           kf=kstabilize,
                            species_system=species_system)
         
         RxnSys.__init__(self, ID=ID, 
@@ -379,7 +382,7 @@ class MechanismBasedInhibition(RxnSys):
         
     @property
     def kstabilize(self):
-        return self.catalyzed_rxn.k
+        return self.catalyzed_rxn.kf
     @kstabilize.setter
     def kstabilize(self, kstabilize):
-        self.catalyzed_rxn.k = kstabilize
+        self.catalyzed_rxn.kf = kstabilize

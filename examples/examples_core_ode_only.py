@@ -195,3 +195,13 @@ plt.ylabel('Substrate concentration [mol/L]')
 plt.legend()
 plt.show()
 
+#%%
+def f():
+    sp_sys.concentrations = np.array([E_conc, S_conc, 0., 0., 
+                I_CI_conc, 0., 0.,
+                I_NCI_conc, 0., 0.,
+                I_UCI_conc, 0.,
+                I_MBI_conc, 0., 0.,
+                ])
+    sol = multipurpose_rxn_sys.solve(t_span=[t0, tmax], 
+                                 sp_conc_for_events={'S':1e-6})
