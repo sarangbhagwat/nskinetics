@@ -69,29 +69,7 @@ max_abs_remaining_substrate = 1e-6
 max_rel_substrate_depletion = None
 include_substrate_in_complex_for_max = True
 
-#%% Default parameters for basic examples
 
-# Initial concentrations
-I_CI_conc = 0
-I_NCI_conc = 0
-I_UCI_conc = 0
-I_MBI_conc = 0
-
-# Inhibition kinetics parameters
-kon_CI = 0
-koff_CI = 0
-kcat_CI = 0
-
-
-kon_ei=0
-koff_ei=0
-kon_es_esi=0
-koff_es_esi=0
-kon_ei_esi=0
-koff_ei_esi=0
-
-kon_es_esi = 0
-koff_es_esi = 0
 
 #%%
 print(S_conc, KM)
@@ -99,58 +77,18 @@ print(S_conc, KM)
 #%% Example - Multipurpose system
 
 sp_sys = SpeciesSystem('multipurpose_sp_sys', ['E', 'S', 'ES', 'P', 
-                                               'I_CI', 'EI_CI', 'Q',
-                                               'I_NCI', 'EI_NCI', 'ESI_NCI',
-                                               'I_UCI', 'ESI_UCI',
-                                               'I_MBI', 'EI_MBI_unstable', 'EI_MBI_stable',
-                                               
                                                ],
                        concentrations=[E_conc, S_conc, 0., 0., 
-                                       I_CI_conc, 0., 0.,
-                                       I_NCI_conc, 0., 0.,
-                                       I_UCI_conc, 0.,
-                                       I_MBI_conc, 0., 0.,
                                        ])
 
 MM_rxns = EnzymeSubstrateProduct(ID='MM', enzyme='E', substrate='S', es_complex='ES', product='P',
                           kon=kon, koff=koff, kcat=kcat, 
                           species_system=sp_sys)
 
-CI_rxns = CompetitiveInhibition(ID='CI', enzyme='E', substrate='I_CI', es_complex='EI_CI', product='Q',
-                                kon=kon_CI, koff=koff_CI, kcat=kcat_CI, 
-                                species_system=sp_sys)
-
-NCI_rxns = NonCompetitiveInhibition(ID='NCI', enzyme='E', inhibitor='I_NCI',
-                                    substrate='S',
-                                    ei_complex='EI_NCI',
-                                    es_complex='ES',
-                                    esi_complex='ESI_NCI',
-                                    kon_ei=kon_ei, koff_ei=koff_ei,
-                                    kon_es_esi=kon_es_esi, koff_es_esi=koff_es_esi,
-                                    kon_ei_esi=kon_ei_esi, koff_ei_esi=koff_ei_esi,
-                                    species_system=sp_sys)
-
-UCI_rxns = UnCompetitiveInhibition(ID='UCI', inhibitor='I_UCI', es_complex='ES',
-                                   esi_complex='ESI_UCI',
-                                   kon_es_esi=kon_es_esi, koff_es_esi=koff_es_esi, 
-                                   species_system=sp_sys)
-
-multipurpose_rxn_sys = RxnSys(ID='multipurpose_rxn_sys', 
-                       reactions=[
-                                  MM_rxns, 
-                                  CI_rxns, 
-                                  NCI_rxns, 
-                                  UCI_rxns,
-                                  ], 
-                       species_system=sp_sys)
 
 
 #%%
 sp_sys.concentrations = np.array([E_conc, S_conc, 0., 0., 
-                I_CI_conc, 0., 0.,
-                I_NCI_conc, 0., 0.,
-                I_UCI_conc, 0.,
-                I_MBI_conc, 0., 0.,
                 ])
     
 # def ode_system_RHS(t, concs):
@@ -179,7 +117,7 @@ sp_sys.concentrations = np.array([E_conc, S_conc, 0., 0.,
 #                 method='LSODA',
 #                 dense_output=False)
 
-sol = multipurpose_rxn_sys.solve(t_span=[t0, tmax], 
+sol = MM_rxns.solve(t_span=[t0, tmax], 
                                  sp_conc_for_events={'S':max_abs_remaining_substrate})
 
 #%%
