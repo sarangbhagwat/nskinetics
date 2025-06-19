@@ -120,13 +120,6 @@ Since [ES] was too small to view in the overall plot, let's also plot it separat
 
 .. code-block:: python
 
-# -*- coding: utf-8 -*-
-    """
-    Created on Thu Jun 19 12:54:07 2025
-    
-    @author: saran
-    """
-    
     import nskinetics as nsk
     
     # Create a SpeciesSystem object
