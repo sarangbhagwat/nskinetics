@@ -39,7 +39,7 @@ class ChemicalEquation():
             elif stoich>0: 
                 if not rhs=='': rhs+= ' + '
                 rhs+= str(stoich) + ' ' + chem.ID
-        return 'ChemicalEquation(' + lhs + ' -> ' + rhs + ')'
+        return f'{self.ID}: ChemicalEquation(' + lhs + ' -> ' + rhs + ')'
     
     def __repr__(self):
         return self.__str__()
@@ -272,7 +272,10 @@ class Reaction(AbstractReaction):
                 if not rhs=='': rhs+= ' + '
                 if not np.abs(stoich)==1.: rhs+= str(stoich) + ' '
                 rhs+= chem.ID
-        return 'Reaction(' + lhs + ' ' + arrow + ' ' + rhs + ')'
+        param_info = f'kf={self.kf}'
+        if arrow=='<->':
+            param_info += ', ' + f'kb={self.kb}'
+        return f'{self.ID}: Reaction(' + lhs + ' ' + arrow + ' ' + rhs + '; ' + param_info + ')'
     
     def __repr__(self):
         return self.__str__()

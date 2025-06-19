@@ -59,13 +59,15 @@ class ReactionSystem():
     def __init__(self, ID, reactions, species_system):
         self.ID = ID
         _reactions = []
+        i = 0
         for r in reactions:
             if isinstance(r, str):
-                _reactions.append(Reaction.from_equation(ID=ID, 
+                _reactions.append(Reaction.from_equation(ID=ID+f'_r{i}', 
                                                          chem_equation=r, 
                                                          species_system=species_system))
             elif isinstance(r, Reaction) or isinstance(r, ReactionSystem):
                 _reactions.append(r)
+            i += 1
         self.reactions = _reactions
         
         self.species_system = species_system
@@ -145,5 +147,16 @@ class ReactionSystem():
                       linestyles='dashed', linewidth=0.5)
             
         plt.show()
-        
+    
+    def __str__(self):
+        rxns = self.reactions
+        str_ = f'{self.ID}: ReactionSystem(\n'
+        for r in rxns:
+            str_ += '    ' + r.__str__() + '\n'
+        str_ += '    ' + ')'
+        return str_
+    
+    def __repr__(self):
+        return self.__str__()
+    
 RxnSys = ReactionSystem
