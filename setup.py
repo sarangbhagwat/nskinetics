@@ -40,6 +40,7 @@ setup(
                  'Topic :: Scientific/Engineering',
                  'Topic :: Scientific/Engineering :: Chemistry',
                  'Topic :: Scientific/Engineering :: Mathematics',
+                 'Topic :: Scientific/Engineering :: Bio-Informatics',
                  'Intended Audience :: Developers',
                  'Intended Audience :: Education',
                  'Intended Audience :: Manufacturing',
