@@ -4,7 +4,7 @@ Created on Thu May 29 18:40:55 2025
 
 @author: sarangbhagwat
 """
-__version__ = '0.1.0'
+__version__ = '0.1.2'
 
 # %% Initialize NSKinetics 
 

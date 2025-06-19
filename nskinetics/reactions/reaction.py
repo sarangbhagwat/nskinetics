@@ -303,4 +303,3 @@ class Reaction(AbstractReaction):
                         get_exponents_from_stoich=get_exponents_from_stoich,)
         
 Rxn = IrreversibleReaction = ReversibleReaction = IrrevRxn = RevRxn = Reaction
-
