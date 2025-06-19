@@ -39,7 +39,6 @@ setup(
                  'Environment :: Console',
                  'Topic :: Scientific/Engineering',
                  'Topic :: Scientific/Engineering :: Chemistry',
-                 'Topic :: Scientific/Engineering :: Biology',
                  'Topic :: Scientific/Engineering :: Mathematics',
                  'Intended Audience :: Developers',
                  'Intended Audience :: Education',
