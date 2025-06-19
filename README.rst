@@ -61,7 +61,8 @@ Example 1: Simple enzyme-substrate system
 
     # Plot results
     ESP_rxn_sys.plot_solution() 
-    
+
+
 .. image:: docs/images/example_1_plot_i.png
   :width: 400
 
