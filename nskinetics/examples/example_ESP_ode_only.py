@@ -121,15 +121,6 @@ sol = MM_rxns.solve(t_span=[t0, tmax],
                                  sp_conc_for_events={'S':max_abs_remaining_substrate})
 
 #%%
-plt.plot(sol.t, sol.y[1, :], label='nonsteady_ODE_LSODA', linestyle='solid',
-         zorder=2, color='green', 
-         # linewidth=0.5,
-         )
-plt.ylim(0, 1.1*S_conc)
-# plt.xlim(0, ts[-1])
-plt.xlabel('time [s]')
-plt.ylabel('Substrate concentration [mol/L]')
-
-plt.legend()
-plt.show()
-
+MM_rxns.plot_solution(sps_to_include=['E', 'S', 'ES', 'P',])
+MM_rxns.plot_solution(sps_to_include=['E'])
+MM_rxns.plot_solution(sps_to_include=['ES']) 

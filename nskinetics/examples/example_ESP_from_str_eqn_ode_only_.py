@@ -83,8 +83,8 @@ sp_sys = SpeciesSystem('multipurpose_sp_sys', ['E', 'S', 'ES', 'P',
 
 reactions = reactions = [
     # EnzymeSubstrateProduct
-    'E + S <-> ES; kf = 12, kb = 10',
-    'ES -> E + P; kf = 32'
+    'E + S <-> ES; kf = 12.0, kb = 10.0',
+    'ES -> E + P; kf = 32.0'
     ]
 
 MM_rxns = ReactionSystem(ID='MM', 
@@ -127,15 +127,6 @@ sol = MM_rxns.solve(t_span=[t0, tmax],
                                  sp_conc_for_events={'S':max_abs_remaining_substrate})
 
 #%%
-plt.plot(sol.t, sol.y[1, :], label='nonsteady_ODE_LSODA', linestyle='solid',
-         zorder=2, color='green', 
-         # linewidth=0.5,
-         )
-plt.ylim(0, 1.1*S_conc)
-# plt.xlim(0, ts[-1])
-plt.xlabel('time [s]')
-plt.ylabel('Substrate concentration [mol/L]')
-
-plt.legend()
-plt.show()
-
+MM_rxns.plot_solution(sps_to_include=['E', 'S', 'ES', 'P',])
+MM_rxns.plot_solution(sps_to_include=['E'])
+MM_rxns.plot_solution(sps_to_include=['ES']) 
