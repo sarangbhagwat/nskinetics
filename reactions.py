@@ -21,7 +21,7 @@ def read_equation_str(equation_str, all_sps):
     
     all_sp_IDs = [i.ID for i in all_sps]
     param_info_start = ';' # after this character (if present), there will be information on kinetic parameters
-    param_info_junk = [param_info_start, '=', ',', '.',]
+    param_info_junk = [param_info_start, '=', ',',]
         
     split_str, param_info = None, None
     if param_info_start in equation_str:
@@ -320,6 +320,7 @@ class Reaction(AbstractReaction):
                      stoichiometry=stoichiometry,)
         
         stoich=self.stoichiometry
+        
         if kf is None:
             kf = 0.
         if kb is None:
