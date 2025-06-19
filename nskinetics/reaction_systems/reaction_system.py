@@ -123,7 +123,7 @@ class ReactionSystem():
     
     def plot_solution(self, show_events=True, sps_to_include=None):
         if sps_to_include is None:
-            sps_to_include = []
+            sps_to_include = [i.ID for i in self.species_system.all_sps]
         
         sol = self._solution
         t, y = sol.t, sol.y
