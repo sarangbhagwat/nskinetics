@@ -80,7 +80,7 @@ Since [ES] was too small to view in the overall plot, let's also plot it separat
 
 **Example 2: Simple enzyme-substrate system + competitive inhibition**
 
-..code-block:: python
+.. code-block:: python
 
     import nskinetics as nsk
     
@@ -118,7 +118,7 @@ Since [ES] was too small to view in the overall plot, let's also plot it separat
 
 **Example 3: Simple enzyme-substrate system + competitive inhibition + "mechanism-based" inhibition**
 
-..code-block:: python
+.. code-block:: python
 
 # -*- coding: utf-8 -*-
     """
