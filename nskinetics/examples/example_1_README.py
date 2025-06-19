@@ -32,3 +32,4 @@ ESP_rxn_sys.solve(t_span=[0, 2*24*3600], # I want to simulate the system over 2 
 # Plot results
 ESP_rxn_sys.plot_solution() 
 
+ESP_rxn_sys.plot_solution(sps_to_include=['ES'])
