@@ -1,7 +1,8 @@
 from nskinetics import SpeciesSystem
 from nskinetics import RxnSys
 from nskinetics import EnzymeSubstrateProduct,\
-    CompetitiveInhibition, NonCompetitiveInhibition, UnCompetitiveInhibition
+    CompetitiveInhibition, NonCompetitiveInhibition, UnCompetitiveInhibition,\
+    MechanismBasedInhibition
 from nskinetics import MichaelisMenten
 
 import numpy as np
@@ -55,11 +56,42 @@ from matplotlib import pyplot as plt
 E_conc = 1e-4
 S_conc = 1e-4
 
+
+
+#%% Default parameters for basic examples
+
+# Initial concentrations
+E_conc = 1e-4
+S_conc = 1e-4
+I_CI_conc = 0
+I_NCI_conc = 0
+I_UCI_conc = 0
+I_MBI_conc = 1e-5
+
 # Core enzyme parameters
-kcat = 32.
 kon = 12
-koff = 1e1
+koff = 10
+kcat = 32.
 KM = (koff+kcat)/kon
+
+# Inhibition kinetics parameters
+kon_CI = 12
+koff_CI = 10
+kcat_CI = 32
+
+kon_ei=12
+koff_ei=10
+kon_es_esi=12
+koff_es_esi=10
+kon_ei_esi=12
+koff_ei_esi=10
+
+kon_es_esi = 12
+koff_es_esi = 10
+
+kon_MBI = 12
+koff_MBI = 10
+kstabilize_MBI = 32.
 
 # Simulation parameters
 t0 = 0.
@@ -69,29 +101,7 @@ max_abs_remaining_substrate = 1e-6
 max_rel_substrate_depletion = None
 include_substrate_in_complex_for_max = True
 
-#%% Default parameters for basic examples
 
-# Initial concentrations
-I_CI_conc = 0
-I_NCI_conc = 0
-I_UCI_conc = 0
-I_MBI_conc = 0
-
-# Inhibition kinetics parameters
-kon_CI = 0
-koff_CI = 0
-kcat_CI = 0
-
-
-kon_ei=0
-koff_ei=0
-kon_es_esi=0
-koff_es_esi=0
-kon_ei_esi=0
-koff_ei_esi=0
-
-kon_es_esi = 0
-koff_es_esi = 0
 
 #%%
 print(S_conc, KM)
@@ -135,12 +145,21 @@ UCI_rxns = UnCompetitiveInhibition(ID='UCI', inhibitor='I_UCI', es_complex='ES',
                                    kon_es_esi=kon_es_esi, koff_es_esi=koff_es_esi, 
                                    species_system=sp_sys)
 
+MBI_rxns = MechanismBasedInhibition(ID='MBI', enzyme='E', inhibitor='I_MBI',
+                                    ei_unstable_complex='EI_MBI_unstable',
+                                    ei_stable_complex='EI_MBI_stable',
+                                    kon=kon_MBI, koff=koff_MBI,
+                                    kstabilize=kstabilize_MBI,
+                                    species_system=sp_sys
+                                    )
+
 multipurpose_rxn_sys = RxnSys(ID='multipurpose_rxn_sys', 
                        reactions=[
                                   MM_rxns, 
                                   CI_rxns, 
                                   NCI_rxns, 
                                   UCI_rxns,
+                                  MBI_rxns,
                                   ], 
                        species_system=sp_sys)
 
@@ -194,9 +213,11 @@ sol = multipurpose_rxn_sys.solve(t_span=[t0, tmax],
 
 # plt.legend()
 # plt.show()
-multipurpose_rxn_sys.plot_solution(sps_to_include=['E', 'S', 'ES', 'P'])
+multipurpose_rxn_sys.plot_solution(sps_to_include=['E', 'S', 'ES', 'P',
+                                      'I_CI', 'EI_CI', 'Q'])
 multipurpose_rxn_sys.plot_solution(sps_to_include=['E'])
 multipurpose_rxn_sys.plot_solution(sps_to_include=['ES']) 
+multipurpose_rxn_sys.plot_solution(sps_to_include=['EI_MBI_stable']) 
                                      
 #%%
 def f():

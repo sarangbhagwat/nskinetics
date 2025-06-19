@@ -8,6 +8,7 @@ Created on Thu May 29 17:39:02 2025
 import numpy as np
 from scipy.integrate import solve_ivp
 from matplotlib import pyplot as plt
+from ..reactions import Reaction
 
 __all__ = ('ReactionSystem', 'RxnSys')
 
@@ -48,21 +49,30 @@ class ReactionSystem():
     ID : str
         ID.
     reactions : list
-        List of Rxn, ReversibleRxn, or RxnSystem objects.
+        List of Reaction, ReactionSystem, or str objects.
+        If str, must include chemical equation and kinetic 
+        parameter info.
     species_system : SpeciesSystem
         A SpeciesSystem object containing all species
         involved in this system of reactions.
     """
     def __init__(self, ID, reactions, species_system):
         self.ID = ID
-        self.reactions = reactions
+        _reactions = []
+        for r in reactions:
+            if isinstance(r, str):
+                _reactions.append(Reaction.from_equation(ID=ID, 
+                                                         chem_equation=r, 
+                                                         species_system=species_system))
+            elif isinstance(r, Reaction) or isinstance(r, ReactionSystem):
+                _reactions.append(r)
+        self.reactions = _reactions
+        
         self.species_system = species_system
-        self._solution = None # stored solution from the most recent time 'solve' was called
+        self._solution = None # stored solution from the most recent 'solve' call
         
     def get_dconcs_dt(self):
         reactions = self.reactions
-        # species_concs_vector = self.species_system.all_sps
-        # breakpoint()
         return np.sum([r.get_dconcs_dt() for r in reactions], axis=0)
     
     def solve(self, 
