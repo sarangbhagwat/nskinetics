@@ -1,0 +1,10 @@
+LICENSE
+README.rst
+setup.py
+nskinetics/__init__.py
+nskinetics/species.py
+nskinetics.egg-info/PKG-INFO
+nskinetics.egg-info/SOURCES.txt
+nskinetics.egg-info/dependency_links.txt
+nskinetics.egg-info/requires.txt
+nskinetics.egg-info/top_level.txt
