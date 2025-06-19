@@ -12,8 +12,7 @@ sp_sys = nsk.SpeciesSystem('sp_sys',
                        ['E', 'S', 'ES', 'P'], # enzyme, substrate, enzyme-substrate complex, product
                        concentrations=[1e-4, 1e-4, 0., 0.])
 
-# Describe reactions by writing chemical equations and 
-# kinetic parameter info
+# Describe reactions by writing chemical equations and kinetic parameter info
 reactions = [
             'E + S <-> ES; kf = 12.0, kb = 10.0', # kf = kon, kb = koff
             'ES -> E + P; kf = 32.0' # kf = kcat (enzyme turnover number)
