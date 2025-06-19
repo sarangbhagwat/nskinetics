@@ -70,7 +70,7 @@ Since [ES] was too small to view in the overall plot, let's also plot it separat
 
 .. code-block:: python
 
-    ESP_rxn_sys.plot_solution(sps_to_include=['ES'])
+    rxn_sys.plot_solution(sps_to_include=['ES'])
 
 
 .. image:: docs/images/example_1_plot_ii.png
