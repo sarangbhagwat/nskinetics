@@ -14,6 +14,62 @@ __all__ = ('Reaction', 'Rxn', 'IrreversibleReaction', 'IrrevRxn',
            'ChemicalEquation')
 
 #%% Abstract chemical equation class
+
+def get_stoichiometry_from_str(equation_str, all_sps):
+    stoichiometry = []
+    split_str = equation_str.split(' ')
+    arrow_ind = split_str.index('->') if '->' in split_str else split_str.index('<->')
+    all_sp_IDs = [i.ID for i in all_sps]
+    
+    # ----- #
+    # first, handle instances of stoichiometry number immediately next to species name
+    # e.g., 2A rather than 2 A; make sure 2A isn't a chemical
+    replace={}
+    last_str_was_float = False
+    for str_ in split_str:
+        if str_ not in all_sp_IDs + ['+', '->', '<->']: # is it a sp_ID or conjugation
+            try:
+                if last_str_was_float: 
+                    raise ValueError(f'Equation string "{equation_str}" has at least numbers one after the other that with neither being part of a registered chemical name in the species system {all_sp_IDs}.')
+                float(str_) # is it a number by itself (stoichiometry)
+                last_str_was_float = True
+            except Exception as e:
+                use_index_upto=1
+                for i in range(1, len(str_)):
+                    try:
+                        float(str[:i])
+                        use_index_upto+=1
+                    except:
+                        if i>1:
+                            stoich_part = str_[:use_index_upto]
+                            sp_ID_part = str_[use_index_upto:]
+                            replace[str_] = stoich_part, sp_ID_part
+                            if last_str_was_float:
+                                raise e
+                            break
+                        else:
+                            RuntimeError(f'Error reading equation string "{equation_str}"')
+                if not use_index_upto==len(str_)-1:
+                    last_str_was_float = False
+                    
+    for k, v in replace.items():
+        ind = split_str.index(k)
+        split_str[ind] = v[0]
+        split_str.insert(ind+1, v[1])
+    # ----- #
+    
+    for sp_ID in all_sp_IDs:
+        if sp_ID in split_str:
+            try:
+                stoichiometry.append(float(split_str[split_str.index(sp_ID)-1]))
+            except:
+                stoichiometry.append(1.)
+            if split_str.index(sp_ID)<arrow_ind:
+                stoichiometry[-1] *= -1
+        else:
+            stoichiometry.append(0.)
+    return np.array(stoichiometry)
+
 class ChemicalEquation():
     def __init__(self, ID, 
                  species_system, 
@@ -52,7 +108,15 @@ class ChemicalEquation():
             if not self.paired_obj.stoichiometry==new_stoichiometry:
                 warn(f'Replaced {self.ID} stoichiometry with {new_stoichiometry}, but this does not match the paired_obj stoichiometry: {self.paired_obj.stoichiometry}.',
                      RuntimeWarning)
-
+    
+    def from_string(ID, equation_str, species_system, paired_obj=None):
+        stoichiometry = get_stoichiometry_from_str(equation_str, 
+                                                   species_system.all_sps)
+        return ChemicalEquation(ID=ID, 
+                                species_system=species_system,
+                                stoichiometry=stoichiometry,
+                                paired_obj=paired_obj)
+        
 #%% Abstract reaction class
 class AbstractReaction():
     """ 
@@ -216,9 +280,13 @@ class Reaction(AbstractReaction):
                      reactants=reactants, products=products,
                      chem_equation=chem_equation,
                      stoichiometry=stoichiometry,)
+        
         stoich=self.stoichiometry
+        
         self.kf = kf
         self.kb = kb
+        self.get_exponents_from_stoich = get_exponents_from_stoich
+        
         if exponents is None:
             if get_exponents_from_stoich:
                 self.exponents = np.abs(len(stoich))
@@ -246,14 +314,29 @@ class Reaction(AbstractReaction):
             
             if stoich<0: 
                 if not lhs=='': lhs+= ' + '
-                lhs+= str(-stoich) + ' ' + chem.ID
+                if not np.abs(stoich)==1.: lhs+= str(-stoich) + ' '
+                lhs+= chem.ID
             elif stoich>0: 
                 if not rhs=='': rhs+= ' + '
-                rhs+= str(stoich) + ' ' + chem.ID
+                if not np.abs(stoich)==1.: rhs+= str(stoich) + ' '
+                rhs+= chem.ID
         return 'Reaction(' + lhs + ' ' + arrow + ' ' + rhs + ')'
     
     def __repr__(self):
         return self.__str__()
     
+    def from_equation(ID, chem_equation, species_system, kf, kb=0., exponents=None, get_exponents_from_stoich=None):
+        if isinstance(chem_equation, str):
+            chem_equation = ChemicalEquation.from_string(ID=ID+'_eqn', 
+                                                         equation_str=chem_equation,
+                                                         species_system=species_system)
+        return Reaction(ID=ID,
+                        species_system=species_system,
+                        chem_equation=chem_equation,
+                        kf=kf,
+                        kb=kb,
+                        exponents=exponents,
+                        get_exponents_from_stoich=get_exponents_from_stoich,)
+        
 Rxn = IrreversibleReaction = ReversibleReaction = IrrevRxn = RevRxn = Reaction
 
