@@ -35,6 +35,7 @@ NSKinetic's full documentation is currently being written. In the meantime, here
 Example 1: Simple enzyme-substrate system
 
 .. code-block:: python
+
     import nskinetics as nsk
 
     # Create a SpeciesSystem object
