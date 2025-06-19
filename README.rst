@@ -124,12 +124,9 @@ Since [ES] was too small to view in the overall plot, let's also plot it separat
     
     # Create a SpeciesSystem object
     sp_sys = nsk.SpeciesSystem('sp_sys', 
-                           ['E', 'S', 'ES', 'P',
-                            'I_CI', 'EI_CI', 'Q',
-                            'I_MBI', 'EI_MBI_unstable', 'EI_MBI_stable'], 
-                           # enzyme, substrate, enzyme-substrate complex, product
-                           # competitive_inhibitor, enzyme-competitive_inhibitor complex, byproduct
-                           # mechanism-based_inhibitor, unstable enzyme-MBI complex, stable enzyme-MBI complex 
+                           ['E', 'S', 'ES', 'P', # enzyme, substrate, enzyme-substrate complex, product
+                            'I_CI', 'EI_CI', 'Q', # competitive_inhibitor, enzyme-competitive_inhibitor complex, byproduct
+                            'I_MBI', 'EI_MBI_unstable', 'EI_MBI_stable'], # mechanism-based_inhibitor, unstable enzyme-MBI complex, stable enzyme-MBI complex 
                            concentrations=[1e-4, 1e-4, 0, 0,
                                            5e-5, 0, 0,
                                            3e-5, 0, 0])
@@ -156,7 +153,7 @@ Since [ES] was too small to view in the overall plot, let's also plot it separat
                   )                              # I want to know the time at which [S] drops to 1e-6
     
     # Plot results
-    rxn_sys.plot_solution() 
+    rxn_sys.plot_solution()
 
 
 .. image:: docs/images/example_3_plot_i.png
