@@ -31,7 +31,7 @@ Documentation
 
 NSKinetic's documentation is available on the web:
 
-    [link to be added; in the meantime, see `examples <https://github.com/sarangbhagwat/nskinetics/tree/main/examples>`]
+    [link to be added; in the meantime, see `examples <https://github.com/sarangbhagwat/nskinetics/tree/main/examples>`__.]
 
 Bug reports
 -----------
