@@ -2,7 +2,7 @@
 NSKinetics: simulation of Non-Steady state enzyme Kinetics and inhibitory phenomena.
 ====================================================================================
 
-.. image:: http://img.shields.io/badge/license-UIUC-blue.svg?style=flat
+.. image:: http://img.shields.io/badge/license-MIT-blue.svg?style=flat
    :target: https://github.com/sarangbhagwat/nskinetics/blob/main/LICENSE
    :alt: license
 
