@@ -63,9 +63,9 @@ S_conc = 1e-4
 # Initial concentrations
 E_conc = 1e-4
 S_conc = 1e-4
-I_CI_conc = 0
-I_NCI_conc = 0
-I_UCI_conc = 0
+I_CI_conc = 1e-4
+I_NCI_conc = 1e-4
+I_UCI_conc = 1e-4
 I_MBI_conc = 1e-5
 
 # Core enzyme parameters
@@ -214,10 +214,15 @@ sol = multipurpose_rxn_sys.solve(t_span=[t0, tmax],
 # plt.legend()
 # plt.show()
 multipurpose_rxn_sys.plot_solution(sps_to_include=['E', 'S', 'ES', 'P',
-                                      'I_CI', 'EI_CI', 'Q'])
+                                      'I_CI', 'EI_CI', 'Q',
+                                      'I_NCI', 'EI_NCI', 'ESI_NCI',
+                                      'I_UCI', 'ESI_UCI',
+                                      'I_MBI', 'EI_MBI_unstable', 'EI_MBI_stable'])
 multipurpose_rxn_sys.plot_solution(sps_to_include=['E'])
 multipurpose_rxn_sys.plot_solution(sps_to_include=['ES']) 
 multipurpose_rxn_sys.plot_solution(sps_to_include=['EI_MBI_stable']) 
+multipurpose_rxn_sys.plot_solution(sps_to_include=['EI_CI']) 
+# multipurpose_rxn_sys.plot_solution(sps_to_include=['EI_MBI_stable']) 
                                      
 #%%
 def f():
