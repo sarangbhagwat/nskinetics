@@ -86,16 +86,15 @@ Since [ES] was too small to view in the overall plot, let's also plot it separat
     
     # Create a SpeciesSystem object
     sp_sys = nsk.SpeciesSystem('sp_sys', 
-                           ['E', 'S', 'ES', 'P', # enzyme, substrate, enzyme-substrate complex, product
+                           ['E', 'S', 'ES', 'P',
                             'I_CI', 'EI_CI', 'Q'], # competitive_inhibitor, enzyme-competitive_inhibitor complex, byproduct
                            concentrations=[1e-4, 1e-4, 0, 0,
                                            5e-5, 0, 0])
     
-    # Describe reactions by writing chemical equations and 
-    # kinetic parameter info
+    # Describe reactions by writing chemical equations and kinetic parameter info
     reactions = [
-                'E + S <-> ES; kf = 12, kb = 10.0', # kf = kon, kb = koff
-                'ES -> E + P; kf = 32.0', # kf = kcat (enzyme turnover number)
+                'E + S <-> ES; kf = 12, kb = 10.0',
+                'ES -> E + P; kf = 32.0',
                 'E + I_CI <-> EI_CI; kf=12, kb=10.0',
                 'EI_CI -> E + Q; kf=32'
                 ]
@@ -106,12 +105,11 @@ Since [ES] was too small to view in the overall plot, let's also plot it separat
                                      species_system=sp_sys)
     
     # Simulate the ReactionSystem
-    rxn_sys.solve(t_span=[0, 2*24*3600], # I want to simulate the system over 2 days
-                  sp_conc_for_events={'S':1e-6}, # In addition to a full simulation,
-                  )                              # I want to know the time at which [S] drops to 1e-6
+    rxn_sys.solve(t_span=[0, 2*24*3600],
+                  sp_conc_for_events={'S':1e-6})                             
     
     # Plot results
-    rxn_sys.plot_solution() 
+    rxn_sys.plot_solution()
 
 .. image:: docs/images/example_2_plot_i.png
   :width: 400
@@ -124,18 +122,17 @@ Since [ES] was too small to view in the overall plot, let's also plot it separat
     
     # Create a SpeciesSystem object
     sp_sys = nsk.SpeciesSystem('sp_sys', 
-                           ['E', 'S', 'ES', 'P', # enzyme, substrate, enzyme-substrate complex, product
-                            'I_CI', 'EI_CI', 'Q', # competitive_inhibitor, enzyme-competitive_inhibitor complex, byproduct
+                           ['E', 'S', 'ES', 'P',
+                            'I_CI', 'EI_CI', 'Q',
                             'I_MBI', 'EI_MBI_unstable', 'EI_MBI_stable'], # mechanism-based_inhibitor, unstable enzyme-MBI complex, stable enzyme-MBI complex 
                            concentrations=[1e-4, 1e-4, 0, 0,
                                            5e-5, 0, 0,
                                            3e-5, 0, 0])
     
-    # Describe reactions by writing chemical equations and 
-    # kinetic parameter info
+    # Describe reactions by writing chemical equations and kinetic parameter info
     reactions = [
-                'E + S <-> ES; kf = 12, kb = 10.0', # kf = kon, kb = koff
-                'ES -> E + P; kf = 32.0', # kf = kcat (enzyme turnover number)
+                'E + S <-> ES; kf = 12, kb = 10.0',
+                'ES -> E + P; kf = 32.0',
                 'E + I_CI <-> EI_CI; kf=12, kb=10.0',
                 'EI_CI -> E + Q; kf=32',
                 'E + I_MBI <-> EI_MBI_unstable; kf=12.0, kb=10',
@@ -148,9 +145,8 @@ Since [ES] was too small to view in the overall plot, let's also plot it separat
                                      species_system=sp_sys)
     
     # Simulate the ReactionSystem
-    rxn_sys.solve(t_span=[0, 2*24*3600], # I want to simulate the system over 2 days
-                  sp_conc_for_events={'S':1e-6}, # In addition to a full simulation,
-                  )                              # I want to know the time at which [S] drops to 1e-6
+    rxn_sys.solve(t_span=[0, 2*24*3600],
+                  sp_conc_for_events={'S':1e-6})
     
     # Plot results
     rxn_sys.plot_solution()
