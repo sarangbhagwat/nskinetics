@@ -10,34 +10,9 @@ import numpy as np
 from scipy.integrate import solve_ivp
 from matplotlib import pyplot as plt
 from ..reactions import Reaction
+from ..utils import create_function
 
 __all__ = ('ReactionSystem', 'RxnSys')
-
-#%% Utility functions
-
-def codify(statement):
-    statement = replace_apostrophes(statement)
-    statement = replace_newline(statement)
-    return statement
-
-def replace_newline(statement):
-    statement = statement.replace('\n', ';')
-    return statement
-
-def replace_apostrophes(statement):
-    statement = statement.replace('’', "'").replace('‘', "'").replace('“', '"').replace('”', '"')
-    return statement
-
-def create_function(code, namespace):
-    def wrapper_fn(statement):
-        def f(t, concs):
-            namespace['t'] = t
-            namespace['concs'] = concs
-            exec(codify(statement), namespace)
-            return namespace['y']
-        return f
-    function = wrapper_fn(code)
-    return function
 
 #%% Reaction system
 
@@ -69,11 +44,19 @@ class ReactionSystem():
             elif isinstance(r, Reaction) or isinstance(r, ReactionSystem):
                 _reactions.append(r)
             i += 1
-        self.reactions = _reactions
+        self._reactions = _reactions
         
-        self.species_system = species_system
+        self._species_system = species_system
         self._solution = None # stored solution from the most recent 'solve' call
-        
+    
+    @property
+    def reactions(self):
+        return self._reactions
+    
+    @property
+    def species_system(self):
+        return self._species_system
+    
     def get_dconcs_dt(self):
         reactions = self.reactions
         return np.sum([r.get_dconcs_dt() for r in reactions], axis=0)
@@ -148,6 +131,16 @@ class ReactionSystem():
                       linestyles='dashed', linewidth=0.5)
             
         plt.show()
+    
+    def add_reaction(self, reaction):
+        r = reaction
+        _reactions = self._reactions
+        if isinstance(r, str):
+            _reactions.append(Reaction.from_equation(ID=self.ID+f'_r{len(_reactions)}', 
+                                                     chem_equation=r, 
+                                                     species_system=self.species_system))
+        elif isinstance(r, Reaction) or isinstance(r, ReactionSystem):
+            _reactions.append(r)
     
     def __str__(self):
         rxns = self.reactions
