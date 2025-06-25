@@ -17,7 +17,7 @@ NSKinetics is a fast, flexible, and convenient package to simulate non-steady st
 Installation
 ------------
 
-Get the latest version of NSKinetics from `PyPI <https://pypi.org/project/nskinetics/>`__. If you have an installation of Python with pip, simple install it with:
+Get the latest version of NSKinetics from `PyPI <https://pypi.org/project/nskinetics/>`__. If you have an installation of Python with pip, simply install it with:
 
     $ pip install nskinetics
 
