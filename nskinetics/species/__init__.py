@@ -6,22 +6,12 @@
 # https://github.com/sarangbhagwat/nskinetics/blob/main/LICENSE
 # for license details.
 
-__version__ = '0.1.3'
-
-# %% Initialize NSKinetics 
-
 from . import species
 from .species import *
-from . import reactions
-from .reactions import *
-from . import reaction_systems 
-from .reaction_systems import *
-from . import utils
-# from .utils import *
+from . import enzyme
+from .enzyme import *
 
 __all__ = (
      *species.__all__,
-     *reactions.__all__,
-     *reaction_systems.__all__,
-     'utils',
+     *enzyme.__all__,
      )

@@ -142,6 +142,21 @@ class ReactionSystem():
         elif isinstance(r, Reaction) or isinstance(r, ReactionSystem):
             _reactions.append(r)
     
+    def change_reaction(self, index, 
+                        new_equation_string=None,
+                        new_kf=None, new_kb=None,
+                        ):
+        _reactions = self._reactions
+        if new_equation_string is None and new_kf is None and new_kb is None:
+            raise ValueError('Either new_equation_string or new_kf and new_kf must be provided.')
+        elif new_equation_string is not None:
+            _reactions[index] = Reaction.from_equation(chem_equation=new_equation_string,
+                                                       species_system=self.species_system)
+        else:
+            r = _reactions[index]
+            if new_kf is not None: r.kf = new_kf
+            if new_kb is not None: r.kf = new_kb
+            
     def __str__(self):
         rxns = self.reactions
         str_ = f'{self.ID}: ReactionSystem(\n'

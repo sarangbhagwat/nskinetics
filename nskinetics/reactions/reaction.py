@@ -10,6 +10,7 @@ import numpy as np
 from numba import njit
 from warnings import warn
 from .utils import read_equation_str
+from ..species.enzyme import enzyme_complex_joiner
 
 __all__ = ('Reaction', 'Rxn', 'IrreversibleReaction', 'IrrevRxn',
            'ReversibleReaction', 'RevRxn',
@@ -249,17 +250,22 @@ class Reaction(AbstractReaction):
             self.exponents = exponents
         self.reactant_indices = np.where(stoich<0)
         self.product_indices = np.where(stoich>0)
+        self._load_full_string()
         
     def get_dconcs_dt(self):
-        return dconcs_dt(kf=self.kf, 
-                         kb=self.kb,
+        kf, kb = self.kf, self.kb
+        #!!! Check potential speed-up
+        # if kf==kb==0:
+        #     return 0
+        return dconcs_dt(kf=kf, 
+                         kb=kb,
                          species_concs_vector=self.species_system.concentrations, 
                          rxn_stoichs=self.stoichiometry,
                          rxn_exps=self.exponents,
                          reactant_indices=self.reactant_indices,
                          product_indices=self.product_indices)
     
-    def __str__(self):
+    def _load_full_string(self):
         lhs = ''
         rhs = ''
         arrow = '->' if self.kb==0. else '<->'
@@ -276,10 +282,16 @@ class Reaction(AbstractReaction):
         param_info = f'kf={self.kf}'
         if arrow=='<->':
             param_info += ', ' + f'kb={self.kb}'
-        return f'{self.ID}: Reaction(' + lhs + ' ' + arrow + ' ' + rhs + '; ' + param_info + ')'
+        self._lhs_string = lhs
+        self._rhs_string = rhs
+        self._param_info_string = param_info
+        self._full_string = f'{self.ID}: Reaction(' + lhs + ' ' + arrow + ' ' + rhs + '; ' + param_info + ')'
+    
+    def __str__(self):
+        return self._full_string
     
     def __repr__(self):
-        return self.__str__()
+        return self._full_string
     
     def from_equation(ID, chem_equation, species_system, 
                       kf=None, # overrides any parameter info in the chem_equation string
