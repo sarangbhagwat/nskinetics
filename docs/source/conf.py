@@ -35,6 +35,9 @@ html_theme = 'pydata_sphinx_theme'
 # -- Options for EPUB output
 epub_show_urls = 'footnote'
 
+# Autosummary settings
+autosummary_generate = True
+
 # Napoleon settings
 # napoleon_google_docstring = True
 napoleon_numpy_docstring = True
