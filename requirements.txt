@@ -1,6 +1,7 @@
 sphinx>=7.3.7
 pydata_sphinx_theme==0.15.4
 sphinxcontrib-jquery
+sphinxcontrib-napoleon
 sphinx_multitoc_numbering
 sphinx_autodoc_typehints
 nskinetics>=0.1.3
