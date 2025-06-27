@@ -1,0 +1,12 @@
+sphinx>=7.3.7
+pydata_sphinx_theme==0.15.4
+sphinxcontrib-jquery
+sphinx_multitoc_numbering
+sphinx_autodoc_typehints
+nskinetics>=0.1.3
+sphinx_design
+pyyaml
+ipykernel
+nbsphinx
+nbsphinx-link
+myst_parser
