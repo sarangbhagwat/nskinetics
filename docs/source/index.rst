@@ -6,6 +6,12 @@ NSKinetics: Non-Steady State Kinetics Simulation
 
 .. note::
 
-   Full documentation is expected soon.
+   Autosummary-based API is available. Full documentation is expected soon.
 
 
+Contents
+--------
+
+.. toctree::
+
+   api
