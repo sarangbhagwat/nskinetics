@@ -8,7 +8,10 @@
 
 from . import _create_function
 from ._create_function import *
+from . import _argument_checks
+from ._argument_checks import *
 
 __all__ = (
      *_create_function.__all__,
+     *_argument_checks.__all__,
      )

@@ -10,7 +10,7 @@ import numpy as np
 from scipy.integrate import solve_ivp
 from matplotlib import pyplot as plt
 from ..reactions import Reaction
-from ..utils import create_function
+from ..utils import create_function, is_number, is_array_of_numbers, is_list_of_strings
 
 __all__ = ('ReactionSystem', 'RxnSys')
 
@@ -280,25 +280,21 @@ class ReactionSystem():
     def _get_spikes_list_from_dict(self, spikes_dct):
         sd = spikes_dct
         sl = []
-        sp_sys = self.species_system
         for t, dconcs in sd.items():
-            assert (isinstance(t,float) 
-                    or isinstance(t,int)
-                    or isinstance(t, np.floating)
-                    or isinstance(t, np.integer))
-            
-            if isinstance(dconcs, np.ndarray) and\
-                (np.issubdtype(dconcs.dtype, np.floating) or
-                 np.issubdtype(dconcs.dtype, np.integer)):
+            assert is_number(t)
+            if is_array_of_numbers(dconcs):
                 pass
             elif isinstance(dconcs, str):
                 dconcs = self._get_dconcs_from_str(dconcs)
             elif isinstance(dconcs, list):
-                dconcs_f_list = [self._get_dconcs_from_str(i) for i in dconcs]
-                code = 'y = np.sum([i() for i in dconcs_f_list])'
-                dconcs = create_function(code=code,
-                                         namespace={'np': np,
-                                                    'dconcs_f_list':dconcs_f_list})
+                if is_array_of_numbers(np.array(dconcs)):
+                    pass
+                elif is_list_of_strings(dconcs):
+                    dconcs_f_list = [self._get_dconcs_from_str(i) for i in dconcs]
+                    code = 'y = np.sum([i() for i in dconcs_f_list])'
+                    dconcs = create_function(code=code,
+                                             namespace={'np': np,
+                                                        'dconcs_f_list':dconcs_f_list})
             # finally, append to list
             sl.append((t, dconcs))
         return sl
@@ -332,7 +328,7 @@ class ReactionSystem():
                                                 'np': np})
         
         return dconcs
-            
+    
     def __str__(self):
         rxns = self.reactions
         str_ = f'{self.ID}: ReactionSystem(\n'

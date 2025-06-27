@@ -20,18 +20,17 @@ reactions = [
             'ES -> E + P; kf = 32.0',
             ]
 
-# Describe feeding spikes
-feed_spikes = {20000: np.array([0, 1e-4, 0, 0,]),
-               40000: 'Target; S; 1e-4',
-               60000: np.array([0, 1e-4, 0, 0,]),
-               80000: np.array([0, 1e-4, 0, 0,]),
-               100000: np.array([0, 1e-4, 0, 0,])}
+# Describe concentration spikes (e.g., from feeding)
+spikes = {40000: 'Target; S; 1e-4', # at t=40000, add enough S to achieve [S]=1e-4
+          50000: 'Change; S; 1e-4', # at t=50000, add enough S to increase [S] by 1e-4
+          80000: 'Change; E; 1e-4', # at t=80000, add enough E to 
+          100000: np.array([0, 1e-4, 0, 0,])}
 
 # Generate a ReactionSystem from strings
 rxn_sys = nsk.ReactionSystem(ID='rxn_sys', 
                                  reactions=reactions,
                                  species_system=sp_sys,
-                                 spikes=feed_spikes)
+                                 spikes=spikes)
 
 # Simulate the ReactionSystem
 rxn_sys.solve(t_span=[0, 2*24*3600],
