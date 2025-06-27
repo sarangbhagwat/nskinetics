@@ -5,11 +5,11 @@
 # This module is under the MIT open-source license. See 
 # https://github.com/sarangbhagwat/nskinetics/blob/main/LICENSE
 # for license details.
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(
     name='nskinetics',
-    packages=['nskinetics'],
+    packages=find_packages(),
     license='MIT',
     version='0.1.3',
     description='Simulation of Non-Steady state enzyme Kinetics and inhibitory phenomena',
