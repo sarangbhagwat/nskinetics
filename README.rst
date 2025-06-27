@@ -30,7 +30,7 @@ For help on common installation issues, please visit the `documentation <link to
 Documentation
 -------------
 
-NSKinetic's full documentation is currently being written. In the meantime, here are some examples to get started:
+NSKinetic's `full documentation <https://nskinetics.readthedocs.io/en/latest/>`__ is currently being developed. In the meantime, here are some examples to get started:
 
 **Example 1: Simple enzyme-substrate system**
 
