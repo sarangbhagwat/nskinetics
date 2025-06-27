@@ -41,6 +41,7 @@ class Enzyme(Species):
         all possible sites.
         
         Defaults to an empty set (i.e., all sites are available).
+    
     """
     def __init__(self, ID, 
                  unavailable_sites=None,):
@@ -76,7 +77,7 @@ class Enzyme(Species):
         else:
             return 0
     
-    def is_generally_unavailable(site=None, binding_species=None):
+    def is_generally_unavailable(self, site=None, binding_species=None):
         ua = self._unavailable_sites
         bsp = binding_species
         if site is None and bsp is None:
@@ -109,6 +110,7 @@ class Enzyme(Species):
 class EnzymeComplex(Enzyme):
     """
     Class for an enzyme-(substrate/inhibitor) complex species.
+    
     Parameters
     ----------
     ID : str
@@ -125,6 +127,7 @@ class EnzymeComplex(Enzyme):
         all possible sites.
         
         Defaults to [(np.inf, 'all')] (i.e., no sites are available).
+    
     """
     def __init__(self, ID, 
                  enzyme,
