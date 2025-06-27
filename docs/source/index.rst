@@ -8,10 +8,4 @@ NSKinetics: Non-Steady State Kinetics Simulation
 
    Full documentation is expected soon.
 
-Contents
---------
 
-.. toctree::
-
-   usage
-   api
