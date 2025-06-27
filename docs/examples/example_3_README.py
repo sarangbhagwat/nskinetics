@@ -28,9 +28,9 @@ rxn_sys = nsk.ReactionSystem(ID='rxn_sys',
 # Describe forced concentration spikes for any species 
 # (e.g., from feeding substrate in a fed-batch regime)
 spikes = {20000: 'Target; S; 1e-4', # at t=40000, add enough S to achieve [S]=1e-4
-          50000: 'Target; S; 1e-4', # at t=50000, add enough S to increase [S] by 1e-4
-          80000: 'Target; S; 1e-4',
-          100000: 'Change; S; 2e-4',
+          50000: 'Target; S; 1e-4', # at t=50000, add enough S to to achieve [S]=1e-4
+          80000: 'Target; S; 1e-4', # at t=80000, add enough S to achieve [S]=1e-4
+          100000: 'Change; S; 2e-4',# at t=100000, add enough S to increase [S] by 2e-4
           }
 
 # Simulate the ReactionSystem
