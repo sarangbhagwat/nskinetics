@@ -68,51 +68,16 @@ NSKinetic's full documentation is currently being written. In the meantime, here
 
 Since [ES] was too small to view in the overall plot, let's also plot it separately:
 
-.. literalinclude:: docs/examples/example_1_README.py
-   :language: python
+.. code-block:: python
+
+    rxn_sys.plot_solution(sps_to_include=['ES'])
 
 
 .. image:: docs/images/example_1_plot_ii.png
   :width: 400
 
 
-**Example 2: Simple enzyme-substrate system + competitive inhibition**
-
-.. code-block:: python
-
-    import nskinetics as nsk
-    
-    # Create a SpeciesSystem object
-    sp_sys = nsk.SpeciesSystem('sp_sys', 
-                           ['E', 'S', 'ES', 'P',
-                            'I_CI', 'EI_CI', 'Q'], # competitive_inhibitor, enzyme-competitive_inhibitor complex, byproduct
-                           concentrations=[1e-4, 1e-4, 0, 0,
-                                           5e-5, 0, 0])
-    
-    # Describe reactions by writing chemical equations and kinetic parameter info
-    reactions = [
-                'E + S <-> ES; kf = 12, kb = 10.0',
-                'ES -> E + P; kf = 32.0',
-                'E + I_CI <-> EI_CI; kf=12, kb=10.0',
-                'EI_CI -> E + Q; kf=32'
-                ]
-    
-    # Generate a ReactionSystem from strings
-    rxn_sys = nsk.ReactionSystem(ID='rxn_sys', 
-                                     reactions=reactions,
-                                     species_system=sp_sys)
-    
-    # Simulate the ReactionSystem
-    rxn_sys.solve(t_span=[0, 2*24*3600],
-                  sp_conc_for_events={'S':1e-6})                             
-    
-    # Plot results
-    rxn_sys.plot_solution()
-
-.. image:: docs/images/example_2_plot_i.png
-  :width: 400
-
-**Example 3: Simple enzyme-substrate system + competitive inhibition + "mechanism-based" inhibition**
+**Example 2: Simple enzyme-substrate system + competitive inhibition + "mechanism-based" inhibition**
 
 .. code-block:: python
 
@@ -141,6 +106,49 @@ Since [ES] was too small to view in the overall plot, let's also plot it separat
     rxn_sys = nsk.ReactionSystem(ID='rxn_sys', 
                                      reactions=reactions,
                                      species_system=sp_sys)
+    
+    # Simulate the ReactionSystem
+    rxn_sys.solve(t_span=[0, 2*24*3600],
+                  sp_conc_for_events={'S':1e-6})
+    
+    # Plot results
+    rxn_sys.plot_solution()
+
+
+.. image:: docs/images/example_2_plot_i.png
+  :width: 400
+
+
+**Example 3: Simple enzyme-substrate system in a fed-batch regime**
+
+.. code-block:: python
+
+    import nskinetics as nsk
+    
+    # Create a SpeciesSystem object
+    sp_sys = nsk.SpeciesSystem('sp_sys', 
+                           ['E', 'S', 'ES', 'P',],
+                           concentrations=[1e-4, 1e-4, 0, 0,])
+    
+    # Describe reactions by writing chemical equations and kinetic parameter info
+    reactions = [
+                'E + S <-> ES; kf = 12, kb = 10.0',
+                'ES -> E + P; kf = 32.0',
+                ]
+    
+    # Describe forced concentration spikes for any species 
+    # (e.g., from feeding substrate in a fed-batch regime)
+    spikes = {20000: 'Target; S; 1e-4', # at t=40000, add enough S to achieve [S]=1e-4
+              50000: 'Target; S; 1e-4', # at t=50000, add enough S to achieve [S]=1e-4
+              80000: 'Target; S; 1e-4', # at t=80000, add enough S to achieve [S]=1e-4
+              100000: 'Change; S; 2e-4',# at t=50000, add enough S to increase [S] by 2e-4
+              }
+    
+    # Generate a ReactionSystem from strings
+    rxn_sys = nsk.ReactionSystem(ID='rxn_sys', 
+                                     reactions=reactions,
+                                     species_system=sp_sys,
+                                     spikes=spikes)
     
     # Simulate the ReactionSystem
     rxn_sys.solve(t_span=[0, 2*24*3600],

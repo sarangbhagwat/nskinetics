@@ -7,7 +7,6 @@
 # for license details.
 
 import nskinetics as nsk
-import numpy as np
 
 # Create a SpeciesSystem object
 sp_sys = nsk.SpeciesSystem('sp_sys', 
