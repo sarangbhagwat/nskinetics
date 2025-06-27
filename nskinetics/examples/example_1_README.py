@@ -20,16 +20,16 @@ reactions = [
             ]
 
 # Generate a ReactionSystem from strings
-ESP_rxn_sys = nsk.ReactionSystem(ID='ESP_rxn_sys', 
+rxn_sys = nsk.ReactionSystem(ID='rxn_sys', 
                                  reactions=reactions,
                                  species_system=sp_sys)
 
 # Simulate the ReactionSystem
-ESP_rxn_sys.solve(t_span=[0, 2*24*3600], # I want to simulate the system over 2 days
+rxn_sys.solve(t_span=[0, 2*24*3600], # I want to simulate the system over 2 days
                  sp_conc_for_events={'S':1e-6}, # In addition to a full simulation,
                  )                              # I want to know the time at which [S] drops to 1e-6
 
 # Plot results
-ESP_rxn_sys.plot_solution() 
+rxn_sys.plot_solution() 
 
-ESP_rxn_sys.plot_solution(sps_to_include=['ES'])
+rxn_sys.plot_solution(sps_to_include=['ES'])
