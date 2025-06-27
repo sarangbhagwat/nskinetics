@@ -75,6 +75,7 @@ class AbstractReaction():
         (a) reactants and products; OR
         (b) chem_equation; OR
         (c) stoichiometry
+    
     Parameters
     ----------
     ID : str, optional

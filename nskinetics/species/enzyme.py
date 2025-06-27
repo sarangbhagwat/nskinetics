@@ -24,6 +24,7 @@ class Enzyme(Species):
     Site availability properties can be used by ReactionSystem
     objects to come up with a list of reactions associated with
     this enzyme.
+    
     Parameters
     ----------
     ID : str

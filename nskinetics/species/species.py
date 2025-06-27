@@ -15,6 +15,7 @@ __all__ = ('Species', 'SpeciesSystem',)
 class Species():
     """
     Abstract class for a single chemical species.
+    
     Parameters
     ----------
     ID : str
