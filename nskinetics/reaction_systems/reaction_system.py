@@ -230,11 +230,16 @@ class ReactionSystem():
             t_events += list(sol.t_events[0])
             y_events += list(sol.y_events[0])
         
+        if events is None:
+            events = []
         solution = {'t': np.array(t_final).transpose(),
                     'y': np.array(y_final).transpose(),
                     't_events': np.array(t_events),
                     'y_events': np.array(y_events),
-                    'sol': sols}
+                    'sol': sols,
+                    'events': events+['['+k+']' + ' = ' + str(v) 
+                                      for k,v in sp_conc_for_events.items()]
+                    }
         
         self._solution = solution
         
@@ -247,6 +252,7 @@ class ReactionSystem():
         sol = self._solution
         t, y = sol['t'], sol['y']
         t_events, y_events = sol['t_events'], sol['y_events']
+        events = sol['events']
         all_sps = self.species_system.all_sps
         
         fig, ax = plt.subplots()
@@ -258,13 +264,28 @@ class ReactionSystem():
                         linewidth=1.)
         ax.set_xlabel('Time [s]')
         ax.set_ylabel('Concentration [mol/L]')
-        plt.legend(loc='upper left', bbox_to_anchor=(1.05, 1))
         
         if show_events:
             ylim = ax.get_ylim()
-            ax.vlines(t_events, ylim[0], ylim[1], 
-                      linestyles='dashed', linewidth=0.5)
-            
+            for t, e in zip(t_events, events):
+                label = str(e)
+                if callable(e):
+                    label = label.split(' at ')[0].remove('<')
+                ax.vlines(t, ylim[0], ylim[1], 
+                          linestyles='dashed', linewidth=0.5,
+                          color='blue',
+                          # label=label,
+                          )
+                xlim = ax.get_xlim()
+                ax.annotate(label, 
+                            xy=((t + 0.04*(xlim[1]-xlim[0])), 
+                                (ylim[1]-ylim[0])/2), 
+                            verticalalignment='center', 
+                            horizontalalignment='right' , 
+                            rotation = -270,
+                            color='blue',
+                            )
+        plt.legend(loc='upper left', bbox_to_anchor=(1.05, 1))
         plt.show()
     
     def add_reaction(self, reaction):
