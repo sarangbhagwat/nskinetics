@@ -180,6 +180,9 @@ class ReactionSystem():
                 dconcs_curr = dconcs
             
             # simulate last phase (last feed spike -> tmax)
+            y0_curr += dconcs_curr(t=t, concs=y0_curr)\
+                if callable(dconcs_curr)\
+                else np.array(dconcs_curr)
             sols.append(_solve_single_phase((tmin_curr, tmax),
                                              t_eval=t_eval,
                                              method=method,

@@ -68,9 +68,8 @@ NSKinetic's full documentation is currently being written. In the meantime, here
 
 Since [ES] was too small to view in the overall plot, let's also plot it separately:
 
-.. code-block:: python
-
-    rxn_sys.plot_solution(sps_to_include=['ES'])
+.. literalinclude:: docs/examples/example_1_README.py
+   :language: python
 
 
 .. image:: docs/images/example_1_plot_ii.png
