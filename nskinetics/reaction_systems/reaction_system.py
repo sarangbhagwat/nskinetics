@@ -31,8 +31,34 @@ class ReactionSystem():
     species_system : SpeciesSystem
         A SpeciesSystem object containing all species
         involved in this system of reactions.
+    spikes : dict
+        A dictionary with time stamps (t) as keys.
+        Values for spikes can assume one of the following forms:
+            (A) string or list of strings each of the form 
+                f'Change; {species_ID}; {conc}' 
+                (e.g., 'Change; Substrate; 0.001'), where conc is 
+                the desired change (spike) in the concentration 
+                of the corresponding Species at time t;
+            (B) string or list of strings each of the form 
+                f'Target; {species_ID}; {conc}' 
+                (e.g., 'Target; Substrate; 0.001'), where conc is 
+                the concentration of the corresponding Species 
+                to be targeted via a change (spike) at time t;
+            (C) string or list of strings each of the form 
+                f'Target (negative change allowed); {species_ID}; {conc}' 
+                (e.g., 'Target (negative change allowed); Substrate; 0.001'), 
+                where conc is the concentration of the corresponding Species 
+                to be targeted via a change (spike) at time t, with
+                negative values for the change (i.e., dips) permitted;
+            (D) array of floats equal to the change (spike) in 
+                concentrations of all Species in the species_system
+                (0 if none) at time t; or
+            (E) function that accepts the time and 
+                current concentrations array as arguments, and 
+                returns the desired change (spike) in concentrations
+                of all Species in the species_system (0 if none) at time t.
     """
-    def __init__(self, ID, reactions, species_system):
+    def __init__(self, ID, reactions, species_system, spikes=None):
         self.ID = ID
         _reactions = []
         i = 0
@@ -48,7 +74,9 @@ class ReactionSystem():
         
         self._species_system = species_system
         self._solution = None # stored solution from the most recent 'solve' call
-    
+        self._spikes = spikes
+        self._spikes_list = self._get_spikes_list_from_dict(spikes)
+        
     @property
     def reactions(self):
         return self._reactions
@@ -61,7 +89,7 @@ class ReactionSystem():
         reactions = self.reactions
         return np.sum([r.get_dconcs_dt() for r in reactions], axis=0)
     
-    def solve(self, 
+    def _solve_single_phase(self, 
               t_span,
               t_eval=None,
               method='LSODA',
@@ -72,11 +100,7 @@ class ReactionSystem():
               y0=None):
         get_dconcs_dt = self.get_dconcs_dt
         sp_sys = self.species_system
-        concentrations = sp_sys.concentrations
-        if atol is None:
-            atol = 1e-6*max(concentrations)
-        if y0 is None:
-            y0 = concentrations
+        
         if sp_conc_for_events is not None:
             if events is None:
                 events = []
@@ -93,7 +117,7 @@ class ReactionSystem():
             sp_sys.concentrations = concs
             return get_dconcs_dt()
         
-        self._solution = sol = solve_ivp(ode_system_RHS, 
+        sol = solve_ivp(ode_system_RHS, 
                          t_span=t_span, 
                          y0=y0,
                          t_eval=t_eval,
@@ -105,13 +129,109 @@ class ReactionSystem():
                          dense_output=dense_output)
         return sol
     
+    def solve(self, 
+              t_span,
+              t_eval=None,
+              method='LSODA',
+              atol=None, rtol=1e-6, 
+              events=None,
+              sp_conc_for_events=None, # dict or None
+              dense_output=False,
+              y0=None,
+              dt_feed=1e-2, # long dt_feed (i.e., slow feeding) not supported, only spikes
+              ):
+        
+        tmin, tmax = t_span
+        dt_feed=max(1e-6, dt_feed)
+        concentrations = self.species_system.concentrations
+        if atol is None:
+            atol = 1e-6*max(concentrations)
+        if y0 is None:
+            y0 = concentrations
+            
+        sols = []
+        sl = self._spikes_list
+        fs = [i() if callable(i) else i for i in sl]
+        _solve_single_phase = self._solve_single_phase
+        
+        # if there are feed spikes
+        if fs is not None and not fs==[]:
+            tmin_curr = tmin
+            y0_curr = y0
+            dconcs_curr = np.zeros(len(concentrations))
+            # simulate phases tmin -> feed spike time 1 -> feed spike time 2 ...
+            for t, dconcs in self._spikes_list:
+                assert tmin_curr < t
+                y0_curr += dconcs_curr(t=t, concs=y0_curr)\
+                    if callable(dconcs_curr)\
+                    else np.array(dconcs_curr)
+                
+                sols.append(_solve_single_phase((tmin_curr, t),
+                                                 t_eval=t_eval,
+                                                 method=method,
+                                                 atol=atol, rtol=rtol, 
+                                                 events=events,
+                                                 sp_conc_for_events=sp_conc_for_events, # dict or None
+                                                 dense_output=dense_output,
+                                                 y0=y0_curr))
+                
+                tmin_curr = t+dt_feed
+                y0_curr = sols[-1].y[:, -1]
+                dconcs_curr = dconcs
+            
+            # simulate last phase (last feed spike -> tmax)
+            sols.append(_solve_single_phase((tmin_curr, tmax),
+                                             t_eval=t_eval,
+                                             method=method,
+                                             atol=atol, rtol=rtol, 
+                                             events=events,
+                                             sp_conc_for_events=sp_conc_for_events, # dict or None
+                                             dense_output=dense_output,
+                                             y0=y0_curr))
+            
+        # if no feed spikes     
+        else:
+            # simulate single phase
+            sols.append(_solve_single_phase((tmin, tmax),
+                                             t_eval=t_eval,
+                                             method=method,
+                                             atol=atol, rtol=rtol, 
+                                             events=events,
+                                             sp_conc_for_events=sp_conc_for_events, # dict or None
+                                             dense_output=dense_output,
+                                             y0=y0))
+            
+        y_final = np.concatenate([sol.y.transpose() for sol in sols])
+        t_final = list(sols[0].t)
+        t_events = list(sols[0].t_events[0])
+        y_events = list(sols[0].y_events[0])
+        
+        for sol in sols[1:]:
+            # for arr1, arr2 in zip([t_final, y_final],
+            #                       [sol.t, sol.y]):
+            #     t_final = np.concatenate((t_final, sol.t.transpose()))
+            #     y_final = np.concatenate((y_final, sol.y.transpose()))
+            t_final += list(sol.t)
+            t_events += list(sol.t_events[0])
+            y_events += list(sol.y_events[0])
+        
+        solution = {'t': np.array(t_final).transpose(),
+                    'y': np.array(y_final).transpose(),
+                    't_events': np.array(t_events),
+                    'y_events': np.array(y_events),
+                    'sol': sols}
+        
+        self._solution = solution
+        
+        return solution
+    
     def plot_solution(self, show_events=True, sps_to_include=None):
         if sps_to_include is None:
             sps_to_include = [i.ID for i in self.species_system.all_sps]
         
         sol = self._solution
-        t, y = sol.t, sol.y
-        t_events, y_events = sol.t_events, sol.y_events
+        t, y = sol['t'], sol['y']
+        t_events, y_events = sol['t_events'], sol['y_events']
         all_sps = self.species_system.all_sps
         
         fig, ax = plt.subplots()
@@ -156,6 +276,62 @@ class ReactionSystem():
             r = _reactions[index]
             if new_kf is not None: r.kf = new_kf
             if new_kb is not None: r.kf = new_kb
+    
+    def _get_spikes_list_from_dict(self, spikes_dct):
+        sd = spikes_dct
+        sl = []
+        sp_sys = self.species_system
+        for t, dconcs in sd.items():
+            assert (isinstance(t,float) 
+                    or isinstance(t,int)
+                    or isinstance(t, np.floating)
+                    or isinstance(t, np.integer))
+            
+            if isinstance(dconcs, np.ndarray) and\
+                (np.issubdtype(dconcs.dtype, np.floating) or
+                 np.issubdtype(dconcs.dtype, np.integer)):
+                pass
+            elif isinstance(dconcs, str):
+                dconcs = self._get_dconcs_from_str(dconcs)
+            elif isinstance(dconcs, list):
+                dconcs_f_list = [self._get_dconcs_from_str(i) for i in dconcs]
+                code = 'y = np.sum([i() for i in dconcs_f_list])'
+                dconcs = create_function(code=code,
+                                         namespace={'np': np,
+                                                    'dconcs_f_list':dconcs_f_list})
+            # finally, append to list
+            sl.append((t, dconcs))
+        return sl
+    
+    def _get_dconcs_from_str(self, s):
+        sp_sys = self.species_system
+        dconcs = None
+        split_s = [i.replace(' ', '')
+                   for i in s.split(';')]
+        action = split_s[0].lower()
+        action, species, value = split_s
+        action = action.lower()
+        value = float(value)
+        
+        sp_ind = sp_sys.index(species)
+        
+        if action=='change':
+            dconcs = np.zeros((len(sp_sys.concentrations)))
+            dconcs[sp_ind] = value
+        elif action=='target':
+            code = 'y = np.zeros(len(concs)); y[sp_ind] = max(0, target_value-concs[sp_ind])'
+            dconcs = create_function(code=code, 
+                                     namespace={'sp_ind':sp_ind,
+                                                'target_value':value,
+                                                'np': np})
+        elif action=='target (negative change allowed)':
+            code = 'y = np.zeros(len(concs)); y[sp_ind] = target_value-concs[sp_ind]'
+            dconcs = create_function(code=code, 
+                                     namespace={'sp_ind':sp_ind,
+                                                'target_value':value,
+                                                'np': np})
+        
+        return dconcs
             
     def __str__(self):
         rxns = self.reactions

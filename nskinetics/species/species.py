@@ -59,7 +59,10 @@ class SpeciesSystem():
         return indices
     
     def index(self, sp):
-        return self.all_sps.index(sp)
+        if isinstance(sp, Species):
+            return self.all_sps.index(sp)
+        elif isinstance(sp, str):
+            return self.index_from_ID(sp)
     
     def index_from_ID(self, sp_ID):
         index = 0
