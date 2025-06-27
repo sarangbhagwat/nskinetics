@@ -136,23 +136,24 @@ Since [ES] was too small to view in the overall plot, let's also plot it separat
                 'ES -> E + P; kf = 32.0',
                 ]
     
-    # Describe forced concentration spikes for any species 
-    # (e.g., from feeding substrate in a fed-batch regime)
-    spikes = {20000: 'Target; S; 1e-4', # at t=40000, add enough S to achieve [S]=1e-4
-              50000: 'Target; S; 1e-4', # at t=50000, add enough S to achieve [S]=1e-4
-              80000: 'Target; S; 1e-4', # at t=80000, add enough S to achieve [S]=1e-4
-              100000: 'Change; S; 2e-4',# at t=50000, add enough S to increase [S] by 2e-4
-              }
-    
     # Generate a ReactionSystem from strings
     rxn_sys = nsk.ReactionSystem(ID='rxn_sys', 
                                      reactions=reactions,
-                                     species_system=sp_sys,
-                                     spikes=spikes)
+                                     species_system=sp_sys)
+    
+    
+    # Describe forced concentration spikes for any species 
+    # (e.g., from feeding substrate in a fed-batch regime)
+    spikes = {20000: 'Target; S; 1e-4', # at t=40000, add enough S to achieve [S]=1e-4
+              50000: 'Target; S; 1e-4', # at t=50000, add enough S to increase [S] by 1e-4
+              80000: 'Target; S; 1e-4',
+              100000: 'Change; S; 2e-4',
+              }
     
     # Simulate the ReactionSystem
     rxn_sys.solve(t_span=[0, 2*24*3600],
-                  sp_conc_for_events={'S':1e-6})
+                  sp_conc_for_events={'S':1e-6},
+                  spikes=spikes)
     
     # Plot results
     rxn_sys.plot_solution()

@@ -10,20 +10,28 @@ import nskinetics as nsk
 
 # Create a SpeciesSystem object
 sp_sys = nsk.SpeciesSystem('sp_sys', 
-                       ['E', 'S', 'ES', 'P',],
-                       concentrations=[1e-4, 1e-4, 0, 0,])
+                       ['E', 'S', 'ES', 'P',
+                        'I_CI', 'EI_CI', 'Q',
+                        'I_MBI', 'EI_MBI_unstable', 'EI_MBI_stable'], # mechanism-based_inhibitor, unstable enzyme-MBI complex, stable enzyme-MBI complex 
+                       concentrations=[1e-4, 1e-4, 0, 0,
+                                       5e-5, 0, 0,
+                                       3e-5, 0, 0])
 
 # Describe reactions by writing chemical equations and kinetic parameter info
 reactions = [
             'E + S <-> ES; kf = 12, kb = 10.0',
             'ES -> E + P; kf = 32.0',
+            'E + I_CI <-> EI_CI; kf=12, kb=10.0',
+            'EI_CI -> E + Q; kf=32',
+            'E + I_MBI <-> EI_MBI_unstable; kf=12.0, kb=10',
+            'EI_MBI_unstable -> EI_MBI_stable; kf = 32'
             ]
+
 
 # Generate a ReactionSystem from strings
 rxn_sys = nsk.ReactionSystem(ID='rxn_sys', 
                                  reactions=reactions,
                                  species_system=sp_sys)
-
 
 # Describe forced concentration spikes for any species 
 # (e.g., from feeding substrate in a fed-batch regime)

@@ -31,34 +31,8 @@ class ReactionSystem():
     species_system : SpeciesSystem
         A SpeciesSystem object containing all species
         involved in this system of reactions.
-    spikes : dict
-        A dictionary with time stamps (t) as keys.
-        Values for spikes can assume one of the following forms:
-            (A) string or list of strings each of the form 
-                f'Change; {species_ID}; {conc}' 
-                (e.g., 'Change; Substrate; 0.001'), where conc is 
-                the desired change (spike) in the concentration 
-                of the corresponding Species at time t;
-            (B) string or list of strings each of the form 
-                f'Target; {species_ID}; {conc}' 
-                (e.g., 'Target; Substrate; 0.001'), where conc is 
-                the concentration of the corresponding Species 
-                to be targeted via a change (spike) at time t;
-            (C) string or list of strings each of the form 
-                f'Target (negative change allowed); {species_ID}; {conc}' 
-                (e.g., 'Target (negative change allowed); Substrate; 0.001'), 
-                where conc is the concentration of the corresponding Species 
-                to be targeted via a change (spike) at time t, with
-                negative values for the change (i.e., dips) permitted;
-            (D) array of floats equal to the change (spike) in 
-                concentrations of all Species in the species_system
-                (0 if none) at time t; or
-            (E) function that accepts the time and 
-                current concentrations array as arguments, and 
-                returns the desired change (spike) in concentrations
-                of all Species in the species_system (0 if none) at time t.
     """
-    def __init__(self, ID, reactions, species_system, spikes=None):
+    def __init__(self, ID, reactions, species_system):
         self.ID = ID
         _reactions = []
         i = 0
@@ -74,8 +48,6 @@ class ReactionSystem():
         
         self._species_system = species_system
         self._solution = None # stored solution from the most recent 'solve' call
-        self._spikes = spikes
-        self._spikes_list = self._get_spikes_list_from_dict(spikes)
         
     @property
     def reactions(self):
@@ -138,11 +110,52 @@ class ReactionSystem():
               sp_conc_for_events=None, # dict or None
               dense_output=False,
               y0=None,
-              dt_feed=1e-2, # long dt_feed (i.e., slow feeding) not supported, only spikes
+              spikes=None,
+              dt_spike=1e-6, # long dt_spike (e.g., slow feeding) not supported, only spikes in concentrations
               ):
-        
+        """
+        Get concentration vs. time data.
+        Arguments
+        ---------
+        t_span: list or tuple
+            Two-item iterable consisting of the 
+            desired start time and end time.
+        sp_conc_for_events: dict, optional
+            Keys are Species objects or Species ID strings.
+            Values are concentrations. When a Species concentrations
+            achieves the corresponding value, the time at which this
+            event occurs is stored in ReactionSystem._solution['t_events'].
+        spikes : dict
+            A dictionary with time stamps (t) as keys.
+            Values for spikes can assume one of the following forms:
+                (A) string or list of strings each of the form 
+                    f'Change; {species_ID}; {conc}' 
+                    (e.g., 'Change; Substrate; 0.001'), where conc is 
+                    the desired change (spike) in the concentration 
+                    of the corresponding Species at time t;
+                (B) string or list of strings each of the form 
+                    f'Target; {species_ID}; {conc}' 
+                    (e.g., 'Target; Substrate; 0.001'), where conc is 
+                    the concentration of the corresponding Species 
+                    to be targeted via a change (spike) at time t;
+                (C) string or list of strings each of the form 
+                    f'Target (negative change allowed); {species_ID}; {conc}' 
+                    (e.g., 'Target (negative change allowed); Substrate; 0.001'), 
+                    where conc is the concentration of the corresponding Species 
+                    to be targeted via a change (spike) at time t, with
+                    negative values for the change (i.e., dips) permitted;
+                (D) array of floats equal to the change (spike) in 
+                    concentrations of all Species in the species_system
+                    (0 if none) at time t; or
+                (E) function that accepts the time and 
+                    current concentrations array as arguments, and 
+                    returns the desired change (spike) in concentrations
+                    of all Species in the species_system (0 if none) at time t.
+        """
+        self._spikes = spikes
+        self._spikes_list = sl = self._get_spikes_list_from_dict(spikes)
         tmin, tmax = t_span
-        dt_feed=max(1e-6, dt_feed)
+        # dt_spike=max(1e-6, dt_spike)
         concentrations = self.species_system.concentrations
         if atol is None:
             atol = 1e-6*max(concentrations)
@@ -150,7 +163,6 @@ class ReactionSystem():
             y0 = concentrations
             
         sols = []
-        sl = self._spikes_list
         fs = [i() if callable(i) else i for i in sl]
         _solve_single_phase = self._solve_single_phase
         
@@ -175,7 +187,7 @@ class ReactionSystem():
                                                  dense_output=dense_output,
                                                  y0=y0_curr))
                 
-                tmin_curr = t+dt_feed
+                tmin_curr = t+dt_spike
                 y0_curr = sols[-1].y[:, -1]
                 dconcs_curr = dconcs
             
@@ -282,6 +294,8 @@ class ReactionSystem():
     
     def _get_spikes_list_from_dict(self, spikes_dct):
         sd = spikes_dct
+        if sd is None:
+            return []
         sl = []
         for t, dconcs in sd.items():
             assert is_number(t)
