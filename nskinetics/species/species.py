@@ -19,6 +19,7 @@ class Species():
     Parameters
     ----------
     ID : str
+    
     """
     def __init__(self, ID):
         self.ID = ID
@@ -40,6 +41,7 @@ class SpeciesSystem():
     concentrations : list or np.ndarray
         Concentrations of species, indexed the same way as
         all_sps. 
+    
     """
     def __init__(self, ID, all_sps, concentrations):
         self.ID = ID

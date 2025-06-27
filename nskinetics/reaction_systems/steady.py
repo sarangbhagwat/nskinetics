@@ -61,6 +61,7 @@ class MichaelisMenten():
     species_system : SpeciesSystem
         A SpeciesSystem object containing all species
         involved in this system of reactions.
+    
     """
     def __init__(self, 
                  ID, 

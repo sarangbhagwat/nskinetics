@@ -31,6 +31,7 @@ class ReactionSystem():
     species_system : SpeciesSystem
         A SpeciesSystem object containing all species
         involved in this system of reactions.
+    
     """
     def __init__(self, ID, reactions, species_system):
         self.ID = ID
@@ -151,6 +152,7 @@ class ReactionSystem():
                     current concentrations array as arguments, and 
                     returns the desired change (spike) in concentrations
                     of all Species in the species_system (0 if none) at time t.
+        
         """
         self._spikes = spikes
         self._spikes_list = sl = self._get_spikes_list_from_dict(spikes)

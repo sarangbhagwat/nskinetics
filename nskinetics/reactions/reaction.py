@@ -93,6 +93,7 @@ class AbstractReaction():
     species_system: SpeciesSystem object
         System of chemical species including at least those involved in this
         reaction.
+    
     """
     def __init__(self, ID, 
                  species_system,

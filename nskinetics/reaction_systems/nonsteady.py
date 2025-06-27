@@ -48,6 +48,7 @@ class EnzymeSubstrateProduct(RxnSys):
     species_system : SpeciesSystem
         A SpeciesSystem object containing all species
         involved in this system of reactions.
+    
     """
     def __init__(self, 
                  ID, 
@@ -156,6 +157,7 @@ class NonCompetitiveInhibition(RxnSys):
     species_system : SpeciesSystem
         A SpeciesSystem object containing all species
         involved in this system of reactions.
+    
     """
     def __init__(self, 
                  ID, 
@@ -267,6 +269,7 @@ class UnCompetitiveInhibition(RxnSys):
         Backward reaction rate constant for the formation
         of enzyme-substrate-inhibitor complex from 
         enzyme-substrate complex and inhibitor.
+    
     """
     def __init__(self, 
                  ID, 
@@ -336,6 +339,7 @@ class MechanismBasedInhibition(RxnSys):
     species_system : SpeciesSystem
         A SpeciesSystem object containing all species
         involved in this system of reactions.
+    
     """
     def __init__(self, 
                  ID, 
