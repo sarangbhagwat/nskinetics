@@ -38,6 +38,13 @@ epub_show_urls = 'footnote'
 # Autosummary settings
 autosummary_generate = True
 
+# Autodoc settings
+autodoc_default_options = {
+    'members': True,
+    'undoc-members': True,
+    'show-inheritance': True,
+}
+
 # Napoleon settings
 # napoleon_google_docstring = True
 napoleon_numpy_docstring = True
