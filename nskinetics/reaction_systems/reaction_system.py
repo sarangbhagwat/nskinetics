@@ -116,6 +116,7 @@ class ReactionSystem():
               ):
         """
         Get concentration vs. time data.
+        
         Arguments
         ---------
         t_span: list or tuple
