@@ -127,7 +127,7 @@ class ReactionSystem():
             Values are concentrations. When a Species concentrations
             achieves the corresponding value, the time at which this
             event occurs is stored in ReactionSystem._solution['t_events'].
-        spikes : dict
+        spikes : dict, optional
             A dictionary with time stamps (t) as keys.
             Values for spikes can assume one of the following forms:
                 (A) string or list of strings each of the form 
