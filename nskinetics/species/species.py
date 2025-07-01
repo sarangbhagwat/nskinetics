@@ -91,7 +91,7 @@ class SpeciesSystem():
         all_sps = self.all_sps
         all_sp_IDs = []
         for sp in all_sps:
-            if isinstance(str, sp):
+            if isinstance(sp, str):
                 all_sp_IDs.append(sp)
             else:
                 all_sp_IDs.append(sp.ID)
