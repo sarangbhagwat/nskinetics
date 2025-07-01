@@ -131,7 +131,20 @@ class ReactionSystem():
             Keys are Species objects or Species ID strings.
             Values are concentrations. When a Species concentrations
             achieves the corresponding value, the time at which this
-            event occurs is stored in ReactionSystem._solution['t_events'].
+            event occurs is stored in ReactionSystem._solution['t_events']
+            and the concentrations array at that time is stored in
+            ReactionSystem._solution['y_events']. Event indices are stored
+            in ReactionSystem._solution['events'].
+        events: callable, list or tuple, optional
+            Function or list of functions that accepts arguments t (time)
+            and concentrations (ndarray of species concentrations ordered the
+            same as ReactionSystem.species_system.all_sps). Each function
+            represents an event (triggered when the function returns zero),
+            When the function returns zero, the time at which this event
+            event occurs is stored in ReactionSystem._solution['t_events']
+            and the concentrations array at that time is stored in
+            ReactionSystem._solution['y_events']. Event indices are stored
+            in ReactionSystem._solution['events'].
         spikes : dict, optional
             A dictionary with time stamps (t) as keys.
             Values for spikes can assume one of the following forms:
