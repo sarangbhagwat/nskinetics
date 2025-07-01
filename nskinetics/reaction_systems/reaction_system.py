@@ -9,6 +9,7 @@
 import numpy as np
 from scipy.integrate import solve_ivp
 from matplotlib import pyplot as plt
+from scipy.interpolate import interp1d
 from ..reactions import Reaction
 from ..utils import create_function, is_number, is_array_of_numbers, is_list_of_strings
 
@@ -48,7 +49,10 @@ class ReactionSystem():
         self._reactions = _reactions
         
         self._species_system = species_system
+        
         self._solution = None # stored solution from the most recent 'solve' call
+        self._C_at_t_is_updated = False
+        self._C_at_t_fs = None
         
     @property
     def reactions(self):
@@ -235,6 +239,7 @@ class ReactionSystem():
         
         if events is None:
             events = []
+        
         solution = {'t': np.array(t_final).transpose(),
                     'y': np.array(y_final).transpose(),
                     't_events': np.array(t_events),
@@ -245,8 +250,23 @@ class ReactionSystem():
                     }
         
         self._solution = solution
-        
+        self._C_at_t_is_updated = False
         return solution
+    
+    def C_at_t(self, species, t):
+        sp_sys = self.species_system
+        all_sps = sp_sys.all_sps
+        index_f = self.species_system.index
+        ind = index_f(species)
+        if not self._C_at_t_is_updated:
+            _solution = self._solution
+            _t, _y = _solution['t'], _solution['y']
+            _C_at_t_fs = [interp1d(_t, _y[index_f(sp), :]) 
+                          for sp in all_sps]
+            self._C_at_t_fs = _C_at_t_fs
+            self._C_at_t_is_updated = True
+        
+        return self._C_at_t_fs[ind](t)
     
     def plot_solution(self, show_events=True, sps_to_include=None):
         if sps_to_include is None:
