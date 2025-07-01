@@ -38,12 +38,13 @@ class SpeciesSystem():
     all_sps : list
         List of Species objects or strings. 
         If the latter, new Species objects will be created.
-    concentrations : list or np.ndarray
+    concentrations : list or np.ndarray, optional
         Concentrations of species, indexed the same way as
-        all_sps. 
+        all_sps. Defaults to zero-array of length equal to
+        that of all_sps.
     
     """
-    def __init__(self, ID, all_sps, concentrations):
+    def __init__(self, ID, all_sps, concentrations=None):
         self.ID = ID
         processed_all_sps = []
         for i in all_sps:
@@ -54,6 +55,10 @@ class SpeciesSystem():
             else:
                 raise TypeError(f"\nProvided member of all_sps '{i}' must be of type str or Species.\n")
         self.all_sps = processed_all_sps
+        
+        if concentrations is None:
+            concentrations = np.zeros(len(processed_all_sps))
+        
         self.concentrations = np.array(concentrations)
         
     def indices(self, some_sps):
