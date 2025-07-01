@@ -254,9 +254,8 @@ class Reaction(AbstractReaction):
         
     def get_dconcs_dt(self):
         kf, kb = self.kf, self.kb
-        #!!! Check potential speed-up
-        # if kf==kb==0:
-        #     return 0
+        if kf==kb==0:
+            return 0.
         return dconcs_dt(kf=kf, 
                          kb=kb,
                          species_concs_vector=self.species_system.concentrations, 
