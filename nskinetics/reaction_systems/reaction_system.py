@@ -52,7 +52,8 @@ class ReactionSystem():
         
         self._solution = None # stored solution from the most recent 'solve' call
         self._C_at_t_is_updated = False
-        self._C_at_t_f = None
+        self._C_at_t_f_all = None
+        self._C_at_t_fs_indiv_sps = None
         
     @property
     def reactions(self):
@@ -254,21 +255,32 @@ class ReactionSystem():
         return solution
     
     def C_at_t(self, t,  species=None):
-        # !!! Note on speed-up for C_at_t
-        # if speed up of ~2x is desired for calls with species specified,
-        # see previous version at commit 214759fe1c14780774f1826260c33f15d245e8c2
-        # (undo improvements at commit c13e4156ae162b1c2354bd1dc3f138d05201b678,
-        # which were mainly for code readability)
+        # Note on speed-up for C_at_t
+        # Creating separate interp1d objects for each species concentration
+        # results in faster C_at_t calls with species specified.
+        # Creating a single interp1d object for all species concentrations
+        # results in faster C_at_t calls with species not specified.
+        # We create both here (if not self._C_at_t_is_updated; note this step
+        # is slower as a result) and reference the faster object 
+        # for the given call.
+        
+        species_system = self.species_system
+        all_sps = species_system.all_sps
+        index_f = self.species_system.index
+        
         if not self._C_at_t_is_updated:
             _solution = self._solution
-            self._C_at_t_f = interp1d(_solution['t'], _solution['y'])
+            _t, _y = _solution['t'], _solution['y']
+            self._C_at_t_f_all = interp1d(_t, _y)
+            self._C_at_t_fs_indiv_sps = [interp1d(_t, _y[index_f(sp), :]) 
+                                         for sp in all_sps]
             self._C_at_t_is_updated = True
         
         if species is not None:
             ind = self.species_system.index(species)
-            return self._C_at_t_f(t)[ind]
+            return self._C_at_t_fs_indiv_sps[ind](t)
         else:
-            return self._C_at_t_f(t)
+            return self._C_at_t_f_all(t)
         
     def plot_solution(self, show_events=True, sps_to_include=None):
         if sps_to_include is None:
