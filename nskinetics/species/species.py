@@ -85,7 +85,8 @@ class SpeciesSystem():
         return self._concentrations
     
     @concentrations.setter
-    def concentrations(self, sp, concentration):
+    def concentrations(self, concentrations):
+        self._concentrations = concentrations 
         
-    def set_concentration(sp, concentration):
-        self._concentrations[]
+    def set_concentration(self, sp, concentration):
+        self._concentrations[self.index(sp)] = concentration

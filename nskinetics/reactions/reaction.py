@@ -258,7 +258,7 @@ class Reaction(AbstractReaction):
             return 0.
         return dconcs_dt(kf=kf, 
                          kb=kb,
-                         species_concs_vector=self.species_system.concentrations, 
+                         species_concs_vector=self.species_system._concentrations, 
                          rxn_stoichs=self.stoichiometry,
                          rl_exps=self.exponents,
                          reactant_indices=self.reactant_indices,
