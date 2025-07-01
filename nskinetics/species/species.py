@@ -59,8 +59,8 @@ class SpeciesSystem():
         if concentrations is None:
             concentrations = np.zeros(len(processed_all_sps))
         
-        self.concentrations = np.array(concentrations)
-        
+        self._concentrations = np.array(concentrations)
+    
     def indices(self, some_sps):
         all_sps = self.all_sps
         indices = [all_sps.index(i) for i in some_sps]
@@ -79,3 +79,13 @@ class SpeciesSystem():
             if i.ID==sp_ID:
                 return index
             index += 1
+    
+    @property
+    def concentrations(self):
+        return self._concentrations
+    
+    @concentrations.setter
+    def concentrations(self, sp, concentration):
+        
+    def set_concentration(sp, concentration):
+        self._concentrations[]
