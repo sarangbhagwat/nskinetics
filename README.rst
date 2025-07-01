@@ -19,9 +19,13 @@ Installation
 
 Get the latest version of NSKinetics from `PyPI <https://pypi.org/project/nskinetics/>`__. If you have an installation of Python with pip, simply install it with:
 
+.. code-block:: bash
+
     $ pip install nskinetics
 
 To get the git version, run:
+
+.. code-block:: bash
 
     $ git clone git://github.com/sarangbhagwat/nskinetics
 
