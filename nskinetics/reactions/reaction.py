@@ -146,7 +146,7 @@ class AbstractReaction():
 #%% Reaction class
 
 @njit(cache=True)
-def dconcs_dt(kf, kb, species_concs_vector, rxn_stoichs, rxn_exps,
+def dconcs_dt(kf, kb, species_concs_vector, rxn_stoichs, rl_exps,
               reactant_indices, product_indices):
     # -----------------------------------------
     # for a one-way reaction,
@@ -158,18 +158,15 @@ def dconcs_dt(kf, kb, species_concs_vector, rxn_stoichs, rxn_exps,
     # 'change' is the 1-stoichiometry-equivalent change for reactant concs
     
     # change = 0
-    # if np.all(rxn_exps==1.):
+    # if np.all(rl_exps==1.):
     # change = kf*np.prod(species_concs_vector[reactant_indices]) -\
     #     kb*np.prod(species_concs_vector[product_indices])
     # else:
-    change = kf*np.prod(np.power(species_concs_vector[reactant_indices], rxn_exps[reactant_indices])) -\
-        kb*np.prod(np.power(species_concs_vector[product_indices], rxn_exps[product_indices]))
+    change = kf*np.prod(np.power(species_concs_vector[reactant_indices], rl_exps[reactant_indices])) -\
+        kb*np.prod(np.power(species_concs_vector[product_indices], rl_exps[product_indices]))
     
-    # if change is too great, cap it to
-    # the limiting reactant conc
-    temp_vector = np.copy(species_concs_vector)
-    # breakpoint()
-    temp_vector += change*rxn_stoichs
+    # if change is too great, cap it to the limiting reactant conc
+    temp_vector = species_concs_vector + change*rxn_stoichs
     if np.any(temp_vector<0):
         tv_stoich_adj = temp_vector/np.abs(rxn_stoichs)
         tv_stoich_adj[np.where(np.isinf(tv_stoich_adj))] = 0.
@@ -264,7 +261,7 @@ class Reaction(AbstractReaction):
                          kb=kb,
                          species_concs_vector=self.species_system.concentrations, 
                          rxn_stoichs=self.stoichiometry,
-                         rxn_exps=self.exponents,
+                         rl_exps=self.exponents,
                          reactant_indices=self.reactant_indices,
                          product_indices=self.product_indices)
     
