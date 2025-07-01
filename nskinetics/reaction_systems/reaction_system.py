@@ -254,6 +254,11 @@ class ReactionSystem():
         return solution
     
     def C_at_t(self, t,  species=None):
+        # if future speed up of ~2x is desired,
+        # see previous version at commit 214759fe1c14780774f1826260c33f15d245e8c2
+        # (undo improvements at commit c13e4156ae162b1c2354bd1dc3f138d05201b678,
+        # which were mainly for code readability)
+        
         if not self._C_at_t_is_updated:
             _solution = self._solution
             self._C_at_t_f = interp1d(_solution['t'], _solution['y'])
