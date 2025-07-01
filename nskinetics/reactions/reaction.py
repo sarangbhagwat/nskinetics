@@ -287,10 +287,11 @@ class Reaction(AbstractReaction):
         self._full_string = f'{self.ID}: Reaction(' + lhs + ' ' + arrow + ' ' + rhs + '; ' + param_info + ')'
     
     def __str__(self):
+        self._load_full_string()
         return self._full_string
     
     def __repr__(self):
-        return self._full_string
+        return self.__str__()
     
     def from_equation(ID, chem_equation, species_system, 
                       kf=None, # overrides any parameter info in the chem_equation string
