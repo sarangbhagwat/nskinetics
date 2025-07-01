@@ -274,6 +274,8 @@ class ReactionSystem():
                 label = str(e)
                 if callable(e):
                     label = label.split(' at ')[0].remove('<')
+                    label += ' = 0'
+                label = 't | ' + label
                 ax.vlines(t, ylim[0], ylim[1], 
                           linestyles='dashed', linewidth=0.5,
                           color='blue',
