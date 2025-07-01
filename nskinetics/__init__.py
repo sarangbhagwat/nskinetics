@@ -18,12 +18,10 @@ from . import reaction_systems
 from .reaction_systems import *
 
 from . import utils
-from . import examples
 
 __all__ = (
      *species.__all__,
      *reactions.__all__,
      *reaction_systems.__all__,
      'utils',
-     'examples',
      )
