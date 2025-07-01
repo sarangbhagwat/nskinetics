@@ -12,7 +12,7 @@ NSKinetics: Non-Steady State Kinetics Simulation
 
 .. note::
 
-   Autosummary-generated `API <https://nskinetics.readthedocs.io/en/latest/generated/nskinetics.html#module-nskinetics>`__ is available. Full documentation is expected soon.
+   Autosummary-generated `API <https://nskinetics.readthedocs.io/en/latest/api.html>`__ is available. Full documentation is expected soon.
 
 Installation
 ------------
