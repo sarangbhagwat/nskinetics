@@ -109,14 +109,14 @@ class ReactionSystem():
     
     def solve(self, 
               t_span,
-              t_eval=None,
-              method='LSODA',
-              atol=None, rtol=1e-6, 
-              events=None,
               sp_conc_for_events=None, # dict or None
+              events=None,
+              spikes=None,
+              method='LSODA',
+              t_eval=None,
+              atol=None, rtol=1e-6, 
               dense_output=False,
               y0=None,
-              spikes=None,
               dt_spike=1e-6, # long dt_spike (e.g., slow feeding) not supported, only spikes in concentrations
               ):
         """
