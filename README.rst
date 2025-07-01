@@ -25,7 +25,7 @@ To get the git version, run:
 
     $ git clone git://github.com/sarangbhagwat/nskinetics
 
-For help on common installation issues, please visit the `documentation <link to be added>`__.
+For help on common installation issues, please visit the `documentation <https://nskinetics.readthedocs.io/en/latest/>`__.
 
 Documentation
 -------------

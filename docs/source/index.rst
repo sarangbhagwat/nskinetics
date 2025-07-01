@@ -18,10 +18,12 @@ To get the git version, run:
 
     $ git clone git://github.com/sarangbhagwat/nskinetics
 
-For help on common installation issues, please visit the `documentation <link to be added>`__.
-
 
 .. note::
 
    Autosummary-generated `API <https://nskinetics.readthedocs.io/en/latest/generated/nskinetics.html#module-nskinetics>`__ is available. Full documentation is expected soon.
+
+
+.. toctree::
+   :maxdepth: 2
 
