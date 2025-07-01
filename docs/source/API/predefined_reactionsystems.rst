@@ -1,9 +1,9 @@
-Pre-defined ReactionSystem classes
-==================================
+Pre-Defined ReactionSystems
+===========================
 
 .. autosummary::
    :toctree: generated
    :recursive:
    
-   PredefinedReactionSystems/nonsteady
-   PredefinedReactionSystems/steady
+   API/PredefinedReactionSystems/nonsteady
+   API/PredefinedReactionSystems/steady
