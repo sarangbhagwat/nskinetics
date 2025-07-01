@@ -5,14 +5,14 @@ NSKinetics: Non-Steady State Kinetics Simulation
    :maxdepth: 2
    :hidden:
    
-   api
+   API/api
    user_guide
 
 **NSKinetics** is a fast, flexible, and convenient package to simulate non-steady state reaction kinetics, especially for systems involving enzymatic conversions. Models for multiple inhibitory phenomena (competitive, non-competitive, uncompetitive, and "mechanism-based") are also included.
 
 .. note::
 
-   Autosummary-generated `API <https://nskinetics.readthedocs.io/en/latest/api.html>`__ is available. Full documentation is expected soon.
+   Autosummary-generated `API <https://nskinetics.readthedocs.io/en/latest/API/api.html>`__ is available. Full documentation is expected soon.
 
 Installation
 ------------
