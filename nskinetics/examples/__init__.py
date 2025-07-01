@@ -7,21 +7,14 @@
 # for license details.
 
 from . import example_1_README
-from .example_1_README import *
-
 from . import example_2_README
-from .example_2_README import *
-
 from . import example_3_README
-from .example_3_README import *
-
 from . import example_4_README
-from .example_4_README import *
 
 
 __all__ = (
-     *example_1_README.__all__,
-     *example_2_README.__all__,
-     *example_3_README.__all__,
-     *example_4_README.__all__,
+     'example_1_README',
+     'example_2_README',
+     'example_3_README',
+     'example_4_README',
      )
