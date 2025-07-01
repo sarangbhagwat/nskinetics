@@ -7,7 +7,6 @@ API Reference
 
    nskinetics.Species
    nskinetics.SpeciesSystem
-   nskinetics.ChemicalEquation
    nskinetics.Reaction
    nskinetics.ReactionSystem
    nskinetics.EnzymeSubstrateProduct
@@ -15,5 +14,6 @@ API Reference
    nskinetics.UnCompetitiveInhibition
    nskinetics.NonCompetitiveInhibition
    nskinetics.MechanismBasedInhibition
+   nskinetics.MichaelisMenten
    nskinetics.utils
    
