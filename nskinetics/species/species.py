@@ -80,6 +80,23 @@ class SpeciesSystem():
                 return index
             index += 1
     
+    def contains(self, sp):
+        if sp in self.all_sps + self.all_sp_IDs:
+            return True
+        else:
+            return False
+        
+    @property
+    def all_sp_IDs(self):
+        all_sps = self.all_sps
+        all_sp_IDs = []
+        for sp in all_sps:
+            if isinstance(str, sp):
+                all_sp_IDs.append(sp)
+            else:
+                all_sp_IDs.append(sp.ID)
+        return all_sp_IDs
+    
     @property
     def concentrations(self):
         return self._concentrations
