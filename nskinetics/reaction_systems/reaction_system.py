@@ -264,37 +264,9 @@ class ReactionSystem():
                     }
         
         self._solution = solution
-        self._C_at_t_is_updated = False
+        self._C_at_t_is_updated = False # this generates new interp1d objects the next time C_at_t is called
         return solution
     
-    def C_at_t(self, t,  species=None):
-        # Note on speed-up for C_at_t
-        # Creating separate interp1d objects for each species concentration
-        # results in faster C_at_t calls with species specified.
-        # Creating a single interp1d object for all species concentrations
-        # results in faster C_at_t calls with species not specified.
-        # We create both here (if not self._C_at_t_is_updated; note this step
-        # is slower as a result) and reference the faster object 
-        # for the given call.
-        
-        species_system = self.species_system
-        all_sps = species_system.all_sps
-        index_f = self.species_system.index
-        
-        if not self._C_at_t_is_updated:
-            _solution = self._solution
-            _t, _y = _solution['t'], _solution['y']
-            self._C_at_t_f_all = interp1d(_t, _y)
-            self._C_at_t_fs_indiv_sps = [interp1d(_t, _y[index_f(sp), :]) 
-                                         for sp in all_sps]
-            self._C_at_t_is_updated = True
-        
-        if species is not None:
-            ind = self.species_system.index(species)
-            return self._C_at_t_fs_indiv_sps[ind](t)
-        else:
-            return self._C_at_t_f_all(t)
-        
     def plot_solution(self, show_events=True, sps_to_include=None):
         if sps_to_include is None:
             sps_to_include = [i.ID for i in self.species_system.all_sps]
@@ -340,6 +312,35 @@ class ReactionSystem():
         plt.legend(loc='upper left', bbox_to_anchor=(1.05, 1))
         plt.show()
     
+        
+    def C_at_t(self, t,  species=None):
+        # Note on speed-up for C_at_t
+        # Creating separate interp1d objects for each species concentration
+        # results in faster C_at_t calls with species specified.
+        # Creating a single interp1d object for all species concentrations
+        # results in faster C_at_t calls with species not specified.
+        # We create both here (if not self._C_at_t_is_updated; note this step
+        # is slower as a result) and reference the faster object 
+        # for the given call.
+        
+        species_system = self.species_system
+        all_sps = species_system.all_sps
+        index_f = self.species_system.index
+        
+        if not self._C_at_t_is_updated:
+            _solution = self._solution
+            _t, _y = _solution['t'], _solution['y']
+            self._C_at_t_f_all = interp1d(_t, _y)
+            self._C_at_t_fs_indiv_sps = [interp1d(_t, _y[index_f(sp), :]) 
+                                         for sp in all_sps]
+            self._C_at_t_is_updated = True
+        
+        if species is not None:
+            ind = self.species_system.index(species)
+            return self._C_at_t_fs_indiv_sps[ind](t)
+        else:
+            return self._C_at_t_f_all(t)
+        
     def add_reaction(self, reaction):
         r = reaction
         _reactions = self._reactions
