@@ -8,8 +8,10 @@
 
 import numpy as np
 from scipy.integrate import solve_ivp
-from matplotlib import pyplot as plt
 from scipy.interpolate import interp1d
+from scipy.optimize import curve_fit
+import pandas as pd
+from matplotlib import pyplot as plt
 from ..reactions import Reaction
 from ..utils import create_function, is_number, is_array_of_numbers, is_list_of_strings
 
@@ -340,7 +342,70 @@ class ReactionSystem():
             return self._C_at_t_fs_indiv_sps[ind](t)
         else:
             return self._C_at_t_f_all(t)
+    
+    def _get_all_reactions_flattened(self):
+        reactions_flattened = []
+        for r in self.reactions:
+            if isinstance(r, Reaction):
+                reactions_flattened.append(r)
+            elif isinstance(r, ReactionSystem):
+                reactions_flattened.extend(r._get_all_reactions_flattened())
+        return reactions_flattened
+    
+    @property
+    def reactions_flattened(self):
+        return self._get_all_reactions_flattened()
+
+    def _get_reaction_kinetic_params(self):
+        rf = self.reactions_flattened
+        param_vector = []
+        for r in rf:
+            param_vector.extend([r.kf, r.kb])
+        return param_vector
+    
+    @property
+    def reaction_kinetic_params(self):
+        return self._get_reaction_kinetic_params()
+    
+    def set_reaction_kinetic_params(self, param_vector):
+        rf = self.reactions_flattened
+        expected_length = 2 * len(rf)
+        if len(param_vector) != expected_length:
+            raise ValueError(f"Expected vector of length {expected_length}, got {len(param_vector)}.\n")
+
+        for i, r in enumerate(rf):
+            r.kf = param_vector[2*i]
+            r.kb = param_vector[2*i + 1]
+    
+    def fit_reaction_kinetic_parameters_to_data(self,
+                                                data,
+                                                method='lm',
+                                                p0=None,
+                                                all_species_tracked=False,
+                                                show_output=True):
+        t, ys = data
+        sp_inds = None
         
+        if p0 is None:
+            p0 = self.reaction_kinetic_params
+        
+        t_span = np.min(t), np.max(t)
+        y0 = ys[0]
+        
+        set_rxn_kp = self.set_reaction_kinetic_params
+        solve = self.solve
+        
+        def f(t, *new_rxn_kp):
+            set_rxn_kp(new_rxn_kp)
+            solve(t_span=t_span, y0=y0)
+            if not all_species_tracked:
+                return [self.C_at_t_fs_indiv_sps[ind](t=t)
+                        for ind in sp_inds]
+            else:
+                return self.C_at_t_f_all(t=t)
+        
+        if show_output: print(self.__str__())
+    
     def add_reaction(self, reaction):
         r = reaction
         _reactions = self._reactions
