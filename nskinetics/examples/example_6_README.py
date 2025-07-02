@@ -36,8 +36,7 @@ rxn_sys = nsk.ReactionSystem(ID='rxn_sys',
 
 # Simulate the ReactionSystem
 rxn_sys.solve(t_span=[0, 2*24*3600],
-              sp_conc_for_events={'S':1e-6},
-              filename='solution2.xlsx')
+              sp_conc_for_events={'S':1e-6},)
 
 # Plot results
 rxn_sys.plot_solution()
@@ -49,7 +48,13 @@ rxn_sys.plot_solution(sps_to_include=['ES'])
 filterwarnings("ignore")
 rxn_sys.fit_reaction_kinetic_parameters_to_data(data=rxn_sys._solution_dfs[0],
                                                 p0=np.ones(len(rxn_sys.reaction_kinetic_params)),
-                                                use_only=['S', 'P', 'E', 'Q', 'EI_MBI_stable'],)
+                                                use_only=[
+                                                          # 'E', 
+                                                          'S',
+                                                          'P', 
+                                                          'Q', 
+                                                          'EI_MBI_stable',
+                                                          ],)
 filterwarnings("default")
 
 # Simulate the ReactionSystem
