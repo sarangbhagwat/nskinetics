@@ -12,10 +12,15 @@ from scipy.interpolate import interp1d
 from scipy.optimize import curve_fit
 import pandas as pd
 from matplotlib import pyplot as plt
+from typing import Union, Tuple, List
+
 from ..reactions import Reaction
-from ..utils import create_function, is_number, is_array_of_numbers, is_list_of_strings
+from ..utils import create_function, is_number, is_array_of_numbers,\
+                    is_list_of_strings, fit_vector_output_model
 
 __all__ = ('ReactionSystem', 'RxnSys')
+
+np_array = np.array
 
 #%% Reaction system
 
@@ -120,6 +125,7 @@ class ReactionSystem():
               dense_output=False,
               y0=None,
               dt_spike=1e-6, # long dt_spike (e.g., slow feeding) not supported, only spikes in concentrations
+              filename=None,
               ):
         """
         Get concentration vs. time data.
@@ -174,6 +180,22 @@ class ReactionSystem():
                     returns the desired change (spike) in concentrations
                     of all Species in the species_system (0 if none) at time t.
         
+        filename: str, optional
+            Filename or path including filename to save results. Results will 
+            be saved to an Excel file in the following format:
+            Sheet: Main
+                t     [Species ID 1]     [Species ID 2]     ...
+                -     ------------       --------------        
+                .     .                  .                  ...
+                .     .                  .                  ...
+                .     .                  .                  ...
+            Sheet: Events
+                event     t_event    [Species ID 1] at t_event    [Species ID 2] at t_event      ...
+                -----     -------    -------------------------    -------------------------
+                .         .          .                            .                              ...
+                .         .          .                            .                              ...
+                .         .          .                            .                              ...
+        
         """
         self._spikes = spikes
         self._spikes_list = sl = self._get_spikes_list_from_dict(spikes)
@@ -199,7 +221,7 @@ class ReactionSystem():
                 assert tmin_curr < t
                 y0_curr += dconcs_curr(t=t, concs=y0_curr)\
                     if callable(dconcs_curr)\
-                    else np.array(dconcs_curr)
+                    else np_array(dconcs_curr)
                 
                 sols.append(_solve_single_phase((tmin_curr, t),
                                                  t_eval=t_eval,
@@ -217,7 +239,7 @@ class ReactionSystem():
             # simulate last phase (last feed spike -> tmax)
             y0_curr += dconcs_curr(t=t, concs=y0_curr)\
                 if callable(dconcs_curr)\
-                else np.array(dconcs_curr)
+                else np_array(dconcs_curr)
             sols.append(_solve_single_phase((tmin_curr, tmax),
                                              t_eval=t_eval,
                                              method=method,
@@ -241,8 +263,15 @@ class ReactionSystem():
             
         y_final = np.concatenate([sol.y.transpose() for sol in sols])
         t_final = list(sols[0].t)
-        t_events = list(sols[0].t_events[0])
-        y_events = list(sols[0].y_events[0])
+        
+        t_events = None
+        y_events = None
+        if sols[0].t_events is not None: 
+            t_events = list(sols[0].t_events[0])
+            y_events = list(sols[0].y_events[0])
+        else:
+            t_events = []
+            y_events = []
         
         for sol in sols[1:]:
             # for arr1, arr2 in zip([t_final, y_final],
@@ -250,25 +279,65 @@ class ReactionSystem():
             #     t_final = np.concatenate((t_final, sol.t.transpose()))
             #     y_final = np.concatenate((y_final, sol.y.transpose()))
             t_final += list(sol.t)
-            t_events += list(sol.t_events[0])
-            y_events += list(sol.y_events[0])
+            if sol.t_events is not None: 
+                t_events += list(sol.t_events[0])
+                y_events += list(sol.y_events[0])
+            else:
+                pass
         
         if events is None:
             events = []
         
-        solution = {'t': np.array(t_final).transpose(),
-                    'y': np.array(y_final).transpose(),
-                    't_events': np.array(t_events),
-                    'y_events': np.array(y_events),
-                    'sol': sols,
+        if sp_conc_for_events is None:
+            sp_conc_for_events = {}
+            
+        solution = {'t': np_array(t_final).transpose(),
+                    'y': np_array(y_final).transpose(),
                     'events': events+['['+k+']' + ' = ' + str(v) 
-                                      for k,v in sp_conc_for_events.items()]
+                                      for k,v in sp_conc_for_events.items()],
+                    't_events': np_array(t_events).transpose(),
+                    'y_events': np_array(y_events).transpose(),
+                    'sol': sols,
                     }
         
         self._solution = solution
         self._C_at_t_is_updated = False # this generates new interp1d objects the next time C_at_t is called
+        
+        if filename:
+            self.save_solution(filename=filename)
         return solution
     
+    def save_solution(self, filename, save_events=True):
+        solution = self._solution
+        df_dict = {'t': solution['t']}
+        all_sp_IDs = self.species_system.all_sp_IDs
+        y = solution['y']
+        y_event = solution['y_events']
+        for ind, sp_ID in zip(range(len(all_sp_IDs)), 
+                              all_sp_IDs):
+            df_dict[sp_ID] = y[ind, :]
+        
+        df_main = pd.DataFrame.from_dict(df_dict)
+        df_events = None
+        if save_events:
+            df_dict_events ={'event': solution['events'],
+                            't_event': solution['t_events'],
+                            }
+            y_event = solution['y_events']
+            for ind, sp_ID in zip(range(len(all_sp_IDs)), 
+                                  all_sp_IDs):
+                df_dict_events[sp_ID] = y_event[ind, :]
+            # breakpoint()
+            df_events = pd.DataFrame.from_dict(df_dict_events)
+            
+        if not '.xlsx' in filename:
+            filename += '.xlsx'
+        writer = pd.ExcelWriter(filename, engine = 'xlsxwriter')
+        df_main.to_excel(writer, sheet_name='Main', index=False)
+        if df_events is not None:
+            df_events.to_excel(writer, sheet_name='Events', index=False)
+        writer.close()
+            
     def plot_solution(self, show_events=True, sps_to_include=None):
         if sps_to_include is None:
             sps_to_include = [i.ID for i in self.species_system.all_sps]
@@ -314,7 +383,6 @@ class ReactionSystem():
         plt.legend(loc='upper left', bbox_to_anchor=(1.05, 1))
         plt.show()
     
-        
     def C_at_t(self, t,  species=None):
         # Note on speed-up for C_at_t
         # Creating separate interp1d objects for each species concentration
@@ -326,16 +394,9 @@ class ReactionSystem():
         # for the given call.
         
         species_system = self.species_system
-        all_sps = species_system.all_sps
-        index_f = self.species_system.index
         
         if not self._C_at_t_is_updated:
-            _solution = self._solution
-            _t, _y = _solution['t'], _solution['y']
-            self._C_at_t_f_all = interp1d(_t, _y)
-            self._C_at_t_fs_indiv_sps = [interp1d(_t, _y[index_f(sp), :]) 
-                                         for sp in all_sps]
-            self._C_at_t_is_updated = True
+            self._update_C_at_t()
         
         if species is not None:
             ind = self.species_system.index(species)
@@ -343,6 +404,17 @@ class ReactionSystem():
         else:
             return self._C_at_t_f_all(t)
     
+    def _update_C_at_t(self):
+        species_system = self.species_system
+        all_sps = species_system.all_sps
+        index_f = species_system.index
+        _solution = self._solution
+        _t, _y = _solution['t'], _solution['y']
+        self._C_at_t_f_all = interp1d(_t, _y)
+        self._C_at_t_fs_indiv_sps = [interp1d(_t, _y[index_f(sp), :]) 
+                                     for sp in all_sps]
+        self._C_at_t_is_updated = True
+        
     def _get_all_reactions_flattened(self):
         reactions_flattened = []
         for r in self.reactions:
@@ -361,7 +433,7 @@ class ReactionSystem():
         param_vector = []
         for r in rf:
             param_vector.extend([r.kf, r.kb])
-        return param_vector
+        return np_array(param_vector)
     
     @property
     def reaction_kinetic_params(self):
@@ -376,33 +448,94 @@ class ReactionSystem():
         for i, r in enumerate(rf):
             r.kf = param_vector[2*i]
             r.kb = param_vector[2*i + 1]
+
+    def _extract_t_spIDs_y(self,
+                           data: Union[str, dict, pd.DataFrame]) -> Tuple[pd.Series, pd.DataFrame, List[str]]:
+        """
+        Extracts 't' values, species names, and species data from the input.
     
+        Parameters:
+            data: A pandas DataFrame, a dictionary, or a path to a .csv or .xlsx file.
+    
+        Returns:
+            t: List of time values
+            species_IDs: List of species IDs in column names (excluding 't')
+            _y: List of lists, each corresponding to a species column
+        """
+        df = None
+        # Load data into a pandas DataFrame
+        if isinstance(data, str):
+            if data.endswith('.csv'):
+                df = pd.read_csv(data)
+            elif data.endswith('.xlsx'):
+                df = pd.read_excel(data)
+            else:
+                raise ValueError(f"Unsupported file type: {data}")
+        elif isinstance(data, dict):
+            df = pd.DataFrame(data)
+        elif isinstance(data, pd.DataFrame):
+            # df = data.copy()
+            df = data
+        else:
+            raise TypeError("Input data must be a DataFrame, dict, or path to a .csv or .xlsx file.")
+    
+        if 't' not in df.columns:
+            raise ValueError("The input data must contain a 't' column.")
+    
+        t = np_array(df['t'].tolist())
+        
+        species_IDs = [col for col in df.columns if col != 't']
+        all_sp_IDs = self.species_system.all_sp_IDs
+        for sp_ID in species_IDs:
+            if not sp_ID in all_sp_IDs:
+                raise ValueError(f"A Species ID '{sp_ID}' obtained from input data was not found in all_sp_IDs:\n{all_sp_IDs}\n")
+            
+        _y = np_array([df[name].tolist() for name in species_IDs])
+        
+        return t, species_IDs, _y
+
     def fit_reaction_kinetic_parameters_to_data(self,
                                                 data,
-                                                method='lm',
                                                 p0=None,
                                                 all_species_tracked=False,
-                                                show_output=True):
-        t, ys = data
-        sp_inds = None
+                                                show_output=True,
+                                                **kwargs):
+        sp_sys = self.species_system
+        t_, sp_IDs, y_ = self._extract_t_spIDs_y(data)
+        sp_inds = [sp_sys.index(sp) for sp in sp_IDs]
         
         if p0 is None:
-            p0 = self.reaction_kinetic_params
+            rkp = self.reaction_kinetic_params
+            if not np.any(np.isinf(rkp)) or np.any(np.isnan(rkp)):
+                p0 = rkp
         
-        t_span = np.min(t), np.max(t)
-        y0 = ys[0]
+        t_span = np.min(t_), np.max(t_)
+        y0 = y_[:, 0]
         
         set_rxn_kp = self.set_reaction_kinetic_params
         solve = self.solve
         
+        _update_C_at_t = self._update_C_at_t
+        
         def f(t, *new_rxn_kp):
             set_rxn_kp(new_rxn_kp)
             solve(t_span=t_span, y0=y0)
+            self._update_C_at_t()
             if not all_species_tracked:
-                return [self.C_at_t_fs_indiv_sps[ind](t=t)
-                        for ind in sp_inds]
+                return np_array([self._C_at_t_fs_indiv_sps[ind](t)
+                        for ind in sp_inds])
             else:
-                return self.C_at_t_f_all(t=t)
+                return self._C_at_t_f_all(t)
+        # breakpoint()
+        
+        fitsol = fit_vector_output_model(func=f,
+                           x_data=t_,
+                           y_data=y_.transpose(),
+                           p0=p0,
+                           **kwargs)
+        
+        set_rxn_kp(fitsol[0])
+        self._fitsol = fitsol
         
         if show_output: print(self.__str__())
     
@@ -443,7 +576,7 @@ class ReactionSystem():
             elif isinstance(dconcs, str):
                 dconcs = self._get_dconcs_from_str(dconcs)
             elif isinstance(dconcs, list):
-                if is_array_of_numbers(np.array(dconcs)):
+                if is_array_of_numbers(np_array(dconcs)):
                     pass
                 elif is_list_of_strings(dconcs):
                     dconcs_f_list = [self._get_dconcs_from_str(i) for i in dconcs]
