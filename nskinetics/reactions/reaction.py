@@ -146,6 +146,37 @@ class AbstractReaction():
 #%% Reaction class
 
 @njit(cache=True)
+def dconcs_dt_old(kf, kb, species_concs_vector, rxn_stoichs, rl_exps,
+              reactant_indices, product_indices):
+    # -----------------------------------------
+    # for a one-way reaction,
+    # returns array of temporal rates of change 
+    # in the concentrations of given species
+    # (- denotes decrease, + denotes increase)
+    # -----------------------------------------
+    
+    # 'change' is the 1-stoichiometry-equivalent change for reactant concs
+    
+    # change = 0
+    # if np.all(rl_exps==1.):
+    # change = kf*np.prod(species_concs_vector[reactant_indices]) -\
+    #     kb*np.prod(species_concs_vector[product_indices])
+    # else:
+    change = kf*np.prod(np.power(species_concs_vector[reactant_indices], rl_exps[reactant_indices])) -\
+        kb*np.prod(np.power(species_concs_vector[product_indices], rl_exps[product_indices]))
+    
+    # if change is too great, cap it to the limiting reactant conc
+    temp_vector = species_concs_vector + change*rxn_stoichs
+    if np.any(temp_vector<0):
+        tv_stoich_adj = temp_vector/np.abs(rxn_stoichs)
+        tv_stoich_adj[np.where(np.isinf(tv_stoich_adj))] = 0.
+        tv_stoich_adj[np.where(np.isnan(tv_stoich_adj))] = 0.
+        limiting_reactant_index = np.where(tv_stoich_adj==np.min(tv_stoich_adj))[0][0]
+        change = species_concs_vector[limiting_reactant_index]/np.abs(rxn_stoichs[limiting_reactant_index]) # limiting reactant conc. adjusted by stoichiometry
+    return change * rxn_stoichs
+
+
+@njit(cache=True)
 def dconcs_dt(kf, kb, species_concs_vector, rxn_stoichs, rl_exps,
               reactant_indices, product_indices):
     # Compute forward rate
@@ -190,6 +221,7 @@ def dconcs_dt(kf, kb, species_concs_vector, rxn_stoichs, rl_exps,
         result[i] = change * rxn_stoichs[i]
 
     return result
+
 
 class Reaction(AbstractReaction):
     """ 
