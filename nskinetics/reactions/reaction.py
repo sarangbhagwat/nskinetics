@@ -148,32 +148,48 @@ class AbstractReaction():
 @njit(cache=True)
 def dconcs_dt(kf, kb, species_concs_vector, rxn_stoichs, rl_exps,
               reactant_indices, product_indices):
-    # -----------------------------------------
-    # for a one-way reaction,
-    # returns array of temporal rates of change 
-    # in the concentrations of given species
-    # (- denotes decrease, + denotes increase)
-    # -----------------------------------------
-    
-    # 'change' is the 1-stoichiometry-equivalent change for reactant concs
-    
-    # change = 0
-    # if np.all(rl_exps==1.):
-    # change = kf*np.prod(species_concs_vector[reactant_indices]) -\
-    #     kb*np.prod(species_concs_vector[product_indices])
-    # else:
-    change = kf*np.prod(np.power(species_concs_vector[reactant_indices], rl_exps[reactant_indices])) -\
-        kb*np.prod(np.power(species_concs_vector[product_indices], rl_exps[product_indices]))
-    
-    # if change is too great, cap it to the limiting reactant conc
-    temp_vector = species_concs_vector + change*rxn_stoichs
-    if np.any(temp_vector<0):
-        tv_stoich_adj = temp_vector/np.abs(rxn_stoichs)
-        tv_stoich_adj[np.where(np.isinf(tv_stoich_adj))] = 0.
-        tv_stoich_adj[np.where(np.isnan(tv_stoich_adj))] = 0.
-        limiting_reactant_index = np.where(tv_stoich_adj==np.min(tv_stoich_adj))[0][0]
-        change = species_concs_vector[limiting_reactant_index]/np.abs(rxn_stoichs[limiting_reactant_index]) # limiting reactant conc. adjusted by stoichiometry
-    return change * rxn_stoichs
+    # Compute forward rate
+    forward = 1.0
+    for i in reactant_indices:
+        forward *= species_concs_vector[i] ** rl_exps[i]
+    forward *= kf
+
+    # Compute backward rate
+    backward = 1.0
+    for i in product_indices:
+        backward *= species_concs_vector[i] ** rl_exps[i]
+    backward *= kb
+
+    change = forward - backward
+
+    # Calculate temp vector
+    temp_vector = np.empty_like(species_concs_vector)
+    for i in range(species_concs_vector.size):
+        temp_vector[i] = species_concs_vector[i] + change * rxn_stoichs[i]
+            
+    # Check for negative concentrations
+    limiting_found = False
+    min_ratio = 1e20
+    limiting_index = -1
+    for i in range(temp_vector.size):
+        if temp_vector[i] < 0.0:
+            stoich = rxn_stoichs[i]
+            if stoich != 0.0:
+                ratio = species_concs_vector[i] / abs(stoich)
+                if ratio < min_ratio:
+                    min_ratio = ratio
+                    limiting_index = i
+                    limiting_found = True
+
+    if limiting_found:
+        change = min_ratio
+
+    # Compute final change in concentrations
+    result = np.empty_like(species_concs_vector)
+    for i in range(species_concs_vector.size):
+        result[i] = change * rxn_stoichs[i]
+
+    return result
 
 class Reaction(AbstractReaction):
     """ 
@@ -254,8 +270,8 @@ class Reaction(AbstractReaction):
                 self.exponents = np.ones(len(stoich))
         else:
             self.exponents = exponents
-        self.reactant_indices = np.where(stoich<0)
-        self.product_indices = np.where(stoich>0)
+        self.reactant_indices = np.where(stoich<0)[0]
+        self.product_indices = np.where(stoich>0)[0]
         self._load_full_string()
     
     @property
