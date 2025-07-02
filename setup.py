@@ -21,7 +21,8 @@ setup(
                       'scipy>=1.13.1,<2.0.0',
                       'matplotlib>=3.5.2,<4.0.0',
                       'xlsxwriter>=3.2.5,<4.0.0',
-                      'scikit-learn',],
+                      'scikit-learn',
+                      'pandas>=2.2.2,<3.0.0'],
     # extras_require={ 
     #     'dev': [
     #     ]
