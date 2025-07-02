@@ -126,6 +126,7 @@ class ReactionSystem():
               dt_spike=1e-6, # long dt_spike (e.g., slow feeding) not supported, only spikes in concentrations
               remove_negative_concs=True, # can safely do this as negatives don't affect calculation with ode_system_RHS
               filename=None,
+              save_events=True,
               ):
         """
         Get concentration vs. time data.
@@ -306,7 +307,7 @@ class ReactionSystem():
         self._solution = solution
         self._C_at_t_is_updated = False # this generates new interp1d objects the next time C_at_t is called
         
-        self.save_solution(filename=filename) # if filename is None, saves only to RxnSys._solution_dfs and does not save file
+        self.save_solution(filename=filename, save_events=save_events) # if filename is None, saves only to RxnSys._solution_dfs and does not save file
         return solution
     
     def save_solution(self, filename, save_events=True):
@@ -330,8 +331,11 @@ class ReactionSystem():
                                   all_sp_IDs):
                 df_dict_events[sp_ID] = y_event[ind, :]
             # breakpoint()
-            df_events = pd.DataFrame.from_dict(df_dict_events)
-        
+            try:
+                df_events = pd.DataFrame.from_dict(df_dict_events)
+            except:
+                breakpoint()
+                
         if filename is not None:
             if not '.xlsx' in filename:
                 filename += '.xlsx'
@@ -512,6 +516,7 @@ class ReactionSystem():
                                                 show_output=True,
                                                 use_only=None,
                                                 method='Powell',
+                                                plot_during_fit=False,
                                                 **kwargs):
         """
         Fit reaction kinetic parameters to experimental time-series data.
@@ -523,11 +528,14 @@ class ReactionSystem():
         
         Parameters
         ----------
-        data : pandas.DataFrame, dict, or str
-            A pandas DataFrame, a dictionary, or a path to a .csv or .xlsx file.
-            Input dataset containing time ('t') and concentrations of one or more species 
-            as columns. Time should be in the column labeled 't'; all other columns 
-            are interpreted as species concentrations.
+        data : pandas.DataFrame, dict, str, or list
+            A pandas DataFrame, a dictionary, a path to a .csv or .xlsx file,
+            or a list containing any combinations of those items.
+            Each item represents data containing time ('t') and concentrations 
+            of one or more species as columns. Time should be in the column labeled 't'; 
+            all other columns are interpreted as species concentrations.
+            If data is a list of data items, each data item must have the same format
+            (i.e., the same columns and order of columns).
             
         p0 : array_like, optional
             Initial guess for the kinetic parameters. If not provided, the current 
@@ -569,56 +577,102 @@ class ReactionSystem():
         """
         sp_sys = self.species_system
         all_sp_IDs = sp_sys.all_sp_IDs
-
-        t_, sp_IDs, y_ = self._extract_t_spIDs_y(data)
         
-        dataset_sp_IDs = list(sp_IDs)
-        sp_IDs = use_only if use_only is not None else sp_IDs #!!! note sp_IDs is being redefined
-        sp_inds = [sp_sys.index(sp) for sp in sp_IDs]
+        use_only_inds = [sp_sys.index(sp) for sp in use_only]
+        
+        if not (isinstance(data, list) or isinstance(data, tuple)):
+            data = [data]
+        
+        dataset = [self._extract_t_spIDs_y(di)
+                              for di in data]
+            
+        t_dataset, sp_IDs_dataset, y_dataset = [], [], []
+        
+        for d in dataset:
+            t_dataset.append(d[0])
+            sp_IDs_dataset.append(d[1])
+            y_dataset.append(d[2])
+            
+        data_sp_IDs = sp_IDs_dataset[0]
+        sp_IDs_to_use = use_only if use_only is not None else data_sp_IDs
+        sp_inds = [sp_sys.index(sp) for sp in sp_IDs_to_use]
+        
+        structured_xdata = []
+        
+        
+        for t_, sp_IDs, y_ in zip(t_dataset, sp_IDs_dataset, y_dataset):
+            
+            tdata = t_
+            
+            y_maxes = np.array([np.max(y_[ind, :]) for ind in sp_inds])
+            y_maxes = np_array([y_maxes for i in range(y_.shape[1])]).transpose()
+            
+            # y_normalized = y_
+            # if use_only:
+            #     use_only_inds = [sp_sys.index(sp) for sp in use_only]
+            #     y_normalized = y_normalized[use_only_inds, :]
+            # y_normalized /= y_maxes
+            
+            y0 = np.zeros(len(all_sp_IDs))
+            
+            for spID in data_sp_IDs:
+                # get initial concentrations of all species in the dataset,
+                # even if using only those in use_only for actual fitting
+                y0[sp_sys.index(spID)] = y_[data_sp_IDs.index(spID), 0]
+            
+            structured_xdata.append((tdata, y_maxes, y0))
         
         if p0 is None:
             rkp = self.reaction_kinetic_params
             if not np.any(np.isinf(rkp)) or np.any(np.isnan(rkp)):
                 p0 = rkp
         
-        t_span = np.min(t_), np.max(t_)
         
-        # y0 = y_[:, 0]
-        y0 = np.zeros(len(all_sp_IDs))
-        
-        for spID in dataset_sp_IDs:
-            # get initial concentrations of all species in the dataset,
-            # even if using only those in use_only for actual fitting
-            y0[sp_sys.index(spID)] = y_[dataset_sp_IDs.index(spID), 0]
-            
         set_rxn_kp = self.set_reaction_kinetic_params
         solve = self.solve
         
         _update_C_at_t = self._update_C_at_t
         
-        y_maxes = np.array([np.max(y_[ind, :]) for ind in sp_inds])
-        y_maxes = np_array([y_maxes for i in range(y_.shape[1])]).transpose()
-        y_normalized = y_
-        
+        # y_normalized = [yi_/sdata[1] for (yi_, sdata) in zip(y_dataset, structured_xdata)]
+        # y_normalized = y_normalized.flatten()
+        y_to_use_0 = y_dataset[0]
         if use_only:
-            use_only_inds = [sp_sys.index(sp) for sp in use_only]
-            y_normalized = y_normalized[use_only_inds, :]
+            y_to_use_0 = y_to_use_0[use_only_inds, :]
+            
+        y_dataset_normalized = y_to_use_0/structured_xdata[0][1]
+        for (yi_, sdata) in zip(y_dataset[1:], structured_xdata[1:]):
+            y_to_use = yi_
+            if use_only:
+                y_to_use = y_to_use[use_only_inds, :]
+            to_concat = y_to_use/sdata[1]
+            y_dataset_normalized = np.concatenate((y_dataset_normalized.transpose(), to_concat.transpose()))
+            y_dataset_normalized = y_dataset_normalized.transpose()
+
+        plot_solution = self.plot_solution
         
-        y_normalized /= y_maxes
-        
-        def f(t, new_rxn_kp):
+        def f_single_xdata(xdata, new_rxn_kp):
+            tdata, y_maxes, y0 = xdata
+            t_span = np.min(tdata), np.max(tdata)
             set_rxn_kp(new_rxn_kp)
             solve(t_span=t_span, y0=y0)
+            if plot_during_fit: plot_solution()
             _update_C_at_t()
             if not all_species_tracked:
-                return np_array([self._C_at_t_fs_indiv_sps[ind](t)
+                return np_array([self._C_at_t_fs_indiv_sps[ind](tdata)
                         for ind in sp_inds])/y_maxes
             else:
-                return self._C_at_t_f_all(t)/y_maxes
+                return self._C_at_t_f_all(tdata)/y_maxes
+            
+        def f(xdataset, new_rxn_kp):
+            ypred_normalized_concat = f_single_xdata(xdataset[0], new_rxn_kp)
+            for xdata in xdataset[1:]:
+                ypred_normalized_concat = np.concatenate((ypred_normalized_concat.transpose(), f_single_xdata(xdata, new_rxn_kp).transpose()))
+                ypred_normalized_concat = ypred_normalized_concat.transpose()
+            return ypred_normalized_concat
         
         fitsol = fit_multiple_dependent_variables(f=f,
-                                                   xdata=t_,
-                                                   ydata=y_normalized,
+                                                   xdata=structured_xdata,
+                                                   ydata=y_dataset_normalized,
                                                    p0=p0,
                                                    bounds=[(0., None) for i in p0],
                                                    fit_method='mean r^2',
