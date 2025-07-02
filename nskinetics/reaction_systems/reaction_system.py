@@ -472,6 +472,7 @@ class ReactionSystem():
             t: List of time values
             species_IDs: List of species IDs in column names (excluding 't')
             _y: List of lists, each corresponding to a species column
+        
         """
         df = None
         # Load data into a pandas DataFrame
