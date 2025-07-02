@@ -7,6 +7,7 @@
 # for license details.
 
 import nskinetics as nsk
+import numpy as np
 from warnings import filterwarnings
 
 # Create a SpeciesSystem object
@@ -36,13 +37,11 @@ rxn_sys.plot_solution()
 
 rxn_sys.plot_solution(sps_to_include=['ES'])
 
-# Change kinetic parameters
-rxn_sys.set_reaction_kinetic_params([12.0, 50., 22.0, 0.0])
-
 # Fit to results from old set of kinetic parameters
 
 filterwarnings("ignore")
-rxn_sys.fit_reaction_kinetic_parameters_to_data(data=rxn_sys._solution_dfs[0])
+rxn_sys.fit_reaction_kinetic_parameters_to_data(data=rxn_sys._solution_dfs[0],
+                                                p0=np.ones(len(rxn_sys.reaction_kinetic_params)))
 filterwarnings("default")
 
 # Simulate the ReactionSystem

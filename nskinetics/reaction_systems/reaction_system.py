@@ -506,7 +506,7 @@ class ReactionSystem():
                                                 p0=None,
                                                 all_species_tracked=False,
                                                 show_output=True,
-                                                method='Nelder-Mead',
+                                                method='Powell',
                                                 **kwargs):
         sp_sys = self.species_system
         t_, sp_IDs, y_ = self._extract_t_spIDs_y(data)
