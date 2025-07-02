@@ -19,6 +19,7 @@ def fit_multiple_dependent_variables(f,
     implemented_fit_methods = ('mean r^2',)
     
     if fit_method.lower()=='mean r^2':
+        
         def load_get_mean_r2_score(p):
             ypred = f(xdata, p)
             return - r2_score(ypred, ydata)

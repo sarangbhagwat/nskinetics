@@ -223,6 +223,8 @@ class Reaction(AbstractReaction):
                  stoichiometry=None,
                  exponents=None,
                  get_exponents_from_stoich=False,
+                 freeze_kf=False,
+                 freeze_kb=False,
                  ):
         AbstractReaction.__init__(self, ID, 
                      species_system,
@@ -237,8 +239,12 @@ class Reaction(AbstractReaction):
         if kb is None:
             kb = 0.
             
-        self.kf = kf
-        self.kb = kb
+        self._kf = kf
+        self._kb = kb
+        
+        self._freeze_kf = freeze_kf
+        self._freeze_kb = freeze_kb
+        
         self.get_exponents_from_stoich = get_exponents_from_stoich
         
         if exponents is None:
@@ -251,7 +257,29 @@ class Reaction(AbstractReaction):
         self.reactant_indices = np.where(stoich<0)
         self.product_indices = np.where(stoich>0)
         self._load_full_string()
-        
+    
+    @property
+    def kf(self):
+        return self._kf
+    @kf.setter
+    def kf(self, new_kf):
+        if not self._freeze_kf:
+            self._kf = new_kf
+        else:
+            warn(f'kf for Reaction {self.ID} was not changed to {new_kf} as _freeze_kf was True.\n',
+                 RuntimeWarning)
+    
+    @property
+    def kb(self):
+        return self._kb
+    @kb.setter
+    def kb(self, new_kb):
+        if not self._freeze_kb:
+            self._kb = new_kb
+        else:
+            warn(f'kb for Reaction {self.ID} was not changed to {new_kb} as _freeze_kb was True.\n',
+                 RuntimeWarning)
+            
     def get_dconcs_dt(self):
         kf, kb = self.kf, self.kb
         if kf==kb==0:
@@ -298,7 +326,9 @@ class Reaction(AbstractReaction):
                       kb=None, # overrides any parameter info in the chem_equation string
                       exponents=None, get_exponents_from_stoich=None):
         kf_, kb_ = None, None
+        freeze_kb = False
         if isinstance(chem_equation, str):
+            freeze_kb = '->' in chem_equation and not '<->' in chem_equation
             chem_equation, kf_, kb_ = ChemicalEquation.from_string(ID=ID+'_eqn', 
                                                          equation_str=chem_equation,
                                                          species_system=species_system)
@@ -313,6 +343,8 @@ class Reaction(AbstractReaction):
                         kf=kf,
                         kb=kb,
                         exponents=exponents,
+                        freeze_kf=False,
+                        freeze_kb=freeze_kb,
                         get_exponents_from_stoich=get_exponents_from_stoich,)
         
 Rxn = IrreversibleReaction = ReversibleReaction = IrrevRxn = RevRxn = Reaction

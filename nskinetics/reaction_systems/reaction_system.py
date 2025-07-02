@@ -506,6 +506,7 @@ class ReactionSystem():
                                                 p0=None,
                                                 all_species_tracked=False,
                                                 show_output=True,
+                                                method='Nelder-Mead',
                                                 **kwargs):
         sp_sys = self.species_system
         t_, sp_IDs, y_ = self._extract_t_spIDs_y(data)
@@ -531,7 +532,6 @@ class ReactionSystem():
             set_rxn_kp(new_rxn_kp)
             solve(t_span=t_span, y0=y0)
             self._update_C_at_t()
-            print(1)
             if not all_species_tracked:
                 return np_array([self._C_at_t_fs_indiv_sps[ind](t)
                         for ind in sp_inds])
@@ -542,16 +542,20 @@ class ReactionSystem():
                                                    xdata=t_,
                                                    ydata=y_,
                                                    p0=p0,
-                                                   bounds=[(0, None) for i in p0],
+                                                   bounds=[(0., None) for i in p0],
                                                    fit_method='mean r^2',
-                                                   method='Nelder-Mead',
+                                                   method=method,
+                                                   **kwargs
                                                    # options={'maxiter':5},
                                                    )
         
         set_rxn_kp(fitsol[0])
         self._fitsol = fitsol
         
-        if show_output: print(self.__str__())
+        if show_output: 
+            print('\nFit results:')
+            print(f'\nR^2={fitsol[1]}, success={fitsol[2]}\n')
+            print(self.__str__())
     
     def add_reaction(self, reaction):
         r = reaction
