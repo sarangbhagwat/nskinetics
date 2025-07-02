@@ -9,7 +9,6 @@
 import numpy as np
 from scipy.integrate import solve_ivp
 from scipy.interpolate import interp1d
-from scipy.optimize import curve_fit
 import pandas as pd
 from matplotlib import pyplot as plt
 from typing import Union, Tuple, List
@@ -408,7 +407,7 @@ class ReactionSystem():
             self._update_C_at_t()
         
         if species is not None:
-            ind = self.species_system.index(species)
+            ind = species_system.index(species)
             return self._C_at_t_fs_indiv_sps[ind](t)
         else:
             return self._C_at_t_f_all(t)
@@ -569,9 +568,12 @@ class ReactionSystem():
         
         """
         sp_sys = self.species_system
+        all_sp_IDs = sp_sys.all_sp_IDs
+
         t_, sp_IDs, y_ = self._extract_t_spIDs_y(data)
         
-        sp_IDs = use_only if use_only is not None else sp_IDs
+        dataset_sp_IDs = list(sp_IDs)
+        sp_IDs = use_only if use_only is not None else sp_IDs #!!! note sp_IDs is being redefined
         sp_inds = [sp_sys.index(sp) for sp in sp_IDs]
         
         if p0 is None:
@@ -580,8 +582,15 @@ class ReactionSystem():
                 p0 = rkp
         
         t_span = np.min(t_), np.max(t_)
-        y0 = y_[:, 0]
         
+        # y0 = y_[:, 0]
+        y0 = np.zeros(len(all_sp_IDs))
+        
+        for spID in dataset_sp_IDs:
+            # get initial concentrations of all species in the dataset,
+            # even if using only those in use_only for actual fitting
+            y0[sp_sys.index(spID)] = y_[dataset_sp_IDs.index(spID), 0]
+            
         set_rxn_kp = self.set_reaction_kinetic_params
         solve = self.solve
         
@@ -600,7 +609,7 @@ class ReactionSystem():
         def f(t, new_rxn_kp):
             set_rxn_kp(new_rxn_kp)
             solve(t_span=t_span, y0=y0)
-            self._update_C_at_t()
+            _update_C_at_t()
             if not all_species_tracked:
                 return np_array([self._C_at_t_fs_indiv_sps[ind](t)
                         for ind in sp_inds])/y_maxes
