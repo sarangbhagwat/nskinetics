@@ -40,7 +40,11 @@ rxn_sys.plot_solution(sps_to_include=['ES'])
 filterwarnings("ignore")
 rxn_sys.fit_reaction_kinetic_parameters_to_data(data=rxn_sys._solution_dfs[0],
                                                 p0=np.ones(len(rxn_sys.reaction_kinetic_params)),
-                                                use_only=['S', 'P'],)
+                                                use_only=[
+                                                          'E', 
+                                                          # 'S', 
+                                                          'P'
+                                                          ],)
 filterwarnings("default")
 
 # Simulate the ReactionSystem
