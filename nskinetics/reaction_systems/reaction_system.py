@@ -31,7 +31,7 @@ class ReactionSystem():
     Parameters
     ----------
     ID : str
-        ID for this ReactionSystem.
+        ID.
     reactions : list
         List of Reaction, ReactionSystem, or str objects.
         If str, must include chemical equation and kinetic 
@@ -515,7 +515,8 @@ class ReactionSystem():
                                                 method='Powell',
                                                 **kwargs):
         """
-        Fit reaction kinetic parameters to experimental time-course data.
+        Fit reaction kinetic parameters to experimental time-series data.
+        (i.e., inverse modeling).
         
         This method optimizes the reaction kinetic parameters of the system to best 
         fit provided concentration data over time using nonlinear least squares optimization.
