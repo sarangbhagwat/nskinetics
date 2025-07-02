@@ -125,6 +125,7 @@ class ReactionSystem():
               dense_output=False,
               y0=None,
               dt_spike=1e-6, # long dt_spike (e.g., slow feeding) not supported, only spikes in concentrations
+              remove_negative_concs=True, # can safely do this as negatives don't affect calculation with ode_system_RHS
               filename=None,
               ):
         """
@@ -290,7 +291,10 @@ class ReactionSystem():
         
         if sp_conc_for_events is None:
             sp_conc_for_events = {}
-            
+        
+        if remove_negative_concs:
+            y_final[np.where(y_final<0)] = 0.
+        
         solution = {'t': np_array(t_final).transpose(),
                     'y': np_array(y_final).transpose(),
                     'events': events+['['+k+']' + ' = ' + str(v) 
