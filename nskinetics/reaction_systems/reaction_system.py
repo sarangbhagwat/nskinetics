@@ -513,7 +513,58 @@ class ReactionSystem():
                                                 use_only=None,
                                                 method='Powell',
                                                 **kwargs):
-
+        """
+        Fit reaction kinetic parameters to experimental time-course data.
+        
+        This method optimizes the reaction kinetic parameters of the system to best 
+        fit provided concentration data over time using nonlinear least squares optimization.
+        The function assumes a shared set of parameters governing all species.
+        
+        Parameters
+        ----------
+        data : pandas.DataFrame, dict, or str
+            A pandas DataFrame, a dictionary, or a path to a .csv or .xlsx file.
+            Input dataset containing time ('t') and concentrations of one or more species 
+            as columns. Time should be in the column labeled 't'; all other columns 
+            are interpreted as species concentrations.
+            
+        p0 : array_like, optional
+            Initial guess for the kinetic parameters. If not provided, the current 
+            `reaction_kinetic_params` will be used if they are finite and not NaN.
+            
+        all_species_tracked : bool, default False
+            If True, assumes all species are tracked and uses the full concentration vector
+            when computing predictions. Otherwise, uses only individual species.
+            
+        show_output : bool, default True
+            If True, prints fit summary including R² score and success status.
+            
+        use_only : list of str or Species, optional
+            List of Species object or species IDs to fit against. If not provided,
+            all species in the input data will be used. It is recommended to include
+            at least one species involved in each reaction in `reactions`.
+            
+        method : str, default 'Powell'
+            Optimization method to use for parameter fitting. Passed to 
+            `scipy.optimize.minimize`.
+            
+        **kwargs : dict
+            Additional keyword arguments passed to the optimizer.
+            
+        Returns
+        -------
+        None
+            Updates the reaction kinetic parameters of the system in place and stores 
+            the fit result in `self._fitsol` as a tuple: (best-fit parameters, R² score, success flag).
+            
+        Notes
+        -----
+        - The fit is performed by normalizing each species' concentration to its maximum
+          observed value to ensure scale invariance.
+        - The objective function maximizes the mean R² score across selected species.
+        - This method relies on `solve()` and `_update_C_at_t()` methods to simulate the system 
+          under trial parameters, and on `fit_multiple_dependent_variables()` to perform optimization.
+        """
         sp_sys = self.species_system
         t_, sp_IDs, y_ = self._extract_t_spIDs_y(data)
         
