@@ -12,13 +12,21 @@ from warnings import filterwarnings
 
 # Create a SpeciesSystem object
 sp_sys = nsk.SpeciesSystem('sp_sys', 
-                       ['E', 'S', 'ES', 'P'], # enzyme, substrate, enzyme-substrate complex, product
-                       concentrations=[1e-4, 1e-4, 0., 0.])
+                       ['E', 'S', 'ES', 'P',
+                        'I_CI', 'EI_CI', 'Q',
+                        'I_MBI', 'EI_MBI_unstable', 'EI_MBI_stable'], # mechanism-based_inhibitor, unstable enzyme-MBI complex, stable enzyme-MBI complex 
+                       concentrations=[1e-4, 1e-4, 0, 0,
+                                       5e-5, 0, 0,
+                                       3e-5, 0, 0])
 
 # Describe reactions by writing chemical equations and kinetic parameter info
 reactions = [
-            'E + S <-> ES; kf = 12.0, kb = 10.0', # kf = kon, kb = koff
-            'ES -> E + P; kf = 32.0' # kf = kcat (enzyme turnover number)
+            'E + S <-> ES; kf = 12, kb = 10.0',
+            'ES -> E + P; kf = 32.0',
+            'E + I_CI <-> EI_CI; kf=12, kb=10.0',
+            'EI_CI -> E + Q; kf=32',
+            'E + I_MBI <-> EI_MBI_unstable; kf=12.0, kb=10',
+            'EI_MBI_unstable -> EI_MBI_stable; kf = 32'
             ]
 
 # Generate a ReactionSystem from strings
@@ -28,24 +36,28 @@ rxn_sys = nsk.ReactionSystem(ID='rxn_sys',
 
 # Simulate the ReactionSystem
 rxn_sys.solve(t_span=[0, 2*24*3600],
-              sp_conc_for_events={'S':1e-6})                              
+              sp_conc_for_events={'S':1e-6},
+              filename='solution2.xlsx')
 
 # Plot results
-rxn_sys.plot_solution() 
+rxn_sys.plot_solution()
 
 rxn_sys.plot_solution(sps_to_include=['ES'])
 
-# Fit to results from old set of kinetic parameters
+#%% Fit to results from old set of kinetic parameters
 
 filterwarnings("ignore")
 rxn_sys.fit_reaction_kinetic_parameters_to_data(data=rxn_sys._solution_dfs[0],
                                                 p0=np.ones(len(rxn_sys.reaction_kinetic_params)),
-                                                use_only=['S',],)
+                                                use_only=['S', 'P', 'E', 'Q', 'EI_MBI_stable'],)
 filterwarnings("default")
 
 # Simulate the ReactionSystem
 
-sp_sys.concentrations = [1e-4, 1e-4, 0., 0.]
+sp_sys.concentrations = np.array([1e-4, 1e-4, 0, 0,
+                5e-5, 0, 0,
+                3e-5, 0, 0])
+
 rxn_sys.solve(t_span=[0, 2*24*3600], # I want to simulate the system over 2 days
               sp_conc_for_events={'S':1e-6}, # In addition to a full simulation, I want to know the time at which [S] drops to 1e-6
               )  

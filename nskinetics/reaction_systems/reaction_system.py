@@ -303,8 +303,7 @@ class ReactionSystem():
         self._solution = solution
         self._C_at_t_is_updated = False # this generates new interp1d objects the next time C_at_t is called
         
-        if filename:
-            self.save_solution(filename=filename)
+        self.save_solution(filename=filename) # if filename is None, saves only to RxnSys._solution_dfs and does not save file
         return solution
     
     def save_solution(self, filename, save_events=True):
@@ -312,14 +311,14 @@ class ReactionSystem():
         df_dict = {'t': solution['t']}
         all_sp_IDs = self.species_system.all_sp_IDs
         y = solution['y']
-        y_event = solution['y_events']
+        
         for ind, sp_ID in zip(range(len(all_sp_IDs)), 
                               all_sp_IDs):
             df_dict[sp_ID] = y[ind, :]
         
         df_main = pd.DataFrame.from_dict(df_dict)
         df_events = None
-        if save_events:
+        if save_events and not solution['t_events'].shape == (0,):
             df_dict_events ={'event': solution['events'],
                             't_event': solution['t_events'],
                             }
@@ -329,14 +328,15 @@ class ReactionSystem():
                 df_dict_events[sp_ID] = y_event[ind, :]
             # breakpoint()
             df_events = pd.DataFrame.from_dict(df_dict_events)
-            
-        if not '.xlsx' in filename:
-            filename += '.xlsx'
-        writer = pd.ExcelWriter(filename, engine = 'xlsxwriter')
-        df_main.to_excel(writer, sheet_name='Main', index=False)
-        if df_events is not None:
-            df_events.to_excel(writer, sheet_name='Events', index=False)
-        writer.close()
+        
+        if filename is not None:
+            if not '.xlsx' in filename:
+                filename += '.xlsx'
+            writer = pd.ExcelWriter(filename, engine = 'xlsxwriter')
+            df_main.to_excel(writer, sheet_name='Main', index=False)
+            if df_events is not None:
+                df_events.to_excel(writer, sheet_name='Events', index=False)
+            writer.close()
         
         self._solution_dfs = (df_main, df_events)
         
@@ -506,10 +506,14 @@ class ReactionSystem():
                                                 p0=None,
                                                 all_species_tracked=False,
                                                 show_output=True,
+                                                use_only=None,
                                                 method='Powell',
                                                 **kwargs):
+
         sp_sys = self.species_system
         t_, sp_IDs, y_ = self._extract_t_spIDs_y(data)
+        
+        sp_IDs = use_only if use_only is not None else sp_IDs
         sp_inds = [sp_sys.index(sp) for sp in sp_IDs]
         
         if p0 is None:
@@ -527,7 +531,13 @@ class ReactionSystem():
         
         y_maxes = np.array([np.max(y_[ind, :]) for ind in sp_inds])
         y_maxes = np_array([y_maxes for i in range(y_.shape[1])]).transpose()
-        y_normalized = y_/y_maxes
+        y_normalized = y_
+        
+        if use_only:
+            use_only_inds = [sp_sys.index(sp) for sp in use_only]
+            y_normalized = y_normalized[use_only_inds, :]
+        
+        y_normalized /= y_maxes
         
         def f(t, new_rxn_kp):
             set_rxn_kp(new_rxn_kp)

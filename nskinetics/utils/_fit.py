@@ -8,6 +8,7 @@
 
 from sklearn.metrics import r2_score
 from scipy.optimize import minimize
+import numpy as np
 
 __all__ = ('fit_multiple_dependent_variables',)
 
@@ -15,10 +16,11 @@ def fit_multiple_dependent_variables(f,
                                      xdata, ydata,
                                      p0=None,
                                      fit_method='mean R^2',
+                                     r2_score_multioutput='uniform_average',
                                      **kwargs):
     """
     Fit a model function to multiple dependent variables using a shared set of parameters.
-
+    
     Parameters
     ----------
     f : callable
@@ -37,7 +39,7 @@ def fit_multiple_dependent_variables(f,
         minimizes the negative mean R² score across all dependent variables.
     **kwargs : dict
         Additional keyword arguments passed to `scipy.optimize.minimize`.
-
+        
     Returns
     -------
     p_opt : ndarray
@@ -46,27 +48,29 @@ def fit_multiple_dependent_variables(f,
         The mean R² score achieved by the optimized parameters.
     success : bool
         Whether the optimization was successful.
-
+        
     Raises
     ------
     ValueError
         If an unsupported `fit_method` is provided.
-
+        
     Notes
     -----
     - The function uses `scipy.optimize.minimize` for optimization.
     - R² scores are computed between the predicted and observed dependent variable arrays.
     - The loss minimized is the negative mean R² score.
-
+    
     """
     
     implemented_fit_methods = ('mean r^2',)
+    ydata_transpose = ydata.transpose()
     
     if fit_method.lower()=='mean r^2':
         
         def load_get_mean_r2_score(p):
-            ypred = f(xdata, p)
-            return - r2_score(ypred, ydata)
+            ypred = f(xdata, p).transpose()
+            return - r2_score(ypred, ydata_transpose,
+                              multioutput=r2_score_multioutput)
         
         res = minimize(fun=load_get_mean_r2_score,
                  x0=p0,
