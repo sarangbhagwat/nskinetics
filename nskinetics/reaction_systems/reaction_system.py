@@ -31,7 +31,7 @@ class ReactionSystem():
     Parameters
     ----------
     ID : str
-        ID.
+        ID for this ReactionSystem.
     reactions : list
         List of Reaction, ReactionSystem, or str objects.
         If str, must include chemical equation and kinetic 
