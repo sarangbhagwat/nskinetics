@@ -564,6 +564,7 @@ class ReactionSystem():
         - The objective function maximizes the mean R² score across selected species.
         - This method relies on `solve()` and `_update_C_at_t()` methods to simulate the system 
           under trial parameters, and on `fit_multiple_dependent_variables()` to perform optimization.
+        
         """
         sp_sys = self.species_system
         t_, sp_IDs, y_ = self._extract_t_spIDs_y(data)
