@@ -16,6 +16,7 @@ def fit_multiple_dependent_variables(f,
                                      p0=None,
                                      fit_method='mean R^2',
                                      **kwargs):
+    
     implemented_fit_methods = ('mean r^2',)
     
     if fit_method.lower()=='mean r^2':
