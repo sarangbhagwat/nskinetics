@@ -6,57 +6,28 @@
 # https://github.com/sarangbhagwat/nskinetics/blob/main/LICENSE
 # for license details.
 
-import numpy as np
-from scipy.optimize import curve_fit
+from sklearn.metrics import r2_score
+from scipy.optimize import minimize
 
-__all__ = ('fit_vector_output_model',)
+__all__ = ('fit_multiple_dependent_variables',)
 
-def fit_vector_output_model(func, x_data, y_data, 
-                            p0=None, 
-                            bounds=(-np.inf, np.inf),
-                            **kwargs):
-    """
-    Fit a model that returns a vector-valued output to multivariate y_data.
-
-    Parameters:
-    -----------
-    func : callable
-        A function f(x, *params) that returns a vector of length N for each scalar x.
-    x_data : array_like, shape (M,)
-        Independent variable values.
-    y_data : array_like, shape (M, N)
-        Observed dependent variable values.
-    p0 : array_like, optional
-        Initial guess for parameters.
-    bounds : 2-tuple of array_like, optional
-        Lower and upper bounds for parameters.
-
-    Returns:
-    --------
-    popt : array
-        Optimal parameters.
-    pcov : 2D array
-        Covariance matrix of the parameters.
-    """
-    x_data = np.asarray(x_data)
-    y_data = np.asarray(y_data)
-
-    M, N = y_data.shape
-    if x_data.shape[0] != M:
-        raise ValueError("x_data must have the same number of entries as rows in y_data")
-
-    def wrapped_func(x_repeat, *params):
-        # x_repeat is flattened x_data repeated N times for curve_fit
-        x_vals = np.asarray(x_repeat)
-        x_vals = x_vals.reshape(-1)  # (M * N,)
-        outputs = [func(x_data[i], *params) for i in range(M)]  # shape (M, N)
-        return np.array(outputs).reshape(-1)  # Flatten to (M*N,)
-
-    # Flatten y_data to a vector
-    y_flat = y_data.reshape(-1)
-
-    # Create a dummy x vector to match shape (M*N,)
-    x_dummy = np.repeat(x_data, y_data.shape[1])
-
-    popt, pcov = curve_fit(wrapped_func, x_dummy, y_flat, p0=p0, bounds=bounds)
-    return popt, pcov
+def fit_multiple_dependent_variables(f, 
+                                     xdata, ydata,
+                                     p0=None,
+                                     fit_method='mean R^2',
+                                     **kwargs):
+    implemented_fit_methods = ('mean r^2',)
+    
+    if fit_method.lower()=='mean r^2':
+        def load_get_mean_r2_score(p):
+            ypred = f(xdata, p)
+            return - r2_score(ypred, ydata)
+        
+        res = minimize(fun=load_get_mean_r2_score,
+                 x0=p0,
+                 **kwargs)
+        
+        return res.x, load_get_mean_r2_score(res.x), res.success
+    
+    else:
+        raise ValueError(f'Method {fit_method} not implemented; must be one of {implemented_fit_methods}\n')

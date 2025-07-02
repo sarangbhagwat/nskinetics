@@ -8,9 +8,11 @@
 
 from . import _create_function
 from ._create_function import *
+
 from . import _argument_checks
 from ._argument_checks import *
-from . import _fit
+
+from .import _fit
 from ._fit import *
 
 __all__ = (

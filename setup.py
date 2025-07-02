@@ -20,7 +20,8 @@ setup(
                       'numba>=0.60.0,<1.0.0',
                       'scipy>=1.13.1,<2.0.0',
                       'matplotlib>=3.5.2,<4.0.0',
-                      'xlsxwriter>=3.2.5,<4.0.0'],
+                      'xlsxwriter>=3.2.5,<4.0.0',
+                      'scikit-learn',],
     # extras_require={ 
     #     'dev': [
     #     ]

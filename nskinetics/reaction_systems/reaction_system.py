@@ -16,7 +16,7 @@ from typing import Union, Tuple, List
 
 from ..reactions import Reaction
 from ..utils import create_function, is_number, is_array_of_numbers,\
-                    is_list_of_strings, fit_vector_output_model
+                    is_list_of_strings, fit_multiple_dependent_variables
 
 __all__ = ('ReactionSystem', 'RxnSys')
 
@@ -130,8 +130,8 @@ class ReactionSystem():
         """
         Get concentration vs. time data.
         
-        Arguments
-        ---------
+        Parameters
+        ----------
         t_span: list or tuple
             Two-item iterable consisting of the 
             desired start time and end time.
@@ -337,7 +337,9 @@ class ReactionSystem():
         if df_events is not None:
             df_events.to_excel(writer, sheet_name='Events', index=False)
         writer.close()
-            
+        
+        self._solution_dfs = (df_main, df_events)
+        
     def plot_solution(self, show_events=True, sps_to_include=None):
         if sps_to_include is None:
             sps_to_include = [i.ID for i in self.species_system.all_sps]
@@ -393,6 +395,9 @@ class ReactionSystem():
         # is slower as a result) and reference the faster object 
         # for the given call.
         
+        if isinstance(t, list) or isinstance(t, np.ndarray):
+            return np.array([self.C_at_t(ti) for ti in t])
+        
         species_system = self.species_system
         
         if not self._C_at_t_is_updated:
@@ -423,7 +428,7 @@ class ReactionSystem():
             elif isinstance(r, ReactionSystem):
                 reactions_flattened.extend(r._get_all_reactions_flattened())
         return reactions_flattened
-    
+
     @property
     def reactions_flattened(self):
         return self._get_all_reactions_flattened()
@@ -453,11 +458,13 @@ class ReactionSystem():
                            data: Union[str, dict, pd.DataFrame]) -> Tuple[pd.Series, pd.DataFrame, List[str]]:
         """
         Extracts 't' values, species names, and species data from the input.
-    
+        
         Parameters:
+        -----------
             data: A pandas DataFrame, a dictionary, or a path to a .csv or .xlsx file.
-    
+        
         Returns:
+        --------
             t: List of time values
             species_IDs: List of species IDs in column names (excluding 't')
             _y: List of lists, each corresponding to a species column
@@ -478,10 +485,10 @@ class ReactionSystem():
             df = data
         else:
             raise TypeError("Input data must be a DataFrame, dict, or path to a .csv or .xlsx file.")
-    
+            
         if 't' not in df.columns:
             raise ValueError("The input data must contain a 't' column.")
-    
+            
         t = np_array(df['t'].tolist())
         
         species_IDs = [col for col in df.columns if col != 't']
@@ -517,22 +524,29 @@ class ReactionSystem():
         
         _update_C_at_t = self._update_C_at_t
         
-        def f(t, *new_rxn_kp):
+        y_maxes = np.array([np.max(y_[ind, :]) for ind in sp_inds])
+        y_maxes = np_array([y_maxes for i in range(y_.shape[1])]).transpose()
+        
+        def f(t, new_rxn_kp):
             set_rxn_kp(new_rxn_kp)
             solve(t_span=t_span, y0=y0)
             self._update_C_at_t()
+            print(1)
             if not all_species_tracked:
                 return np_array([self._C_at_t_fs_indiv_sps[ind](t)
                         for ind in sp_inds])
             else:
                 return self._C_at_t_f_all(t)
-        # breakpoint()
         
-        fitsol = fit_vector_output_model(func=f,
-                           x_data=t_,
-                           y_data=y_.transpose(),
-                           p0=p0,
-                           **kwargs)
+        fitsol = fit_multiple_dependent_variables(f=f,
+                                                   xdata=t_,
+                                                   ydata=y_,
+                                                   p0=p0,
+                                                   bounds=[(0, None) for i in p0],
+                                                   fit_method='mean r^2',
+                                                   method='Nelder-Mead',
+                                                   # options={'maxiter':5},
+                                                   )
         
         set_rxn_kp(fitsol[0])
         self._fitsol = fitsol
