@@ -527,6 +527,7 @@ class ReactionSystem():
         
         y_maxes = np.array([np.max(y_[ind, :]) for ind in sp_inds])
         y_maxes = np_array([y_maxes for i in range(y_.shape[1])]).transpose()
+        y_normalized = y_/y_maxes
         
         def f(t, new_rxn_kp):
             set_rxn_kp(new_rxn_kp)
@@ -534,13 +535,13 @@ class ReactionSystem():
             self._update_C_at_t()
             if not all_species_tracked:
                 return np_array([self._C_at_t_fs_indiv_sps[ind](t)
-                        for ind in sp_inds])
+                        for ind in sp_inds])/y_maxes
             else:
-                return self._C_at_t_f_all(t)
+                return self._C_at_t_f_all(t)/y_maxes
         
         fitsol = fit_multiple_dependent_variables(f=f,
                                                    xdata=t_,
-                                                   ydata=y_,
+                                                   ydata=y_normalized,
                                                    p0=p0,
                                                    bounds=[(0., None) for i in p0],
                                                    fit_method='mean r^2',
@@ -553,7 +554,9 @@ class ReactionSystem():
         self._fitsol = fitsol
         
         if show_output: 
-            print('\nFit results:')
+            print('\n')
+            print('Fit results')
+            print('-----------')
             print(f'\nR^2={fitsol[1]}, success={fitsol[2]}\n')
             print(self.__str__())
     

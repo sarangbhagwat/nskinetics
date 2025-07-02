@@ -37,7 +37,7 @@ rxn_sys.plot_solution()
 rxn_sys.plot_solution(sps_to_include=['ES'])
 
 # Change kinetic parameters
-rxn_sys.set_reaction_kinetic_params([12.0, 50, 22.0, 0.0])
+rxn_sys.set_reaction_kinetic_params([12.0, 50., 22.0, 0.0])
 
 # Fit to results from old set of kinetic parameters
 
