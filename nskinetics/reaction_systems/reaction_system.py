@@ -309,8 +309,8 @@ class ReactionSystem():
         
         self._solution = solution
         self._C_at_t_is_updated = False # this generates new interp1d objects the next time C_at_t is called
-        
         self.save_solution(filename=filename, save_events=save_events) # if filename is None, saves only to RxnSys._solution_dfs and does not save file
+        
         return solution
     
     def save_solution(self, filename, save_events=True):
@@ -441,26 +441,37 @@ class ReactionSystem():
     @property
     def reactions_flattened(self):
         return self._get_all_reactions_flattened()
-
+    
     def _get_reaction_kinetic_params(self):
         rf = self.reactions_flattened
         param_vector = []
+        param_keys = []
         
         if self._exclude_frozen_params:
             for r in rf:
                 if not r._freeze_kf:
                     param_vector.append(r.kf)
+                    param_keys.append(r.ID+'.kf')
                 if not r._freeze_kb:
                     param_vector.append(r.kb)
+                    param_keys.append(r.ID+'.kb')
         else:
             for r in rf:
                 param_vector.extend([r.kf, r.kb])
-            
+                param_keys.append(r.ID+'.kf')
+                param_keys.append(r.ID+'.kb')
+        
+        self._reaction_kinetic_param_keys = param_keys
         return np_array(param_vector)
     
     @property
     def reaction_kinetic_params(self):
         return self._get_reaction_kinetic_params()
+    
+    @property
+    def reaction_kinetic_param_keys(self):
+        self._get_reaction_kinetic_params()
+        return self._reaction_kinetic_param_keys
     
     def set_reaction_kinetic_params(self, param_vector):
         rf = self.reactions_flattened
