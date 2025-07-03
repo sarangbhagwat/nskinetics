@@ -6,5 +6,6 @@ API Reference
    :hidden:
    
    core
+   steady
    predefined_reactionsystems
    
