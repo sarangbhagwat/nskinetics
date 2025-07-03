@@ -533,6 +533,7 @@ class ReactionSystem():
                                                 p0=None,
                                                 all_species_tracked=False,
                                                 use_only=None,
+                                                normalize=False,
                                                 method='Powell',
                                                 n_minimize_runs=2,
                                                 show_output=True,
@@ -655,13 +656,13 @@ class ReactionSystem():
         y_to_use_0 = y_dataset[0]
         if use_only:
             y_to_use_0 = y_to_use_0[use_only_inds, :]
-            
-        y_dataset_normalized = y_to_use_0/structured_xdata[0][1]
+        
+        y_dataset_normalized = y_to_use_0/structured_xdata[0][1] if normalize else y_to_use_0
         for (yi_, sdata) in zip(y_dataset[1:], structured_xdata[1:]):
             y_to_use = yi_
             if use_only:
                 y_to_use = y_to_use[use_only_inds, :]
-            to_concat = y_to_use/sdata[1]
+            to_concat = y_to_use/sdata[1] if normalize else y_to_use
             y_dataset_normalized = np.concatenate((y_dataset_normalized.transpose(), to_concat.transpose()))
             y_dataset_normalized = y_dataset_normalized.transpose()
 
@@ -684,10 +685,14 @@ class ReactionSystem():
             if plot_during_fit: plot_solution()
             _update_C_at_t()
             if not all_species_tracked:
-                return np_array([self._C_at_t_fs_indiv_sps[ind](tdata)
-                        for ind in sp_inds])/y_maxes
+                ypred = np_array([self._C_at_t_fs_indiv_sps[ind](tdata)
+                        for ind in sp_inds])
+                if normalize: ypred/= y_maxes
+                return ypred
             else:
-                return self._C_at_t_f_all(tdata)/y_maxes
+                ypred = self._C_at_t_f_all(tdata)
+                if normalize: ypred/= y_maxes
+                return ypred
             
         def f(xdataset, new_rxn_kp):
             ypred_normalized_concat = f_single_xdata(xdataset[0], new_rxn_kp)
@@ -696,6 +701,7 @@ class ReactionSystem():
                 ypred_normalized_concat = ypred_normalized_concat.transpose()
             return ypred_normalized_concat
         
+        ydata_to_use = y_dataset_normalized
         fitsol = fit_multiple_dependent_variables(f=f,
                                                    xdata=structured_xdata,
                                                    ydata=y_dataset_normalized,
