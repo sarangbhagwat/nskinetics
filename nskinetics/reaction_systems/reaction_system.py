@@ -62,7 +62,7 @@ class ReactionSystem():
         self._C_at_t_fs_indiv_sps = None
         
         self._exclude_frozen_params = True
-        self._interp1d_fill_value = "extrapolate"
+        self._interp1d_fill_value = None
         
     @property
     def reactions(self):
@@ -333,11 +333,8 @@ class ReactionSystem():
             for ind, sp_ID in zip(range(len(all_sp_IDs)), 
                                   all_sp_IDs):
                 df_dict_events[sp_ID] = y_event[ind, :]
-            # breakpoint()
-            try:
-                df_events = pd.DataFrame.from_dict(df_dict_events)
-            except:
-                breakpoint()
+            
+            df_events = pd.DataFrame.from_dict(df_dict_events)
                 
         if filename is not None:
             if not '.xlsx' in filename:
@@ -652,10 +649,6 @@ class ReactionSystem():
                 p0 = rkp
         
         
-        set_rxn_kp = self.set_reaction_kinetic_params
-        solve = self.solve
-        
-        _update_C_at_t = self._update_C_at_t
         
         # y_normalized = [yi_/sdata[1] for (yi_, sdata) in zip(y_dataset, structured_xdata)]
         # y_normalized = y_normalized.flatten()
@@ -672,13 +665,22 @@ class ReactionSystem():
             y_dataset_normalized = np.concatenate((y_dataset_normalized.transpose(), to_concat.transpose()))
             y_dataset_normalized = y_dataset_normalized.transpose()
 
+        set_rxn_kp = self.set_reaction_kinetic_params
+        solve = self.solve
+        _update_C_at_t = self._update_C_at_t
         plot_solution = self.plot_solution
+        
+        # zeros_like_y_dataset_normalized = np.zeros(shape=y_dataset_normalized.shape)
+        # nans_like_y_dataset_normalized = np.full(y_dataset_normalized.shape, np.nan)
         
         def f_single_xdata(xdata, new_rxn_kp):
             tdata, y_maxes, y0 = xdata
             t_span = np.min(tdata), np.max(tdata)
             set_rxn_kp(new_rxn_kp)
             solve(t_span=t_span, y0=y0)
+            for sol in self._solution['sol']:
+                if not sol.success:
+                    return np.full((len(y0), len(tdata)), np.nan)
             if plot_during_fit: plot_solution()
             _update_C_at_t()
             if not all_species_tracked:
