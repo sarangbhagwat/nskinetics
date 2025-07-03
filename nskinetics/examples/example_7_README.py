@@ -18,13 +18,13 @@ batch_concs = [
                np.array([1e-4, 1e-4, 0., 0.]),
                np.array([1e-6, 1e-2, 0., 0.]),
                np.array([1e-5, 5e-2, 0., 0.]),
-               # np.array([1e-3, 5e-2, 0., 0.]),
+               np.array([1e-3, 5e-2, 0., 0.]),
                ]
 batch_t_spans = [
                  [0, 2*24*3600],
                  [0, 2*24*3600],
                  [0, 2*24*3600],
-                 # [0, 10000],
+                 [0, 10000],
                  ]
 
 n_batches = len(batch_concs)
