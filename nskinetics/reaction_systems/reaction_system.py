@@ -545,8 +545,9 @@ class ReactionSystem():
                                                 all_species_tracked=False,
                                                 use_only=None,
                                                 normalize=True,
-                                                method='Powell',
                                                 n_minimize_runs=2,
+                                                minimize_kwargs=None,
+                                                differential_evolution_kwargs=None,
                                                 show_output=True,
                                                 show_progress=False,
                                                 plot_during_fit=False,
@@ -718,18 +719,24 @@ class ReactionSystem():
                 ypred_normalized_concat = ypred_normalized_concat.transpose()
             return ypred_normalized_concat
         
-        ydata_to_use = y_dataset_normalized
+        if minimize_kwargs is None:
+            minimize_kwargs = {'method': 'Powell',
+                               'bounds':[(0., None) for i in p0],
+                               }
+        if differential_evolution_kwargs is None:
+            differential_evolution_kwargs = {'strategy': 'best1bin',
+                                             'bounds': [(0, 1e8) for i in p0]}
+        elif 'bounds' not in differential_evolution_kwargs:
+            differential_evolution_kwargs['bounds'] = [(0, 1e8) for i in p0]
         fitsol = fit_multiple_dependent_variables(f=f,
                                                    xdata=structured_xdata,
                                                    ydata=y_dataset_normalized,
                                                    p0=p0, # 
-                                                   bounds=[(0., None) for i in p0],
-                                                   fit_method='mean r^2',
-                                                   method=method,
+                                                   minimize_kwargs=minimize_kwargs,
+                                                   differential_evolution_kwargs=differential_evolution_kwargs,
                                                    n_minimize_runs=n_minimize_runs,
                                                    show_progress=show_progress,
                                                    random_param_bound=1000.,
-                                                   **kwargs
                                                    # options={'maxiter':5},
                                                    )
         

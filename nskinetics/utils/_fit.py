@@ -8,6 +8,7 @@
 
 from sklearn.metrics import r2_score
 from scipy.optimize import minimize
+from scipy.optimize import differential_evolution
 import numpy as np
 
 __all__ = ('fit_multiple_dependent_variables',)
@@ -15,9 +16,10 @@ __all__ = ('fit_multiple_dependent_variables',)
 def fit_multiple_dependent_variables(f, 
                                      xdata, ydata,
                                      p0,
-                                     fit_method='mean R^2',
                                      r2_score_multioutput='uniform_average',
                                      n_minimize_runs=2,
+                                     minimize_kwargs=None,
+                                     differential_evolution_kwargs=None,
                                      random_param_bound=1000.,
                                      show_progress=False,
                                      **kwargs):
@@ -38,11 +40,10 @@ def fit_multiple_dependent_variables(f,
     p0 : array-like, optional
         Initial guess for the parameters to be optimized.
         Only used in the first minimization run (thereafter random).
-    fit_method : str, optional
-        Method used for fitting. Currently, only 'mean R^2' is implemented (case-insensitive), which
-        minimizes the negative mean R² score across all dependent variables.
-    **kwargs : dict
+    minimize_kwargs : dict
         Additional keyword arguments passed to `scipy.optimize.minimize`.
+    differential_evolution_kwargs : dict
+        Additional keyword arguments passed to `scipy.optimize.differential_evolution_kwargs`.
         
     Returns
     -------
@@ -69,34 +70,44 @@ def fit_multiple_dependent_variables(f,
     implemented_fit_methods = ('mean r^2',)
     ydata_transpose = ydata.transpose()
     
-    if fit_method.lower()=='mean r^2':
-        
-        def load_get_mean_r2_score(p):
-            ypred = f(xdata, p).transpose()
-            return 1 - r2_score(ypred, ydata_transpose,
-                              multioutput=r2_score_multioutput)
-        
-        best_result = None
-        for i in range(n_minimize_runs):
-            if i>0:
-                p0 = np.random.rand(1)*random_param_bound*np.random.rand(*p0.shape)
+    def load_get_mean_r2_score(p):
+        ypred = f(xdata, p).transpose()
+        return 1 - r2_score(ypred, ydata_transpose,
+                          multioutput=r2_score_multioutput)
+    
+    best_result = None
+    for i in range(n_minimize_runs):
+        if show_progress:
+            print(f'\n\nOptimization run {i+1}:')
+            print('------------------\n')
+        if i>0:
+            # p0 = np.random.rand(1)*random_param_bound*np.random.rand(*p0.shape)
+            if show_progress:
+                print('\nRunning differential evolution (DE) to get the initial guess (p0) for this optimization run.')
+                print(differential_evolution_kwargs)
+            result_de = differential_evolution(load_get_mean_r2_score,
+                                               disp=show_progress,
+                                               **differential_evolution_kwargs)
+            p0 = result_de.x
             
             if show_progress:
-                print(f'\n\nOptimization run {i+1}:')
-                print('------------------\n')
-            result = minimize(fun=load_get_mean_r2_score,
-                     x0=p0,
-                     **kwargs)
-            if show_progress:
-                print('res.x =', result.x)
-                print('R^2 =', 1. - result.fun)
-                print('Success =', result.success)
-            if best_result is None or result.fun < best_result.fun:
-                best_result = result
+                print(f'\nDE complete; p0 = {p0}.\n')
         
-        load_get_mean_r2_score(best_result.x)
-        
-        return best_result.x, 1. - best_result.fun, best_result.success
+        if show_progress:
+            print('\nRunning minimization to get the final set of parameters.')
+            print(differential_evolution_kwargs)
+        result = minimize(fun=load_get_mean_r2_score,
+                 x0=p0,
+                 **minimize_kwargs)
+        if show_progress:
+            print('Minimization run complete.')
+            print('res.x =', result.x)
+            print('R^2 =', 1. - result.fun)
+            print('Success =', result.success)
+        if best_result is None or result.fun < best_result.fun:
+            best_result = result
     
-    else:
-        raise ValueError(f'Method {fit_method} not implemented; must be one of {implemented_fit_methods}\n')
+    load_get_mean_r2_score(best_result.x)
+    
+    return best_result.x, 1. - best_result.fun, best_result.success
+    

@@ -34,14 +34,14 @@ print(f'KM = {KM}\n')
 #%% Define batches to run
 
 batch_concs = [
-               np.array([1e-4, 1e-4, 0., 0.]),
-               # np.array([0.08966552, 0.58624828, 0., 0.]),
+               # np.array([1e-4, 1e-4, 0., 0.]),
+               np.array([0.08966552, 0.58624828, 0., 0.]),
                # np.array([0.08966552, 0.62072759, 0., 0.]),
                # np.array([0.0621069, 0.10353793, 0., 0.]),
                ]
 batch_t_spans = [
-                 [0, 0.5*24*3600],
-                 # [0, 30],
+                 # [0, 0.5*24*3600],
+                 [0, 300],
                  # [0, 30],
                  # [0, 30],
                  ]
@@ -71,6 +71,8 @@ rxn_sys.reactions[0]._freeze_kb = True
 filterwarnings("ignore")
 
 def set_koff(p, kcat=rxn_sys.reactions[1].kf, KM=KM):
+    # With a known KM and known (frozen) kcat, 
+    # set koff based on the kon value being used by the solver
     kon = p[0]
     rxn_sys.reactions[0]._kb = KM*kon - kcat
 
@@ -85,11 +87,10 @@ rxn_sys.fit_reaction_kinetic_parameters_to_data(data=[f'solution{i}.xlsx'
                                                 options={'disp':True},
                                                 # plot_during_fit=True,
                                                 show_progress=True,
-                                                n_minimize_runs=1,
+                                                n_minimize_runs=2,
                                                 call_before_each_solve=[set_koff],
-                                                # method='SLSQP',
-                                                # constraints=({'type': 'eq', 'fun': lambda p: (32.+p[1])/p[0] - KM},
-                                                #              ),
+                                                differential_evolution_kwargs={'maxiter':100,
+                                                                               'bounds': [(0,1000)]}
                                                 )
 filterwarnings("default")
 
