@@ -66,13 +66,41 @@ class ReactionSystem():
         
     @property
     def reactions(self):
+        """
+        List of reactions in the reaction system.
+        
+        Returns
+        -------
+        list
+            List of Reaction or ReactionSystem objects.
+        
+        """
         return self._reactions
     
     @property
     def species_system(self):
+        """
+        The SpeciesSystem associated with this reaction system.
+        
+        Returns
+        -------
+        SpeciesSystem
+            Object containing all species in the system.
+            
+        """
         return self._species_system
     
     def get_dconcs_dt(self):
+        """
+        Compute the total rate of change of concentrations for all species
+        in the reaction system by summing the contributions from all reactions.
+        
+        Returns
+        -------
+        numpy.ndarray
+            Array representing the net rate of change of concentrations for each species.
+        
+        """
         reactions = self.reactions
         return np.sum([r.get_dconcs_dt() for r in reactions], axis=0)
     
@@ -85,6 +113,36 @@ class ReactionSystem():
               sp_conc_for_events=None, # dict or None
               dense_output=False,
               y0=None):
+        """
+        Solve a single phase of the reaction system.
+        
+        Parameters
+        ----------
+        t_span : tuple
+            Time interval (start, end) for integration.
+        t_eval : array_like, optional
+            Time points at which to store the computed solution.
+        method : str, default 'LSODA'
+            Integration method to use.
+        atol : float, optional
+            Absolute tolerance.
+        rtol : float, optional
+            Relative tolerance.
+        events : list of callables, optional
+            List of event functions.
+        sp_conc_for_events : dict, optional
+            Dictionary of species and target concentrations to trigger events.
+        dense_output : bool, default False
+            Whether to compute a continuous solution.
+        y0 : array_like, optional
+            Initial concentrations of species.
+            
+        Returns
+        -------
+        scipy.integrate.OdeResult
+            Object containing time points, solution, and event information.
+            
+        """
         get_dconcs_dt = self.get_dconcs_dt
         sp_sys = self.species_system
         
@@ -318,6 +376,17 @@ class ReactionSystem():
         return solution
     
     def save_solution(self, filename, save_events=True):
+        """
+        Save the latest simulation solution to an Excel file and cache DataFrames.
+        
+        Parameters
+        ----------
+        filename : str
+            Path to the output Excel file. If None, data is not saved to disk.
+        save_events : bool, default True
+            Whether to include event data in the output.
+            
+        """
         solution = self._solution
         df_dict = {'t': solution['t']}
         all_sp_IDs = self.species_system.all_sp_IDs
@@ -352,6 +421,17 @@ class ReactionSystem():
         self._solution_dfs = (df_main, df_events)
         
     def plot_solution(self, show_events=True, sps_to_include=None):
+        """
+        Plot the concentrations of selected species over time.
+        
+        Parameters
+        ----------
+        show_events : bool, default True
+            Whether to annotate event times on the plot.
+        sps_to_include : list of str or Species, optional
+            Species to include in the plot. If None, includes all.
+            
+        """
         if sps_to_include is None:
             sps_to_include = [i.ID for i in self.species_system.all_sps]
         
@@ -397,6 +477,22 @@ class ReactionSystem():
         plt.show()
     
     def C_at_t(self, t,  species=None):
+        """
+        Get interpolated species concentrations at a given time.
+        
+        Parameters
+        ----------
+        t : float or list of floats
+            Time or times at which to evaluate concentrations.
+        species : Species or None
+            Species object to evaluate. If None, returns all concentrations.
+
+        Returns
+        -------
+        float or np.ndarray
+            Concentration(s) at time t.
+            
+        """
         # Note on speed-up for C_at_t
         # Creating separate interp1d objects for each species concentration
         # results in faster C_at_t calls with species specified.
@@ -421,6 +517,12 @@ class ReactionSystem():
             return self._C_at_t_f_all(t)
     
     def _update_C_at_t(self):
+        """
+        Update the internal interpolation functions for species concentrations.
+        This enables fast lookup of concentrations at arbitrary times.
+        Not used for solve, but used for fit_reaction_kinetic_parameters_to_data.
+        
+        """
         species_system = self.species_system
         all_sps = species_system.all_sps
         index_f = species_system.index
@@ -434,6 +536,15 @@ class ReactionSystem():
         self._C_at_t_is_updated = True
         
     def _get_all_reactions_flattened(self):
+        """
+        Recursively flatten all reactions into a single list, including 
+        nested ReactionSystem objects.
+        
+        Returns
+        -------
+        list
+            List of all Reaction objects in the system.
+        """
         reactions_flattened = []
         for r in self.reactions:
             if isinstance(r, Reaction):
@@ -444,9 +555,30 @@ class ReactionSystem():
 
     @property
     def reactions_flattened(self):
+        """
+        All reactions in the system, flattened to a single list.
+        
+        Returns
+        -------
+        list of Reaction
+            All individual reactions, including those from nested ReactionSystem
+            objects.
+        
+        """
         return self._get_all_reactions_flattened()
     
     def _get_reaction_kinetic_params(self):
+        """
+        Retrieve the kinetic parameters (kf and kb) for all reactions in the system.
+        Excludes frozen parameters if self._exclude_frozen_params is True.
+        
+        Returns
+        -------
+        numpy.ndarray
+            Flat array of kinetic parameters (kf and kb) for each reaction.
+            Excludes frozen parameters if self._exclude_frozen_params is True.
+            
+        """
         rf = self.reactions_flattened
         param_vector = []
         param_keys = []
@@ -470,14 +602,46 @@ class ReactionSystem():
     
     @property
     def reaction_kinetic_params(self):
+        """
+        Current kinetic parameter values for all reactions.
+        Excludes frozen parameters if self._exclude_frozen_params is True.
+        
+        Returns
+        -------
+        numpy.ndarray
+            Array of kinetic parameters (kf and kb) in the system.
+            Excludes frozen parameters if self._exclude_frozen_params is True.
+            
+        """
         return self._get_reaction_kinetic_params()
     
     @property
     def reaction_kinetic_param_keys(self):
+        """
+        Keys corresponding to the kinetic parameters.
+        Excludes frozen parameters if self._exclude_frozen_params is True.
+        
+        Returns
+        -------
+        list of str
+            Parameter keys in the format 'reaction_ID.kf' or 'reaction_ID.kb'.
+            Excludes frozen parameters if self._exclude_frozen_params is True.
+            
+        """
         self._get_reaction_kinetic_params()
         return self._reaction_kinetic_param_keys
     
     def set_reaction_kinetic_params(self, param_vector):
+        """
+        Set kinetic parameters (kf, kb) for all reactions from a flat vector.
+        
+        Parameters
+        ----------
+        param_vector : array_like
+            Flat list or array of parameters.
+            
+        """
+        
         rf = self.reactions_flattened
         # expected_length = 2 * len(rf)
         # if len(param_vector) != expected_length:
@@ -756,6 +920,15 @@ class ReactionSystem():
             print(self.__str__())
     
     def add_reaction(self, reaction):
+        """
+        Add a reaction to the system.
+        
+        Parameters
+        ----------
+        reaction : Reaction, ReactionSystem, or str
+            The reaction object or string to add.
+            
+        """
         r = reaction
         _reactions = self._reactions
         if isinstance(r, str):
@@ -769,6 +942,21 @@ class ReactionSystem():
                         new_equation_string=None,
                         new_kf=None, new_kb=None,
                         ):
+        """
+        Modify a reaction at a given index.
+        
+        Parameters
+        ----------
+        index : int
+            Index of the reaction to modify.
+        new_equation_string : str, optional
+            New chemical equation.
+        new_kf : float, optional
+            New forward rate constant.
+        new_kb : float, optional
+            New backward rate constant.
+            
+        """
         _reactions = self._reactions
         if new_equation_string is None and new_kf is None and new_kb is None:
             raise ValueError('Either new_equation_string or new_kf and new_kf must be provided.')
@@ -781,6 +969,20 @@ class ReactionSystem():
             if new_kb is not None: r.kf = new_kb
     
     def _get_spikes_list_from_dict(self, spikes_dct):
+        """
+        Convert dictionary of concentration spikes into a list of time-change pairs.
+        
+        Parameters
+        ----------
+        spikes_dct : dict
+            Dictionary mapping time to spike definition(s).
+            
+        Returns
+        -------
+        list
+            List of (time, change) tuples.
+        
+        """
         sd = spikes_dct
         if sd is None:
             return []
@@ -805,6 +1007,22 @@ class ReactionSystem():
         return sl
     
     def _get_dconcs_from_str(self, s):
+        """
+        Parse a string description of concentration change and return a change function or array.
+        
+        Parameters
+        ----------
+        s : str
+            String of the form 'Change; Species ID; value' 
+            or 'Target; Species ID; value'
+            or 'Target (negative change allowed); Species ID; value'.
+            
+        Returns
+        -------
+        array or function
+            Array of concentration changes or function returning such an array.
+        
+        """
         sp_sys = self.species_system
         dconcs = None
         split_s = [i.replace(' ', '')
@@ -835,6 +1053,15 @@ class ReactionSystem():
         return dconcs
     
     def __str__(self):
+        """
+        Return a string representation of the reaction system.
+        
+        Returns
+        -------
+        str
+            String listing the reaction system and its reactions.
+            
+        """
         rxns = self.reactions
         str_ = f'{self.ID}: ReactionSystem(\n'
         for r in rxns:
@@ -843,6 +1070,15 @@ class ReactionSystem():
         return str_
     
     def __repr__(self):
+        """
+        Return the formal string representation of the object.
+        
+        Returns
+        -------
+        str
+            Same as __str__.
+            
+        """
         return self.__str__()
     
 RxnSys = ReactionSystem
