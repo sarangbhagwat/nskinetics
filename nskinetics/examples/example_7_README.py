@@ -35,15 +35,15 @@ print(f'KM = {KM}\n')
 
 batch_concs = [
                np.array([1e-4, 1e-4, 0., 0.]),
-               np.array([1e-6, 1e-2, 0., 0.]),
-               np.array([1e-5, 5e-2, 0., 0.]),
-               # np.array([1e-3, 5e-2, 0., 0.]),
+               np.array([0.08966552, 0.58624828, 0., 0.]),
+               np.array([0.1, 0.75864483, 0., 0.]),
+               np.array([0.1, 0.10353793, 0., 0.]),
                ]
 batch_t_spans = [
                  [0, 0.5*24*3600],
-                 [0, 1000],
-                 # [0, 2*24*3600],
-                 # [0, 10000],
+                 [0, 30],
+                 [0, 30],
+                 [0, 30],
                  ]
 
 n_batches = len(batch_concs)
@@ -78,6 +78,7 @@ rxn_sys.fit_reaction_kinetic_parameters_to_data(data=[f'solution{i}.xlsx'
                                                 options={'disp':True},
                                                 # plot_during_fit=True,
                                                 show_progress=True,
+                                                n_minimize_runs=1,
                                                 )
 filterwarnings("default")
 
@@ -95,3 +96,27 @@ for i, concentrations, t_span in zip(range(len(batch_concs)),
     # Plot results
     rxn_sys.plot_solution()
     rxn_sys.plot_solution(sps_to_include=['ES'])
+    
+#%% Design of experiments
+param_keys = rxn_sys.reaction_kinetic_param_keys
+candidate_initials = {'E': np.linspace(1e-4, 0.1, 30), 'S': np.linspace(1e-4, 1., 30), 'ES': [0.0], 'P': [0.0]}
+spike_options = None
+t_eval = np.linspace(0, 30, 50)
+output_idx = [1, 3]  # Measuring S and P
+
+best_expts = nsk.doe.fim.design_experiments(
+    rxn_sys,
+    param_keys,
+    candidate_initials,
+    t_eval,
+    spike_options=spike_options,
+    output_idx=output_idx,
+    epsilon=1e-4,
+    top_n=3
+)
+
+for i, expt in enumerate(best_expts):
+    print(f"--- Experiment {i+1} ---")
+    print("Initial concentrations:", expt['y0'])
+    print("Spikes:", expt['spikes'])
+    print("D-optimality:", expt['score'])

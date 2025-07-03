@@ -115,7 +115,8 @@ def d_optimality(FIM):
 
 
 def design_experiments(rxn_sys, param_keys, candidate_initials, t_eval,
-                       spike_options=None, output_idx=None, top_n=5):
+                       spike_options=None, output_idx=None, top_n=5,
+                       epsilon=1e-4):
     """
     Perform design of experiments by exhaustively evaluating combinations of initial concentrations
     and optional spike conditions, returning those that maximize parameter identifiability.
@@ -176,7 +177,7 @@ def design_experiments(rxn_sys, param_keys, candidate_initials, t_eval,
                 
             try:
                 # Compute sensitivity and FIM
-                S = compute_sensitivities(rxn_sys, t_eval, np.array(y0), param_inds, spikes=spikes, output_idx=output_idx)
+                S = compute_sensitivities(rxn_sys, t_eval, np.array(y0), param_inds, spikes=spikes, output_idx=output_idx, epsilon=epsilon)
                 FIM = fisher_information_matrix(S)
                 score = d_optimality(FIM)
                 

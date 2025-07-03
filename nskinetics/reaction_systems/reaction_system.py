@@ -264,7 +264,7 @@ class ReactionSystem():
                                              sp_conc_for_events=sp_conc_for_events, # dict or None
                                              dense_output=dense_output,
                                              y0=y0))
-            
+        
         y_final = np.concatenate([sol.y.transpose() for sol in sols])
         t_final = list(sols[0].t)
         
