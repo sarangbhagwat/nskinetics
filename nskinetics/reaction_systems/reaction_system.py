@@ -76,7 +76,7 @@ class ReactionSystem():
     @property
     def reactions(self):
         """
-        List of reactions in the reaction system.
+        List of reactions and nested reaction systems in this reaction system.
         
         Returns
         -------
