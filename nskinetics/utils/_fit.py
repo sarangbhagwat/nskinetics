@@ -80,11 +80,14 @@ def fit_multiple_dependent_variables(f,
         for i in range(n_minimize_runs):
             if i>0:
                 p0 = np.random.rand(1)*random_param_bound*np.random.rand(*p0.shape)
+            
+            if show_progress:
+                print(f'\n\nOptimization run {i+1}:')
+                print('------------------\n')
             result = minimize(fun=load_get_mean_r2_score,
                      x0=p0,
                      **kwargs)
             if show_progress:
-                print(f'\nOptimization run {i+1}:\n')
                 print('res.x =', result.x)
                 print('R^2 =', 1. - result.fun)
                 print('Success =', result.success)
