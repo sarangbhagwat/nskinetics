@@ -52,11 +52,11 @@ def fit_multiple_dependent_variables(f,
     score : float
         The mean R² score achieved by the optimized parameters.
     success : bool
-        Whether the optimization was successful.
+        Whether the finally used optimization result was flagged as successful.
         
     Notes
     -----
-    - The function uses `scipy.optimize.minimize` and `scipy.optimize.differential_evolution` for optimization.
+    - This function uses `scipy.optimize.minimize` and `scipy.optimize.differential_evolution` for optimization.
     - R² scores are computed between the predicted and observed dependent variable arrays.
     - The loss minimized is <one minus the mean R² score>.
     
