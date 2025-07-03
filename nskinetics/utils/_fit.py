@@ -40,6 +40,12 @@ def fit_multiple_dependent_variables(f,
     p0 : array-like, optional
         Initial guess for the parameters to be optimized.
         Only used in the first minimization run (thereafter random).
+    n_minimize_runs : int, optional
+        Number of local optimization (minimization) runs to perform, each with a different
+        starting point (first uses `p0`, others use DE output).
+    n_de_runs : int, optional
+        Number of differential evolution runs per minimization run to generate good starting
+        guesses; the best DE result is used to initialize the local minimization.
     minimize_kwargs : dict
         Additional keyword arguments passed to `scipy.optimize.minimize`.
     differential_evolution_kwargs : dict

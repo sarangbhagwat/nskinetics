@@ -199,7 +199,7 @@ class ReactionSystem():
               save_events=True,
               ):
         """
-        Get concentration vs. time data.
+        Simulate the reaction system and get concentration vs. time data.
         
         Parameters
         ----------
@@ -770,9 +770,20 @@ class ReactionSystem():
         method : str, default 'Powell'
             Optimization method to use for parameter fitting. Passed to 
             `scipy.optimize.minimize`.
-            
-        **kwargs : dict
-            Additional keyword arguments passed to the optimizer.
+        
+        n_minimize_runs : int, optional
+            Number of local optimization (minimization) runs to perform, each with a different
+            starting point (first uses `p0`, others use DE output).
+        
+        n_de_runs : int, optional
+            Number of differential evolution runs per minimization run to generate good starting
+            guesses; the best DE result is used to initialize the local minimization.
+        
+        minimize_kwargs : dict
+            Additional keyword arguments passed to `scipy.optimize.minimize`.
+        
+        differential_evolution_kwargs : dict
+            Additional keyword arguments passed to `scipy.optimize.differential_evolution_kwargs`.
             
         Returns
         -------
@@ -785,8 +796,14 @@ class ReactionSystem():
         - The fit is performed by normalizing each species' concentration to its maximum
           observed value to ensure scale invariance.
         - The objective function maximizes the mean R² score across selected species.
-        - This method relies on `solve()` and `_update_C_at_t()` methods to simulate the system 
-          under trial parameters, and on `fit_multiple_dependent_variables()` to perform optimization.
+        - This method relies on `solve()` and `C_at_t()` methods to simulate the system 
+          under trial parameters and look up interpolated results, 
+          and on `fit_multiple_dependent_variables()` to perform optimization.
+          
+        See Also
+        --------
+        `scipy.optimize.minimize <https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.minimize.html>`_
+        `scipy.optimize.differential_evolution <https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.differential_evolution.html>`_
         
         """
         sp_sys = self.species_system
