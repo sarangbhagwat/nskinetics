@@ -36,14 +36,14 @@ print(f'KM = {KM}\n')
 batch_concs = [
                np.array([1e-4, 1e-4, 0., 0.]),
                np.array([0.08966552, 0.58624828, 0., 0.]),
-               np.array([0.1, 0.75864483, 0., 0.]),
-               np.array([0.1, 0.10353793, 0., 0.]),
+               np.array([0.08966552, 0.62072759, 0., 0.]),
+               # np.array([0.0621069, 0.10353793, 0., 0.]),
                ]
 batch_t_spans = [
                  [0, 0.5*24*3600],
                  [0, 30],
                  [0, 30],
-                 [0, 30],
+                 # [0, 30],
                  ]
 
 n_batches = len(batch_concs)
@@ -66,6 +66,7 @@ for i, concentrations, t_span in zip(batch_indices,
 
 #%% Fit kinetic parameters to saved results from simulating with original set of kinetic parameters
 
+rxn_sys.reactions[1]._freeze_kf = True
 filterwarnings("ignore")
 rxn_sys.fit_reaction_kinetic_parameters_to_data(data=[f'solution{i}.xlsx'
                                                       for i in batch_indices],
@@ -79,6 +80,9 @@ rxn_sys.fit_reaction_kinetic_parameters_to_data(data=[f'solution{i}.xlsx'
                                                 # plot_during_fit=True,
                                                 show_progress=True,
                                                 n_minimize_runs=1,
+                                                # method='SLSQP',
+                                                # constraints=({'type': 'eq', 'fun': lambda p: (32.+p[1])/p[0] - KM},
+                                                #              ),
                                                 )
 filterwarnings("default")
 
