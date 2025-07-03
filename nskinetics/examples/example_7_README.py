@@ -12,24 +12,6 @@ from warnings import filterwarnings
 
 np.random.seed(12455)
 
-#%% Define batches to run
-
-batch_concs = [
-               np.array([1e-4, 1e-4, 0., 0.]),
-               np.array([1e-6, 1e-2, 0., 0.]),
-               np.array([1e-5, 5e-2, 0., 0.]),
-               np.array([1e-3, 5e-2, 0., 0.]),
-               ]
-batch_t_spans = [
-                 [0, 2*24*3600],
-                 [0, 2*24*3600],
-                 [0, 2*24*3600],
-                 [0, 10000],
-                 ]
-
-n_batches = len(batch_concs)
-batch_indices = range(n_batches)
-
 #%% Create a SpeciesSystem object with defined kinetic parameters
 sp_sys = nsk.SpeciesSystem('sp_sys', 
                        ['E', 'S', 'ES', 'P'], # enzyme, substrate, enzyme-substrate complex, product
@@ -45,6 +27,27 @@ reactions = [
 rxn_sys = nsk.ReactionSystem(ID='rxn_sys', 
                                  reactions=reactions,
                                  species_system=sp_sys)
+
+KM = (rxn_sys.reactions[1].kf + rxn_sys.reactions[0].kb)/rxn_sys.reactions[0].kf
+print(f'KM = {KM}\n')
+
+#%% Define batches to run
+
+batch_concs = [
+               np.array([1e-4, 1e-4, 0., 0.]),
+               np.array([1e-6, 1e-2, 0., 0.]),
+               np.array([1e-5, 5e-2, 0., 0.]),
+               # np.array([1e-3, 5e-2, 0., 0.]),
+               ]
+batch_t_spans = [
+                 [0, 0.5*24*3600],
+                 [0, 1000],
+                 # [0, 2*24*3600],
+                 # [0, 10000],
+                 ]
+
+n_batches = len(batch_concs)
+batch_indices = range(n_batches)
 
 #%% Simulate all batches and save results
 for i, concentrations, t_span in zip(batch_indices, 
@@ -65,7 +68,7 @@ for i, concentrations, t_span in zip(batch_indices,
 
 filterwarnings("ignore")
 rxn_sys.fit_reaction_kinetic_parameters_to_data(data=[f'solution{i}.xlsx'
-                                                      for i in batch_indices[:3]],
+                                                      for i in batch_indices],
                                                 p0=1*np.ones(len(rxn_sys.reaction_kinetic_params)),
                                                 use_only=[
                                                           # 'E', 
