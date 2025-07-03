@@ -67,19 +67,26 @@ for i, concentrations, t_span in zip(batch_indices,
 #%% Fit kinetic parameters to saved results from simulating with original set of kinetic parameters
 
 rxn_sys.reactions[1]._freeze_kf = True
+rxn_sys.reactions[0]._freeze_kb = True
 filterwarnings("ignore")
+
+def set_koff(p, kcat=rxn_sys.reactions[1].kf, KM=KM):
+    kon = p[0]
+    rxn_sys.reactions[0]._kb = KM*kon - kcat
+
 rxn_sys.fit_reaction_kinetic_parameters_to_data(data=[f'solution{i}.xlsx'
                                                       for i in batch_indices],
                                                 p0=1*np.ones(len(rxn_sys.reaction_kinetic_params)),
                                                 use_only=[
                                                           # 'E', 
                                                           'S', 
-                                                          'P'
+                                                          # 'P'
                                                           ],
                                                 options={'disp':True},
                                                 # plot_during_fit=True,
                                                 show_progress=True,
                                                 n_minimize_runs=1,
+                                                call_before_each_solve=[set_koff],
                                                 # method='SLSQP',
                                                 # constraints=({'type': 'eq', 'fun': lambda p: (32.+p[1])/p[0] - KM},
                                                 #              ),

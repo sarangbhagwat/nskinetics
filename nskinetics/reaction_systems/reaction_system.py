@@ -550,6 +550,7 @@ class ReactionSystem():
                                                 show_output=True,
                                                 show_progress=False,
                                                 plot_during_fit=False,
+                                                call_before_each_solve=None,
                                                 **kwargs):
         """
         Fit reaction kinetic parameters to experimental time-series data.
@@ -611,6 +612,9 @@ class ReactionSystem():
         sp_sys = self.species_system
         all_sp_IDs = sp_sys.all_sp_IDs
         
+        if call_before_each_solve is None:
+            call_before_each_solve = []
+            
         use_only_inds = [sp_sys.index(sp) for sp in use_only]
         
         if not (isinstance(data, list) or isinstance(data, tuple)):
@@ -689,6 +693,8 @@ class ReactionSystem():
             tdata, y_maxes, y0 = xdata
             t_span = np.min(tdata), np.max(tdata)
             set_rxn_kp(new_rxn_kp)
+            for c in call_before_each_solve:
+                c(new_rxn_kp)
             solve(t_span=t_span, y0=y0)
             for sol in self._solution['sol']:
                 if not sol.success:
