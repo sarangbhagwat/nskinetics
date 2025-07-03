@@ -680,7 +680,7 @@ class ReactionSystem():
             solve(t_span=t_span, y0=y0)
             for sol in self._solution['sol']:
                 if not sol.success:
-                    return np.full((len(y_maxes), len(tdata)), np.nan)
+                    return np.full((len(y_maxes), len(tdata)), 0.)
             if plot_during_fit: plot_solution()
             _update_C_at_t()
             if not all_species_tracked:
