@@ -8,4 +8,5 @@ API Reference
    core
    steady
    predefined_reactionsystems
+   doe
    
