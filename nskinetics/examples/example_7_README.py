@@ -72,8 +72,9 @@ rxn_sys.fit_reaction_kinetic_parameters_to_data(data=[f'solution{i}.xlsx'
                                                           'S', 
                                                           'P'
                                                           ],
-                                                options={'disp':True}
+                                                options={'disp':True},
                                                 # plot_during_fit=True,
+                                                show_progress=True,
                                                 )
 filterwarnings("default")
 

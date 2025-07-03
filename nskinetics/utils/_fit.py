@@ -18,6 +18,7 @@ def fit_multiple_dependent_variables(f,
                                      fit_method='mean R^2',
                                      r2_score_multioutput='uniform_average',
                                      n_minimize_runs=10,
+                                     show_progress=False,
                                      **kwargs):
     """
     Fit a model function to multiple dependent variables using a shared set of parameters.
@@ -78,10 +79,11 @@ def fit_multiple_dependent_variables(f,
             result = minimize(fun=load_get_mean_r2_score,
                      x0=p0,
                      **kwargs)
-            print(f'Optimization run {i}:\n')
-            print('res.x = ', result.x)
-            print('R^2 = ', 1. - result.fun)
-            print('Success = ', result.success)
+            if show_progress:
+                print(f'\nOptimization run {i+1}:\n')
+                print('res.x = ', result.x)
+                print('R^2 = ', 1. - result.fun)
+                print('Success = ', result.success)
             if best_result is None or result.fun < best_result.fun:
                 best_result = result
                 
