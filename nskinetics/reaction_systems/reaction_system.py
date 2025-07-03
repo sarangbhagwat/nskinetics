@@ -200,6 +200,10 @@ class ReactionSystem():
                 .         .          .                            .                              ...
                 .         .          .                            .                              ...
         
+        See Also
+        --------
+        `scipy.integrate.solve_ivp <https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.solve_ivp.html>`_
+        
         """
         self._spikes = spikes
         self._spikes_list = sl = self._get_spikes_list_from_dict(spikes)

@@ -54,17 +54,17 @@ def fit_multiple_dependent_variables(f,
     success : bool
         Whether the optimization was successful.
         
-    Raises
-    ------
-    ValueError
-        If an unsupported `fit_method` is provided.
-        
     Notes
     -----
     - The function uses `scipy.optimize.minimize` for optimization.
     - R² scores are computed between the predicted and observed dependent variable arrays.
     - The loss minimized is the negative mean R² score.
     
+    See Also
+        --------
+        `scipy.optimize.minimize <https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.minimize.html>`_
+        `scipy.optimize.differential_evolution <https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.differential_evolution.html>`_
+        
     """
     
     implemented_fit_methods = ('mean r^2',)
