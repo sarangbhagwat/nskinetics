@@ -12,10 +12,15 @@ __version__ = '0.1.4'
 
 from . import species
 from .species import *
+
 from . import reactions
 from .reactions import *
+
 from . import reaction_systems 
 from .reaction_systems import *
+
+from . import doe
+# from .doe import *
 
 from . import utils
 
@@ -24,4 +29,5 @@ __all__ = (
      *reactions.__all__,
      *reaction_systems.__all__,
      'utils',
+     'doe',
      )
