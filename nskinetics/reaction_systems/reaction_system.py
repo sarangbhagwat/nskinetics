@@ -517,6 +517,7 @@ class ReactionSystem():
                                                 use_only=None,
                                                 method='Powell',
                                                 plot_during_fit=False,
+                                                n_minimize_runs=10,
                                                 **kwargs):
         """
         Fit reaction kinetic parameters to experimental time-series data.
@@ -677,6 +678,7 @@ class ReactionSystem():
                                                    bounds=[(0., None) for i in p0],
                                                    fit_method='mean r^2',
                                                    method=method,
+                                                   n_minimize_runs=n_minimize_runs,
                                                    **kwargs
                                                    # options={'maxiter':5},
                                                    )

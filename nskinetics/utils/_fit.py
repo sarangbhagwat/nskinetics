@@ -17,6 +17,7 @@ def fit_multiple_dependent_variables(f,
                                      p0=None,
                                      fit_method='mean R^2',
                                      r2_score_multioutput='uniform_average',
+                                     n_minimize_runs=10,
                                      **kwargs):
     """
     Fit a model function to multiple dependent variables using a shared set of parameters.
@@ -72,11 +73,19 @@ def fit_multiple_dependent_variables(f,
             return 1 - r2_score(ypred, ydata_transpose,
                               multioutput=r2_score_multioutput)
         
-        res = minimize(fun=load_get_mean_r2_score,
-                 x0=p0,
-                 **kwargs)
-        
-        return res.x, 1-load_get_mean_r2_score(res.x), res.success
+        best_result = None
+        for i in range(n_minimize_runs):
+            result = minimize(fun=load_get_mean_r2_score,
+                     x0=p0,
+                     **kwargs)
+            print(f'Optimization run {i}:\n')
+            print('res.x = ', result.x)
+            print('R^2 = ', 1. - result.fun)
+            print('Success = ', result.success)
+            if best_result is None or result.fun < best_result.fun:
+                best_result = result
+                
+        return best_result.x, 1. - best_result.fun, best_result.success
     
     else:
         raise ValueError(f'Method {fit_method} not implemented; must be one of {implemented_fit_methods}\n')
