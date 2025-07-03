@@ -62,6 +62,7 @@ class ReactionSystem():
         self._C_at_t_fs_indiv_sps = None
         
         self._exclude_frozen_params = True
+        self._interp1d_fill_value = "extrapolate"
         
     @property
     def reactions(self):
@@ -424,8 +425,10 @@ class ReactionSystem():
         index_f = species_system.index
         _solution = self._solution
         _t, _y = _solution['t'], _solution['y']
-        self._C_at_t_f_all = interp1d(_t, _y)
-        self._C_at_t_fs_indiv_sps = [interp1d(_t, _y[index_f(sp), :]) 
+        interp1d_fill_value = self._interp1d_fill_value
+        
+        self._C_at_t_f_all = interp1d(_t, _y, fill_value=interp1d_fill_value)
+        self._C_at_t_fs_indiv_sps = [interp1d(_t, _y[index_f(sp), :], fill_value=interp1d_fill_value) 
                                      for sp in all_sps]
         self._C_at_t_is_updated = True
         
