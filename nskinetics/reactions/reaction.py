@@ -19,6 +19,26 @@ __all__ = ('Reaction', 'Rxn', 'IrreversibleReaction', 'IrrevRxn',
 #%% Abstract chemical equation class
 
 class ChemicalEquation():
+    """
+    Represents a chemical equation with defined stoichiometry.
+    
+    This class stores and formats the stoichiometry of a reaction,
+    and is used to represent the equation symbolically and in string form.
+    It can optionally be paired with an external object that also holds stoichiometric information.
+    
+    Parameters
+    ----------
+    ID : str
+        Unique identifier for the chemical equation.
+    species_system : SpeciesSystem
+        System containing all chemical species.
+    stoichiometry : array-like, optional
+        Stoichiometric coefficients of all species (negative for reactants, positive for products).
+    paired_obj : object, optional
+        An object containing its own 'stoichiometry' attribute that this equation can reference 
+        instead of passing 'stoichiometry' as an initialization argument.
+    
+    """
     def __init__(self, ID, 
                  species_system, 
                  stoichiometry=None, 
@@ -48,6 +68,15 @@ class ChemicalEquation():
     
     @property
     def stoichiometry(self):
+        """
+        The stoichiometric coefficients for this chemical equation.
+        
+        Returns
+        -------
+        np.ndarray
+            Array of stoichiometric values (negative for reactants, positive for products).
+        
+        """
         return self._stoichiometry
     @stoichiometry.setter
     def stoichiometry(self, new_stoichiometry):
@@ -58,6 +87,34 @@ class ChemicalEquation():
                      RuntimeWarning)
     
     def from_string(ID, equation_str, species_system, paired_obj=None):
+        """
+        Create a ChemicalEquation object from a string representation of a reaction.
+        
+        Parameters
+        ----------
+        ID : str
+            Identifier for the chemical equation.
+        equation_str : str
+            String representing the chemical equation, e.g., 
+            "A + B -> C",
+            "A + B <-> C",
+            "A + B -> C, kf=20",
+            "A + B <-> C, kf=20, kb=40.5".
+        species_system : SpeciesSystem
+            System containing all species involved in the reaction.
+        paired_obj : object, optional
+            Object that may contain a stoichiometry attribute.
+
+        Returns
+        -------
+        ChemicalEquation
+            Instantiated ChemicalEquation object.
+        float
+            Forward rate constant (kf) parsed from the string, if present.
+        float
+            Backward rate constant (kb) parsed from the string, if present.
+        """
+        
         stoichiometry, kf, kb = read_equation_str(equation_str, 
                                                    species_system)
         return ChemicalEquation(ID=ID, 
@@ -68,32 +125,33 @@ class ChemicalEquation():
         
 #%% Abstract reaction class
 class AbstractReaction():
-    """ 
-    Abstract class to define stoichiometries for a chemical reaction.
-    In addition to required arguments, initialization must include 
-    exactly ONE of the following sets of optional arguments:
-        (a) reactants and products; OR
-        (b) chem_equation; OR
-        (c) stoichiometry
+    """
+    Abstract base class to define the stoichiometry of a chemical reaction.
     
+    This class does not define any kinetic behavior (i.e., no rate constants),
+    but sets up the stoichiometry from either a ChemicalEquation, lists/dicts of
+    reactants and products, or a raw stoichiometry array.
+    
+    One and only one of the following must be provided:
+        - reactants and products (as dict or list)
+        - chem_equation
+        - stoichiometry
+        
     Parameters
     ----------
-    ID : str, optional
-        ID.
-    reactants : dict, optional
-        Key: reactant name as string; Value: stoichiometry as float or integer.
-    products : dict, optional
-        Key: product name as string; Value: stoichiometry as float or integer.
-    chem_equation: Object, optional
-        Must have a parameter 'stoichiometry' containing an array (of length 
-        equal to species_system.concentrations) of stoichiometry float values.
-    stoichiometry: array, optional
-        Array (of length equal to species_system.concentrations) of 
-        stoichiometry float values.
-    species_system: SpeciesSystem object
-        System of chemical species including at least those involved in this
-        reaction.
-    
+    ID : str
+        Identifier for the reaction.
+    species_system : SpeciesSystem
+        System containing the chemical species.
+    reactants : list or dict, optional
+        Reactant species. If dict, keys are species IDs and values are stoichiometric coefficients.
+    products : list or dict, optional
+        Product species. Same format as `reactants`.
+    chem_equation : ChemicalEquation, optional
+        Equation object defining reaction stoichiometry.
+    stoichiometry : array-like, optional
+        Array of stoichiometric coefficients.
+        
     """
     def __init__(self, ID, 
                  species_system,
@@ -148,6 +206,37 @@ class AbstractReaction():
 @njit(cache=True)
 def dconcs_dt_old(kf, kb, species_concs_vector, rxn_stoichs, rl_exps,
               reactant_indices, product_indices):
+    """
+    (Old, unused.)
+    
+    Computation of species concentration changes using 
+    forward and backward reaction rate constants and rate law exponents,
+    with logic to identify limiting reactants and avoid negative concentrations.
+    
+    Uses numpy functions rather than loops and built-in Python operators.
+
+    Parameters
+    ----------
+    kf : float
+        Forward rate constant.
+    kb : float
+        Backward rate constant.
+    species_concs_vector : ndarray
+        Current species concentrations.
+    rxn_stoichs : ndarray
+        Stoichiometric coefficients.
+    rl_exps : ndarray
+        Rate law exponents.
+    reactant_indices : ndarray
+        Indices of reactant species.
+    product_indices : ndarray
+        Indices of product species.
+
+    Returns
+    -------
+    ndarray
+        Time derivatives of species concentrations.
+    """
     # -----------------------------------------
     # for a one-way reaction,
     # returns array of temporal rates of change 
@@ -179,6 +268,33 @@ def dconcs_dt_old(kf, kb, species_concs_vector, rxn_stoichs, rl_exps,
 @njit(cache=True)
 def dconcs_dt(kf, kb, species_concs_vector, rxn_stoichs, rl_exps,
               reactant_indices, product_indices):
+    """
+    Computation of species concentration changes using 
+    forward and backward reaction rate constants and rate law exponents,
+    with logic to identify limiting reactants and avoid negative concentrations.
+    
+    Parameters
+    ----------
+    kf : float
+        Forward rate constant.
+    kb : float
+        Backward rate constant.
+    species_concs_vector : ndarray
+        Current species concentrations.
+    rxn_stoichs : ndarray
+        Stoichiometric coefficients.
+    rl_exps : ndarray
+        Rate law exponents.
+    reactant_indices : ndarray
+        Indices of reactants in species_concs_vector.
+    product_indices : ndarray
+        Indices of products in species_concs_vector.
+
+    Returns
+    -------
+    ndarray
+        Rate of change of concentrations of each species.
+    """
     # Compute forward rate
     forward = 1.0
     for i in reactant_indices:
@@ -224,43 +340,45 @@ def dconcs_dt(kf, kb, species_concs_vector, rxn_stoichs, rl_exps,
 
 
 class Reaction(AbstractReaction):
-    """ 
-    Class for a chemical reaction with defined kinetics.
-    Can describe a one-way/irreversible reaction 
-    (using kf; kb set to zero by default) OR a 
-    reversible reaction (using kf and kb).
+    """
+    A complete chemical reaction object that includes kinetic parameters and rate law information.
+
+    This class extends `AbstractReaction` by adding support for reaction rate constants,
+    rate law exponents, reversible/irreversible behavior, and dynamic concentration updates.
+    Includes logic to compute the rate of change in concentrations.
     
-    In addition to the above, initialization must include 
-    exactly ONE of the following sets of optional arguments:
-        (a) reactants and products; OR
-        (b) chem_equation; OR
-        (c) stoichiometry
+    One and only one of the following must be provided to define stoichiometry:
+        - reactants and products (as dict or list)
+        - chem_equation
+        - stoichiometry
         
     Parameters
     ----------
-    ID : str, optional
-        ID.
-    reactants : dict, optional
-        Key: reactant name as string; Value: stoichiometry as float or integer.
-    products : dict, optional
-        Key: product name as string; Value: stoichiometry as float or integer.
-    chem_equation: Object, optional
-        Must have a parameter 'stoichiometry' containing an array (of length 
-        equal to species_system.concentrations) of stoichiometry float values.
-    stoichiometry: array, optional
-        Array (of length equal to species_system.concentrations) of 
-        stoichiometry float values.
-    exponents: array, optional
-        Array (of length equal to species_system.concentrations) of 
-        rate law exponent float values.
+    ID : str
+        Identifier for the reaction.
+    species_system : SpeciesSystem
+        System containing the chemical species.
     kf : float
-        forward reaction rate constant.
+        Forward reaction rate constant.
     kb : float, optional
-        backward reaction rate constant.
-    species_system: SpeciesSystem object
-        System of chemical species including at least those involved in this
-        reaction.
-        
+        Backward reaction rate constant (defaults to 0 for irreversible reactions).
+    reactants : list or dict, optional
+        Reactant species. If dict, keys are species IDs and values are stoichiometric coefficients.
+    products : list or dict, optional
+        Product species. Same format as `reactants`.
+    chem_equation : ChemicalEquation, optional
+        Equation object defining reaction stoichiometry.
+    stoichiometry : array-like, optional
+        Stoichiometric coefficients for all species.
+    exponents : array-like, optional
+        Rate law exponents for each species (same length as stoichiometry).
+    get_exponents_from_stoich : bool, optional
+        If True, use the absolute value of stoichiometry as the rate law exponents.
+    freeze_kf : bool, optional
+        If True, prevents modification of the forward rate constant, kf.
+    freeze_kb : bool, optional
+        If True, prevents modification of the backward rate constant, kb.
+            
     """
     def __init__(self, ID, 
                  species_system,
@@ -308,9 +426,29 @@ class Reaction(AbstractReaction):
     
     @property
     def kf(self):
+        """
+        The forward reaction rate constant, kf.
+    
+        Returns
+        -------
+        float
+            Forward reaction rate constant, kf.
+            
+        """
         return self._kf
     @kf.setter
     def kf(self, new_kf):
+        """
+        Set the forward reaction rate constant, kf.
+        
+        If `freeze_kf` is True, the value is not updated and a warning is issued.
+        
+        Parameters
+        ----------
+        new_kf : float
+            New value for the forward reaction rate constant, kf.
+            
+        """
         if not self._freeze_kf:
             self._kf = new_kf
         else:
@@ -319,9 +457,29 @@ class Reaction(AbstractReaction):
     
     @property
     def kb(self):
+        """
+        The backward reaction rate constant, kf.
+    
+        Returns
+        -------
+        float
+            Forward reaction rate constant, kb.
+            
+        """
         return self._kb
     @kb.setter
     def kb(self, new_kb):
+        """
+        Set the backward reaction rate constant, kb.
+        
+        If `freeze_kb` is True, the value is not updated and a warning is issued.
+        
+        Parameters
+        ----------
+        new_kb : float
+            New value for the backward reaction rate constant, kb.
+            
+        """
         if not self._freeze_kb:
             self._kb = new_kb
         else:
@@ -329,6 +487,16 @@ class Reaction(AbstractReaction):
                  RuntimeWarning)
             
     def get_dconcs_dt(self):
+        """
+        Calculate the net rate of change in species concentrations for this reaction,
+        using the current kinetic parameters and species concentrations.
+        
+        Returns
+        -------
+        ndarray or float
+            Change in concentrations (array) or 0. if kf and kb are both zero.
+        
+        """
         kf, kb = self.kf, self.kb
         if kf==kb==0:
             return 0.
@@ -341,6 +509,11 @@ class Reaction(AbstractReaction):
                          product_indices=self.product_indices)
     
     def _load_full_string(self):
+        """
+        Internal method to format and cache string representations of 
+        the reaction's left-hand side, right-hand side, and kinetic parameters.
+        
+        """
         lhs = ''
         rhs = ''
         arrow = '->' if self.kb==0. else '<->'
@@ -373,6 +546,42 @@ class Reaction(AbstractReaction):
                       kf=None, # overrides any parameter info in the chem_equation string
                       kb=None, # overrides any parameter info in the chem_equation string
                       exponents=None, get_exponents_from_stoich=None):
+        """
+        Create a Reaction object from a ChemicalEquation object or string.
+        
+        Parameters
+        ----------
+        ID : str
+            Identifier for the Reaction.
+        chem_equation : str or ChemicalEquation
+            Reaction as a string or ChemicalEquation object.
+            String represents the chemical equation and may or may not
+            include kf and kb (if not included, must pass at least kf 
+                               -- kb defaults to zero -- or
+                               both kf and kb as arguments). 
+            E.g., 
+            "A + B -> C",
+            "A + B <-> C",
+            "A + B -> C, kf=20",
+            "A + B <-> C, kf=20, kb=40.5".
+        species_system : SpeciesSystem
+            System containing the involved species.
+        kf : float, optional
+            Forward rate constant (overrides any value parsed from str chem_equation).
+        kb : float, optional
+            Backward rate constant (overrides any value parsed from str chem_equation).
+        exponents : ndarray, optional
+            Rate law exponents.
+        get_exponents_from_stoich : bool, optional
+            Whether to use absolute stoichiometry as rate law exponents.
+            
+        Returns
+        -------
+        Reaction
+            Instantiated Reaction object.
+            
+        """
+        
         kf_, kb_ = None, None
         freeze_kb = False
         if isinstance(chem_equation, str):
