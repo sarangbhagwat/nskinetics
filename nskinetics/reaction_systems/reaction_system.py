@@ -533,7 +533,7 @@ class ReactionSystem():
                                                 p0=None,
                                                 all_species_tracked=False,
                                                 use_only=None,
-                                                normalize=False,
+                                                normalize=True,
                                                 method='Powell',
                                                 n_minimize_runs=2,
                                                 show_output=True,
