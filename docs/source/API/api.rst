@@ -8,5 +8,6 @@ API Reference
    core
    steady
    predefined_reactionsystems
+   inverse_modeling
    doe
    

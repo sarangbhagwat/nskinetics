@@ -8,5 +8,5 @@ Pre-defined steady state reaction system functions (not indended to be used in n
    :recursive:
 	
    nskinetics.michaelis_menten
-   nskinetics.fit_michaelis_menten
+
    
