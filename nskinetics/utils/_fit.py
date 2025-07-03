@@ -56,9 +56,9 @@ def fit_multiple_dependent_variables(f,
         
     Notes
     -----
-    - The function uses `scipy.optimize.minimize` for optimization.
+    - The function uses `scipy.optimize.minimize` and `scipy.optimize.differential_evolution` for optimization.
     - R² scores are computed between the predicted and observed dependent variable arrays.
-    - The loss minimized is the negative mean R² score.
+    - The loss minimized is <one minus the mean R² score>.
     
     See Also
         --------
