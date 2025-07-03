@@ -93,17 +93,18 @@ def fit_multiple_dependent_variables(f,
                 differential_evolution_kwargs_to_use = differential_evolution_kwargs.copy()
                 differential_evolution_kwargs_to_use['bounds'] = bounds_de_to_use
                 if show_progress:
-                    print(f'\n\nDifferential evolution run {i+1}.{j+1}:')
-                    print('\nRunning differential evolution (DE) to get the initial guess (x0) for this minimization run ...\n')
-                    print(differential_evolution_kwargs_to_use)
+                    print(f'\n\tDifferential evolution run {i+1}.{j+1}:')
+                    print('\t------------------------------')
+                    print('\n\t\tRunning differential evolution (DE) to get the initial guess (x0) for this minimization run ...\n')
+                    print('\t\t', differential_evolution_kwargs_to_use)
                 result_de = differential_evolution(load_get_obj_f,
                                                    **differential_evolution_kwargs_to_use)
                 
                 if show_progress:
-                    print('\nDE run complete.')
-                    print('res.x =', result_de.x)
-                    print('R^2 =', 1. - result_de.fun)
-                    print('Success =', result_de.success)
+                    print('\n\t\tDE run complete.')
+                    print('\t\tres.x =', result_de.x)
+                    print('\t\tR^2 =', 1. - result_de.fun)
+                    print('\t\tSuccess =', result_de.success)
                 
                 if best_de_result is None or result_de.fun < best_de_result.fun:
                     best_de_result = result_de
@@ -111,19 +112,19 @@ def fit_multiple_dependent_variables(f,
         p0 = p0 if best_de_result is None else best_de_result.x
         best_result = best_de_result
         if show_progress:
-            print('\nRunning minimization to get the final set of parameters ...')
-            print(f'x0 = {p0}')
+            print('\n\tRunning minimization to get the final set of parameters ...')
+            print(f'\tx0 = {p0}')
             if best_de_result is not None:
-                print(f'Initial R^2 = {1. - best_de_result.fun}')
-            print(differential_evolution_kwargs)
+                print(f'\tInitial R^2 = {1. - best_de_result.fun}')
+            print('\t\t', differential_evolution_kwargs)
         result = minimize(fun=load_get_obj_f,
                  x0=p0,
                  **minimize_kwargs)
         if show_progress:
-            print('\nMinimization run complete.')
-            print('res.x =', result.x)
-            print('R^2 =', 1. - result.fun)
-            print('Success =', result.success)
+            print('\n\tMinimization run complete.')
+            print('\tres.x =', result.x)
+            print('\tR^2 =', 1. - result.fun)
+            print('\tSuccess =', result.success)
         if best_result is None or result.fun < best_result.fun:
             best_result = result
     

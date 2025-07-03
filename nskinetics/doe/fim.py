@@ -116,7 +116,7 @@ def d_optimality(FIM):
 
 def design_experiments(rxn_sys, param_keys, candidate_initials, t_eval,
                        spike_options=None, output_idx=None, top_n=5,
-                       epsilon=1e-4):
+                       epsilon=1e-4, show_fail_warnings=False, show_output=False):
     """
     Perform design of experiments by exhaustively evaluating combinations of initial concentrations
     and optional spike conditions, returning those that maximize parameter identifiability.
@@ -189,8 +189,21 @@ def design_experiments(rxn_sys, param_keys, candidate_initials, t_eval,
                     'score': score
                 })
             except Exception as e:
-                print(f"[Warning] Failed for y0={y0}, spikes={spikes}: {e}")
+                if show_fail_warnings:
+                    print(f"[Warning] Failed for y0={y0}, spikes={spikes}: {e}")
                 
     # Sort by D-optimality and return top_n
     top_designs = sorted(designs, key=lambda d: d['score'], reverse=True)[:top_n]
+    
+    if show_output:
+        print('\n')
+        print(f"-------- Recommended design of experiments for {rxn_sys.ID} --------")
+        print('\n')
+        for i, expt in enumerate(top_designs):
+            print(f"\t--- Experiment {i+1} ---")
+            print("\t\tInitial concentrations:", expt['y0'])
+            print("\t\tSpikes:", expt['spikes'])
+            print("\t\tD-optimality:", expt['score'])
+            print('\n')
+    
     return top_designs

@@ -84,15 +84,19 @@ rxn_sys.fit_reaction_kinetic_parameters_to_data(data=[f'solution{i}.xlsx'
                                                           'S', 
                                                           # 'P'
                                                           ],
+                                                call_before_each_solve=[set_koff],
                                                 options={'disp':True},
                                                 # plot_during_fit=True,
                                                 show_progress=True,
                                                 n_minimize_runs=2,
-                                                call_before_each_solve=[set_koff],
+                                                n_de_runs=2,
                                                 differential_evolution_kwargs={'maxiter':100,
                                                                                'bounds': [(0,1e4)],
                                                                                'polish': False,
-                                                                               'disp': True,
+                                                                               'disp': False,
+                                                                               'workers': 1,
+                                                                               'popsize': 10,
+                                                                               'tol': 1e-3,
                                                                                }
                                                 )
 filterwarnings("default")
@@ -127,11 +131,6 @@ best_expts = nsk.doe.fim.design_experiments(
     spike_options=spike_options,
     output_idx=output_idx,
     epsilon=1e-4,
-    top_n=3
-)
-
-for i, expt in enumerate(best_expts):
-    print(f"--- Experiment {i+1} ---")
-    print("Initial concentrations:", expt['y0'])
-    print("Spikes:", expt['spikes'])
-    print("D-optimality:", expt['score'])
+    top_n=3,
+    show_output=True,
+    )
