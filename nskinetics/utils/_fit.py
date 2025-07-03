@@ -69,14 +69,14 @@ def fit_multiple_dependent_variables(f,
         
         def load_get_mean_r2_score(p):
             ypred = f(xdata, p).transpose()
-            return - r2_score(ypred, ydata_transpose,
+            return 1 - r2_score(ypred, ydata_transpose,
                               multioutput=r2_score_multioutput)
         
         res = minimize(fun=load_get_mean_r2_score,
                  x0=p0,
                  **kwargs)
         
-        return res.x, -load_get_mean_r2_score(res.x), res.success
+        return res.x, 1-load_get_mean_r2_score(res.x), res.success
     
     else:
         raise ValueError(f'Method {fit_method} not implemented; must be one of {implemented_fit_methods}\n')

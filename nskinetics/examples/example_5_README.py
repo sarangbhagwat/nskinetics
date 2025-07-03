@@ -97,15 +97,16 @@ rxn_sys.plot_solution(sps_to_include=['ES'])
 filterwarnings("ignore")
 rxn_sys.fit_reaction_kinetic_parameters_to_data(data=(
                                                       'solution1.xlsx',
-                                                      # 'solution2.xlsx',
-                                                      # 'solution3.xlsx',
+                                                      'solution2.xlsx',
+                                                      'solution3.xlsx',
                                                       ),
-                                                p0=np.ones(len(rxn_sys.reaction_kinetic_params)),
+                                                p0=10*np.ones(len(rxn_sys.reaction_kinetic_params)),
                                                 use_only=[
                                                           # 'E', 
                                                           'S', 
                                                           'P'
                                                           ],
+                                                options={'disp':True}
                                                 # plot_during_fit=True,
                                                 )
 filterwarnings("default")
