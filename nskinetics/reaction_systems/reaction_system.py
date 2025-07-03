@@ -25,20 +25,75 @@ np_array = np.array
 
 class ReactionSystem():
     """
-    Abstract class for a system of reactions.
+    Represents a system of one or more chemical reactions involving 
+    dynamic changes in species concentrations over time.
+
+    This class allows the construction, simulation, and analysis of 
+    reaction systems governed by mass action kinetics or other 
+    user-defined rate laws. It supports features such as species spikes, 
+    event-triggered integration, parameter fitting, and nesting of 
+    reaction systems.
     
     Parameters
     ----------
     ID : str
-        ID.
-    reactions : list
-        List of Reaction, ReactionSystem, or str objects.
-        If str, must include chemical equation and kinetic 
-        parameter info.
+        Unique identifier for the reaction system.
+        
+    reactions : list of str, Reaction, or ReactionSystem
+        A list defining the reactions in the system. Each item can be:
+        - A `Reaction` object
+        - Another `ReactionSystem` object (for hierarchical systems)
+        - A string describing a chemical equation with kinetic information
+        
     species_system : SpeciesSystem
-        A SpeciesSystem object containing all species
-        involved in this system of reactions.
-    
+        The species system containing all species involved in the reaction system.
+        
+    Attributes
+    ----------
+    reactions : list
+        List of Reaction or ReactionSystem instances that define the dynamics.
+        
+    species_system : SpeciesSystem
+        The species system containing all species in the reaction network.
+        
+    reaction_kinetic_params : np.ndarray
+        Flat array of all kinetic parameters (kf and kb) for the reactions,
+        excluding frozen parameters unless configured otherwise.
+        
+    reaction_kinetic_param_keys : list of str
+        Parameter keys in the format 'reaction_ID.kf' or 'reaction_ID.kb',
+        excluding frozen parameters unless configured otherwise.
+        
+    reactions_flattened : list of Reaction
+        All Reaction objects in the system, including nested ones, flattened.
+        
+    Methods
+    -------
+    solve(...) :
+        Simulate the time evolution of the system over a time span.
+        
+    plot_solution(...) :
+        Plot species concentration profiles over time.
+        
+    fit_reaction_kinetic_parameters_to_data(...) :
+        Fit kinetic parameters to experimental or simulated time-series data.
+        
+    C_at_t(t, species=None) :
+        Interpolate and return species concentrations at a specific time.
+        
+    set_reaction_kinetic_params(param_vector) :
+        Set all kinetic parameters from a flat parameter vector,
+        excluding frozen parameters unless configured otherwise.
+        
+    add_reaction(reaction) :
+        Add a new reaction to the system.
+        
+    change_reaction(index, ...) :
+        Modify an existing reaction by index.
+        
+    __str__(), __repr__() :
+        Return human-readable and formal string representations of the object.
+        
     """
     def __init__(self, ID, reactions, species_system):
         self.ID = ID
