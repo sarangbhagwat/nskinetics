@@ -581,7 +581,6 @@ class Reaction(AbstractReaction):
             Instantiated Reaction object.
             
         """
-        
         kf_, kb_ = None, None
         freeze_kb = False
         if isinstance(chem_equation, str):

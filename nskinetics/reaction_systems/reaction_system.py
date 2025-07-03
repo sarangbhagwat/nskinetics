@@ -48,52 +48,6 @@ class ReactionSystem():
     species_system : SpeciesSystem
         The species system containing all species involved in the reaction system.
         
-    Attributes
-    ----------
-    reactions : list
-        List of Reaction or ReactionSystem instances that define the dynamics.
-        
-    species_system : SpeciesSystem
-        The species system containing all species in the reaction network.
-        
-    reaction_kinetic_params : np.ndarray
-        Flat array of all kinetic parameters (kf and kb) for the reactions,
-        excluding frozen parameters unless configured otherwise.
-        
-    reaction_kinetic_param_keys : list of str
-        Parameter keys in the format 'reaction_ID.kf' or 'reaction_ID.kb',
-        excluding frozen parameters unless configured otherwise.
-        
-    reactions_flattened : list of Reaction
-        All Reaction objects in the system, including nested ones, flattened.
-        
-    Methods
-    -------
-    solve(...) :
-        Simulate the time evolution of the system over a time span.
-        
-    plot_solution(...) :
-        Plot species concentration profiles over time.
-        
-    fit_reaction_kinetic_parameters_to_data(...) :
-        Fit kinetic parameters to experimental or simulated time-series data.
-        
-    C_at_t(t, species=None) :
-        Interpolate and return species concentrations at a specific time.
-        
-    set_reaction_kinetic_params(param_vector) :
-        Set all kinetic parameters from a flat parameter vector,
-        excluding frozen parameters unless configured otherwise.
-        
-    add_reaction(reaction) :
-        Add a new reaction to the system.
-        
-    change_reaction(index, ...) :
-        Modify an existing reaction by index.
-        
-    __str__(), __repr__() :
-        Return human-readable and formal string representations of the object.
-        
     """
     def __init__(self, ID, reactions, species_system):
         self.ID = ID
@@ -539,8 +493,9 @@ class ReactionSystem():
         ----------
         t : float or list of floats
             Time or times at which to evaluate concentrations.
-        species : Species or None
-            Species object to evaluate. If None, returns all concentrations.
+        species : Species, str or None
+            Species object or ID of species to evaluate. 
+            If None, returns all concentrations.
 
         Returns
         -------
