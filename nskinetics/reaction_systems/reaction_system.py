@@ -61,6 +61,8 @@ class ReactionSystem():
         self._C_at_t_f_all = None
         self._C_at_t_fs_indiv_sps = None
         
+        self._exclude_frozen_params = True
+        
     @property
     def reactions(self):
         return self._reactions
@@ -443,8 +445,17 @@ class ReactionSystem():
     def _get_reaction_kinetic_params(self):
         rf = self.reactions_flattened
         param_vector = []
-        for r in rf:
-            param_vector.extend([r.kf, r.kb])
+        
+        if self._exclude_frozen_params:
+            for r in rf:
+                if not r._freeze_kf:
+                    param_vector.append(r.kf)
+                if not r._freeze_kb:
+                    param_vector.append(r.kb)
+        else:
+            for r in rf:
+                param_vector.extend([r.kf, r.kb])
+            
         return np_array(param_vector)
     
     @property
@@ -453,14 +464,22 @@ class ReactionSystem():
     
     def set_reaction_kinetic_params(self, param_vector):
         rf = self.reactions_flattened
-        expected_length = 2 * len(rf)
-        if len(param_vector) != expected_length:
-            raise ValueError(f"Expected vector of length {expected_length}, got {len(param_vector)}.\n")
-
-        for i, r in enumerate(rf):
-            r.kf = param_vector[2*i]
-            r.kb = param_vector[2*i + 1]
-
+        # expected_length = 2 * len(rf)
+        # if len(param_vector) != expected_length:
+        #     raise ValueError(f"Expected vector of length {expected_length}, got {len(param_vector)}.\n")
+        # for i, r in enumerate(rf):
+        #     r.kf = param_vector[2*i]
+        #     r.kb = param_vector[2*i + 1]
+        
+        curr_param_ind = 0
+        for r in rf:
+            if not r._freeze_kf:
+                r.kf = param_vector[curr_param_ind]
+                curr_param_ind += 1
+            if not r._freeze_kb:
+                r.kb = param_vector[curr_param_ind]
+                curr_param_ind += 1
+                
     def _extract_t_spIDs_y(self,
                            data: Union[str, dict, pd.DataFrame]) -> Tuple[pd.Series, pd.DataFrame, List[str]]:
         """
@@ -515,7 +534,7 @@ class ReactionSystem():
                                                 all_species_tracked=False,
                                                 use_only=None,
                                                 method='Powell',
-                                                n_minimize_runs=10,
+                                                n_minimize_runs=2,
                                                 show_output=True,
                                                 show_progress=False,
                                                 plot_during_fit=False,
@@ -675,12 +694,13 @@ class ReactionSystem():
         fitsol = fit_multiple_dependent_variables(f=f,
                                                    xdata=structured_xdata,
                                                    ydata=y_dataset_normalized,
-                                                   p0=p0,
+                                                   p0=p0, # 
                                                    bounds=[(0., None) for i in p0],
                                                    fit_method='mean r^2',
                                                    method=method,
                                                    n_minimize_runs=n_minimize_runs,
                                                    show_progress=show_progress,
+                                                   random_param_bound=1000.,
                                                    **kwargs
                                                    # options={'maxiter':5},
                                                    )

@@ -14,10 +14,11 @@ __all__ = ('fit_multiple_dependent_variables',)
 
 def fit_multiple_dependent_variables(f, 
                                      xdata, ydata,
-                                     p0=None,
+                                     p0,
                                      fit_method='mean R^2',
                                      r2_score_multioutput='uniform_average',
-                                     n_minimize_runs=10,
+                                     n_minimize_runs=2,
+                                     random_param_bound=1000.,
                                      show_progress=False,
                                      **kwargs):
     """
@@ -36,6 +37,7 @@ def fit_multiple_dependent_variables(f,
         to a dependent variable.
     p0 : array-like, optional
         Initial guess for the parameters to be optimized.
+        Only used in the first minimization run (thereafter random).
     fit_method : str, optional
         Method used for fitting. Currently, only 'mean R^2' is implemented (case-insensitive), which
         minimizes the negative mean R² score across all dependent variables.
@@ -76,17 +78,21 @@ def fit_multiple_dependent_variables(f,
         
         best_result = None
         for i in range(n_minimize_runs):
+            if i>0:
+                p0 = np.random.rand(1)*random_param_bound*np.random.rand(*p0.shape)
             result = minimize(fun=load_get_mean_r2_score,
                      x0=p0,
                      **kwargs)
             if show_progress:
                 print(f'\nOptimization run {i+1}:\n')
-                print('res.x = ', result.x)
-                print('R^2 = ', 1. - result.fun)
-                print('Success = ', result.success)
+                print('res.x =', result.x)
+                print('R^2 =', 1. - result.fun)
+                print('Success =', result.success)
             if best_result is None or result.fun < best_result.fun:
                 best_result = result
-                
+        
+        load_get_mean_r2_score(best_result.x)
+        
         return best_result.x, 1. - best_result.fun, best_result.success
     
     else:
