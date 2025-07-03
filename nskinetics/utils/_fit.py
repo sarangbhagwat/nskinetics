@@ -18,9 +18,9 @@ def fit_multiple_dependent_variables(f,
                                      p0,
                                      r2_score_multioutput='uniform_average',
                                      n_minimize_runs=2,
+                                     n_de_runs=5,
                                      minimize_kwargs=None,
                                      differential_evolution_kwargs=None,
-                                     random_param_bound=1000.,
                                      show_progress=False,
                                      **kwargs):
     """
@@ -70,7 +70,7 @@ def fit_multiple_dependent_variables(f,
     implemented_fit_methods = ('mean r^2',)
     ydata_transpose = ydata.transpose()
     
-    def load_get_mean_r2_score(p):
+    def load_get_obj_f(p):
         ypred = f(xdata, p).transpose()
         return 1 - r2_score(ypred, ydata_transpose,
                           multioutput=r2_score_multioutput)
@@ -78,36 +78,56 @@ def fit_multiple_dependent_variables(f,
     best_result = None
     for i in range(n_minimize_runs):
         if show_progress:
-            print(f'\n\nOptimization run {i+1}:')
+            print(f'\n\nMinimization run {i+1}:')
             print('------------------\n')
+        
+        best_de_result = None
+        
         if i>0:
             # p0 = np.random.rand(1)*random_param_bound*np.random.rand(*p0.shape)
-            if show_progress:
-                print('\nRunning differential evolution (DE) to get the initial guess (p0) for this optimization run.')
-                print(differential_evolution_kwargs)
-            result_de = differential_evolution(load_get_mean_r2_score,
-                                               disp=show_progress,
-                                               **differential_evolution_kwargs)
-            p0 = result_de.x
-            
-            if show_progress:
-                print(f'\nDE complete; p0 = {p0}.\n')
+            for j in range(n_de_runs):
+                bounds_de = differential_evolution_kwargs['bounds']
+                bounds_de_to_use = []
+                for (b1, b2) in bounds_de:
+                    bounds_de_to_use.append((b1, b2/(10**j)))
+                differential_evolution_kwargs_to_use = differential_evolution_kwargs.copy()
+                differential_evolution_kwargs_to_use['bounds'] = bounds_de_to_use
+                if show_progress:
+                    print(f'\n\nDifferential evolution run {i+1}.{j+1}:')
+                    print('\nRunning differential evolution (DE) to get the initial guess (x0) for this minimization run ...\n')
+                    print(differential_evolution_kwargs_to_use)
+                result_de = differential_evolution(load_get_obj_f,
+                                                   **differential_evolution_kwargs_to_use)
+                
+                if show_progress:
+                    print('\nDE run complete.')
+                    print('res.x =', result_de.x)
+                    print('R^2 =', 1. - result_de.fun)
+                    print('Success =', result_de.success)
+                
+                if best_de_result is None or result_de.fun < best_de_result.fun:
+                    best_de_result = result_de
         
+        p0 = p0 if best_de_result is None else best_de_result.x
+        best_result = best_de_result
         if show_progress:
-            print('\nRunning minimization to get the final set of parameters.')
+            print('\nRunning minimization to get the final set of parameters ...')
+            print(f'x0 = {p0}')
+            if best_de_result is not None:
+                print(f'Initial R^2 = {1. - best_de_result.fun}')
             print(differential_evolution_kwargs)
-        result = minimize(fun=load_get_mean_r2_score,
+        result = minimize(fun=load_get_obj_f,
                  x0=p0,
                  **minimize_kwargs)
         if show_progress:
-            print('Minimization run complete.')
+            print('\nMinimization run complete.')
             print('res.x =', result.x)
             print('R^2 =', 1. - result.fun)
             print('Success =', result.success)
         if best_result is None or result.fun < best_result.fun:
             best_result = result
     
-    load_get_mean_r2_score(best_result.x)
+    load_get_obj_f(best_result.x)
     
     return best_result.x, 1. - best_result.fun, best_result.success
     

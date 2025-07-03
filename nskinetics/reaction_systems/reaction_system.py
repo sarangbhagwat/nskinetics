@@ -545,6 +545,7 @@ class ReactionSystem():
                                                 all_species_tracked=False,
                                                 use_only=None,
                                                 normalize=True,
+                                                n_de_runs=5,
                                                 n_minimize_runs=2,
                                                 minimize_kwargs=None,
                                                 differential_evolution_kwargs=None,
@@ -734,9 +735,9 @@ class ReactionSystem():
                                                    p0=p0, # 
                                                    minimize_kwargs=minimize_kwargs,
                                                    differential_evolution_kwargs=differential_evolution_kwargs,
+                                                   n_de_runs=n_de_runs,
                                                    n_minimize_runs=n_minimize_runs,
                                                    show_progress=show_progress,
-                                                   random_param_bound=1000.,
                                                    # options={'maxiter':5},
                                                    )
         

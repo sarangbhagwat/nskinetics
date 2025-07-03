@@ -90,7 +90,10 @@ rxn_sys.fit_reaction_kinetic_parameters_to_data(data=[f'solution{i}.xlsx'
                                                 n_minimize_runs=2,
                                                 call_before_each_solve=[set_koff],
                                                 differential_evolution_kwargs={'maxiter':100,
-                                                                               'bounds': [(0,1000)]}
+                                                                               'bounds': [(0,1e4)],
+                                                                               'polish': False,
+                                                                               'disp': True,
+                                                                               }
                                                 )
 filterwarnings("default")
 
