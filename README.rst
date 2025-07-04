@@ -1,7 +1,8 @@
-|logo| image:: docs/source/_static/images/logo/logo_nskinetics.png
-====================================================================================
-|logo| Non-Steady state Kinetics simulation (NSKinetics).
-====================================================================================
+.. image:: docs/source/_static/images/logo/logo_nskinetics.png
+  :width: 250
+=============================================================
+The Non-Steady state Kinetics simulation package (NSKinetics)
+=============================================================
 
 .. image:: http://img.shields.io/badge/license-MIT-blue.svg?style=flat
    :target: https://github.com/sarangbhagwat/nskinetics/blob/main/LICENSE
