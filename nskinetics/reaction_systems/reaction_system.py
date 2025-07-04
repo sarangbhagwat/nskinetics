@@ -1033,9 +1033,10 @@ class ReactionSystem():
         if show_output: 
             print('\n')
             print('Fit results')
-            print('-----------')
-            print(f'\nR^2={fitsol[1]}, success={fitsol[2]}\n')
+            print('-----------\n')
+            print(f'R^2={fitsol[1]}\n')
             print(self.__str__())
+            print('\n\n')
             
     def add_reaction(self, reaction):
         """

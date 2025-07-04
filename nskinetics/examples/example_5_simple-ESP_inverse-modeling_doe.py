@@ -10,7 +10,7 @@ import nskinetics as nsk
 import numpy as np
 from warnings import filterwarnings
 
-np.random.seed(12455)
+np.random.seed(3221)
 
 #%% Create a SpeciesSystem object with defined kinetic parameters
 sp_sys = nsk.SpeciesSystem('sp_sys', 
