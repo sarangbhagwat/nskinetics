@@ -91,7 +91,7 @@ rxn_sys.fit_reaction_kinetic_parameters_to_data(data=[f'solution{i}.xlsx'
                                                 # plot_during_fit=True,
                                                 show_progress=True,
                                                 n_minimize_runs=2,
-                                                n_de_runs=10,
+                                                n_de_runs=3,
                                                 differential_evolution_kwargs={'maxiter':100,
                                                                                'bounds': [(0,5e4)],
                                                                                'polish': False,
@@ -103,6 +103,8 @@ rxn_sys.fit_reaction_kinetic_parameters_to_data(data=[f'solution{i}.xlsx'
                                                 )
 filterwarnings("default")
 
+rxn_sys._timeout_solve_ivp = None
+
 #%% Simulate batches with inverse-modeled rxn_sys
 for i, concentrations, t_span in zip(range(len(batch_concs)), 
                                      batch_concs, 
@@ -112,7 +114,8 @@ for i, concentrations, t_span in zip(range(len(batch_concs)),
     rxn_sys.solve(t_span=t_span,
                   sp_conc_for_events={'S':1e-6},
                   # filename=f'solution{i}',
-                  save_events=False)                              
+                  save_events=False,
+                  )                              
     
     # Plot results
     rxn_sys.plot_solution()
