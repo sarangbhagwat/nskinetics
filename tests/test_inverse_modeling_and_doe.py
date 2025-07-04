@@ -10,11 +10,10 @@ import nskinetics as nsk
 import numpy as np
 from warnings import filterwarnings
 
-def test_simple_ESP_inverse_modeling_and_doe():
-    plot = False
-    show_progress = False
-    show_output = False
-    show_warnings = False
+def test_simple_ESP_inverse_modeling_and_doe(plot=False, 
+                                             show_progress=False,
+                                             show_output=False,
+                                             show_warnings=False):
     
     if not show_warnings: filterwarnings("ignore")
     

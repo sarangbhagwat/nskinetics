@@ -10,9 +10,10 @@ import nskinetics as nsk
 import numpy as np
 from warnings import filterwarnings
 
-def test_simple_ESP():
-    plot = False
-    show_warnings = False
+def test_simple_ESP(plot=False, 
+                    show_progress=False,
+                    show_output=False,
+                    show_warnings=False):
     
     if not show_warnings: filterwarnings("ignore")
     
@@ -64,9 +65,10 @@ def test_simple_ESP():
                        rtol=1e-5, atol=1e-8)
 
 
-def test_simple_ESP_inhib():
-    plot = False
-    show_warnings = False
+def test_simple_ESP_inhib(plot=False, 
+                          show_progress=False,
+                          show_output=False,
+                          show_warnings=False):
     
     if not show_warnings: filterwarnings("ignore")
     
@@ -128,9 +130,10 @@ def test_simple_ESP_inhib():
                        rtol=1e-5, atol=1e-8)
 
 
-def test_simple_ESP_fed_batch():
-    plot = False
-    show_warnings = False
+def test_simple_ESP_fed_batch(plot=False, 
+                              show_progress=False,
+                              show_output=False,
+                              show_warnings=False):
     
     if not show_warnings: filterwarnings("ignore")
     
@@ -189,9 +192,10 @@ def test_simple_ESP_fed_batch():
                        rtol=1e-5, atol=1e-8)
 
 
-def test_simple_ESP_inhib_fed_batch():
-    plot = False
-    show_warnings = False
+def test_simple_ESP_inhib_fed_batch(plot=False, 
+                                    show_progress=False,
+                                    show_output=False,
+                                    show_warnings=False):
     
     if not show_warnings: filterwarnings("ignore")
     
