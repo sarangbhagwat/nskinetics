@@ -24,10 +24,13 @@ from . import doe
 
 from . import utils
 
+from . import tests
+
 __all__ = (
      *species.__all__,
      *reactions.__all__,
      *reaction_systems.__all__,
      'utils',
      'doe',
+     'tests',
      )
