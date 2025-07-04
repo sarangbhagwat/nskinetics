@@ -30,7 +30,25 @@ templates_path = ['_templates']
 
 # -- Options for HTML output
 
-html_theme = 'pydata_sphinx_theme'
+html_theme = "pydata_sphinx_theme"
+html_static_path = ['_static']
+
+#
+html_theme_options = {
+    "logo" : {
+        'image_light': '_static/images/logo/logo_nskinetics.png',
+        'image_dark': '_static/images/logo/logo_nskinetics_dark.png'
+    },
+    "show_toc_level": 2,
+#     "announcement": (
+#         "<p> ..."
+#         "<a href='https://...'>...</a></p>"
+    ),
+#     "external_links": [
+#       {"name": "...", "url": "https://..."},
+
+  ]
+}
 
 # -- Options for EPUB output
 epub_show_urls = 'footnote'
