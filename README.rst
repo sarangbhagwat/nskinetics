@@ -10,6 +10,7 @@ The Non-Steady state Kinetics simulation package (NSKinetics)
 
 
 .. contents::
+   :local:
 
 What is NSKinetics?
 -------------------
