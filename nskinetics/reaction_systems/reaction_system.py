@@ -279,6 +279,32 @@ class ReactionSystem():
         --------
         `scipy.integrate.solve_ivp <https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.solve_ivp.html>`_
         
+        Examples
+        --------
+        >>> import nskinetics as nsk
+        >>> sp_sys = nsk.SpeciesSystem('sp_sys', 
+        >>>                        ['E', 'S', 'ES', 'P'], # enzyme, substrate, enzyme-substrate complex, product
+        >>>                        concentrations=[1e-4, 1e-4, 0., 0.])
+        >>> reactions = [
+        >>>             'E + S <-> ES; kf = 12.0, kb = 10.0', # kf = kon, kb = koff
+        >>>             'ES -> E + P; kf = 32.0' # kf = kcat (enzyme turnover number)
+        >>>             ]
+        >>> rxn_sys = nsk.ReactionSystem(ID='rxn_sys', 
+        >>>                                  reactions=reactions,
+        >>>                                  species_system=sp_sys)
+        >>> rxn_sys.solve(t_span=[0, 2*24*3600], # I want to simulate the system over 2 days
+        >>>                  sp_conc_for_events={'S':1e-6}, # In addition to a full simulation,
+        >>>                  )                              # I want to know the time at which [S] drops to 1e-6
+        >>> np.allclose(rxn_sys._solution['t_events'], np.array([42219.44616989]), rtol=1e-5, atol=1e-8)
+        True
+        >>> np.allclose(rxn_sys._solution['y_events'], 
+        >>>        np.array([[9.99998909e-05],
+        >>>                 [1.00000000e-06],
+        >>>                 [1.09091871e-10],
+        >>>                 [9.89998909e-05]]), 
+        >>>                 rtol=1e-5, atol=1e-8)
+        True
+        
         """
         self._spikes = spikes
         self._spikes_list = sl = self._get_spikes_list_from_dict(spikes)
