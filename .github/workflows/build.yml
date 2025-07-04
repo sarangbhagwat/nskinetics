@@ -71,14 +71,30 @@ jobs:
 #        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 #        COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
 #        COVERALLS_PARALLEL: true
+#    - name: Upload coverage to Coveralls
+#      run: coveralls
+#      env:
+#        COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
     - name: Upload coverage to Coveralls
-      run: coveralls
-      env:
-        COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
+      uses: coverallsapp/github-action@v2
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        parallel: true
+        path-to-lcov: coverage.xml
+#  finish:
+#    needs: build
+#    runs-on: ubuntu-latest
+#    environment: development
+#    steps:
+#    - name: Coveralls Finished
+#      uses: coverallsapp/github-action@v2
   finish:
     needs: build
     runs-on: ubuntu-latest
-    environment: development
     steps:
-    - name: Coveralls Finished
-      uses: coverallsapp/github-action@v2
+      - name: Finalize Coveralls Parallel
+        uses: coverallsapp/github-action@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          parallel-finished: true
+
