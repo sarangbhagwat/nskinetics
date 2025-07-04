@@ -77,5 +77,4 @@ jobs:
     environment: development
     steps:
     - name: Coveralls Finished
-      run: |
-        curl https://coveralls.io/webhook?repo_token=${{ secrets.COVERALLS_REPO_TOKEN }} -d "payload[build_num]=${{ github.sha }}&payload[status]=done"
+      uses: coverallsapp/github-action@v2
