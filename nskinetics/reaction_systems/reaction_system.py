@@ -13,7 +13,10 @@ import time
 from scipy.integrate import solve_ivp
 from scipy.interpolate import interp1d
 from matplotlib import pyplot as plt
-from typing import Union, Tuple, List
+from typing import Union, Tuple, List        
+from matplotlib import pyplot as plt
+from matplotlib.ticker import MaxNLocator, AutoLocator, AutoMinorLocator
+
 
 from ..reactions import Reaction
 from ..utils import create_function, is_number, is_array_of_numbers,\
@@ -454,9 +457,9 @@ class ReactionSystem():
             writer.close()
         
         self._solution_dfs = (df_main, df_events)
-        
+
     def plot_solution(self, show_events=True, sps_to_include=None,
-                      x_ticks=None, y_ticks=None):
+                  x_ticks=None, y_ticks=None):
         """
         Plot the concentrations of selected species over time.
         
@@ -466,7 +469,10 @@ class ReactionSystem():
             Whether to annotate event times on the plot.
         sps_to_include : list of str or Species, optional
             Species to include in the plot. If None, includes all.
-            
+        x_ticks : list or array-like, optional
+            Tick values for the x-axis. If None, selected automatically.
+        y_ticks : list or array-like, optional
+            Tick values for the y-axis. If None, selected automatically.
         """
         if sps_to_include is None:
             sps_to_include = [i.ID for i in self.species_system.all_sps]
@@ -478,38 +484,86 @@ class ReactionSystem():
         all_sps = self.species_system.all_sps
         
         fig, ax = plt.subplots()
-        
+    
+        y_max = 0  # for auto y-axis limit
+    
         for i, sp in zip(range(len(all_sps)), all_sps):
             if sp in sps_to_include or sp.ID in sps_to_include:
                 ax.plot(t, y[i, :], label=sp.ID,
                         linestyle='solid',
                         linewidth=1.)
+                y_max = max(y_max, np.max(y[i, :]))
+    
         ax.set_xlabel('Time [s]')
         ax.set_ylabel('Concentration [mol/L]')
-        
+    
+        # === Automatic ticks and limits ===
+        def auto_ticks(data_min, data_max, n_ticks=5, round_base=None):
+            range_span = data_max - data_min
+            raw_step = range_span / (n_ticks - 1)
+            if round_base is None:
+                exponent = np.floor(np.log10(raw_step))
+                base = 10**exponent
+                multiples = np.array([1, 2, 5, 10])
+                step = multiples[np.searchsorted(multiples * base, raw_step, side='right')]
+                step = step * base
+            else:
+                step = round_base
+    
+            tick_min = step * np.floor(data_min / step)
+            tick_max = step * np.ceil(data_max / step)
+            ticks = np.arange(tick_min, tick_max + 0.5 * step, step)
+            return ticks, (tick_min, tick_max)
+    
+        # X-axis ticks and limits
+        if x_ticks is None:
+            x_ticks, xlim = auto_ticks(t.min(), t.max())
+            ax.set_xticks(x_ticks)
+            # ax.set_xlim(xlim)
+        else:
+            ax.set_xticks(x_ticks)
+            # ax.set_xlim(min(x_ticks), max(x_ticks))
+    
+        # Y-axis ticks and limits
+        if y_ticks is None:
+            y_ticks, ylim = auto_ticks(0, y_max)
+            ax.set_yticks(y_ticks)
+            # ax.set_ylim(ylim)
+        else:
+            ax.set_yticks(y_ticks)
+            # ax.set_ylim(min(y_ticks), max(y_ticks))
+            
+        # Tick directions
+        ax.tick_params(axis='x', direction='inout', which='both', bottom=True, top=False)
+        ax.tick_params(axis='x', direction='in', which='both', top=True)
+        ax.tick_params(axis='y', direction='inout', which='both', left=True, right=False)
+        ax.tick_params(axis='y', direction='in', which='both', right=True)
+    
+        # Minor ticks
+        ax.xaxis.set_minor_locator(AutoMinorLocator())
+        ax.yaxis.set_minor_locator(AutoMinorLocator())
+    
         if show_events:
             ylim = ax.get_ylim()
-            for t, e in zip(t_events, events):
+            for t_ev, e in zip(t_events, events):
                 label = str(e)
                 if callable(e):
-                    label = label.split(' at ')[0].replace('<', '')
-                    label += ' = 0'
+                    label = label.split(' at ')[0].replace('<', '') + ' = 0'
                 label = 't | ' + label
-                ax.vlines(t, ylim[0], ylim[1], 
+                ax.vlines(t_ev, ylim[0], ylim[1], 
                           linestyles='dashed', linewidth=0.5,
-                          color='blue',
-                          # label=label,
-                          )
+                          color='blue')
                 xlim = ax.get_xlim()
                 ax.annotate(label, 
-                            xy=((t + 0.04*(xlim[1]-xlim[0])), 
+                            xy=((t_ev + 0.04*(xlim[1]-xlim[0])), 
                                 (ylim[1]-ylim[0])/2), 
                             verticalalignment='center', 
-                            horizontalalignment='right' , 
-                            rotation = -270,
-                            color='blue',
-                            )
+                            horizontalalignment='right', 
+                            rotation=-270,
+                            color='blue')
+        
         plt.legend(loc='upper left', bbox_to_anchor=(1.05, 1))
+        plt.tight_layout()
         plt.show()
     
     def C_at_t(self, t,  species=None):
@@ -758,6 +812,7 @@ class ReactionSystem():
                                                 show_progress=False,
                                                 plot_during_fit=False,
                                                 call_before_each_solve=None,
+                                                timeout_solve_ivp=0.5,
                                                 **kwargs):
         """
         Fit reaction kinetic parameters to experimental time-series data.
@@ -811,7 +866,11 @@ class ReactionSystem():
         
         differential_evolution_kwargs : dict
             Additional keyword arguments passed to `scipy.optimize.differential_evolution_kwargs`.
-            
+        
+        timeout_solve_ivp: float, int, or None
+            Enforce timeout of `scipy.integrate.solve_ivp` when it exceeds this value.
+            Creates and passes a timeout_function as an event to `scipy.integrate.solve_ivp`.
+        
         Returns
         -------
         None
@@ -833,6 +892,9 @@ class ReactionSystem():
         `scipy.optimize.differential_evolution <https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.differential_evolution.html>`_
         
         """
+        _orig_timeout_solve_ivp = self._timeout_solve_ivp # reset to original value after fit, usually None
+        self._timeout_solve_ivp = timeout_solve_ivp
+        
         sp_sys = self.species_system
         all_sp_IDs = sp_sys.all_sp_IDs
         
@@ -966,13 +1028,15 @@ class ReactionSystem():
         set_rxn_kp(fitsol[0])
         self._fitsol = fitsol
         
+        self._timeout_solve_ivp = _orig_timeout_solve_ivp # reset to original, usually None
+        
         if show_output: 
             print('\n')
             print('Fit results')
             print('-----------')
             print(f'\nR^2={fitsol[1]}, success={fitsol[2]}\n')
             print(self.__str__())
-    
+            
     def add_reaction(self, reaction):
         """
         Add a reaction to the system.

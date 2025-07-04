@@ -76,7 +76,6 @@ def set_koff(p, kcat=rxn_sys.reactions[1].kf, KM=KM):
     kon = p[0]
     rxn_sys.reactions[0]._kb = KM*kon - kcat
 
-rxn_sys._timeout_solve_ivp = 0.5
 
 rxn_sys.fit_reaction_kinetic_parameters_to_data(data=[f'solution{i}.xlsx'
                                                       for i in batch_indices],
@@ -103,7 +102,6 @@ rxn_sys.fit_reaction_kinetic_parameters_to_data(data=[f'solution{i}.xlsx'
                                                 )
 filterwarnings("default")
 
-rxn_sys._timeout_solve_ivp = None
 
 #%% Simulate batches with inverse-modeled rxn_sys
 for i, concentrations, t_span in zip(range(len(batch_concs)), 
