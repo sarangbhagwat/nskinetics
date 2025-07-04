@@ -1,4 +1,4 @@
-.. image:: docs/source/_static/images/logo/logo_nskinetics.png
+.. image:: docs/source/_static/images/logo/logo_nskinetics_light.png
   :width: 250
 =============================================================
 The Non-Steady state Kinetics simulation package (NSKinetics)
