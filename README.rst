@@ -1,4 +1,4 @@
-|logo| image:: /_static/images/logo/logo_nskinetics.png
+|logo| image:: docs/source/_static/images/logo/logo_nskinetics.png
 ====================================================================================
 |logo| Non-Steady state Kinetics simulation (NSKinetics).
 ====================================================================================
@@ -68,7 +68,7 @@ NSKinetic's `full documentation <https://nskinetics.readthedocs.io/en/latest/>`_
     rxn_sys.plot_solution() 
 
 
-.. image:: docs/images/example_1_plot_i.png
+.. image:: docs/source/_static/images/example_1_plot_i.png
   :width: 400
 
 Since [ES] was too small to view in the overall plot, let's also plot it separately:
@@ -78,7 +78,7 @@ Since [ES] was too small to view in the overall plot, let's also plot it separat
     rxn_sys.plot_solution(sps_to_include=['ES'])
 
 
-.. image:: docs/images/example_1_plot_ii.png
+.. image:: docs/source/_static/images/example_1_plot_ii.png
   :width: 400
 
 
@@ -120,7 +120,7 @@ Since [ES] was too small to view in the overall plot, let's also plot it separat
     rxn_sys.plot_solution()
 
 
-.. image:: docs/images/example_2_plot_i.png
+.. image:: docs/source/_static/images/example_2_plot_i.png
   :width: 400
 
 
@@ -164,7 +164,7 @@ Since [ES] was too small to view in the overall plot, let's also plot it separat
     rxn_sys.plot_solution()
 
 
-.. image:: docs/images/example_3_plot_i.png
+.. image:: docs/source/_static/images/example_3_plot_i.png
   :width: 400
 
 
