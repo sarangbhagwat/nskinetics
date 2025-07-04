@@ -76,6 +76,8 @@ def set_koff(p, kcat=rxn_sys.reactions[1].kf, KM=KM):
     kon = p[0]
     rxn_sys.reactions[0]._kb = KM*kon - kcat
 
+rxn_sys._timeout_solve_ivp = 0.5
+
 rxn_sys.fit_reaction_kinetic_parameters_to_data(data=[f'solution{i}.xlsx'
                                                       for i in batch_indices],
                                                 p0=1*np.ones(len(rxn_sys.reaction_kinetic_params)),
@@ -89,9 +91,9 @@ rxn_sys.fit_reaction_kinetic_parameters_to_data(data=[f'solution{i}.xlsx'
                                                 # plot_during_fit=True,
                                                 show_progress=True,
                                                 n_minimize_runs=2,
-                                                n_de_runs=2,
+                                                n_de_runs=10,
                                                 differential_evolution_kwargs={'maxiter':100,
-                                                                               'bounds': [(0,1e4)],
+                                                                               'bounds': [(0,5e4)],
                                                                                'polish': False,
                                                                                'disp': False,
                                                                                'workers': 1,

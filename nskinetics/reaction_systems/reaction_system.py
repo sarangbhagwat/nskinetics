@@ -7,9 +7,11 @@
 # for license details.
 
 import numpy as np
+import pandas as pd
+import time
+
 from scipy.integrate import solve_ivp
 from scipy.interpolate import interp1d
-import pandas as pd
 from matplotlib import pyplot as plt
 from typing import Union, Tuple, List
 
@@ -72,6 +74,7 @@ class ReactionSystem():
         
         self._exclude_frozen_params = True
         self._interp1d_fill_value = None
+        self._timeout_solve_ivp = None
         
     @property
     def reactions(self):
@@ -171,6 +174,7 @@ class ReactionSystem():
             sp_sys.concentrations = concs
             return get_dconcs_dt()
         
+        # print('Solving ...')
         sol = solve_ivp(ode_system_RHS, 
                          t_span=t_span, 
                          y0=y0,
@@ -181,6 +185,7 @@ class ReactionSystem():
                          events=events,
                          method=method,
                          dense_output=dense_output)
+        # print('Solved.')
         return sol
     
     def solve(self, 
@@ -286,6 +291,28 @@ class ReactionSystem():
         fs = [i() if callable(i) else i for i in sl]
         _solve_single_phase = self._solve_single_phase
         
+        events_non_sp_conc = events if events is not None else []
+        
+        timeout = self._timeout_solve_ivp
+        
+        if timeout is not None:
+            start_time = time.time()
+            def timeout_event(t, y):
+                """
+                Callback function to check for timeout.
+                Returns 0 to trigger termination if timeout exceeded.
+                """
+                elapsed_time = time.time() - start_time
+                # print(start_time, elapsed_time, timeout)
+                if elapsed_time > timeout:
+                    return 0  # Event occurs when elapsed_time - timeout > 0
+                else:
+                    return 1
+            # Set the event to terminate integration
+            timeout_event.terminal = True
+                
+            events_non_sp_conc.append(timeout_event)
+        
         # if there are feed spikes
         if fs is not None and not fs==[]:
             tmin_curr = tmin
@@ -302,7 +329,7 @@ class ReactionSystem():
                                                  t_eval=t_eval,
                                                  method=method,
                                                  atol=atol, rtol=rtol, 
-                                                 events=events,
+                                                 events=events_non_sp_conc,
                                                  sp_conc_for_events=sp_conc_for_events, # dict or None
                                                  dense_output=dense_output,
                                                  y0=y0_curr))
@@ -319,7 +346,7 @@ class ReactionSystem():
                                              t_eval=t_eval,
                                              method=method,
                                              atol=atol, rtol=rtol, 
-                                             events=events,
+                                             events=events_non_sp_conc,
                                              sp_conc_for_events=sp_conc_for_events, # dict or None
                                              dense_output=dense_output,
                                              y0=y0_curr))
@@ -331,7 +358,7 @@ class ReactionSystem():
                                              t_eval=t_eval,
                                              method=method,
                                              atol=atol, rtol=rtol, 
-                                             events=events,
+                                             events=events_non_sp_conc,
                                              sp_conc_for_events=sp_conc_for_events, # dict or None
                                              dense_output=dense_output,
                                              y0=y0))
@@ -360,14 +387,13 @@ class ReactionSystem():
             else:
                 pass
         
-        if events is None:
-            events = []
-        
         if sp_conc_for_events is None:
             sp_conc_for_events = {}
         
         if remove_negative_concs:
             y_final[np.where(y_final<0)] = 0.
+        
+        events = events if events is not None else []
         
         solution = {'t': np_array(t_final).transpose(),
                     'y': np_array(y_final).transpose(),
@@ -429,7 +455,8 @@ class ReactionSystem():
         
         self._solution_dfs = (df_main, df_events)
         
-    def plot_solution(self, show_events=True, sps_to_include=None):
+    def plot_solution(self, show_events=True, sps_to_include=None,
+                      x_ticks=None, y_ticks=None):
         """
         Plot the concentrations of selected species over time.
         
@@ -465,7 +492,7 @@ class ReactionSystem():
             for t, e in zip(t_events, events):
                 label = str(e)
                 if callable(e):
-                    label = label.split(' at ')[0].remove('<')
+                    label = label.split(' at ')[0].replace('<', '')
                     label += ' = 0'
                 label = 't | ' + label
                 ax.vlines(t, ylim[0], ylim[1], 
@@ -892,9 +919,9 @@ class ReactionSystem():
             set_rxn_kp(new_rxn_kp)
             for c in call_before_each_solve:
                 c(new_rxn_kp)
-            solve(t_span=t_span, y0=y0)
+            solve(t_span=t_span, y0=y0, save_events=False)
             for sol in self._solution['sol']:
-                if not sol.success:
+                if (not sol.success) or (sol.status==1):
                     return np.full((len(y_maxes), len(tdata)), 0.)
             if plot_during_fit: plot_solution()
             _update_C_at_t()
