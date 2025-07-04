@@ -1,5 +1,6 @@
+|logo| image:: /_static/images/logo/logo_nskinetics.png
 ====================================================================================
-NSKinetics: simulation of Non-Steady state enzyme Kinetics and inhibitory phenomena.
+|logo| Non-Steady state Kinetics simulation (NSKinetics).
 ====================================================================================
 
 .. image:: http://img.shields.io/badge/license-MIT-blue.svg?style=flat
