@@ -43,11 +43,10 @@ html_theme_options = {
 #     "announcement": (
 #         "<p> ..."
 #         "<a href='https://...'>...</a></p>"
-    ),
+#     ),
 #     "external_links": [
 #       {"name": "...", "url": "https://..."},
-
-  ]
+#   ]
 }
 
 # -- Options for EPUB output
