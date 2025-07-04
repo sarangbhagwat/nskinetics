@@ -116,7 +116,8 @@ def d_optimality(FIM):
 
 def design_experiments(rxn_sys, param_keys, candidate_initials, t_eval,
                        spike_options=None, output_idx=None, top_n=5,
-                       epsilon=1e-4, show_fail_warnings=False, show_output=False):
+                       epsilon=1e-4, show_fail_warnings=False, show_output=False,
+                       timeout_solve_ivp=0.5):
     """
     Perform design of experiments by exhaustively evaluating combinations of initial concentrations
     and optional spike conditions, returning those that maximize parameter identifiability.
@@ -139,6 +140,11 @@ def design_experiments(rxn_sys, param_keys, candidate_initials, t_eval,
         Indices of species that are experimentally measured (default is all).
     top_n : int, optional
         Number of top experimental designs to return based on D-optimality (default is 5).
+    
+    timeout_solve_ivp: float, int, or None, optional
+        Enforce timeout of `scipy.integrate.solve_ivp` when it exceeds this value.
+        Creates and passes a timeout_function as an event to `scipy.integrate.solve_ivp`.
+        Defaults to 0.5 (seconds).
         
     Returns
     -------
@@ -151,6 +157,9 @@ def design_experiments(rxn_sys, param_keys, candidate_initials, t_eval,
     
     """
     designs = []
+    
+    _orig_timeout_solve_ivp = rxn_sys._timeout_solve_ivp # reset to original value after fit, usually None
+    rxn_sys._timeout_solve_ivp = timeout_solve_ivp
     
     # Create all combinations of initial concentrations
     species = list(candidate_initials.keys())
@@ -195,6 +204,8 @@ def design_experiments(rxn_sys, param_keys, candidate_initials, t_eval,
     # Sort by D-optimality and return top_n
     top_designs = sorted(designs, key=lambda d: d['score'], reverse=True)[:top_n]
     
+    rxn_sys._timeout_solve_ivp = _orig_timeout_solve_ivp
+    
     if show_output:
         print('\n')
         print(f"-------- Recommended design of experiments for {rxn_sys.ID} --------")
@@ -205,5 +216,8 @@ def design_experiments(rxn_sys, param_keys, candidate_initials, t_eval,
             print("\t\tSpikes:", expt['spikes'])
             print("\t\tD-optimality:", expt['score'])
             print('\n')
+            
+    print("----------------------------------------------------------------")
+    print('\n')
     
     return top_designs

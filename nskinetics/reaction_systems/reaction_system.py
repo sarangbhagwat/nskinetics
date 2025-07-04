@@ -867,10 +867,11 @@ class ReactionSystem():
         differential_evolution_kwargs : dict
             Additional keyword arguments passed to `scipy.optimize.differential_evolution_kwargs`.
         
-        timeout_solve_ivp: float, int, or None
+        timeout_solve_ivp: float, int, or None, optional
             Enforce timeout of `scipy.integrate.solve_ivp` when it exceeds this value.
             Creates and passes a timeout_function as an event to `scipy.integrate.solve_ivp`.
-        
+            Defaults to 0.5 (seconds).
+            
         Returns
         -------
         None

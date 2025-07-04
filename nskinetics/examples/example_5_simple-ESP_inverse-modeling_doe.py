@@ -102,7 +102,6 @@ rxn_sys.fit_reaction_kinetic_parameters_to_data(data=[f'solution{i}.xlsx'
                                                 )
 filterwarnings("default")
 
-
 #%% Simulate batches with inverse-modeled rxn_sys
 for i, concentrations, t_span in zip(range(len(batch_concs)), 
                                      batch_concs, 
