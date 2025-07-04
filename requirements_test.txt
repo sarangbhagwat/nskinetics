@@ -1,0 +1,8 @@
+pytest-cov
+coveralls
+nbval
+SALib
+pyglet
+ipykernel
+CoolProp
+sphinx_autodoc_typehints
