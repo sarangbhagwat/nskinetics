@@ -54,26 +54,18 @@ jobs:
         python -m pip install --upgrade pip
         python -m pip install wheel
         pip install -r requirements_test.txt
-        pip install \
-          IPython>=7.9.0 \
-          numpy>=1.26.4,<2.0.0 \
-          numba>=0.60.0,<1.0.0 \
-          scipy>=1.13.1,<2.0.0 \
-          matplotlib>=3.5.2,<4.0.0 \
-          xlsxwriter>=3.2.5,<4.0.0 \
-          scikit-learn \
-          pandas>=2.2.2,<3.0.0 \
-          pytest
-#    - name: Test without numba
+        pip install -r requirements_install.txt
+        python -m pip install pytest
+#    - name: Test wit numba
 #      run: |
-#        pytest . -v --disable-numba=1 --cov-report html --cov=nskinetics --cov-report term-missing -m "not slow"
+#        pytest . -v --cov-report html --cov=nskinetics --cov-report term-missing -m "not slow"
 #      env:
 #        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 #        COVERALLS_REPO_TOKEN: ${{ secrets.coveralls }}
 #        COVERALLS_PARALLEL: true
     - name: Test with numba
       run: |
-        pytest . -v --cov-report html --cov=nskinetics --cov-report term-missing -m "not slow"
+        pytest . -v --disable-numba=1 --cov-report html --cov=nskinetics --cov-report term-missing -m "not slow"
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         COVERALLS_REPO_TOKEN: ${{ secrets.coveralls }}
