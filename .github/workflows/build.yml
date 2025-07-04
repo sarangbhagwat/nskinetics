@@ -12,7 +12,6 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
-    environment: development
     strategy:
       matrix:
         python-version: [3.9, 3.11]
@@ -62,7 +61,7 @@ jobs:
         pytest . -v --cov-report html --cov-report xml --cov=nskinetics --cov-report term-missing -m "not slow"
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
+#        COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
         COVERALLS_PARALLEL: true
 #    - name: Test without numba
 #      run: |
