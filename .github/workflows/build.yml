@@ -1,0 +1,87 @@
+# This workflow will install Python dependencies, then run tests with a variety of Python versions
+
+name: Build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.9, 3.10, 3.11]
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python ${{ matrix.python-version }} ${{ matrix.architecture }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+        architecture: ${{ matrix.architecture }}
+
+    - name: cache Linux
+      uses: actions/cache@v4
+      if: startsWith(runner.os, 'Linux')
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements_test.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-${{ runner.architecture }}-${{ runner.python-version }}pip-
+    - name: cache MacOS
+      uses: actions/cache@v4
+      if: startsWith(runner.os, 'macOS')
+      with:
+        path: ~/Library/Caches/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements_test.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-${{ runner.architecture }}-${{ runner.python-version }}pip-
+    - name: cache Windows
+      uses: actions/cache@v4
+      if: startsWith(runner.os, 'Windows')
+      with:
+        path: ~\AppData\Local\pip\Cache
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements_test.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-${{ runner.architecture }}-${{ runner.python-version }}pip-
+    - name: Install dependencies
+      run: |
+        python -c "import platform; print(platform.platform()); print(platform.architecture())"
+        python -m pip install --upgrade pip
+        python -m pip install wheel
+	pip install -r requirements_test.txt
+        pip install \
+          IPython>=7.9.0 \
+          numpy>=1.26.4,<2.0.0 \
+          numba>=0.60.0,<1.0.0 \
+          scipy>=1.13.1,<2.0.0 \
+          matplotlib>=3.5.2,<4.0.0 \
+          xlsxwriter>=3.2.5,<4.0.0 \
+          scikit-learn \
+          pandas>=2.2.2,<3.0.0 \
+          pytest
+#    - name: Test without numba
+#      run: |
+#        pytest . -v --disable-numba=1 --cov-report html --cov=nskinetics --cov-report term-missing -m "not slow"
+#      env:
+#        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#        COVERALLS_REPO_TOKEN: ${{ secrets.coveralls }}
+#        COVERALLS_PARALLEL: true
+    - name: Test with numba
+      run: |
+        pytest . -v --cov-report html --cov=nskinetics --cov-report term-missing -m "not slow"
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        COVERALLS_REPO_TOKEN: ${{ secrets.coveralls }}
+        COVERALLS_PARALLEL: true
+  finish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+    - name: Coveralls Finished
+      run: |
+        curl https://coveralls.io/webhook?repo_token=${{ secrets.coveralls }} -d "payload[build_num]=${{ github.sha }}&payload[status]=done"
