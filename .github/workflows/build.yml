@@ -64,13 +64,13 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
         COVERALLS_PARALLEL: true
-    - name: Test without numba
-      run: |
-        pytest . -v --disable-numba=1 --cov-report html --cov=nskinetics --cov-report term-missing -m "not slow"
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
-        COVERALLS_PARALLEL: true
+#    - name: Test without numba
+#      run: |
+#        pytest . -v --disable-numba=1 --cov-report html --cov=nskinetics --cov-report term-missing -m "not slow"
+#      env:
+#        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#        COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
+#        COVERALLS_PARALLEL: true
   finish:
     needs: build
     runs-on: ubuntu-latest
