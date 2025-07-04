@@ -7,8 +7,8 @@
 # for license details.
 
 from . import fim
-# from .fim import *
+from .fim import *
 
 __all__ = (
-     'fim'
+     *fim.__all__,
      )

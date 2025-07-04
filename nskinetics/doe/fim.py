@@ -9,12 +9,12 @@
 import numpy as np
 import itertools
 
-__all__ = ('design_experiments',
-           'compute_sensitivities', 
-           'd_optimality',
-           'fisher_information_matrix',)
+__all__ = ('optimal_design',
+           'get_sensitivities', 
+           'fisher_information_matrix',
+           'd_optimality',)
 
-def compute_sensitivities(rxn_sys, t_eval, y0, param_inds, epsilon=1e-4, spikes=None, output_idx=None):
+def get_sensitivities(rxn_sys, t_eval, y0, param_inds, epsilon=1e-4, spikes=None, output_idx=None):
     """
     Compute finite-difference sensitivities of ReactionSystem outputs with respect to kinetic parameters.
     
@@ -94,7 +94,6 @@ def fisher_information_matrix(sensitivity_matrix, sigma=1.0):
     """
     return sensitivity_matrix.T @ sensitivity_matrix / sigma**2
 
-
 def d_optimality(FIM):
     """
     Compute the D-optimality score of a Fisher Information Matrix.
@@ -114,7 +113,7 @@ def d_optimality(FIM):
     return np.linalg.det(FIM + 1e-12 * np.eye(FIM.shape[0]))
 
 
-def design_experiments(rxn_sys, param_keys, candidate_initials, t_eval,
+def optimal_design(rxn_sys, param_keys, candidate_initials, t_eval,
                        spike_options=None, output_idx=None, top_n=5,
                        epsilon=1e-4, show_fail_warnings=False, show_output=False,
                        timeout_solve_ivp=0.5):
@@ -186,7 +185,7 @@ def design_experiments(rxn_sys, param_keys, candidate_initials, t_eval,
                 
             try:
                 # Compute sensitivity and FIM
-                S = compute_sensitivities(rxn_sys, t_eval, np.array(y0), param_inds, spikes=spikes, output_idx=output_idx, epsilon=epsilon)
+                S = get_sensitivities(rxn_sys, t_eval, np.array(y0), param_inds, spikes=spikes, output_idx=output_idx, epsilon=epsilon)
                 FIM = fisher_information_matrix(S)
                 score = d_optimality(FIM)
                 
@@ -216,8 +215,7 @@ def design_experiments(rxn_sys, param_keys, candidate_initials, t_eval,
             print("\t\tSpikes:", expt['spikes'])
             print("\t\tD-optimality:", expt['score'])
             print('\n')
-            
-    print("----------------------------------------------------------------")
-    print('\n')
+        print("----------------------------------------------------------------")
+        print('\n')
     
     return top_designs
