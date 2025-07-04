@@ -36,8 +36,8 @@ html_static_path = ['_static']
 #
 html_theme_options = {
     "logo" : {
-        'image_light': '_static/images/logo/logo_nskinetics.png',
-        'image_dark': '_static/images/logo/logo_dark_nskinetics.png'
+        'image_light': '_static/images/logo/logo_nskinetics_white-circle.png',
+        'image_dark': '_static/images/logo/logo_nskinetics_dark_white-circle.png'
     },
     "show_toc_level": 2,
 #     "announcement": (
