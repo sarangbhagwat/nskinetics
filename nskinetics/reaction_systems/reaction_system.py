@@ -175,24 +175,49 @@ class ReactionSystem():
                                                          'index': index,
                                                          'y': None}
                                               ))
-        def ode_system_RHS(t, concs):
-            concs[np.where(concs<0)] = 0. # not strictly necessary with a low enough atol
-            sp_sys.concentrations = concs
-            return get_dconcs_dt()
         
-        print('Solving ...')
-        sol = solve_ivp(ode_system_RHS, 
-                         t_span=t_span, 
-                         y0=y0,
-                         t_eval=t_eval,
-                         atol=atol, # recommended: <= 1e-6*max(sp_sys.concentrations)
-                         rtol=atol, # recommended: 1e-6
-                         # the solver keeps the local error estimates less than atol + rtol * abs(y)
-                         events=events,
-                         method=method,
-                         dense_output=dense_output)
-        print('Solved.')
-        return sol
+        if self.species_system.log_transformed:
+            def ode_system_RHS_log(t, z):
+                sp_sys._concentrations = z
+                return get_dconcs_dt()
+            print('Solving ...')
+            sol = solve_ivp(ode_system_RHS_log, 
+                             t_span=t_span, 
+                             y0=np.log(y0),
+                             t_eval=t_eval,
+                             atol=atol, # recommended: <= 1e-6*max(sp_sys.concentrations)
+                             rtol=atol, # recommended: 1e-6
+                             # the solver keeps the local error estimates less than atol + rtol * abs(y)
+                             events=events,
+                             method=method,
+                             dense_output=dense_output)
+            print('Solved.')
+            sol.y = np.log(sol.y)
+            sol.y_events = np.log(sol.y_events)
+            
+            return sol
+            
+        else:
+            
+            def ode_system_RHS(t, concs):
+                concs[np.where(concs<0)] = 0. # not strictly necessary with a low enough atol
+                sp_sys.concentrations = concs
+                return get_dconcs_dt()
+                 
+            print('Solving ...')
+            sol = solve_ivp(ode_system_RHS, 
+                             t_span=t_span, 
+                             y0=y0,
+                             t_eval=t_eval,
+                             atol=atol, # recommended: <= 1e-6*max(sp_sys.concentrations)
+                             rtol=atol, # recommended: 1e-6
+                             # the solver keeps the local error estimates less than atol + rtol * abs(y)
+                             events=events,
+                             method=method,
+                             dense_output=dense_output)
+            print('Solved.')
+
+            return sol
     
     def solve(self, 
               t_span,
@@ -313,12 +338,15 @@ class ReactionSystem():
         self._spikes_list = sl = self._get_spikes_list_from_dict(spikes)
         tmin, tmax = t_span
         # dt_spike=max(1e-6, dt_spike)
+
         concentrations = self.species_system.concentrations
-        if atol is None:
-            atol = 1e-6*max(concentrations)
+        
         if y0 is None:
             y0 = concentrations
             
+        if atol is None:
+            atol = 1e-6*max(concentrations)
+                
         sols = []
         fs = [i() if callable(i) else i for i in sl]
         _solve_single_phase = self._solve_single_phase

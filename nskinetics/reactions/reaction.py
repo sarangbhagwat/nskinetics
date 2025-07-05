@@ -295,6 +295,12 @@ def dconcs_dt_v0_2(kf, kb, species_concs_vector, rxn_stoichs, rl_exps,
     ndarray
         Rate of change of concentrations of each species.
     """
+    
+    # Check if any reactant is exhausted:
+    for ind in reactant_indices:
+        if species_concs_vector[ind] <= 1e-20:
+            return np.zeros_like(species_concs_vector)
+    
     # Compute forward rate
     forward = 1.0
     for i in reactant_indices:
@@ -335,8 +341,60 @@ def dconcs_dt_v0_2(kf, kb, species_concs_vector, rxn_stoichs, rl_exps,
     result = np.empty_like(species_concs_vector)
     for i in range(species_concs_vector.size):
         result[i] = change * rxn_stoichs[i]
-
+    
     return result
+
+@njit(cache=True)
+def dlogconcs_dt_v0_2(kf, kb, z_vector, rxn_stoichs, rl_exps,
+                       reactant_indices, product_indices):
+    """
+    Rate of change of log concentrations.
+    No logic to identify limiting reactants other than 
+    when concentration < 1e-20.
+    
+    Parameters
+    ----------
+    z_vector : ndarray
+        log concentrations of all species
+    rxn_stoichs : ndarray
+        stoichiometric coefficients
+    rl_exps : ndarray
+        rate law exponents
+    reactant_indices, product_indices : ndarrays
+        indices of reactants and products
+        
+    Returns
+    -------
+    dz/dt : ndarray
+        time derivatives of log concentrations
+    """
+
+    # transform to concentrations
+    y = np.exp(z_vector)
+
+    # check if any reactant is exhausted:
+    for idx in reactant_indices:
+        if y[idx] <= 1e-20:
+            return np.zeros_like(z_vector)
+
+    # forward rate
+    forward = kf
+    for i in reactant_indices:
+        forward *= y[i] ** rl_exps[i]
+
+    # backward rate
+    backward = kb
+    for i in product_indices:
+        backward *= y[i] ** rl_exps[i]
+
+    net_flux = forward - backward
+
+    dy_dt = net_flux * rxn_stoichs
+
+    # chain rule
+    dz_dt = dy_dt / y
+
+    return dz_dt
 
 class Reaction(AbstractReaction):
     """
@@ -489,23 +547,37 @@ class Reaction(AbstractReaction):
         """
         Calculate the net rate of change in species concentrations for this reaction,
         using the current kinetic parameters and species concentrations.
+        If self.species_system.log_transformed is True, returns rate 
+        of change of np.log(concentrations) instead.
         
         Returns
         -------
-        ndarray or float
-            Change in concentrations (array) or 0. if kf and kb are both zero.
+        ndarray
+            Change in concentration; or 
+            zeros if kf and kb are both zero; or
+            change in log(concentrations) if self.log_transformed is True.
         
         """
         kf, kb = self.kf, self.kb
         if kf==kb==0:
             return np.zeros(shape=self.species_system.concentrations.shape)
-        return dconcs_dt_v0_2(kf=kf, 
-                         kb=kb,
-                         species_concs_vector=self.species_system._concentrations, 
-                         rxn_stoichs=self.stoichiometry,
-                         rl_exps=self.exponents,
-                         reactant_indices=self.reactant_indices,
-                         product_indices=self.product_indices)
+        
+        if self.species_system.log_transformed:
+            return dlogconcs_dt_v0_2(kf=kf, 
+                          kb=kb,
+                          z_vector=self.species_system._concentrations, 
+                          rxn_stoichs=self.stoichiometry,
+                          rl_exps=self.exponents,
+                          reactant_indices=self.reactant_indices,
+                          product_indices=self.product_indices)
+        else:
+            return dconcs_dt_v0_2(kf=kf, 
+                             kb=kb,
+                             species_concs_vector=self.species_system._concentrations, 
+                             rxn_stoichs=self.stoichiometry,
+                             rl_exps=self.exponents,
+                             reactant_indices=self.reactant_indices,
+                             product_indices=self.product_indices)
     
     def _load_full_string(self):
         """

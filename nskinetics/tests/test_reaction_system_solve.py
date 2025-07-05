@@ -20,7 +20,8 @@ def test_simple_ESP(plot=False,
     # Create a SpeciesSystem object
     sp_sys = nsk.SpeciesSystem('sp_sys', 
                            ['E', 'S', 'ES', 'P'], # enzyme, substrate, enzyme-substrate complex, product
-                           concentrations=[1e-4, 1e-4, 0., 0.])
+                           concentrations=[1e-4, 1e-4, 0., 0.],
+                           log_transformed=True)
     
     # Describe reactions by writing chemical equations and kinetic parameter info
     reactions = [
@@ -63,7 +64,8 @@ def test_simple_ESP(plot=False,
                                  4.10542307e-09, 
                                  6.23616779e-05]),
                        rtol=1e-5, atol=1e-8)
-
+    
+    return rxn_sys
 
 def test_simple_ESP_inhib(plot=False, 
                           show_progress=False,
