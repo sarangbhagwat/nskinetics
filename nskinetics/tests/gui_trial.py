@@ -13,7 +13,7 @@ from warnings import filterwarnings
 def gui_trial_simple_ESP(plot=False, 
                     show_progress=False,
                     show_output=False,
-                    show_warnings=False):
+                    show_warnings=True):
     
     if not show_warnings: filterwarnings("ignore")
     

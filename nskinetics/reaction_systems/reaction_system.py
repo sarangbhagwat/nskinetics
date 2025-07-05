@@ -180,7 +180,7 @@ class ReactionSystem():
             sp_sys.concentrations = concs
             return get_dconcs_dt()
         
-        # print('Solving ...')
+        print('Solving ...')
         sol = solve_ivp(ode_system_RHS, 
                          t_span=t_span, 
                          y0=y0,
@@ -191,7 +191,7 @@ class ReactionSystem():
                          events=events,
                          method=method,
                          dense_output=dense_output)
-        # print('Solved.')
+        print('Solved.')
         return sol
     
     def solve(self, 
@@ -492,7 +492,7 @@ class ReactionSystem():
                       fig=None, ax=None,
                       show_events=True, sps_to_include=None,
                       x_ticks=None, y_ticks=None,
-                      auto_ticks=True):
+                      auto_ticks=True, show=True):
         """
         Plot the concentrations of selected species over time.
         
@@ -601,7 +601,8 @@ class ReactionSystem():
         
         plt.legend(loc='upper left', bbox_to_anchor=(1.05, 1))
         plt.tight_layout()
-        plt.show()
+        if show:
+            plt.show()
     
     def C_at_t(self, t,  species=None):
         """

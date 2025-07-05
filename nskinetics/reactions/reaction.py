@@ -204,7 +204,7 @@ class AbstractReaction():
 #%% Reaction class
 
 @njit(cache=True)
-def dconcs_dt_old(kf, kb, species_concs_vector, rxn_stoichs, rl_exps,
+def dconcs_dt_v0_1(kf, kb, species_concs_vector, rxn_stoichs, rl_exps,
               reactant_indices, product_indices):
     """
     (Old, unused.)
@@ -266,7 +266,7 @@ def dconcs_dt_old(kf, kb, species_concs_vector, rxn_stoichs, rl_exps,
 
 
 @njit(cache=True)
-def dconcs_dt(kf, kb, species_concs_vector, rxn_stoichs, rl_exps,
+def dconcs_dt_v0_2(kf, kb, species_concs_vector, rxn_stoichs, rl_exps,
               reactant_indices, product_indices):
     """
     Computation of species concentration changes using 
@@ -337,7 +337,6 @@ def dconcs_dt(kf, kb, species_concs_vector, rxn_stoichs, rl_exps,
         result[i] = change * rxn_stoichs[i]
 
     return result
-
 
 class Reaction(AbstractReaction):
     """
@@ -499,8 +498,8 @@ class Reaction(AbstractReaction):
         """
         kf, kb = self.kf, self.kb
         if kf==kb==0:
-            return 0.
-        return dconcs_dt(kf=kf, 
+            return np.zeros(shape=self.species_system.concentrations.shape)
+        return dconcs_dt_v0_2(kf=kf, 
                          kb=kb,
                          species_concs_vector=self.species_system._concentrations, 
                          rxn_stoichs=self.stoichiometry,

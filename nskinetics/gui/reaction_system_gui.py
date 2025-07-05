@@ -58,6 +58,10 @@ class ReactionSystemGUI:
         t_span_ub_var.trace_add("write", self.on_t_span_ub_change)
         #
         
+        # Initial concentrations
+        sp_sys.concentrations[1] = 2.
+        self.initial_concentrations = sp_sys.concentrations.copy()
+        
         for species, val in zip(all_sp_IDs, sp_sys.concentrations):
             
             var = tk.DoubleVar(value=val)
@@ -193,7 +197,7 @@ class ReactionSystemGUI:
                           )
         
         system.plot_solution(fig=fig, ax=ax, sps_to_include=sps_to_include,
-                             auto_ticks=False)
+                             auto_ticks=False, show=False)
         self.fig = fig
         self.ax = ax
         
@@ -212,8 +216,8 @@ class ReactionSystemGUI:
 
     def on_init_conc_change(self, *_):
         # try:
-        self.system.species_system.concentrations = np.array([v.get() 
-                                                       for v in self.init_conc_vars])
+        self.initial_concentrations =\
+            np.array([v.get() for v in self.init_conc_vars])
         # except:
         #     pass
         self.simulate_and_update_plot()
@@ -237,7 +241,11 @@ class ReactionSystemGUI:
         #     pass
         self.update_only_plot()
     
+    def load_initial_concentrations(self):
+        self.system.species_system.concentrations = self.initial_concentrations
+        
     def simulate(self):
+        self.load_initial_concentrations()
         self.system.solve(
                           t_span=self.t_span,
                           events=self.events,
@@ -248,7 +256,7 @@ class ReactionSystemGUI:
         self.ax.clear()
         self.system.plot_solution(fig=self.fig, ax=self.ax, 
                                   sps_to_include=self.sps_to_include,
-                                  auto_ticks=False)
+                                  auto_ticks=False, show=False)
         self.canvas.draw()
         
     def simulate_and_update_plot(self):
@@ -259,7 +267,8 @@ class ReactionSystemGUI:
         # self.ax.set_ylabel("Concentration")
         self.simulate()
         self.update_only_plot()
-    
+        print(self.system.__str__())
+        print(self.system.species_system.concentrations)
         
 # if __name__ == "__main__":
 #     root = tk.Tk()

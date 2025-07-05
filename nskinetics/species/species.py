@@ -44,7 +44,7 @@ class SpeciesSystem():
         that of all_sps.
     
     """
-    def __init__(self, ID, all_sps, concentrations=None):
+    def __init__(self, ID, all_sps, concentrations=None, log_transformed=False):
         self.ID = ID
         processed_all_sps = []
         for i in all_sps:
@@ -59,8 +59,11 @@ class SpeciesSystem():
         if concentrations is None:
             concentrations = np.zeros(len(processed_all_sps))
         
-        self._concentrations = np.array(concentrations)
-    
+        concentrations = np.array(concentrations)
+        if log_transformed:
+                concentrations = np.log(np.maximum(concentrations, 1e-20))
+        self._concentrations = concentrations
+        
     def indices(self, some_sps):
         all_sps = self.all_sps
         indices = [all_sps.index(i) for i in some_sps]
@@ -99,11 +102,15 @@ class SpeciesSystem():
     
     @property
     def concentrations(self):
-        return self._concentrations
+        if self.log_transformed:
+            return np.exp(self._concentrations)
+        else:
+            return self._concentrations
     
     @concentrations.setter
     def concentrations(self, concentrations):
-        self._concentrations = concentrations 
-        
-    def set_concentration(self, sp, concentration):
-        self._concentrations[self.index(sp)] = concentration
+        if self.log_transformed:
+            self._concentrations = np.log(np.maximum(concentrations, 1e-20))
+        else:
+            self._concentrations = concentrations
+            
