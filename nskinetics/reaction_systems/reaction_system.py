@@ -577,7 +577,7 @@ class ReactionSystem():
     
         y_max = 0  # for auto y-axis limit
         
-        print(sps_to_include)
+        # print(sps_to_include)
         for i, sp in zip(range(len(all_sps)), all_sps):
             if sp in sps_to_include or sp.ID in sps_to_include:
                 ax.plot(t, y[i, :], 
