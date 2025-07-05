@@ -306,15 +306,15 @@ def dconcs_dt_v0_2(kf, kb, species_concs_vector, rxn_stoichs, rl_exps,
     for i in reactant_indices:
         forward *= species_concs_vector[i] ** rl_exps[i]
     forward *= kf
-
+    
     # Compute backward rate
     backward = 1.0
     for i in product_indices:
         backward *= species_concs_vector[i] ** rl_exps[i]
     backward *= kb
-
+    
     change = forward - backward
-
+    
     # Calculate temp vector
     temp_vector = np.empty_like(species_concs_vector)
     for i in range(species_concs_vector.size):
@@ -333,68 +333,16 @@ def dconcs_dt_v0_2(kf, kb, species_concs_vector, rxn_stoichs, rl_exps,
                     min_ratio = ratio
                     limiting_index = i
                     limiting_found = True
-
+                    
     if limiting_found:
         change = min_ratio
-
+        
     # Compute final change in concentrations
     result = np.empty_like(species_concs_vector)
     for i in range(species_concs_vector.size):
         result[i] = change * rxn_stoichs[i]
     
     return result
-
-@njit(cache=True)
-def dlogconcs_dt_v0_2(kf, kb, z_vector, rxn_stoichs, rl_exps,
-                       reactant_indices, product_indices):
-    """
-    Rate of change of log concentrations.
-    No logic to identify limiting reactants other than 
-    when concentration < 1e-20.
-    
-    Parameters
-    ----------
-    z_vector : ndarray
-        log concentrations of all species
-    rxn_stoichs : ndarray
-        stoichiometric coefficients
-    rl_exps : ndarray
-        rate law exponents
-    reactant_indices, product_indices : ndarrays
-        indices of reactants and products
-        
-    Returns
-    -------
-    dz/dt : ndarray
-        time derivatives of log concentrations
-    """
-
-    # transform to concentrations
-    y = np.exp(z_vector)
-
-    # check if any reactant is exhausted:
-    for idx in reactant_indices:
-        if y[idx] <= 1e-20:
-            return np.zeros_like(z_vector)
-
-    # forward rate
-    forward = kf
-    for i in reactant_indices:
-        forward *= y[i] ** rl_exps[i]
-
-    # backward rate
-    backward = kb
-    for i in product_indices:
-        backward *= y[i] ** rl_exps[i]
-
-    net_flux = forward - backward
-
-    dy_dt = net_flux * rxn_stoichs
-
-    # chain rule
-    dz_dt = dy_dt / y
-
-    return dz_dt
 
 class Reaction(AbstractReaction):
     """
@@ -562,16 +510,7 @@ class Reaction(AbstractReaction):
         if kf==kb==0:
             return np.zeros(shape=self.species_system.concentrations.shape)
         
-        if self.species_system.log_transformed:
-            return dlogconcs_dt_v0_2(kf=kf, 
-                          kb=kb,
-                          z_vector=self.species_system._concentrations, 
-                          rxn_stoichs=self.stoichiometry,
-                          rl_exps=self.exponents,
-                          reactant_indices=self.reactant_indices,
-                          product_indices=self.product_indices)
-        else:
-            return dconcs_dt_v0_2(kf=kf, 
+        return dconcs_dt_v0_2(kf=kf, 
                              kb=kb,
                              species_concs_vector=self.species_system._concentrations, 
                              rxn_stoichs=self.stoichiometry,

@@ -12,6 +12,8 @@ import time
 
 from scipy.integrate import solve_ivp
 from scipy.interpolate import interp1d
+from numba import njit
+
 from matplotlib import pyplot as plt
 from typing import Union, Tuple, List        
 from matplotlib import pyplot as plt
@@ -130,7 +132,8 @@ class ReactionSystem():
               events=None,
               sp_conc_for_events=None, # dict or None
               dense_output=False,
-              y0=None):
+              y0=None,
+              log_transform_concs=False):
         """
         Solve a single phase of the reaction system.
         
@@ -154,7 +157,11 @@ class ReactionSystem():
             Whether to compute a continuous solution.
         y0 : array_like, optional
             Initial concentrations of species.
-            
+        log_transform_concs: Boolean, optional
+            Whether to solve using log(concentrations) rather than concentrations.
+            Implicitly enforces positivity in solve_ivp, but more computationally
+            intensive. Defaults to False.
+                        
         Returns
         -------
         scipy.integrate.OdeResult
@@ -167,33 +174,44 @@ class ReactionSystem():
         if sp_conc_for_events is not None:
             if events is None:
                 events = []
-            code = 'y = concs[index] - S'
+            code = 'y = np_exp(concs[index]) - S'
             for sp, conc in sp_conc_for_events.items():
                 index = sp_sys.index_from_ID(sp) if isinstance(sp, str) else sp_sys.index(sp)
                 events.append(create_function(code=code, 
                                               namespace={'S': conc,
                                                          'index': index,
-                                                         'y': None}
+                                                         'y': None,
+                                                         'np_exp':np.exp,}
                                               ))
         
-        if self.species_system.log_transformed:
+        if log_transform_concs:
+            y0_clean = y0.copy()
+            y0_clean[np.where(y0_clean<=0.0)] = 1e-20
+            
+            np_exp = np.exp
+            # np_array = np.array
             def ode_system_RHS_log(t, z):
-                sp_sys._concentrations = z
-                return get_dconcs_dt()
-            print('Solving ...')
+                y = np_exp(z)
+                # y = np_array(np_exp_alt(z))
+                sp_sys.concentrations = y  # so Reaction.get_dconcs_dt() still works
+                dy_dt = get_dconcs_dt()
+                dz_dt = dy_dt/y  # chain rule
+                return dz_dt
+            
+            # print('Solving ...')
             sol = solve_ivp(ode_system_RHS_log, 
                              t_span=t_span, 
-                             y0=np.log(y0),
+                             y0=np.log(y0_clean),
                              t_eval=t_eval,
-                             atol=atol, # recommended: <= 1e-6*max(sp_sys.concentrations)
-                             rtol=atol, # recommended: 1e-6
+                             atol=1e-4, 
+                             rtol=1e-4,
                              # the solver keeps the local error estimates less than atol + rtol * abs(y)
                              events=events,
                              method=method,
                              dense_output=dense_output)
-            print('Solved.')
-            sol.y = np.log(sol.y)
-            sol.y_events = np.log(sol.y_events)
+            # print('Solved.')
+            sol.y = np.exp(sol.y)
+            sol.y_events = np.exp(sol.y_events)
             
             return sol
             
@@ -204,7 +222,7 @@ class ReactionSystem():
                 sp_sys.concentrations = concs
                 return get_dconcs_dt()
                  
-            print('Solving ...')
+            # print('Solving ...')
             sol = solve_ivp(ode_system_RHS, 
                              t_span=t_span, 
                              y0=y0,
@@ -215,7 +233,7 @@ class ReactionSystem():
                              events=events,
                              method=method,
                              dense_output=dense_output)
-            print('Solved.')
+            # print('Solved.')
 
             return sol
     
@@ -230,7 +248,8 @@ class ReactionSystem():
               dense_output=False,
               y0=None,
               dt_spike=1e-6, # long dt_spike (e.g., slow feeding) not supported, only spikes in concentrations
-              remove_negative_concs=True, # can safely do this as negatives don't affect calculation with ode_system_RHS
+              remove_negative_concs=True, # can safely do this as negatives don't affect calculation with ode_system_RHS,
+              log_transform_concs=False,
               filename=None,
               save_events=True,
               ):
@@ -303,6 +322,11 @@ class ReactionSystem():
                 .         .          .                            .                              ...
                 .         .          .                            .                              ...
         
+        log_transform_concs: Boolean, optional
+            Whether to solve using log(concentrations) rather than concentrations.
+            Implicitly enforces positivity in solve_ivp, but more computationally
+            intensive. Defaults to False.
+            
         See Also
         --------
         `scipy.integrate.solve_ivp <https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.solve_ivp.html>`_
@@ -392,7 +416,8 @@ class ReactionSystem():
                                                  events=events_non_sp_conc,
                                                  sp_conc_for_events=sp_conc_for_events, # dict or None
                                                  dense_output=dense_output,
-                                                 y0=y0_curr))
+                                                 y0=y0_curr,
+                                                 log_transform_concs=log_transform_concs))
                 
                 tmin_curr = t+dt_spike
                 y0_curr = sols[-1].y[:, -1]
@@ -409,9 +434,10 @@ class ReactionSystem():
                                              events=events_non_sp_conc,
                                              sp_conc_for_events=sp_conc_for_events, # dict or None
                                              dense_output=dense_output,
-                                             y0=y0_curr))
+                                             y0=y0_curr,
+                                             log_transform_concs=log_transform_concs))
             
-        # if no feed spikes     
+        # if no feed spikes   
         else:
             # simulate single phase
             sols.append(_solve_single_phase((tmin, tmax),
@@ -421,7 +447,8 @@ class ReactionSystem():
                                              events=events_non_sp_conc,
                                              sp_conc_for_events=sp_conc_for_events, # dict or None
                                              dense_output=dense_output,
-                                             y0=y0))
+                                             y0=y0,
+                                             log_transform_concs=log_transform_concs))
         
         y_final = np.concatenate([sol.y.transpose() for sol in sols])
         t_final = list(sols[0].t)
@@ -879,6 +906,7 @@ class ReactionSystem():
                                                 plot_during_fit=False,
                                                 call_before_each_solve=None,
                                                 timeout_solve_ivp=0.5,
+                                                log_transform_concs=False,
                                                 **kwargs):
         """
         Fit reaction kinetic parameters to experimental time-series data.
@@ -937,6 +965,11 @@ class ReactionSystem():
             Enforce timeout of `scipy.integrate.solve_ivp` when it exceeds this value.
             Creates and passes a timeout_function as an event to `scipy.integrate.solve_ivp`.
             Defaults to 0.5 (seconds).
+            
+        log_transform_concs: Boolean, optional
+            Whether to solve using log(concentrations) rather than concentrations.
+            Implicitly enforces positivity in solve_ivp, but more computationally
+            intensive. Defaults to False.
             
         Returns
         -------
@@ -1048,7 +1081,7 @@ class ReactionSystem():
             set_rxn_kp(new_rxn_kp)
             for c in call_before_each_solve:
                 c(new_rxn_kp)
-            solve(t_span=t_span, y0=y0, save_events=False)
+            solve(t_span=t_span, y0=y0, save_events=False, log_transform_concs=log_transform_concs)
             for sol in self._solution['sol']:
                 if (not sol.success) or (sol.status==1):
                     return np.full((len(y_maxes), len(tdata)), 0.)
