@@ -21,6 +21,9 @@ from matplotlib.ticker import MaxNLocator, AutoLocator, AutoMinorLocator
 from ..reactions import Reaction
 from ..utils import create_function, is_number, is_array_of_numbers,\
                     is_list_of_strings, fit_multiple_dependent_variables
+                    
+from ..gui import ReactionSystemGUI
+from tkinter import Tk
 
 __all__ = ('ReactionSystem', 'RxnSys')
 
@@ -397,7 +400,8 @@ class ReactionSystem():
         
         t_events = None
         y_events = None
-        if sols[0].t_events is not None: 
+        if sols[0].t_events is not None\
+            and not sols[0].t_events == []: 
             t_events = list(sols[0].t_events[0])
             y_events = list(sols[0].y_events[0])
         else:
@@ -484,8 +488,11 @@ class ReactionSystem():
         
         self._solution_dfs = (df_main, df_events)
 
-    def plot_solution(self, show_events=True, sps_to_include=None,
-                  x_ticks=None, y_ticks=None):
+    def plot_solution(self, 
+                      fig=None, ax=None,
+                      show_events=True, sps_to_include=None,
+                      x_ticks=None, y_ticks=None,
+                      auto_ticks=True):
         """
         Plot the concentrations of selected species over time.
         
@@ -499,9 +506,10 @@ class ReactionSystem():
             Tick values for the x-axis. If None, selected automatically.
         y_ticks : list or array-like, optional
             Tick values for the y-axis. If None, selected automatically.
+            
         """
         if sps_to_include is None:
-            sps_to_include = [i.ID for i in self.species_system.all_sps]
+            sps_to_include = self.species_system.all_sp_IDs
         
         sol = self._solution
         t, y = sol['t'], sol['y']
@@ -509,13 +517,16 @@ class ReactionSystem():
         events = sol['events']
         all_sps = self.species_system.all_sps
         
-        fig, ax = plt.subplots()
+        if fig is None and ax is None:
+            fig, ax = plt.subplots()
     
         y_max = 0  # for auto y-axis limit
-    
+        
+        print(sps_to_include)
         for i, sp in zip(range(len(all_sps)), all_sps):
             if sp in sps_to_include or sp.ID in sps_to_include:
-                ax.plot(t, y[i, :], label=sp.ID,
+                ax.plot(t, y[i, :], 
+                        label=sp.ID,
                         linestyle='solid',
                         linewidth=1.)
                 y_max = max(y_max, np.max(y[i, :]))
@@ -542,7 +553,7 @@ class ReactionSystem():
             return ticks, (tick_min, tick_max)
     
         # X-axis ticks and limits
-        if x_ticks is None:
+        if x_ticks is None and auto_ticks:
             x_ticks, xlim = auto_ticks(t.min(), t.max())
             ax.set_xticks(x_ticks)
             # ax.set_xlim(xlim)
@@ -551,7 +562,7 @@ class ReactionSystem():
             # ax.set_xlim(min(x_ticks), max(x_ticks))
     
         # Y-axis ticks and limits
-        if y_ticks is None:
+        if y_ticks is None and auto_ticks:
             y_ticks, ylim = auto_ticks(0, y_max)
             ax.set_yticks(y_ticks)
             # ax.set_ylim(ylim)
@@ -1227,4 +1238,10 @@ class ReactionSystem():
         """
         return self.__str__()
     
+    def GUI(self):
+        root = Tk()
+        root.title(f"NSKinetics - Reaction System GUI - {self.ID}")
+        app = ReactionSystemGUI(root=root, system=self)
+        root.mainloop()
+        
 RxnSys = ReactionSystem
