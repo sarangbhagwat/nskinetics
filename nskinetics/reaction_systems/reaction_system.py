@@ -203,7 +203,8 @@ class ReactionSystem():
                              t_span=t_span, 
                              y0=np.log(y0_clean),
                              t_eval=t_eval,
-                             atol=1e-4, 
+                             # atol=atol/np.max(y0), 
+                             atol=1e-4,
                              rtol=1e-4,
                              # the solver keeps the local error estimates less than atol + rtol * abs(y)
                              events=events,
@@ -251,7 +252,7 @@ class ReactionSystem():
               remove_negative_concs=True, # can safely do this as negatives don't affect calculation with ode_system_RHS,
               log_transform_concs=False,
               filename=None,
-              save_events=True,
+              save_events_df=True,
               ):
         """
         Simulate the reaction system and get concentration vs. time data.
@@ -494,11 +495,11 @@ class ReactionSystem():
         
         self._solution = solution
         self._C_at_t_is_updated = False # this generates new interp1d objects the next time C_at_t is called
-        self.save_solution(filename=filename, save_events=save_events) # if filename is None, saves only to RxnSys._solution_dfs and does not save file
+        self.save_solution_df(filename=filename, save_events_df=save_events_df) # if filename is None, saves only to RxnSys._solution_dfs and does not save file
         
         return solution
     
-    def save_solution(self, filename, save_events=True):
+    def save_solution_df(self, filename, save_events_df=True):
         """
         Save the latest simulation solution to an Excel file and cache DataFrames.
         
@@ -506,7 +507,7 @@ class ReactionSystem():
         ----------
         filename : str
             Path to the output Excel file. If None, data is not saved to disk.
-        save_events : bool, default True
+        save_events_df : bool, default True
             Whether to include event data in the output.
             
         """
@@ -521,7 +522,7 @@ class ReactionSystem():
         
         df_main = pd.DataFrame.from_dict(df_dict)
         df_events = None
-        if save_events and not solution['t_events'].shape == (0,):
+        if save_events_df and not solution['t_events'].shape == (0,):
             df_dict_events ={'event': solution['events'],
                             't_event': solution['t_events'],
                             }
@@ -590,7 +591,7 @@ class ReactionSystem():
         ax.set_ylabel('Concentration [mol/L]')
     
         # === Automatic ticks and limits ===
-        def auto_ticks(data_min, data_max, n_ticks=5, round_base=None):
+        def get_auto_ticks(data_min, data_max, n_ticks=5, round_base=None):
             range_span = data_max - data_min
             raw_step = range_span / (n_ticks - 1)
             if round_base is None:
@@ -609,19 +610,19 @@ class ReactionSystem():
     
         # X-axis ticks and limits
         if x_ticks is None and auto_ticks:
-            x_ticks, xlim = auto_ticks(t.min(), t.max())
+            x_ticks, xlim = get_auto_ticks(t.min(), t.max())
             ax.set_xticks(x_ticks)
             # ax.set_xlim(xlim)
-        else:
+        elif x_ticks is not None:
             ax.set_xticks(x_ticks)
             # ax.set_xlim(min(x_ticks), max(x_ticks))
     
         # Y-axis ticks and limits
         if y_ticks is None and auto_ticks:
-            y_ticks, ylim = auto_ticks(0, y_max)
+            y_ticks, ylim = get_auto_ticks(0, y_max)
             ax.set_yticks(y_ticks)
             # ax.set_ylim(ylim)
-        else:
+        elif y_ticks is not None:
             ax.set_yticks(y_ticks)
             # ax.set_ylim(min(y_ticks), max(y_ticks))
             
@@ -1081,7 +1082,7 @@ class ReactionSystem():
             set_rxn_kp(new_rxn_kp)
             for c in call_before_each_solve:
                 c(new_rxn_kp)
-            solve(t_span=t_span, y0=y0, save_events=False, log_transform_concs=log_transform_concs)
+            solve(t_span=t_span, y0=y0, save_events_df=False, log_transform_concs=log_transform_concs)
             for sol in self._solution['sol']:
                 if (not sol.success) or (sol.status==1):
                     return np.full((len(y_maxes), len(tdata)), 0.)

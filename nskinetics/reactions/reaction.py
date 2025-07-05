@@ -57,10 +57,13 @@ class ChemicalEquation():
             
             if stoich<0: 
                 if not lhs=='': lhs+= ' + '
-                lhs+= str(-stoich) + ' ' + chem.ID
+                if not np.abs(stoich)==1.: lhs+= str(-stoich) + ' '
+                lhs+= chem.ID
             elif stoich>0: 
                 if not rhs=='': rhs+= ' + '
-                rhs+= str(stoich) + ' ' + chem.ID
+                if not np.abs(stoich)==1.: rhs+= str(stoich) + ' '
+                rhs+= chem.ID
+                
         return f'{self.ID}: ChemicalEquation(' + lhs + ' -> ' + rhs + ')'
     
     def __repr__(self):

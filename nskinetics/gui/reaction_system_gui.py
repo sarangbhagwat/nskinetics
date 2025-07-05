@@ -14,10 +14,12 @@ class ReactionSystemGUI:
                  rxn_kinetic_param_scrollparams=(0, 500, 0.01),
                  tspan_ub_scrollparams=(10, 7*24*3600, 10),
                  log_transform_concs=True,
+                 timeout_solve=0.2,
                  ):
         self.root = root
         self.system = system
         self.log_transform_concs = log_transform_concs
+        system._timeout_solve_ivp = timeout_solve
         # self.initial_concentration_scrollparams = initial_concentration_scrollparams
         # self.rxn_kinetic_param_scrollparams = rxn_kinetic_param_scrollparams
         
@@ -197,6 +199,7 @@ class ReactionSystemGUI:
                           events=self.events,
                           spikes=self.spikes,
                           log_transform_concs=self.log_transform_concs,
+                          save_events_df=False,
                           )
         
         system.plot_solution(fig=fig, ax=ax, sps_to_include=sps_to_include,
@@ -254,6 +257,7 @@ class ReactionSystemGUI:
                           events=self.events,
                           spikes=self.spikes,
                           log_transform_concs=self.log_transform_concs,
+                          save_events_df=False
                           )
     
     def update_only_plot(self):
