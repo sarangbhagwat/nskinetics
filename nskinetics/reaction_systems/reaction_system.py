@@ -211,8 +211,10 @@ class ReactionSystem():
                              dense_output=dense_output)
             # print('Solved.')
             sol.y = np.exp(sol.y)
-            sol.y_events = np.exp(sol.y_events)
-            
+            try:
+                sol.y_events = np.exp(sol.y_events)
+            except:
+                breakpoint()
             return sol
             
         else:

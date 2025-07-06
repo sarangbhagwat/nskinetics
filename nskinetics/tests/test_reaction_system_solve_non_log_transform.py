@@ -46,7 +46,6 @@ def test_simple_ESP_non_log_transform(plot=True,
         rxn_sys.plot_solution(sps_to_include=['ES'])
     
     # Tests
-    print(rxn_sys._solution['t_events'], rxn_sys._solution['y_events'])
     assert np.allclose(rxn_sys._solution['t_events'], 
                        np.array([42219.44616989]), 
                        rtol=1e-3, atol=1e-3)

@@ -173,3 +173,34 @@ def test_simple_ESP_inverse_modeling_and_doe(plot=True,
     assert np.allclose(best_expts[0]['score'],
                        0.0018309195499738703,
                        rtol=1e-1, atol=1e-8)
+
+def test_michaelis_menten_steady_state_inverse_modeling(plot=False, 
+                                                        show_progress=False,
+                                                        show_output=False,
+                                                        show_warnings=False):
+    Vmax_orig = 100.
+    KM_orig = 2.5
+    S_data = np.linspace(0, 12, 50)
+    V_data = nsk.michaelis_menten(S=S_data, Vmax=Vmax_orig, KM=KM_orig)
+    
+    E0 = 2.
+    kcat_fit, KM_fit = nsk.fit_michaelis_menten(data=None, 
+                                    E0=E0, 
+                                    S_data=S_data, 
+                                    V_data=V_data, 
+                                    normalize=False)
+    Vmax_fit = kcat_fit*E0
+    
+    assert (np.allclose([Vmax_fit, KM_fit], [Vmax_orig, KM_orig]))
+    
+    
+    kcat_fit, KM_fit = nsk.fit_michaelis_menten(data=None, 
+                                    E0=E0, 
+                                    S_data=S_data, 
+                                    V_data=V_data, 
+                                    normalize=True)
+    Vmax_fit = kcat_fit*E0
+    
+    assert (np.allclose([Vmax_fit, KM_fit], [Vmax_orig, KM_orig]))
+    
+    

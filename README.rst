@@ -1,4 +1,4 @@
-.. image:: docs/source/_static/images/logo/logo_nskinetics_light.png
+.. image:: docs/source/_static/images/logo/logo_nskinetics_light_white-circle.png
   :width: 250
 
 =============================================================
