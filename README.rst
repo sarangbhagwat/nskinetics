@@ -17,7 +17,7 @@ The Non-Steady state Kinetics simulation package (NSKinetics)
 .. image:: https://img.shields.io/pypi/pyversions/nskinetics.svg
    :target: https://pypi.python.org/pypi/nskinetics
    :alt: Supported_versions
-.. image:: https://coveralls.io/repos/github/sarangbhagwat/nskinetics/badge.svg?branch=main
+.. image:: https://coveralls.io/repos/github/sarangbhagwat/nskinetics/badge.svg?cachebuster=20250706
    :target: https://coveralls.io/github/sarangbhagwat/nskinetics?branch=main
 
 **Contents**
