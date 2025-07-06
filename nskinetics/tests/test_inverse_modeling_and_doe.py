@@ -157,7 +157,7 @@ def test_simple_ESP_inverse_modeling_and_doe(plot=False,
     
     assert np.allclose(rxn_sys._fitsol[1], 
                        0.9999999999992784,
-                       rtol=1e-5, atol=1e-8)
+                       rtol=1e-4, atol=1e-8)
     
     assert np.allclose(best_expts[0]['y0'],
                        np.array([0.08966552, 

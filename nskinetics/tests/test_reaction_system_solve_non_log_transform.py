@@ -10,7 +10,7 @@ import nskinetics as nsk
 import numpy as np
 from warnings import filterwarnings
 
-def test_simple_ESP_log_transform(plot=False, 
+def test_simple_ESP_non_log_transform(plot=False, 
                     show_progress=False,
                     show_output=False,
                     show_warnings=False):
@@ -33,10 +33,11 @@ def test_simple_ESP_log_transform(plot=False,
                                      reactions=reactions,
                                      species_system=sp_sys)
     
+    rxn_sys._log_transform_concs = False
     # Simulate the ReactionSystem
     rxn_sys.solve(t_span=[0, 2*24*3600], # I want to simulate the system over 2 days
                      sp_conc_for_events={'S':1e-6}, # In addition to a full simulation,
-                     log_transform_concs=True)                              # I want to know the time at which [S] drops to 1e-6
+                     )                              # I want to know the time at which [S] drops to 1e-6
     
     # Plot results
     if plot:
@@ -45,23 +46,23 @@ def test_simple_ESP_log_transform(plot=False,
         rxn_sys.plot_solution(sps_to_include=['ES'])
     
     # Tests
+    print(rxn_sys._solution['t_events'], rxn_sys._solution['y_events'])
+    assert np.allclose(rxn_sys._solution['t_events'], 
+                       np.array([42219.44616989]), 
+                       rtol=1e-3, atol=1e-3)
     
-    # assert np.allclose(rxn_sys._solution['t_events'], 
-    #                    np.array([42219.44616989]), 
-    #                    rtol=1e-5, atol=1e-8)
+    assert np.allclose(rxn_sys._solution['y_events'], 
+                       np.array([[9.99998909e-05],
+                                [1.00000000e-06],
+                                [1.09091871e-10],
+                                [9.89998909e-05]]), 
+                       rtol=1e-3, atol=1e-8)
     
-    # assert np.allclose(rxn_sys._solution['y_events'], 
-    #                    np.array([[9.99998909e-05],
-    #                             [1.00000000e-06],
-    #                             [1.09091871e-10],
-    #                             [9.89998909e-05]]), 
-    #                    rtol=1e-5, atol=1e-8)
-    
-    # assert np.allclose(rxn_sys._solution['y'][:,50],
-    #                    np.array([9.99958946e-05, 
-    #                              3.76342167e-05, 
-    #                              4.10542307e-09, 
-    #                              6.23616779e-05]),
-    #                    rtol=1e-5, atol=1e-8)
+    assert np.allclose(rxn_sys._solution['y'][:,50],
+                       np.array([9.99958946e-05, 
+                                 3.76342167e-05, 
+                                 4.10542307e-09, 
+                                 6.23616779e-05]),
+                       rtol=1e-5, atol=1e-8)
     
     return rxn_sys
