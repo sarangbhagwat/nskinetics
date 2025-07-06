@@ -10,7 +10,7 @@ import nskinetics as nsk
 import numpy as np
 from warnings import filterwarnings
 
-def test_simple_ESP(plot=False, 
+def test_simple_ESP_log_transform(plot=False, 
                     show_progress=False,
                     show_output=False,
                     show_warnings=False):

@@ -780,15 +780,15 @@ class ReactionSystem():
             for r in rf:
                 if not r._freeze_kf:
                     param_vector.append(r.kf)
-                    param_keys.append((r.ID+': '+r.chem_equation.__str__(), 'kf'))
+                    param_keys.append((r.ID+': '+r.get_equation_str(), 'kf'))
                 if not r._freeze_kb:
                     param_vector.append(r.kb)
-                    param_keys.append((r.ID+': '+r.chem_equation.__str__(), 'kb'))
+                    param_keys.append((r.ID+': '+r.get_equation_str(), 'kb'))
         else:
             for r in rf:
                 param_vector.extend([r.kf, r.kb])
-                param_keys.append((r.ID+': '+r.chem_equation.__str__(), 'kf'))
-                param_keys.append((r.ID+': '+r.chem_equation.__str__(), 'kb'))
+                param_keys.append((r.ID+': '+r.get_equation_str(), 'kf'))
+                param_keys.append((r.ID+': '+r.get_equation_str(), 'kb'))
         
         self._reaction_kinetic_param_keys = param_keys
         return np_array(param_vector)

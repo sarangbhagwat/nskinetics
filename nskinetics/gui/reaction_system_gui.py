@@ -23,6 +23,15 @@ class ReactionSystemGUI:
         # self.initial_concentration_scrollparams = initial_concentration_scrollparams
         # self.rxn_kinetic_param_scrollparams = rxn_kinetic_param_scrollparams
         
+        
+        # top bar frame
+        topbar = ttk.Frame(root)
+        topbar.pack(side=tk.TOP, fill=tk.X)
+        
+        # place quit button on the right
+        quit_btn = ttk.Button(topbar, text="Quit", command=root.destroy)
+        quit_btn.pack(side=tk.RIGHT, padx=5, pady=5)
+
         ### Change Initial Concentrations, Time Span ###
         # frame
         init_frame = ttk.LabelFrame(root, 
@@ -63,7 +72,7 @@ class ReactionSystemGUI:
         #
         
         # Initial concentrations
-        sp_sys.concentrations[1] = 2.
+        # sp_sys.concentrations[1] = 2.
         self.initial_concentrations = sp_sys.concentrations.copy()
         
         for species, val in zip(all_sp_IDs, sp_sys.concentrations):
@@ -128,7 +137,8 @@ class ReactionSystemGUI:
                 row.pack(fill=tk.X, pady=2)
                 label = ttk.Label(row, text=r)
                 label.pack(side=tk.LEFT)
-            
+                prev_rxn = r
+                
             # parameter label
             row = ttk.Frame(param_frame)
             row.pack(fill=tk.X, pady=2)

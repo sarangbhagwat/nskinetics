@@ -596,10 +596,14 @@ class Reaction(AbstractReaction):
         if arrow=='<->':
             param_info += ', ' + f'kb={self.kb}'
         self._lhs_string = lhs
+        self._arrow_string = arrow
         self._rhs_string = rhs
         self._param_info_string = param_info
         self._full_string = f'{self.ID}: Reaction(' + lhs + ' ' + arrow + ' ' + rhs + '; ' + param_info + ')'
     
+    def get_equation_str(self):
+        return self._lhs_string + ' ' + self._arrow_string + ' ' + self._rhs_string
+        
     def __str__(self):
         self._load_full_string()
         return self._full_string
