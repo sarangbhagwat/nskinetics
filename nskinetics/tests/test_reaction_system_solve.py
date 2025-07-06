@@ -266,3 +266,5 @@ def test_simple_ESP_inhib_fed_batch(plot=False,
                               7.74311035e-07, 5.95157329e-11, 4.92256294e-05, 4.64586621e-07,
                               3.57094397e-11, 2.95353777e-05]),
                        rtol=1e-5, atol=1e-8)
+    
+    return rxn_sys

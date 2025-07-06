@@ -548,7 +548,7 @@ class ReactionSystem():
                       fig=None, ax=None,
                       show_events=True, sps_to_include=None,
                       x_ticks=None, y_ticks=None,
-                      auto_ticks=True, show=True):
+                      auto_ticks=False, show=True):
         """
         Plot the concentrations of selected species over time.
         
@@ -577,6 +577,7 @@ class ReactionSystem():
             fig, ax = plt.subplots()
     
         y_max = 0  # for auto y-axis limit
+        # y_max = np.max(y)
         
         # print(sps_to_include)
         for i, sp in zip(range(len(all_sps)), all_sps):
@@ -586,7 +587,7 @@ class ReactionSystem():
                         linestyle='solid',
                         linewidth=1.)
                 y_max = max(y_max, np.max(y[i, :]))
-    
+                
         ax.set_xlabel('Time [s]')
         ax.set_ylabel('Concentration [mol/L]')
     
@@ -610,7 +611,10 @@ class ReactionSystem():
     
         # X-axis ticks and limits
         if x_ticks is None and auto_ticks:
-            x_ticks, xlim = get_auto_ticks(t.min(), t.max())
+            try:
+                x_ticks, xlim = get_auto_ticks(t.min(), t.max())
+            except:
+                breakpoint()
             ax.set_xticks(x_ticks)
             # ax.set_xlim(xlim)
         elif x_ticks is not None:
@@ -619,7 +623,10 @@ class ReactionSystem():
     
         # Y-axis ticks and limits
         if y_ticks is None and auto_ticks:
-            y_ticks, ylim = get_auto_ticks(0, y_max)
+            try:
+                y_ticks, ylim = get_auto_ticks(0, y_max)
+            except:
+                breakpoint()
             ax.set_yticks(y_ticks)
             # ax.set_ylim(ylim)
         elif y_ticks is not None:
