@@ -8,10 +8,7 @@
 
 from . import species
 from .species import *
-from . import enzyme
-from .enzyme import *
 
 __all__ = (
      *species.__all__,
-     *enzyme.__all__,
      )
