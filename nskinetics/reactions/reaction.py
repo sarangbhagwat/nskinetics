@@ -10,7 +10,6 @@ import numpy as np
 from numba import njit
 from warnings import warn
 from .utils import read_equation_str
-from ..species.enzyme import enzyme_complex_joiner
 
 __all__ = ('Reaction', 'Rxn', 'IrreversibleReaction', 'IrrevRxn',
            'ReversibleReaction', 'RevRxn',
