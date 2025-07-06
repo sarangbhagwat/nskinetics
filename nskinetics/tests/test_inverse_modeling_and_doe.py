@@ -67,7 +67,7 @@ def test_simple_ESP_inverse_modeling_and_doe(plot=False,
         rxn_sys.solve(t_span=t_span,
                       sp_conc_for_events={'S':1e-6},
                       # filename=f'solution{i}',
-                      save_events_df=False)                              
+                      save_events_df=False,)                              
         dfs_results.append(rxn_sys._solution_dfs[0])
         # Plot results
         if plot:
@@ -161,7 +161,7 @@ def test_simple_ESP_inverse_modeling_and_doe(plot=False,
     
     assert np.allclose(best_expts[0]['y0'],
                        np.array([0.08966552, 
-                                 0.55176897, 
+                                 0.6552069, 
                                  0., 
                                  0.]),
                        rtol=1e-5, atol=1e-8)
