@@ -353,32 +353,32 @@ def dconcs_dt_v0_3(
     reactant_indices, product_indices
     ):
     n_species = species_concs_vector.size
-
+    
     # Early exit if any reactant is exhausted
     for idx in reactant_indices:
         if species_concs_vector[idx] <= 1e-20:
             return np.zeros(n_species, dtype=species_concs_vector.dtype)
-
+        
     # Compute forward rate
     forward = kf
     for idx in reactant_indices:
         conc = species_concs_vector[idx]
         exp  = rl_exps[idx]
         forward *= conc ** exp
-
+        
     # Compute backward rate
     backward = kb
     for idx in product_indices:
         conc = species_concs_vector[idx]
         exp  = rl_exps[idx]
         backward *= conc ** exp
-
+        
     change = forward - backward
-
+    
     # Evaluate limiting reactant (to avoid negative concentrations)
     min_ratio = 1e20
     limiting_found = False
-
+    
     for i in range(n_species):
         stoich = rxn_stoichs[i]
         projected = species_concs_vector[i] + change * stoich
@@ -388,15 +388,15 @@ def dconcs_dt_v0_3(
                 if ratio < min_ratio:
                     min_ratio = ratio
                     limiting_found = True
-
+                    
     if limiting_found:
         change = min_ratio
-
+        
     # Compute final concentration rate of change
     result = np.empty(n_species, dtype=species_concs_vector.dtype)
     for i in range(n_species):
         result[i] = change * rxn_stoichs[i]
-
+        
     return result
 
 class Reaction(AbstractReaction):
