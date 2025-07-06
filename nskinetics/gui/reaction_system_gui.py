@@ -13,12 +13,10 @@ class ReactionSystemGUI:
                  initial_conc_scrollparams=(0, 5.0, 0.01),
                  rxn_kinetic_param_scrollparams=(0, 500, 0.01),
                  tspan_ub_scrollparams=(10, 7*24*3600, 10),
-                 log_transform_concs=True,
                  timeout_solve=0.2,
                  ):
         self.root = root
         self.system = system
-        self.log_transform_concs = log_transform_concs
         system._timeout_solve_ivp = timeout_solve
         # self.initial_concentration_scrollparams = initial_concentration_scrollparams
         # self.rxn_kinetic_param_scrollparams = rxn_kinetic_param_scrollparams
@@ -208,7 +206,6 @@ class ReactionSystemGUI:
                           t_span=self.t_span,
                           events=self.events,
                           spikes=self.spikes,
-                          log_transform_concs=self.log_transform_concs,
                           save_events_df=False,
                           )
         
@@ -266,7 +263,6 @@ class ReactionSystemGUI:
                           t_span=self.t_span,
                           events=self.events,
                           spikes=self.spikes,
-                          log_transform_concs=self.log_transform_concs,
                           save_events_df=False
                           )
     
