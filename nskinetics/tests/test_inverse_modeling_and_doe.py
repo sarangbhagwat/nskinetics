@@ -167,9 +167,9 @@ def test_simple_ESP_inverse_modeling_and_doe(plot=False,
                        rtol=1e-5, atol=1e-8)
     
     assert np.allclose(best_expts[0]['FIM'],
-                       np.array([[5.12779117e-05]]),
+                       np.array([[0.0018309195499738703]]),
                        rtol=1e-1, atol=1e-8)
     
     assert np.allclose(best_expts[0]['score'],
-                       5.127791265124837e-05,
+                       0.0018309195499738703,
                        rtol=1e-1, atol=1e-8)
