@@ -10,10 +10,10 @@ import nskinetics as nsk
 import numpy as np
 from warnings import filterwarnings
 
-def test_simple_ESP(plot=False, 
-                    show_progress=False,
-                    show_output=False,
-                    show_warnings=False):
+def test_simple_ESP(plot=True, 
+                    show_progress=True,
+                    show_output=True,
+                    show_warnings=True):
     
     if not show_warnings: filterwarnings("ignore")
     
@@ -60,10 +60,10 @@ def test_simple_ESP(plot=False,
     return rxn_sys
 
 
-def test_simple_ESP_inhib(plot=False, 
-                          show_progress=False,
-                          show_output=False,
-                          show_warnings=False):
+def test_simple_ESP_inhib(plot=True, 
+                          show_progress=True,
+                          show_output=True,
+                          show_warnings=True):
     
     if not show_warnings: filterwarnings("ignore")
     
@@ -121,10 +121,10 @@ def test_simple_ESP_inhib(plot=False,
     return rxn_sys
 
 
-def test_simple_ESP_fed_batch(plot=False, 
-                              show_progress=False,
-                              show_output=False,
-                              show_warnings=False):
+def test_simple_ESP_fed_batch(plot=True, 
+                              show_progress=True,
+                              show_output=True,
+                              show_warnings=True):
     
     if not show_warnings: filterwarnings("ignore")
     
@@ -178,10 +178,10 @@ def test_simple_ESP_fed_batch(plot=False,
     return rxn_sys
 
 
-def test_simple_ESP_inhib_fed_batch(plot=False, 
-                                    show_progress=False,
-                                    show_output=False,
-                                    show_warnings=False):
+def test_simple_ESP_inhib_fed_batch(plot=True, 
+                                    show_progress=True,
+                                    show_output=True,
+                                    show_warnings=True):
     
     if not show_warnings: filterwarnings("ignore")
     

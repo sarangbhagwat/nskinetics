@@ -10,10 +10,10 @@ import nskinetics as nsk
 import numpy as np
 from warnings import filterwarnings
 
-def test_simple_ESP_inverse_modeling_and_doe(plot=False, 
+def test_simple_ESP_inverse_modeling_and_doe(plot=True, 
                                              show_progress=False,
-                                             show_output=False,
-                                             show_warnings=False):
+                                             show_output=True,
+                                             show_warnings=True):
     
     if not show_warnings: filterwarnings("ignore")
     
@@ -67,7 +67,7 @@ def test_simple_ESP_inverse_modeling_and_doe(plot=False,
         rxn_sys.solve(t_span=t_span,
                       sp_conc_for_events={'S':1e-6},
                       # filename=f'solution{i}',
-                      save_events_df=False,)                              
+                      save_events_df=True,)                              
         dfs_results.append(rxn_sys._solution_dfs[0])
         # Plot results
         if plot:
@@ -122,7 +122,7 @@ def test_simple_ESP_inverse_modeling_and_doe(plot=False,
         rxn_sys.solve(t_span=t_span,
                       sp_conc_for_events={'S':1e-6},
                       # filename=f'solution{i}',
-                      save_events_df=False,
+                      save_events_df=True,
                       )                  
         # Plot results            
         if plot:

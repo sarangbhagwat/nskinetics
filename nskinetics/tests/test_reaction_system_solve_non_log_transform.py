@@ -10,10 +10,10 @@ import nskinetics as nsk
 import numpy as np
 from warnings import filterwarnings
 
-def test_simple_ESP_non_log_transform(plot=False, 
-                    show_progress=False,
-                    show_output=False,
-                    show_warnings=False):
+def test_simple_ESP_non_log_transform(plot=True, 
+                    show_progress=True,
+                    show_output=True,
+                    show_warnings=True):
     
     if not show_warnings: filterwarnings("ignore")
     

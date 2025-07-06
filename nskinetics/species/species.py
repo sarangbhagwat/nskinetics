@@ -52,7 +52,7 @@ class SimpleSpecies(Species):
     def __init__(self, ID, MW=1.):
         Species.__init__(ID=ID, MW=MW)
 
-class ComplexSpecies():
+class ComplexSpecies(Species):
     """
     Represents a complex formed by two or more constituent Species.
     Must provide parameters simple_species_system and either components or ID; 
