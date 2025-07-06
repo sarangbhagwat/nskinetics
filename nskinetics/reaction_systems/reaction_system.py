@@ -174,7 +174,8 @@ class ReactionSystem():
         if sp_conc_for_events is not None:
             if events is None:
                 events = []
-            code = 'y = np_exp(concs[index]) - S'
+            code = 'y = np_exp(concs[index]) - S' if log_transform_concs\
+                else 'y = concs[index] - S'
             for sp, conc in sp_conc_for_events.items():
                 index = sp_sys.index_from_ID(sp) if isinstance(sp, str) else sp_sys.index(sp)
                 events.append(create_function(code=code, 
