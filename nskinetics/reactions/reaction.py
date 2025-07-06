@@ -302,7 +302,7 @@ def dconcs_dt_v0_2(kf, kb, species_concs_vector, rxn_stoichs, rl_exps,
     # Check if any reactant is exhausted:
     for ind in reactant_indices:
         if species_concs_vector[ind] <= 1e-20:
-            return np.zeros_like(species_concs_vector)
+            return np.zeros(species_concs_vector.shape, dtype=species_concs_vector.dtype)
     
     # Compute forward rate
     forward = 1.0
@@ -345,6 +345,58 @@ def dconcs_dt_v0_2(kf, kb, species_concs_vector, rxn_stoichs, rl_exps,
     for i in range(species_concs_vector.size):
         result[i] = change * rxn_stoichs[i]
     
+    return result
+
+@njit(cache=True)
+def dconcs_dt_v0_3(
+    kf, kb, species_concs_vector, rxn_stoichs, rl_exps,
+    reactant_indices, product_indices
+    ):
+    n_species = species_concs_vector.size
+
+    # Early exit if any reactant is exhausted
+    for idx in reactant_indices:
+        if species_concs_vector[idx] <= 1e-20:
+            return np.zeros(n_species, dtype=species_concs_vector.dtype)
+
+    # Compute forward rate
+    forward = kf
+    for idx in reactant_indices:
+        conc = species_concs_vector[idx]
+        exp  = rl_exps[idx]
+        forward *= conc ** exp
+
+    # Compute backward rate
+    backward = kb
+    for idx in product_indices:
+        conc = species_concs_vector[idx]
+        exp  = rl_exps[idx]
+        backward *= conc ** exp
+
+    change = forward - backward
+
+    # Evaluate limiting reactant (to avoid negative concentrations)
+    min_ratio = 1e20
+    limiting_found = False
+
+    for i in range(n_species):
+        stoich = rxn_stoichs[i]
+        projected = species_concs_vector[i] + change * stoich
+        if projected < 0.0:
+            if stoich != 0.0:
+                ratio = species_concs_vector[i] / abs(stoich)
+                if ratio < min_ratio:
+                    min_ratio = ratio
+                    limiting_found = True
+
+    if limiting_found:
+        change = min_ratio
+
+    # Compute final concentration rate of change
+    result = np.empty(n_species, dtype=species_concs_vector.dtype)
+    for i in range(n_species):
+        result[i] = change * rxn_stoichs[i]
+
     return result
 
 class Reaction(AbstractReaction):
@@ -513,7 +565,7 @@ class Reaction(AbstractReaction):
         if kf==kb==0:
             return np.zeros(shape=self.species_system.concentrations.shape)
         
-        return dconcs_dt_v0_2(kf=kf, 
+        return dconcs_dt_v0_3(kf=kf, 
                              kb=kb,
                              species_concs_vector=self.species_system._concentrations, 
                              rxn_stoichs=self.stoichiometry,
