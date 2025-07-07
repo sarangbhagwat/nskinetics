@@ -19,9 +19,9 @@ from typing import Union, Tuple, List
 from matplotlib import pyplot as plt
 from matplotlib.ticker import MaxNLocator, AutoLocator, AutoMinorLocator
 
-from libsbml import readSBML
-from sympy import sympify
-from sympy.printing.pycode import pycode
+# from libsbml import readSBML
+# from sympy import sympify
+# from sympy.printing.pycode import pycode
 
 from ..species import SpeciesSystem, Species
 from ..reactions import Reaction
