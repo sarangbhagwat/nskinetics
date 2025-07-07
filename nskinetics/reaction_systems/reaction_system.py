@@ -14,16 +14,16 @@ from scipy.integrate import solve_ivp
 from scipy.interpolate import interp1d
 from numba import njit
 
-from matplotlib import pyplot as plt
-from typing import Union, Tuple, List        
-from matplotlib import pyplot as plt
+from typing import Union, Tuple, List  
+
+from matplotlib import pyplot as plt     
 from matplotlib.ticker import MaxNLocator, AutoLocator, AutoMinorLocator
 
 # from libsbml import readSBML
 # from sympy import sympify
 # from sympy.printing.pycode import pycode
+# from ..species import SpeciesSystem, Species
 
-from ..species import SpeciesSystem, Species
 from ..reactions import Reaction
 from ..utils import create_function, is_number, is_array_of_numbers,\
                     is_list_of_strings, fit_multiple_dependent_variables
