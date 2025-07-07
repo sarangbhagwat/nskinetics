@@ -1,257 +1,212 @@
+# -*- coding: utf-8 -*-
+# NSKinetics: simulation of Non-Steady state enzyme Kinetics and inhibitory phenomena
+# Copyright (C) 2025-, Sarang S. Bhagwat <sarangbhagwat.developer@gmail.com>
+# 
+# This module is under the MIT open-source license. See 
+# https://github.com/sarangbhagwat/nskinetics/blob/main/LICENSE
+# for license details.
+
 import tkinter as tk
 from tkinter import ttk
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import numpy as np
-import time
 
 __all__ = ('ReactionSystemGUI',)
 
 # GUI
+
+# scrollable frame helper
+
+# scrollable frame helper
+class ScrollableFrame(ttk.Frame):
+    def __init__(self, container, width=400, height=700, *args, **kwargs):
+        super().__init__(container, *args, **kwargs)
+        style = ttk.Style()
+        bg_color = style.lookup("TFrame", "background") or "#f0f0f0"
+        
+        self.canvas = tk.Canvas(self, borderwidth=0, width=width, height=height,
+                                background=bg_color, highlightthickness=0)
+        scrollbar = ttk.Scrollbar(self, orient="vertical", command=self.canvas.yview)
+        
+        self.scrollable_frame = ttk.Frame(self.canvas)
+        self.scrollable_frame.configure(style="TFrame")
+        
+        self.scrollable_frame.bind(
+            "<Configure>",
+            lambda e: self.canvas.configure(
+                scrollregion=self.canvas.bbox("all")
+            )
+        )
+        
+        self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
+        self.canvas.configure(yscrollcommand=scrollbar.set)
+            
+        self.canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+        
+            
+        # enable mousewheel scroll
+        self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
+        
+    def _on_mousewheel(self, event):
+        self.canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+
+
 class ReactionSystemGUI:
     def __init__(self, root, system,
-                 initial_conc_scrollparams=(0, 5.0, 0.01),
-                 rxn_kinetic_param_scrollparams=(0, 500, 0.01),
+                 initial_conc_scrollparams=(0, 5.0, 0.05),
+                 rxn_kinetic_param_scrollparams=(0, 500, 5),
                  tspan_ub_scrollparams=(10, 7*24*3600, 10),
-                 timeout_solve=0.2,
-                 ):
+                 timeout_solve=0.2):
+        
         self.root = root
         self.system = system
         system._timeout_solve_ivp = timeout_solve
-        # self.initial_concentration_scrollparams = initial_concentration_scrollparams
-        # self.rxn_kinetic_param_scrollparams = rxn_kinetic_param_scrollparams
         
+        style = ttk.Style()
+        style.theme_use("clam")
+        style.configure(".", font=("Arial", 10))
         
-        # top bar frame
-        topbar = ttk.Frame(root)
+        root.title(f"NSKinetics: Reaction System {system.ID}")
+        root.geometry("1300x750")
+        
+        # top bar
+        topbar = ttk.Frame(root, padding=5)
         topbar.pack(side=tk.TOP, fill=tk.X)
+        ttk.Label(topbar, text="Reaction System Control Panel", font=("Arial", 12, "bold")).pack(side=tk.LEFT)
+        ttk.Button(topbar, text="Quit", command=root.destroy).pack(side=tk.RIGHT)
         
-        # place quit button on the right
-        quit_btn = ttk.Button(topbar, text="Quit", command=root.destroy)
-        quit_btn.pack(side=tk.RIGHT, padx=5, pady=5)
-
-        ### Change Initial Concentrations, Time Span ###
-        # frame
-        init_frame = ttk.LabelFrame(root, 
-                                    # text="Initial concentrations",
-                                    )
-        init_frame.pack(side=tk.LEFT, fill=tk.Y, padx=5, pady=5)
+        # left side controls with a single vertical scroll
+        controls_outer = ttk.Frame(root, padding=5)
+        controls_outer.pack(side=tk.LEFT, fill=tk.BOTH, padx=5, pady=5)
         
-        self.init_conc_vars = init_conc_vars = []
+        controls_scroll = ScrollableFrame(controls_outer, width=500, height=700)
+        controls_scroll.pack(fill=tk.BOTH, expand=True)
+        controls_frame = controls_scroll.scrollable_frame
+        
+        # ========== Initial Concentrations & Time ==========
+        init_frame = ttk.LabelFrame(controls_frame, text="Initial Conditions", padding=5)
+        init_frame.pack(fill="x", anchor="n", expand=True, padx=5, pady=5)
+        
+        self.init_conc_vars = []
         sp_sys = system.species_system
-        self.all_sp_IDs = all_sp_IDs = sp_sys.all_sp_IDs
+        self.all_sp_IDs = sp_sys.all_sp_IDs
         
-        #!!!
-        self.events = None
-        self.spikes = None
+        self.t_span = (0., 300.)
+        self.t_span_ub_var = tk.DoubleVar(value=self.t_span[1])
         
-        # Time span upper bound
+        ttk.Label(init_frame, text="Simulation Duration (s)").pack(anchor=tk.W, pady=2)
+        entry = ttk.Entry(init_frame, textvariable=self.t_span_ub_var, width=10)
+        entry.pack(anchor=tk.W, pady=2, fill="x")
+        ttk.Scale(init_frame, variable=self.t_span_ub_var,
+                  from_=tspan_ub_scrollparams[0],
+                  to=tspan_ub_scrollparams[1],
+                  orient=tk.HORIZONTAL,
+                  length=300).pack(fill="x", pady=2)
+        # entry.bind("<Return>", lambda e: self.on_t_span_ub_change())
+        # entry.bind("<FocusOut>", lambda e: self.on_t_span_ub_change())
+        self.t_span_ub_var.trace_add("write", self.on_t_span_ub_change)
         
-        self.t_span = t_span = (0., 300.)
-        self.t_span_ub_var = t_span_ub_var = tk.DoubleVar(value=t_span[1])
-        # time span ub label
-        row = ttk.Frame(init_frame)
-        row.pack(fill=tk.X, pady=2)
-        label = ttk.Label(row, text='Duration')
-        label.pack(side=tk.LEFT)
-        # time span ub entry box
-        entry = ttk.Entry(row, textvariable=t_span_ub_var, width=10)
-        entry.pack(side=tk.RIGHT)
-        # time span ub scroll bar
-        from_, to_, res_ = tspan_ub_scrollparams
-        scale = tk.Scale(
-            init_frame, variable=t_span_ub_var,
-            from_=from_, to=to_, resolution=res_,
-            orient=tk.HORIZONTAL,
-            length=150)
-        scale.pack()
-        # update time span ub
-        t_span_ub_var.trace_add("write", self.on_t_span_ub_change)
-        #
+        ttk.Separator(init_frame, orient=tk.HORIZONTAL).pack(fill=tk.X, pady=5)
+        ttk.Label(init_frame, text="Initial Concentrations").pack(anchor=tk.W)
         
-        # Initial concentrations
-        # sp_sys.concentrations[1] = 2.
         self.initial_concentrations = sp_sys.concentrations.copy()
         
-        for species, val in zip(all_sp_IDs, sp_sys.concentrations):
-            
+        for species, val in zip(self.all_sp_IDs, sp_sys.concentrations):
             var = tk.DoubleVar(value=val)
+            self.init_conc_vars.append(var)
             
-            # map tkinter vars
-            init_conc_vars.append(var)
-
-            # species label
-            row = ttk.Frame(init_frame)
-            row.pack(fill=tk.X, pady=2)
-            label = ttk.Label(row, text=species)
-            label.pack(side=tk.LEFT)
-
-            # species initial concentration entry box
-            entry = ttk.Entry(row, textvariable=var, width=10)
-            entry.pack(side=tk.RIGHT)
-
-            # species initial concentration entry scroll bar
+            subframe = ttk.Frame(init_frame)
+            subframe.pack(fill="x", pady=2)
             
-            from_, to_, res_ = initial_conc_scrollparams
-            scale = tk.Scale(
-                init_frame, variable=var,
-                from_=from_, to=to_, resolution=res_,
-                orient=tk.HORIZONTAL,
-                length=150
-            )
-            scale.pack()
-            
-            # update the initial concentration
+            ttk.Label(subframe, text=species).pack(side=tk.LEFT)
+            entry = ttk.Entry(subframe, textvariable=var, width=16)
+            entry.pack(side=tk.RIGHT, padx=2)
+            ttk.Scale(init_frame, variable=var,
+                      from_=initial_conc_scrollparams[0],
+                      to=initial_conc_scrollparams[1],
+                      orient=tk.HORIZONTAL,
+                      length=300).pack(fill="x", pady=2)
+            # entry.bind("<Return>", lambda e: self.on_init_conc_change())
+            # entry.bind("<FocusOut>", lambda e: self.on_init_conc_change())
             var.trace_add("write", self.on_init_conc_change)
-        ###
         
-        ### Change Kinetic Parameters ###
-        # frame
-        param_frame = ttk.LabelFrame(root, 
-                                     text="Kinetic parameters",
-                                     )
-        param_frame.pack(side=tk.LEFT, fill=tk.Y, padx=5, pady=5)
-
+        # ========== Kinetic Parameters ==========
+        param_frame = ttk.LabelFrame(controls_frame, text="Kinetic Parameters", padding=5)
+        param_frame.pack(fill="x", anchor="n", expand=True, padx=5, pady=5)
+        
+        self.param_vars = []
         param_vals = system._get_reaction_kinetic_params()
         param_keys = system._reaction_kinetic_param_keys
         
-        # self.param_vars = param_vars =\
-        #     {k:v for k,v in zip (param_keys, param_vals)}
-        self.param_vars = param_vars = []
-        
-        prev_rxn = None
+        current_rxn = None
         
         for k, v in zip(param_keys, param_vals):
-            r, param = k
-            
+            rxn, param = k
             var = tk.DoubleVar(value=v)
+            self.param_vars.append(var)
             
-            # map tkinter vars
-            param_vars.append(var)
-            
-            # reaction label
-            if not r==prev_rxn:
-                row = ttk.Frame(param_frame)
-                row.pack(fill=tk.X, pady=2)
-                label = ttk.Label(row, text=r)
-                label.pack(side=tk.LEFT)
-                prev_rxn = r
+            if rxn != current_rxn:
+                header = ttk.Label(param_frame, text=f"Reaction: {rxn}", font=("Arial", 10, "bold"))
+                header.pack(anchor="w", pady=(5,2))
+                current_rxn = rxn
                 
-            # parameter label
-            row = ttk.Frame(param_frame)
-            row.pack(fill=tk.X, pady=2)
-            label = ttk.Label(row, text=param)
-            label.pack(side=tk.LEFT)
-            
-            # parameter entry box
-            entry = ttk.Entry(row, textvariable=var, width=10)
-            entry.pack(side=tk.RIGHT)
-            
-            # parameter scroll bar
-            from_, to_, res_ = rxn_kinetic_param_scrollparams
-            scale = tk.Scale(
-                param_frame, variable=var,
-                from_=from_, to=to_, resolution=res_,
-                orient=tk.HORIZONTAL,
-                length=150
-            )
-            scale.pack()
-            
-            # update the param value
+            subframe = ttk.Frame(param_frame)
+            subframe.pack(fill="x", pady=2)
+            ttk.Label(subframe, text=param).pack(side=tk.LEFT)
+            entry = ttk.Entry(subframe, textvariable=var, width=16)
+            entry.pack(side=tk.RIGHT, padx=2)
+            ttk.Scale(param_frame, variable=var,
+                      from_=rxn_kinetic_param_scrollparams[0],
+                      to=rxn_kinetic_param_scrollparams[1],
+                      orient=tk.HORIZONTAL,
+                      length=300).pack(fill="x", pady=2)
+            # entry.bind("<Return>", lambda e: self.on_param_change())
+            # entry.bind("<FocusOut>", lambda e: self.on_param_change())
             var.trace_add("write", self.on_param_change)
-        ###
         
-        ### Change Species Shown in Plot ###
-        # frame
-        init_frame = ttk.LabelFrame(root, text="Plot Species")
-        init_frame.pack(side=tk.LEFT, fill=tk.Y, padx=5, pady=5)
-
-        self.sps_to_include_vars = sps_to_include_vars = []
-        self.sps_to_include = sps_to_include = all_sp_IDs.copy()
-        # sp_sys = system.species_system
-        # all_sp_IDs = sp_sys.all_sp_IDs
+        # ========== Plot Species ==========
+        species_frame = ttk.LabelFrame(controls_frame, text="Plot Species", padding=5)
+        species_frame.pack(fill="x", anchor="n", expand=True, padx=5, pady=5)
         
-        for species in all_sp_IDs:
-            
+        self.sps_to_include_vars = []
+        self.sps_to_include = self.all_sp_IDs.copy()
+        
+        for species in self.all_sp_IDs:
             var = tk.BooleanVar(value=True)
-            
-            # map tkinter vars
-            sps_to_include_vars.append(var)
-
-            # species initial concentration entry scroll bar
-            check = ttk.Checkbutton(param_frame, 
-                                    text=species, 
-                                    variable=var)
-            check.pack(pady=5)
-            
-            # update the initial concentration
+            self.sps_to_include_vars.append(var)
+            ttk.Checkbutton(species_frame, text=species, variable=var).pack(anchor="w", pady=2)
             var.trace_add("write", self.on_sps_included_change)
-        ###
         
+        # ========== Plot ==========
+        fig, ax = plt.subplots(figsize=(6,5))
         
-        ### Change Events ###
-        
-        ###
-        
-        
-        ### Change Spikes ###
-        
-        ###
-        
-        
-        ### Build Matplotlib Figure
-        fig, ax = plt.subplots(figsize=(5,4))
-        
-        self.system.solve(
-                          t_span=self.t_span,
-                          events=self.events,
-                          spikes=self.spikes,
-                          save_events_df=False,
-                          )
-        
-        system.plot_solution(fig=fig, ax=ax, sps_to_include=sps_to_include,
+        self.system.solve(t_span=self.t_span, events=None, spikes=None, save_events_df=False)
+        system.plot_solution(fig=fig, ax=ax, sps_to_include=self.sps_to_include,
                              auto_ticks=False, show=False)
+        
         self.fig = fig
         self.ax = ax
         
         self.canvas = FigureCanvasTkAgg(fig, master=root)
-        self.canvas.get_tk_widget().pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
-        
-        # self.simulate_and_update_plot()
-        ###
+        self.canvas.get_tk_widget().pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=5, pady=5)
     
+    # event handlers
     def on_t_span_ub_change(self, *_):
-        # try:
         self.t_span = (0., self.t_span_ub_var.get())
-        # except:
-        #     pass
         self.simulate_and_update_plot()
 
     def on_init_conc_change(self, *_):
-        # try:
-        self.initial_concentrations =\
-            np.array([v.get() for v in self.init_conc_vars])
-        # except:
-        #     pass
+        self.initial_concentrations = np.array([v.get() for v in self.init_conc_vars])
         self.simulate_and_update_plot()
-            
+        
     def on_param_change(self, *_):
-        # try:
-        self.system.set_reaction_kinetic_params(np.array([v.get() 
-                                                 for v in self.param_vars]))
-        # except:
-        #     pass
+        self.system.set_reaction_kinetic_params(np.array([v.get() for v in self.param_vars]))
         self.simulate_and_update_plot()
     
     def on_sps_included_change(self, *_):
-        # try:
-        all_sp_IDs = self.all_sp_IDs
-        self.sps_to_include = sps_to_include = []
-        for v, sp in zip(self.sps_to_include_vars, self.all_sp_IDs):
-            if v.get():
-                sps_to_include.append(sp)
-        # except:
-        #     pass
+        self.sps_to_include = [sp for v, sp in zip(self.sps_to_include_vars, self.all_sp_IDs) if v.get()]
         self.update_only_plot()
     
     def load_initial_concentrations(self):
@@ -259,33 +214,19 @@ class ReactionSystemGUI:
         
     def simulate(self):
         self.load_initial_concentrations()
-        self.system.solve(
-                          t_span=self.t_span,
-                          events=self.events,
-                          spikes=self.spikes,
-                          save_events_df=False
-                          )
-    
+        self.system.solve(t_span=self.t_span, events=None, spikes=None, save_events_df=False)
+        
     def update_only_plot(self):
         self.ax.clear()
-        self.system.plot_solution(fig=self.fig, ax=self.ax, 
+        self.system.plot_solution(fig=self.fig, ax=self.ax,
                                   sps_to_include=self.sps_to_include,
                                   auto_ticks=False, show=False)
         self.canvas.draw()
-        
+    
     def simulate_and_update_plot(self):
-        # t, y = self.system.simulate()
-        # self.ax.clear()
-        # self.ax.plot(t, y)
-        # self.ax.set_xlabel("Time")
-        # self.ax.set_ylabel("Concentration")
+        self.root.focus()   # force any Entry to lose focus and validate
         self.simulate()
         self.update_only_plot()
-        # print(self.system.__str__())
-        # print(self.system.species_system.concentrations)
-        
-# if __name__ == "__main__":
-#     root = tk.Tk()
-#     root.title("NSKinetics - Reaction System GUI")
-#     app = ReactionSystemGUI(root, system)
-#     root.mainloop()
+
+
+
