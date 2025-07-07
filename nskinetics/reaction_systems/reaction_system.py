@@ -1302,7 +1302,7 @@ class ReactionSystem():
         if close_immediately:
             def close_GUI():
                 root.destroy()
-            root.after(5, close_GUI)
+            root.after(2, close_GUI)
         root.mainloop()
             
 RxnSys = ReactionSystem
