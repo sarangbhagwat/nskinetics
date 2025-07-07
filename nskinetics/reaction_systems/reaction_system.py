@@ -19,7 +19,11 @@ from typing import Union, Tuple, List
 from matplotlib import pyplot as plt
 from matplotlib.ticker import MaxNLocator, AutoLocator, AutoMinorLocator
 
+from libsbml import readSBML
+from sympy import sympify
+from sympy.printing.pycode import pycode
 
+from ..species import SpeciesSystem, Species
 from ..reactions import Reaction
 from ..utils import create_function, is_number, is_array_of_numbers,\
                     is_list_of_strings, fit_multiple_dependent_variables
@@ -1304,5 +1308,5 @@ class ReactionSystem():
                 root.destroy()
             root.after(2, close_GUI)
         root.mainloop()
-            
+    
 RxnSys = ReactionSystem

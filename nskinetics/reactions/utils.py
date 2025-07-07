@@ -32,9 +32,13 @@ def get_eqn_and_param_info_and_rate_expr_strs(equation_str,
             for rate_expr_idfier in rate_expr_idfiers:
                 if rate_expr_idfier in str_part:
                     rate_expr = str_part
-                
+    
     else:
-        raise ValueError(f'Could not parse equation string {equation_str}.')
+        for eqn_only_idfier in eqn_only_idfiers:
+            if eqn_only_idfier in equation_str:
+                eqn_only = equation_str
+        if eqn_only is None:
+            raise ValueError(f'Could not parse equation string {equation_str}.')
     
     # print(equation_str)
     # print(eqn_only, '|', param_info, '|', rate_expr)
