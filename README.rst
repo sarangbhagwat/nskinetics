@@ -17,7 +17,7 @@ The Non-Steady state Kinetics simulation package (NSKinetics)
 .. image:: https://img.shields.io/pypi/pyversions/nskinetics.svg
    :target: https://pypi.python.org/pypi/nskinetics
    :alt: Supported_versions
-.. image:: https://coveralls.io/repos/github/sarangbhagwat/nskinetics/badge.svg?cachebuster=202507062
+.. image:: https://coveralls.io/repos/github/sarangbhagwat/nskinetics/badge.svg?cachebuster=202507063
    :target: https://coveralls.io/github/sarangbhagwat/nskinetics?branch=main
 
 **Contents**
@@ -28,7 +28,7 @@ The Non-Steady state Kinetics simulation package (NSKinetics)
 What is NSKinetics?
 -------------------
 
-NSKinetics is a fast, flexible, and convenient package to simulate non-steady state reaction kinetics, especially for systems involving enzymatic conversions. Models for multiple inhibitory phenomena (competitive, non-competitive, uncompetitive, and "mechanism-based") are also included. NSKinetics enables the construction, simulation, and analysis of reaction systems governed by mass action kinetics or other user-defined rate laws. It supports features such as species concentration spikes, event triggers, inverse modeling (parameter fitting to experimental data), and design of experiments.
+NSKinetics is a fast, flexible, and convenient package to simulate non-steady state reaction kinetics, especially for systems involving enzymatic conversions. Models for multiple inhibitory phenomena (competitive, non-competitive, uncompetitive, and "mechanism-based") are also included. NSKinetics enables the construction, simulation, and analysis of reaction systems governed by mass action kinetics or other user-defined rate laws. It supports features such as species concentration spikes, event triggers, inverse modeling (parameter fitting to experimental data), parameter identifiability analysis, and optimal design of experiments.
 
 Installation
 ------------
