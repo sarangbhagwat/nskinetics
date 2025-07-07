@@ -58,8 +58,6 @@ jobs:
         python -m pip install pytest
     - name: Test with numba
       run: |
-        export DISPLAY=:99
-        Xvfb :99 &
         pytest . -v --cov-report html --cov-report xml --cov=nskinetics --cov-report term-missing -m "not slow"
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
