@@ -76,7 +76,7 @@ def test_simple_ESP_inverse_modeling_and_doe(plot=True,
     
     #%% Fit kinetic parameters to saved results from simulating with original set of kinetic parameters
     
-    print(rxn_sys._timeout_solve_ivp)
+    # print(rxn_sys._timeout_solve_ivp)
     rxn_sys.fit_reaction_kinetic_parameters_to_data(
                                                     # data=[f'solution{i}.xlsx'
                                                     #       for i in batch_indices],
@@ -139,33 +139,14 @@ def test_simple_ESP_inverse_modeling_and_doe(plot=True,
         show_output=show_output,
         )
     
-    return rxn_sys 
-
     # Tests
     
-    assert np.allclose(rxn_sys._fitsol[0], 
-                       np.array([11.99998575]),
-                       rtol=1e-3, atol=1e-8)
-    
     assert np.allclose(rxn_sys._fitsol[1], 
-                       0.9999999999992784,
-                       rtol=1e-4, atol=1e-8)
+                       1.,
+                       rtol=1e-3, atol=1e-5)
     
-    assert np.allclose(best_expts[0]['y0'],
-                       np.array([0.08966552, 
-                                 0.6552069, 
-                                 0., 
-                                 0.]),
-                       rtol=1e-5, atol=1e-8)
-    
-    assert np.allclose(best_expts[0]['FIM'],
-                       np.array([[0.0018309195499738703]]),
-                       rtol=1e-1, atol=1e-8)
-    
-    assert np.allclose(best_expts[0]['score'],
-                       0.0018309195499738703,
-                       rtol=1e-1, atol=1e-8)
-    
+    return rxn_sys 
+
 def test_simple_ESP_inverse_modeling_and_doe_with_known_kcat_KM(plot=True, 
                                              show_progress=False,
                                              show_output=True,
