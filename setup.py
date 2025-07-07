@@ -23,7 +23,8 @@ setup(
                       'xlsxwriter>=3.2.5,<4.0.0',
                       'scikit-learn',
                       'pandas>=2.2.2,<3.0.0',
-                      'python-libsbml>=5.20.5<6.0.0',],
+                      # 'python-libsbml>=5.20.5,<6.0.0',
+		     ],
     # extras_require={ 
     #     'dev': [
     #     ]
