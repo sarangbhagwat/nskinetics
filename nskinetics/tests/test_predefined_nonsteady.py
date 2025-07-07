@@ -14,6 +14,8 @@ def test_simple_ESP_inhib_predefined(plot=True,
                                      show_progress=False,
                                      show_output=True,
                                      show_warnings=True):
+    if not show_warnings: filterwarnings('ignore')
+    
     kcat = 32.
     kon = 1e2
     koff = 1e1
@@ -24,7 +26,7 @@ def test_simple_ESP_inhib_predefined(plot=True,
     E_conc = 1e-3
     S_conc = 1e-1
     I_CI_conc = 1e-3
-    I_NCI_conc = 0. #!!! debug NCI
+    I_NCI_conc = 0. #!!! debug NCI solve_ivp; happens with rxn strings too
     I_UCI_conc = 1e-3
     I_MBI_conc = 1e-3
     
