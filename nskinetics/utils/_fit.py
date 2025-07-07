@@ -89,10 +89,11 @@ def fit_multiple_dependent_variables(f,
         
         best_de_result = None
         
+        bounds_de = differential_evolution_kwargs['bounds']
+        
         if i>0:
             # p0 = np.random.rand(1)*random_param_bound*np.random.rand(*p0.shape)
             for j in range(n_de_runs):
-                bounds_de = differential_evolution_kwargs['bounds']
                 bounds_de_to_use = []
                 for (b1, b2) in bounds_de:
                     bounds_de_to_use.append((b1, b2/(10**j)))
