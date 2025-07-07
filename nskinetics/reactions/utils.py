@@ -10,31 +10,47 @@ import numpy as np
 
 #%% Reading an equation string to get stoichiometries and kinetic parameters
 
-def get_eqn_and_param_info_split_str(equation_str, 
-                                     param_info_start,
-                                     param_info_junk):
-    param_info_junk.append(param_info_start)
-    split_str, param_info = None, None
-    if param_info_start in equation_str:
-        split_str = equation_str[:equation_str.index(param_info_start)].split(' ')
-        param_info = equation_str[equation_str.index(param_info_start):].replace('=', ' ')
-        for i in param_info_junk:
-            param_info = param_info.replace(i, ' ')
-        param_info = param_info.split(' ')
-    else:
-        split_str = equation_str.split(' ')
+def get_eqn_and_param_info_and_rate_expr_strs(equation_str, 
+                                     delimiter,
+                                     eqn_only_idfiers,
+                                     kf_idfiers, kb_idfiers,
+                                     rate_expr_idfiers):
     
-    return split_str, param_info
+    eqn_only, param_info, rate_expr = None, None, None
+    if delimiter in equation_str:
+        str_parts = equation_str.split(delimiter)
+        for str_part in str_parts:
+            
+            for eqn_only_idfier in eqn_only_idfiers:
+                if eqn_only_idfier in str_part:
+                    eqn_only = str_part
+                    
+            for param_idfier in kf_idfiers+kb_idfiers:
+                if param_idfier in str_part:
+                    param_info = str_part
+                    
+            for rate_expr_idfier in rate_expr_idfiers:
+                if rate_expr_idfier in str_part:
+                    rate_expr = str_part
+                
+    else:
+        raise ValueError(f'Could not parse equation string {equation_str}.')
+    
+    # print(equation_str)
+    # print(eqn_only, '|', param_info, '|', rate_expr)
+    return eqn_only, param_info, rate_expr
 
-def reformat_to_handle_numbers_in_sp_IDs(equation_str, 
-                                         split_str,
+
+def reformat_to_handle_numbers_in_sp_IDs(eqn_only,
+                                         equation_str, 
                                          all_sp_IDs,
                                          conjugations):
+    eqn_only_split = eqn_only.split(' ')
     # Handle instances of stoichiometry number immediately next to species name
     # e.g., 2A rather than 2 A; make sure 2A isn't a chemical
     replace={}
     last_str_was_float = False
-    for str_ in split_str:
+    for str_ in eqn_only_split:
         if str_ not in all_sp_IDs + conjugations: # is it a sp_ID or conjugation
             resolved=False
             try:
@@ -65,71 +81,106 @@ def reformat_to_handle_numbers_in_sp_IDs(equation_str,
             if not resolved:
                 raise ValueError(f'Equation string "{equation_str}" contains element "{str_}" that was not identified as a species, stoichiometry number, conjugation')
     for k, v in replace.items():
-        ind = split_str.index(k)
-        split_str[ind] = v[0]
-        split_str.insert(ind+1, v[1])
-        
-    return split_str
+        ind = eqn_only_split.index(k)
+        eqn_only_split[ind] = v[0]
+        eqn_only_split.insert(ind+1, v[1])
+    
+    # print(eqn_only_split)
+    return eqn_only_split
 
-def get_stoichiometry(split_str, all_sp_IDs, arrows):
+
+def get_stoichiometry(eqn_only_split, all_sp_IDs, arrows):
     # Get stoichiometry array
     stoichiometry = []
     arrow_ind = None
     for arrow in arrows:
-        if arrow in split_str:
-            arrow_ind = split_str.index(arrow)
+        if arrow in eqn_only_split:
+            arrow_ind = eqn_only_split.index(arrow)
     
     for sp_ID in all_sp_IDs:
-        if sp_ID in split_str:
+        if sp_ID in eqn_only_split:
             try:
-                stoichiometry.append(float(split_str[split_str.index(sp_ID)-1]))
+                stoichiometry.append(float(eqn_only_split[eqn_only_split.index(sp_ID)-1]))
             except:
                 stoichiometry.append(1.)
-            if split_str.index(sp_ID)<arrow_ind:
+            if eqn_only_split.index(sp_ID)<arrow_ind:
                 stoichiometry[-1] *= -1
         else:
             stoichiometry.append(0.)
-    
+            
+    # print(stoichiometry)
     return stoichiometry
 
-def get_kinetic_params(param_info, param_info_junk):
+
+def get_kinetic_params(param_info, param_info_junk, kf_idfiers, kb_idfiers):
+    if param_info is None: return None, None
+    param_info = param_info.replace('=', ' ')
+    for i in param_info_junk:
+        param_info = param_info.replace(i, ' ')
+    param_info = param_info.split(' ')
     # Get kinetic parameters, if any
     kf_kb = [None, None]
     if param_info is not None:
         param_info_clean = [i for i in param_info if not i in param_info_junk + ['']]
-        kf_chars = ['kf',]
-        kb_chars = ['kb',]
+
         for i in range(len(param_info_clean)-1):
-            if param_info_clean[i] in kf_chars:
+            if param_info_clean[i] in kf_idfiers:
                 kf_kb[0] = float(param_info_clean[i+1])
-            elif param_info_clean[i] in kb_chars:
+            elif param_info_clean[i] in kb_idfiers:
                 kf_kb[1] = float(param_info_clean[i+1])
     return kf_kb[0], kf_kb[1]
+
+
+def extract_rate_expr(rate_expr, rate_expr_idfiers, rate_expr_junk):
+    if rate_expr is None: return None
+    extracted_rate_expr = rate_expr
+    for i in rate_expr_junk:
+        extracted_rate_expr.replace(i, '')
+    for j in rate_expr_idfiers:
+        extracted_rate_expr.replace(j, '')
+    return extracted_rate_expr
 
 def read_equation_str(equation_str, species_system):
     stoichiometry = []
     
     arrows = ['->', '<->']
     conjugations = ['+'] + arrows
-    param_info_start=';'
-    param_info_junk=['=', ',',]
+    
+    delimiter=';'
+    
+    eqn_only_idfiers = arrows
+    kf_idfiers = ['kf',]
+    kb_idfiers = ['kb',]
+    rate_expr_idfiers = ['rate_expr',]
+    
+    param_info_junk = ['=', ',',]
+    rate_expr_junk = ["'", '"', ' ']
+    
     all_sp_IDs = [i.ID for i in species_system.all_sps]
     
-    split_str, param_info = get_eqn_and_param_info_split_str(
+    eqn_only, param_info, rate_expr = get_eqn_and_param_info_and_rate_expr_strs(
         equation_str=equation_str, 
-        param_info_start=param_info_start,
-        param_info_junk=param_info_junk)
+        delimiter=delimiter,
+        eqn_only_idfiers=eqn_only_idfiers,
+        kf_idfiers=kf_idfiers, kb_idfiers=kb_idfiers,
+        rate_expr_idfiers=rate_expr_idfiers)
     
-    split_str = reformat_to_handle_numbers_in_sp_IDs(
+    eqn_only_split = reformat_to_handle_numbers_in_sp_IDs(
         equation_str=equation_str, 
-        split_str=split_str, 
+        eqn_only=eqn_only, 
         all_sp_IDs=all_sp_IDs,
         conjugations=conjugations)
     
-    stoichiometry = get_stoichiometry(split_str=split_str, 
+    stoichiometry = get_stoichiometry(eqn_only_split=eqn_only_split, 
                                       all_sp_IDs=all_sp_IDs,
                                       arrows=arrows)
+    
     kf, kb = get_kinetic_params(param_info=param_info, 
-                       param_info_junk=param_info_junk)
-
-    return np.array(stoichiometry), kf, kb
+                       param_info_junk=param_info_junk,
+                       kf_idfiers=kf_idfiers, kb_idfiers=kb_idfiers)
+    
+    extracted_rate_expr = extract_rate_expr(rate_expr, 
+                                            rate_expr_idfiers=rate_expr_idfiers,
+                                            rate_expr_junk=rate_expr_junk,
+                                            )
+    return np.array(stoichiometry), kf, kb, extracted_rate_expr

@@ -88,7 +88,8 @@ class ChemicalEquation():
                 warn(f'Replaced {self.ID} stoichiometry with {new_stoichiometry}, but this does not match the paired_obj stoichiometry: {self.paired_obj.stoichiometry}.',
                      RuntimeWarning)
     
-    def from_string(ID, equation_str, species_system, paired_obj=None):
+    @classmethod
+    def from_string(cls, ID, equation_str, species_system, paired_obj=None):
         """
         Create a ChemicalEquation object from a string representation of a reaction.
         
@@ -100,8 +101,9 @@ class ChemicalEquation():
             String representing the chemical equation, e.g., 
             "A + B -> C",
             "A + B <-> C",
-            "A + B -> C, kf=20",
-            "A + B <-> C, kf=20, kb=40.5".
+            "A + B -> C; kf=20",
+            "A + B <-> C; kf=20, kb=40.5",
+            "A + B <-> C; kf=20, kb = 10.5; rate_expr = kf*A*B - kb*C",
         species_system : SpeciesSystem
             System containing all species involved in the reaction.
         paired_obj : object, optional
@@ -115,15 +117,18 @@ class ChemicalEquation():
             Forward rate constant (kf) parsed from the string, if present.
         float
             Backward rate constant (kb) parsed from the string, if present.
+        str
+            Rate expression (rate) parsed from the string, if present.
+            
         """
         
-        stoichiometry, kf, kb = read_equation_str(equation_str, 
+        stoichiometry, kf, kb, rate_expr = read_equation_str(equation_str, 
                                                    species_system)
-        return ChemicalEquation(ID=ID, 
-                                species_system=species_system,
-                                stoichiometry=stoichiometry,
-                                paired_obj=paired_obj),\
-               kf, kb
+        return cls(ID=ID, 
+                 species_system=species_system,
+                 stoichiometry=stoichiometry,
+                 paired_obj=paired_obj),\
+            kf, kb, rate_expr
         
 #%% Abstract reaction class
 class AbstractReaction():
@@ -469,7 +474,8 @@ class Reaction(AbstractReaction):
     def __repr__(self):
         return self.__str__()
     
-    def from_equation(ID, chem_equation, species_system, 
+    @classmethod
+    def from_equation(cls, ID, chem_equation, species_system, 
                       kf=None, # overrides any parameter info in the chem_equation string
                       kb=None, # overrides any parameter info in the chem_equation string
                       exponents=None, get_exponents_from_stoich=None):
@@ -508,11 +514,11 @@ class Reaction(AbstractReaction):
             Instantiated Reaction object.
             
         """
-        kf_, kb_ = None, None
+        kf_, kb_, rate_expr_ = None, None, None
         freeze_kb = False
         if isinstance(chem_equation, str):
             freeze_kb = '->' in chem_equation and not '<->' in chem_equation
-            chem_equation, kf_, kb_ = ChemicalEquation.from_string(ID=ID+'_eqn', 
+            chem_equation, kf_, kb_, rate_expr_ = ChemicalEquation.from_string(ID=ID+'_eqn', 
                                                          equation_str=chem_equation,
                                                          species_system=species_system)
         if kf is None:
@@ -520,14 +526,14 @@ class Reaction(AbstractReaction):
         if kb is None:
             kb = kb_
         
-        return Reaction(ID=ID,
-                        species_system=species_system,
-                        chem_equation=chem_equation,
-                        kf=kf,
-                        kb=kb,
-                        exponents=exponents,
-                        freeze_kf=False,
-                        freeze_kb=freeze_kb,
-                        get_exponents_from_stoich=get_exponents_from_stoich,)
+        return cls(ID=ID,
+                species_system=species_system,
+                chem_equation=chem_equation,
+                kf=kf,
+                kb=kb,
+                exponents=exponents,
+                freeze_kf=False,
+                freeze_kb=freeze_kb,
+                get_exponents_from_stoich=get_exponents_from_stoich,)
         
 Rxn = IrreversibleReaction = ReversibleReaction = IrrevRxn = RevRxn = Reaction
