@@ -1295,10 +1295,14 @@ class ReactionSystem():
         """
         return self.__str__()
     
-    def GUI(self):
+    def GUI(self, close_immediately=False):
         root = Tk()
         root.title(f"NSKinetics - Reaction System GUI - {self.ID}")
         app = ReactionSystemGUI(root=root, system=self)
+        if close_immediately:
+            def close_GUI():
+                root.destroy()
+            root.after(5, close_GUI)
         root.mainloop()
-        
+            
 RxnSys = ReactionSystem

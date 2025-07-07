@@ -10,10 +10,11 @@ import nskinetics as nsk
 import numpy as np
 from warnings import filterwarnings
 
-def gui_trial_simple_ESP(plot=False, 
+def test_gui_simple_ESP(plot=False, 
                     show_progress=False,
                     show_output=False,
-                    show_warnings=True):
+                    show_warnings=True,
+                    close_immediately=True):
     
     if not show_warnings: filterwarnings("ignore")
     
@@ -40,13 +41,14 @@ def gui_trial_simple_ESP(plot=False,
         rxn_sys.plot_solution(sps_to_include=['ES'])
     
     # GUI
-    rxn_sys.GUI()
+    rxn_sys.GUI(close_immediately=True)
+    
 
-
-def gui_trial_simple_ESP_inhib(plot=False, 
+def test_gui_simple_ESP_inhib(plot=False, 
                           show_progress=False,
                           show_output=False,
-                          show_warnings=False):
+                          show_warnings=False,
+                          close_immediately=True):
     
     if not show_warnings: filterwarnings("ignore")
     
@@ -84,13 +86,14 @@ def gui_trial_simple_ESP_inhib(plot=False,
     
     
     # GUI
-    rxn_sys.GUI()
+    rxn_sys.GUI(close_immediately=True)
 
 
-def gui_trial_simple_ESP_fed_batch(plot=False, 
+def test_gui_simple_ESP_fed_batch(plot=False, 
                               show_progress=False,
                               show_output=False,
-                              show_warnings=False):
+                              show_warnings=False,
+                              close_immediately=True):
     
     if not show_warnings: filterwarnings("ignore")
     
@@ -130,13 +133,14 @@ def gui_trial_simple_ESP_fed_batch(plot=False,
     
     
     # GUI
-    rxn_sys.GUI()
+    rxn_sys.GUI(close_immediately=True)
 
 
-def gui_trial_simple_ESP_inhib_fed_batch(plot=False, 
+def test_gui_simple_ESP_inhib_fed_batch(plot=False, 
                                     show_progress=False,
                                     show_output=False,
-                                    show_warnings=False):
+                                    show_warnings=False,
+                                    close_immediately=True):
     
     if not show_warnings: filterwarnings("ignore")
     
@@ -184,4 +188,4 @@ def gui_trial_simple_ESP_inhib_fed_batch(plot=False,
     
     
     # GUI
-    rxn_sys.GUI()
+    rxn_sys.GUI(close_immediately=True)

@@ -191,7 +191,7 @@ class ReactionSystemGUI:
         
         self.canvas = FigureCanvasTkAgg(fig, master=root)
         self.canvas.get_tk_widget().pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=5, pady=5)
-    
+        
     # event handlers
     def on_t_span_ub_change(self, *_):
         self.t_span = (0., self.t_span_ub_var.get())
