@@ -838,10 +838,7 @@ class ReactionSystem():
                 r.kf = param_vector[curr_param_ind]
                 curr_param_ind += 1
             if not r._freeze_kb:
-                try:
-                    r.kb = param_vector[curr_param_ind]
-                except:
-                    breakpoint()
+                r.kb = param_vector[curr_param_ind]
                 curr_param_ind += 1
                 
     def _extract_t_spIDs_y(self,
