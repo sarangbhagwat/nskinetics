@@ -186,5 +186,11 @@ def test_simple_ESP_inhib_predefined(plot=True,
     assert np.allclose(rxn_sys._solution['y_events'], 
                        rxn_sys_from_str._solution['y_events'], 
                        rtol=1e-3, atol=1e-8)
-
+    
+    # Test comparative reaction strings
+    for (r1, r2) in zip(rxn_sys.reactions_flattened, rxn_sys_from_str.reactions_flattened):
+        r1_str = r1.__str__()
+        r2_str = r2.__str__()
+        assert r1_str[r1_str.index(':')+1:] == r2_str[r2_str.index(':')+1:]
+        
     return rxn_sys

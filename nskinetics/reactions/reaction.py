@@ -323,8 +323,8 @@ class Reaction(AbstractReaction):
         if kb is None:
             kb = 0.
             
-        self._kf = kf
-        self._kb = kb
+        self._kf = float(kf)
+        self._kb = float(kb)
         
         self._freeze_kf = freeze_kf
         self._freeze_kb = freeze_kb
