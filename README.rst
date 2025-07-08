@@ -17,7 +17,7 @@ The Non-Steady state Kinetics simulation package (NSKinetics)
 .. image:: https://img.shields.io/pypi/pyversions/nskinetics.svg
    :target: https://pypi.python.org/pypi/nskinetics
    :alt: Supported_versions
-.. image:: https://coveralls.io/repos/github/sarangbhagwat/nskinetics/badge.svg?cachebuster=20250707
+.. image:: https://coveralls.io/repos/github/sarangbhagwat/nskinetics/badge.svg?cachebuster=202507072
    :target: https://coveralls.io/github/sarangbhagwat/nskinetics?branch=main
 
 **Contents**
@@ -110,7 +110,7 @@ Since [ES] was too small to view in the overall plot, let's also plot it separat
                             'I_MBI', 'EI_MBI_unstable', 'EI_MBI_stable'], # mechanism-based_inhibitor, unstable enzyme-MBI complex, stable enzyme-MBI complex 
                            concentrations=[1e-4, 1e-4, 0, 0,
                                            5e-5, 0, 0,
-                                           3e-5, 0, 0])
+                                           0, 0, 0])
     
     # Describe reactions by writing chemical equations and kinetic parameter info
     reactions = [
