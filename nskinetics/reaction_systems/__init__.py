@@ -10,11 +10,11 @@ from . import reaction_system
 from .reaction_system import *
 from . import steady
 from .steady import *
-from .import nonsteady
-from .nonsteady import *
+from .import predefined
+from .predefined import *
 
 __all__ = (
      *reaction_system.__all__,
      *steady.__all__,
-     *nonsteady.__all__,
+     *predefined.__all__,
      )
