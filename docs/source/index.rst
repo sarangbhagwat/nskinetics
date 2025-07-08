@@ -8,6 +8,98 @@ NSKinetics: Non-Steady State Kinetics Simulation
    API/api
    user_guide
 
+
+.. grid:: 1 1 2 2
+
+    .. grid-item::
+    
+        .. image:: images/demo_gif_dark.gif
+           :class: only-dark
+           :align: center
+
+        .. image:: images/demo_gif_light.gif
+           :class: only-light
+           :align: center
+
+
+    .. grid-item::
+
+        **NSKinetics** is a fast, flexible, open-source platform in Python to simulate and evaluate
+        non-steady state reaction kinetics, especially for systems involving enzymatic conversions 
+        with inhibitory phenomena. NSKinetics enables the construction, simulation, and analysis 
+        of reaction systems governed by mass action kinetics or other user-defined rate laws, 
+        as well as the optimal design of experiments for parameter identifiability.
+
+
+.. grid:: 1 2 3 4
+   
+   
+    .. grid-item-card:: Getting Started
+       :text-align: center
+       :link: https://nskinetics.readthedocs.io/en/latest/user_guide/Getting_started.html
+       :link-type: url
+       :padding: 1
+
+       .. image:: images/phenomenode.png
+          :height: 100
+          :class: only-light
+          :align: center
+          
+       .. image:: images/phenomenode_dark_2.png
+          :height: 100
+          :class: only-dark
+          :align: center
+          
+       Tutorials on NSKinetics
+
+
+    .. grid-item-card:: Inverse Modeling
+       :text-align: center
+       :link: https://nskinetics.readthedocs.io/en/latest/API/inverse_modeling.html
+       :link-type: url
+       :padding: 1
+       
+       .. image:: images/process.png
+          :height: 100
+          :class: only-light
+          :align: center
+          
+       .. image:: images/process_dark.png
+          :height: 100
+          :class: only-dark
+          :align: center
+       
+       Fitting parameters to data
+
+       
+    .. grid-item-card:: Design of Experiments
+       :text-align: center
+       :link: https://nskinetics.readthedocs.io/en/latest/API/doe.html
+       :link-type: url
+       :padding: 1
+    
+       .. image:: images/GG_logo.png
+          :height: 100
+          :class: dark-light
+          :align: center
+    
+       For parameter identifiability
+
+
+    .. grid-item-card:: API Reference
+       :text-align: center
+       :link: https://nskinetics.readthedocs.io/en/latest/API/api.html
+       :link-type: url
+       :padding: 1
+       
+       .. image:: images/fermenter.png
+          :height: 100
+          :class: dark-light
+          :align: center
+       
+       Detailed documentation
+
+
 **NSKinetics** is a fast, flexible, and convenient package to simulate non-steady state reaction kinetics, especially for systems involving enzymatic conversions. Models for multiple inhibitory phenomena (competitive, non-competitive, uncompetitive, and "mechanism-based") are also included. NSKinetics enables the construction, simulation, and analysis of reaction systems governed by mass action kinetics or other user-defined rate laws. It supports features such as species concentration spikes, event triggers, inverse modeling (parameter fitting to experimental data), and design of experiments.
 
 .. note::
