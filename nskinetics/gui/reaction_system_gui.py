@@ -24,6 +24,7 @@ class ScrollableFrame(ttk.Frame):
         super().__init__(container, *args, **kwargs)
         style = ttk.Style()
         bg_color = style.lookup("TFrame", "background") or "#f0f0f0"
+        # bg_color = "#3a3a3a"
         
         self.canvas = tk.Canvas(self, borderwidth=0, width=width, height=height,
                                 background=bg_color, highlightthickness=0)
