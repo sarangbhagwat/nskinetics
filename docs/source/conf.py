@@ -18,6 +18,17 @@ extensions = [
     'sphinx.ext.napoleon',
     'sphinx.ext.autosummary',
     'sphinx.ext.intersphinx',
+    'sphinx_design',
+    'sphinx.ext.viewcode',
+    'sphinx.ext.todo',
+    'sphinx.ext.coverage',
+    'sphinx.ext.mathjax',
+   # 'sphinx.ext.ifconfig',
+    'sphinx_multitoc_numbering',
+    'sphinx_autodoc_typehints',
+    'myst_parser',
+    'nbsphinx',
+    'nbsphinx_link',
 ]
 
 intersphinx_mapping = {
