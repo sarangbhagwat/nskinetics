@@ -8,16 +8,15 @@ NSKinetics: Non-Steady State Kinetics Simulation
    API/api
    user_guide
 
-
 .. grid:: 1 1 2 2
 
     .. grid-item::
     
-        .. image:: images/demo_gif_dark.gif
+        .. image:: _static/images/logo_nskinetics_dark_white-circle.png
            :class: only-dark
            :align: center
 
-        .. image:: images/demo_gif_light.gif
+        .. image:: _static/images/logo_nskinetics_light_white-circle.png
            :class: only-light
            :align: center
 
@@ -39,17 +38,17 @@ NSKinetics: Non-Steady State Kinetics Simulation
        :link: https://nskinetics.readthedocs.io/en/latest/user_guide/Getting_started.html
        :link-type: url
        :padding: 1
-
-       .. image:: images/phenomenode.png
-          :height: 100
-          :class: only-light
-          :align: center
           
-       .. image:: images/phenomenode_dark_2.png
+       .. image:: _static/images/icons/getting-started_dark.png
           :height: 100
           :class: only-dark
           :align: center
           
+       .. image:: _static/images/icons/getting-started_light.png
+          :height: 100
+          :class: only-light
+          :align: center
+
        Tutorials on NSKinetics
 
 
@@ -59,14 +58,14 @@ NSKinetics: Non-Steady State Kinetics Simulation
        :link-type: url
        :padding: 1
        
-       .. image:: images/process.png
-          :height: 100
-          :class: only-light
-          :align: center
-          
-       .. image:: images/process_dark.png
+       .. image:: _static/images/icons/inverse-modeling_dark.png
           :height: 100
           :class: only-dark
+          :align: center
+          
+       .. image:: _static/images/icons/inverse-modeling_light.png
+          :height: 100
+          :class: only-light
           :align: center
        
        Fitting parameters to data
@@ -77,10 +76,15 @@ NSKinetics: Non-Steady State Kinetics Simulation
        :link: https://nskinetics.readthedocs.io/en/latest/API/doe.html
        :link-type: url
        :padding: 1
-    
-       .. image:: images/GG_logo.png
+       
+       .. image:: _static/images/icons/doe_dark.png
           :height: 100
-          :class: dark-light
+          :class: only-dark
+          :align: center
+          
+       .. image:: _static/images/icons/doe_light.png
+          :height: 100
+          :class: only-light
           :align: center
     
        For parameter identifiability
@@ -92,11 +96,16 @@ NSKinetics: Non-Steady State Kinetics Simulation
        :link-type: url
        :padding: 1
        
-       .. image:: images/fermenter.png
+       .. image:: _static/images/icons/api_dark.png
           :height: 100
-          :class: dark-light
+          :class: only-dark
           :align: center
-       
+          
+       .. image:: _static/images/icons/api_light.png
+          :height: 100
+          :class: only-light
+          :align: center
+
        Detailed documentation
 
 
