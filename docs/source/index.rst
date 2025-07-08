@@ -68,7 +68,7 @@ NSKinetics: Non-Steady State Kinetics Simulation
           :class: only-light
           :align: center
        
-       Fitting parameters to data
+       Fit parameters to data
 
        
     .. grid-item-card:: Design of Experiments
@@ -87,7 +87,7 @@ NSKinetics: Non-Steady State Kinetics Simulation
           :class: only-light
           :align: center
     
-       For parameter identifiability
+       Computationally driven
 
 
     .. grid-item-card:: API Reference
