@@ -12,11 +12,11 @@ Non-Steady State Kinetics Simulation
 
     .. grid-item::
     
-        .. image:: _static/images/demo/demo_dark.png
+        .. image:: _static/images/demo/loop_dark.png
            :class: only-dark
            :align: center
 
-        .. image:: _static/images/demo/demo_light.png
+        .. image:: _static/images/demo/loop_light.png
            :class: only-light
            :align: center
 
