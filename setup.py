@@ -11,7 +11,7 @@ setup(
     name='nskinetics',
     packages=find_packages(),
     license='MIT',
-    version='0.2.2',
+    version='0.2.3',
     description='Simulation of Non-Steady state enzyme Kinetics and inhibitory phenomena',
     long_description=open('README.rst', encoding='utf-8').read(),
     author='Sarang S. Bhagwat',
