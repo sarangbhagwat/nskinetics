@@ -24,7 +24,7 @@ Non-Steady State Kinetics Simulation
 
     .. grid-item::
 
-        **NSKinetics** is a fast, flexible, open-source platform in Python to simulate and evaluate
+        **NSKinetics** is a fast, flexible, `open-source <https://github.com/sarangbhagwat/nskinetics>`__ platform in Python to simulate and evaluate
         non-steady state reaction kinetics, especially for systems involving enzymatic conversions 
         with inhibitory phenomena. NSKinetics enables the construction, simulation, and analysis 
         of reaction systems governed by mass action kinetics or other user-defined rate laws, 
@@ -119,12 +119,13 @@ Get the latest version of NSKinetics from `PyPI <https://pypi.org/project/nskine
     
     $ pip install nskinetics
 
-To get the git version, run:
+To get the git version, use:
 
 .. code-block:: bash
 
     $ git clone git://github.com/sarangbhagwat/nskinetics
 
+Or download directly from the `GitHub page <https://github.com/sarangbhagwat/nskinetics>`.
 
 Common Issues
 -------------
