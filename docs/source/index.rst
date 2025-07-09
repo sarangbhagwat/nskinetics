@@ -15,11 +15,12 @@ Non-Steady State Kinetics Simulation
         .. image:: _static/images/demo/loop_dark.png
            :class: only-dark
            :align: center
+           :height: 200
 
         .. image:: _static/images/demo/loop_light.png
            :class: only-light
            :align: center
-
+           :height: 200
 
     .. grid-item::
 
