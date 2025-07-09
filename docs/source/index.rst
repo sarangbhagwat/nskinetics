@@ -125,7 +125,7 @@ To get the git version, use:
 
     $ git clone git://github.com/sarangbhagwat/nskinetics
 
-Or download directly from the `GitHub page <https://github.com/sarangbhagwat/nskinetics>`.
+Or download directly from the `GitHub page <https://github.com/sarangbhagwat/nskinetics>`__.
 
 Common Issues
 -------------
