@@ -31,6 +31,8 @@ from ..utils import create_function, is_number, is_array_of_numbers,\
 from ..gui import ReactionSystemGUI
 from tkinter import Tk
 
+from ..gui import ReactionNetworkDrawerGUI
+
 __all__ = ('ReactionSystem', 'RxnSys')
 
 np_array = np.array
@@ -921,7 +923,7 @@ class ReactionSystem():
         ----------
         data : pandas.DataFrame, dict, str, or list
             A pandas DataFrame, a dictionary, a path to a .csv or .xlsx file,
-            or a list containing any combinations of those items.
+            or a list containing any combination of those items.
             Each item represents data containing time ('t') and concentrations 
             of one or more species as columns. Time should be in the column labeled 't'; 
             all other columns are interpreted as species concentrations.
@@ -997,7 +999,7 @@ class ReactionSystem():
         if call_before_each_solve is None:
             call_before_each_solve = []
             
-        use_only_inds = [sp_sys.index(sp) for sp in use_only]
+        # use_only_inds = [sp_sys.index(sp) for sp in use_only]
         
         if not (isinstance(data, list) or isinstance(data, tuple)):
             data = [data]
@@ -1014,7 +1016,9 @@ class ReactionSystem():
             
         data_sp_IDs = sp_IDs_dataset[0]
         sp_IDs_to_use = use_only if use_only is not None else data_sp_IDs
-        sp_inds = [sp_sys.index(sp) for sp in sp_IDs_to_use]
+        
+        # sp_inds = [sp_sys.index(sp) for sp in sp_IDs_to_use]
+        sp_inds = use_only_inds = [data_sp_IDs.index(sp) for sp in sp_IDs_to_use]
         
         structured_xdata = []
         
@@ -1022,8 +1026,8 @@ class ReactionSystem():
         for t_, sp_IDs, y_ in zip(t_dataset, sp_IDs_dataset, y_dataset):
             
             tdata = t_
-            
             y_maxes = np.array([np.max(y_[ind, :]) for ind in sp_inds])
+            
             y_maxes = np_array([y_maxes for i in range(y_.shape[1])]).transpose()
             
             # y_normalized = y_
@@ -1053,7 +1057,7 @@ class ReactionSystem():
         y_to_use_0 = y_dataset[0]
         if use_only:
             y_to_use_0 = y_to_use_0[use_only_inds, :]
-        
+                
         y_dataset_normalized = y_to_use_0/structured_xdata[0][1] if normalize else y_to_use_0
         for (yi_, sdata) in zip(y_dataset[1:], structured_xdata[1:]):
             y_to_use = yi_
@@ -1309,4 +1313,34 @@ class ReactionSystem():
             root.after(2, close_GUI)
         root.mainloop()
     
+    @classmethod
+    def from_drawing(cls, ID="rxn_sys"):
+        """
+        Launch an interactive reaction-network drawing GUI
+        to construct a ReactionSystem visually.
+
+        Parameters
+        ----------
+        ID : str
+            Identifier for the new reaction system.
+
+        Returns
+        -------
+        ReactionSystem
+            A new ReactionSystem object defined by the drawn network.
+        """
+        from tkinter import Tk
+        from ..gui.reaction_network_drawer import ReactionNetworkDrawerGUI
+        from ..species import SpeciesSystem
+        
+        # create a temporary blank system
+        sp_sys = SpeciesSystem(f"{ID}_sp_sys", [], concentrations=[])
+        rxn_sys = cls(ID=ID, reactions=[], species_system=sp_sys)
+        
+        root = Tk()
+        root.title(f"NSKinetics - Reaction Network Drawer - {ID}")
+        app = ReactionNetworkDrawerGUI(root=root, system=rxn_sys)
+        root.mainloop()
+        return rxn_sys
+
 RxnSys = ReactionSystem

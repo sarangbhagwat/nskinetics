@@ -228,3 +228,32 @@ class SpeciesSystem():
     def concentrations(self, concentrations):
         self._concentrations = concentrations
     
+    def add_species(self, species, concentration=0.0):
+        all_sps = self.all_sps
+        if isinstance(species, str):
+            species = Species(ID=species)
+            all_sps.append(species)
+        elif isinstance(species, Species):
+            all_sps.append(species)
+        else:
+            raise TypeError(f"\nProvided member of all_sps '{species}' must be of type str or Species.\n")
+        
+        concs = list(self._concentrations)
+        concs.insert(all_sps.index(species), concentration)
+        self._concentrations = np.array(concs)
+    
+    def remove_species(self, species):
+        all_sps, all_sp_IDs = self.all_sps, self.all_sp_IDs
+        index = None
+        if isinstance(species, str):
+            index = all_sp_IDs.index(species)
+        elif isinstance(species, Species):
+            index = all_sps.index(species)
+        else:
+            raise TypeError(f"\nProvided member of all_sps '{species}' must be of type str or Species.\n")
+        
+        all_sps.pop(index)
+        concs = list(self._concentrations)
+        concs.pop(index)
+        self._concentrations = np.array(concs)
+        

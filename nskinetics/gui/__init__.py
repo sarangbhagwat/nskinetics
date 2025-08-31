@@ -8,7 +8,10 @@
 
 from . import reaction_system_gui
 from .reaction_system_gui import *
+from . import reaction_network_drawer
+from .reaction_network_drawer import *
 
 __all__ = (
      *reaction_system_gui.__all__,
+     *reaction_network_drawer.__all__,
      )
