@@ -291,6 +291,13 @@ class Reaction(AbstractReaction):
         Forward reaction rate constant.
     kb : float, optional
         Backward reaction rate constant (defaults to 0 for irreversible reactions).
+    rate_f : function, optional
+        Custom rate function (overrides any value parsed from str chem_equation).
+        Must accept species_concs_vector, rxn_stoichs, rl_exps, reactant_indices, 
+        and product_indices as arguments (see Reaction.get_dconcs_dt for example use)
+        and additional keyword arguments for parameters from Reaction.rate_params.
+    rate_params: dict, optional
+        Dictionary of parameters passed as keyword arguments to Reaction.rate_f.
     reactants : list or dict, optional
         Reactant species. If dict, keys are species IDs and values are stoichiometric coefficients.
     products : list or dict, optional
@@ -520,7 +527,7 @@ class Reaction(AbstractReaction):
                       kb=None, # overrides any parameter info in the chem_equation string
                       rate_f=None, # overrides any parameter info in the chem_equation string
                       rate_params=None, # overrides any parameter info in the chem_equation string
-                      exponents=None, get_exponents_from_stoich=None,
+                      exponents=None, get_exponents_from_stoich=False,
                       **kwargs):
         """
         Create a Reaction object from a ChemicalEquation object or string.
@@ -546,15 +553,18 @@ class Reaction(AbstractReaction):
             Forward rate constant (overrides any value parsed from str chem_equation).
         kb : float, optional
             Backward rate constant (overrides any value parsed from str chem_equation).
-        rate_f : float, optional
-            Backward rate constant (overrides any value parsed from str chem_equation).
+        rate_f : function, optional
+            Custom rate function (overrides any value parsed from str chem_equation).
+            Must accept species_concs_vector, rxn_stoichs, rl_exps, reactant_indices, 
+            and product_indices as arguments (see Reaction.get_dconcs_dt for example use)
+            and additional keyword arguments for parameters from Reaction.rate_params.
+        rate_params: dict, optional
+            Dictionary of parameters passed as keyword arguments to Reaction.rate_f.
         exponents : ndarray, optional
             Rate law exponents.
         get_exponents_from_stoich : bool, optional
             Whether to use absolute stoichiometry as rate law exponents.
-        
-        **kwargs: optional
-            Parameter names and values to be used in any defined rate_f.
+
         Returns
         -------
         Reaction
