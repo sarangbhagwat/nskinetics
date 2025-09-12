@@ -268,6 +268,60 @@ def dconcs_dt_v0_3(
         
     return result
 
+@njit(cache=True)
+def dconcs_dt_custom_rate_f(
+    change,
+    species_concs_vector, rxn_stoichs, rl_exps,
+    reactant_indices, product_indices
+    ):
+    
+    n_species = species_concs_vector.size
+    
+    # Early exit if any reactant is exhausted
+    for idx in reactant_indices:
+        if species_concs_vector[idx] <= 1e-20:
+            return np.zeros(n_species, dtype=species_concs_vector.dtype)
+        
+    # # Compute forward rate
+    # forward = kf
+    # for idx in reactant_indices:
+    #     conc = species_concs_vector[idx]
+    #     exp  = rl_exps[idx]
+    #     forward *= conc ** exp
+        
+    # # Compute backward rate
+    # backward = kb
+    # for idx in product_indices:
+    #     conc = species_concs_vector[idx]
+    #     exp  = rl_exps[idx]
+    #     backward *= conc ** exp
+        
+    # change = forward - backward
+    
+    # Evaluate limiting reactant (to avoid negative concentrations)
+    min_ratio = 1e20
+    limiting_found = False
+    
+    for i in range(n_species):
+        stoich = rxn_stoichs[i]
+        projected = species_concs_vector[i] + change * stoich
+        if projected < 0.0:
+            if stoich != 0.0:
+                ratio = species_concs_vector[i] / abs(stoich)
+                if ratio < min_ratio:
+                    min_ratio = ratio
+                    limiting_found = True
+                    
+    if limiting_found:
+        change = min_ratio
+        
+    # Compute final concentration rate of change
+    result = np.empty(n_species, dtype=species_concs_vector.dtype)
+    for i in range(n_species):
+        result[i] = change * rxn_stoichs[i]
+        
+    return result
+
 class Reaction(AbstractReaction):
     """
     A complete chemical reaction object that includes kinetic parameters and rate law information.
@@ -446,12 +500,19 @@ class Reaction(AbstractReaction):
         """
         rate_f = self.rate_f
         if rate_f is not None:
-            return rate_f(species_concs_vector=self.species_system._concentrations, 
+            change = rate_f(species_concs_vector=self.species_system._concentrations, 
             rxn_stoichs=self.stoichiometry,
             rl_exps=self.exponents,
             reactant_indices=self.reactant_indices,
             product_indices=self.product_indices,
             **self.rate_params)
+            
+            return dconcs_dt_custom_rate_f(change=change, 
+            species_concs_vector=self.species_system._concentrations, 
+            rxn_stoichs=self.stoichiometry,
+            rl_exps=self.exponents,
+            reactant_indices=self.reactant_indices,
+            product_indices=self.product_indices,)
         
         kf, kb = self.kf, self.kb
         if not kf==kb==0:
@@ -498,8 +559,8 @@ class Reaction(AbstractReaction):
         
         if not arrow=='<->':
             kb = self.kb
-            param_info.remove(', ' + f'kb={kb}')
-            param_info.remove(f'kb={kb}')
+            param_info = param_info.replace(', ' + f'kb={kb}', '')
+            param_info = param_info.replace(f'kb={kb}', '')
             
         self._lhs_string = lhs
         self._arrow_string = arrow
