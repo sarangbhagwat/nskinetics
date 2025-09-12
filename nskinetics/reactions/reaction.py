@@ -15,6 +15,12 @@ __all__ = ('Reaction', 'Rxn', 'IrreversibleReaction', 'IrrevRxn',
            'ReversibleReaction', 'RevRxn',
            'ChemicalEquation')
 
+#%% Abstract class for parameters describing reaction kinetics
+class ReactionParameters():
+    
+    def __init__(self):
+        pass
+    
 #%% Abstract chemical equation class
 
 class ChemicalEquation():
@@ -103,7 +109,7 @@ class ChemicalEquation():
             "A + B <-> C",
             "A + B -> C; kf=20",
             "A + B <-> C; kf=20, kb=40.5",
-            "A + B <-> C; kf=20, kb = 10.5; rate_expr = kf*A*B - kb*C",
+            "A + B <-> C; kf=20, kb = 10.5",
         species_system : SpeciesSystem
             System containing all species involved in the reaction.
         paired_obj : object, optional
@@ -122,13 +128,13 @@ class ChemicalEquation():
             
         """
         
-        stoichiometry, kf, kb, rate_expr = read_equation_str(equation_str, 
+        stoichiometry, kf, kb = read_equation_str(equation_str, 
                                                    species_system)
         return cls(ID=ID, 
                  species_system=species_system,
                  stoichiometry=stoichiometry,
                  paired_obj=paired_obj),\
-            kf, kb, rate_expr
+            kf, kb
         
 #%% Abstract reaction class
 class AbstractReaction():
@@ -307,6 +313,8 @@ class Reaction(AbstractReaction):
                  species_system,
                  kf,
                  kb=0.,
+                 rate_f=None,
+                 rate_params=None,
                  reactants=None, products=None,
                  chem_equation=None,
                  stoichiometry=None,
@@ -328,9 +336,14 @@ class Reaction(AbstractReaction):
         if kb is None:
             kb = 0.
             
-        self._kf = float(kf)
-        self._kb = float(kb)
+        self.rate_f = rate_f
         
+        if rate_params is None:
+            rate_params = {}
+            rate_params['kf'] = float(kf)
+            rate_params['kb'] = float(kb)
+        
+        self.rate_params = rate_params
         self._freeze_kf = freeze_kf
         self._freeze_kb = freeze_kb
         
@@ -358,7 +371,7 @@ class Reaction(AbstractReaction):
             Forward reaction rate constant, kf.
             
         """
-        return self._kf
+        return self.rate_params['kf']
     @kf.setter
     def kf(self, new_kf):
         """
@@ -373,7 +386,7 @@ class Reaction(AbstractReaction):
             
         """
         if not self._freeze_kf:
-            self._kf = new_kf
+            self.rate_params['kf'] = new_kf
         else:
             warn(f'kf for Reaction {self.ID} was not changed to {new_kf} as _freeze_kf was True.\n',
                  RuntimeWarning)
@@ -389,7 +402,7 @@ class Reaction(AbstractReaction):
             Forward reaction rate constant, kb.
             
         """
-        return self._kb
+        return self.rate_params['kb']
     @kb.setter
     def kb(self, new_kb):
         """
@@ -404,7 +417,7 @@ class Reaction(AbstractReaction):
             
         """
         if not self._freeze_kb:
-            self._kb = new_kb
+            self.rate_params['kb'] = new_kb
         else:
             warn(f'kb for Reaction {self.ID} was not changed to {new_kb} as _freeze_kb was True.\n',
                  RuntimeWarning)
@@ -424,17 +437,27 @@ class Reaction(AbstractReaction):
             change in log(concentrations) if self.log_transformed is True.
         
         """
-        kf, kb = self.kf, self.kb
-        if kf==kb==0:
-            return np.zeros(shape=self.species_system.concentrations.shape)
+        rate_f = self.rate_f
+        if rate_f is not None:
+            return rate_f(species_concs_vector=self.species_system._concentrations, 
+            rxn_stoichs=self.stoichiometry,
+            rl_exps=self.exponents,
+            reactant_indices=self.reactant_indices,
+            product_indices=self.product_indices,
+            **self.rate_params)
         
-        return dconcs_dt_v0_3(kf=kf, 
-                             kb=kb,
-                             species_concs_vector=self.species_system._concentrations, 
-                             rxn_stoichs=self.stoichiometry,
-                             rl_exps=self.exponents,
-                             reactant_indices=self.reactant_indices,
-                             product_indices=self.product_indices)
+        kf, kb = self.kf, self.kb
+        if not kf==kb==0:
+            return dconcs_dt_v0_3(kf=kf, 
+                                 kb=kb,
+                                 species_concs_vector=self.species_system._concentrations, 
+                                 rxn_stoichs=self.stoichiometry,
+                                 rl_exps=self.exponents,
+                                 reactant_indices=self.reactant_indices,
+                                 product_indices=self.product_indices)
+        
+        else:
+            return np.zeros(shape=self.species_system.concentrations.shape)
     
     def _load_full_string(self):
         """
@@ -444,7 +467,15 @@ class Reaction(AbstractReaction):
         """
         lhs = ''
         rhs = ''
-        arrow = '->' if self.kb==0. else '<->'
+        rate_f = self.rate_f
+        arrow = ''
+        if rate_f is not None:
+            arrow = '<->'
+        elif rate_f is None and self.kb==0.:
+            arrow = '->' 
+        else:
+            arrow = '<->'
+            
         for chem, stoich in zip(self.species_system.all_sps, self.stoichiometry):
             
             if stoich<0: 
@@ -455,15 +486,24 @@ class Reaction(AbstractReaction):
                 if not rhs=='': rhs+= ' + '
                 if not np.abs(stoich)==1.: rhs+= str(stoich) + ' '
                 rhs+= chem.ID
-        param_info = f'kf={self.kf}'
-        if arrow=='<->':
-            param_info += ', ' + f'kb={self.kb}'
+        # param_info = f'kf={self.kf}'
+        param_info = ', '.join([f'{k}={v}' for k, v in self.rate_params.items()])
+        
+        if not arrow=='<->':
+            kb = self.kb
+            param_info.remove(', ' + f'kb={kb}')
+            param_info.remove(f'kb={kb}')
+            
         self._lhs_string = lhs
         self._arrow_string = arrow
         self._rhs_string = rhs
         self._param_info_string = param_info
-        self._full_string = f'{self.ID}: Reaction(' + lhs + ' ' + arrow + ' ' + rhs + '; ' + param_info + ')'
-    
+        full_string = f'{self.ID}: Reaction(' + lhs + ' ' + arrow + ' ' + rhs + '; '
+        if rate_f is not None:
+            full_string += 'custome rate_f; '
+        full_string+= param_info + ')'
+        self._full_string = full_string
+        
     def get_equation_str(self):
         return self._lhs_string + ' ' + self._arrow_string + ' ' + self._rhs_string
         
@@ -478,7 +518,10 @@ class Reaction(AbstractReaction):
     def from_equation(cls, ID, chem_equation, species_system, 
                       kf=None, # overrides any parameter info in the chem_equation string
                       kb=None, # overrides any parameter info in the chem_equation string
-                      exponents=None, get_exponents_from_stoich=None):
+                      rate_f=None, # overrides any parameter info in the chem_equation string
+                      rate_params=None, # overrides any parameter info in the chem_equation string
+                      exponents=None, get_exponents_from_stoich=None,
+                      **kwargs):
         """
         Create a Reaction object from a ChemicalEquation object or string.
         
@@ -503,22 +546,26 @@ class Reaction(AbstractReaction):
             Forward rate constant (overrides any value parsed from str chem_equation).
         kb : float, optional
             Backward rate constant (overrides any value parsed from str chem_equation).
+        rate_f : float, optional
+            Backward rate constant (overrides any value parsed from str chem_equation).
         exponents : ndarray, optional
             Rate law exponents.
         get_exponents_from_stoich : bool, optional
             Whether to use absolute stoichiometry as rate law exponents.
-            
+        
+        **kwargs: optional
+            Parameter names and values to be used in any defined rate_f.
         Returns
         -------
         Reaction
             Instantiated Reaction object.
             
         """
-        kf_, kb_, rate_expr_ = None, None, None
+        kf_, kb_ = None, None
         freeze_kb = False
         if isinstance(chem_equation, str):
             freeze_kb = '->' in chem_equation and not '<->' in chem_equation
-            chem_equation, kf_, kb_, rate_expr_ = ChemicalEquation.from_string(ID=ID+'_eqn', 
+            chem_equation, kf_, kb_ = ChemicalEquation.from_string(ID=ID+'_eqn', 
                                                          equation_str=chem_equation,
                                                          species_system=species_system)
         if kf is None:
@@ -531,6 +578,8 @@ class Reaction(AbstractReaction):
                 chem_equation=chem_equation,
                 kf=kf,
                 kb=kb,
+                rate_f=rate_f,
+                rate_params=rate_params,
                 exponents=exponents,
                 freeze_kf=False,
                 freeze_kb=freeze_kb,

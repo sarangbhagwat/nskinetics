@@ -10,13 +10,12 @@ import numpy as np
 
 #%% Reading an equation string to get stoichiometries and kinetic parameters
 
-def get_eqn_and_param_info_and_rate_expr_strs(equation_str, 
+def get_eqn_and_param_info_strs(equation_str, 
                                      delimiter,
                                      eqn_only_idfiers,
-                                     kf_idfiers, kb_idfiers,
-                                     rate_expr_idfiers):
+                                     kf_idfiers, kb_idfiers):
     
-    eqn_only, param_info, rate_expr = None, None, None
+    eqn_only, param_info = None, None
     if delimiter in equation_str:
         str_parts = equation_str.split(delimiter)
         for str_part in str_parts:
@@ -28,10 +27,6 @@ def get_eqn_and_param_info_and_rate_expr_strs(equation_str,
             for param_idfier in kf_idfiers+kb_idfiers:
                 if param_idfier in str_part:
                     param_info = str_part
-                    
-            for rate_expr_idfier in rate_expr_idfiers:
-                if rate_expr_idfier in str_part:
-                    rate_expr = str_part
     
     else:
         for eqn_only_idfier in eqn_only_idfiers:
@@ -41,8 +36,8 @@ def get_eqn_and_param_info_and_rate_expr_strs(equation_str,
             raise ValueError(f'Could not parse equation string {equation_str}.')
     
     # print(equation_str)
-    # print(eqn_only, '|', param_info, '|', rate_expr)
-    return eqn_only, param_info, rate_expr
+    # print(eqn_only, '|', param_info)
+    return eqn_only, param_info
 
 
 def reformat_to_handle_numbers_in_sp_IDs(eqn_only,
@@ -135,15 +130,6 @@ def get_kinetic_params(param_info, param_info_junk, kf_idfiers, kb_idfiers):
     return kf_kb[0], kf_kb[1]
 
 
-def extract_rate_expr(rate_expr, rate_expr_idfiers, rate_expr_junk):
-    if rate_expr is None: return None
-    extracted_rate_expr = rate_expr
-    for i in rate_expr_junk:
-        extracted_rate_expr.replace(i, '')
-    for j in rate_expr_idfiers:
-        extracted_rate_expr.replace(j, '')
-    return extracted_rate_expr
-
 def read_equation_str(equation_str, species_system):
     stoichiometry = []
     
@@ -155,19 +141,16 @@ def read_equation_str(equation_str, species_system):
     eqn_only_idfiers = arrows
     kf_idfiers = ['kf',]
     kb_idfiers = ['kb',]
-    rate_expr_idfiers = ['rate_expr',]
     
     param_info_junk = ['=', ',',]
-    rate_expr_junk = ["'", '"', ' ']
     
     all_sp_IDs = [i.ID for i in species_system.all_sps]
     
-    eqn_only, param_info, rate_expr = get_eqn_and_param_info_and_rate_expr_strs(
+    eqn_only, param_info = get_eqn_and_param_info_strs(
         equation_str=equation_str, 
         delimiter=delimiter,
         eqn_only_idfiers=eqn_only_idfiers,
-        kf_idfiers=kf_idfiers, kb_idfiers=kb_idfiers,
-        rate_expr_idfiers=rate_expr_idfiers)
+        kf_idfiers=kf_idfiers, kb_idfiers=kb_idfiers)
     
     eqn_only_split = reformat_to_handle_numbers_in_sp_IDs(
         equation_str=equation_str, 
@@ -183,8 +166,4 @@ def read_equation_str(equation_str, species_system):
                        param_info_junk=param_info_junk,
                        kf_idfiers=kf_idfiers, kb_idfiers=kb_idfiers)
     
-    extracted_rate_expr = extract_rate_expr(rate_expr, 
-                                            rate_expr_idfiers=rate_expr_idfiers,
-                                            rate_expr_junk=rate_expr_junk,
-                                            )
-    return np.array(stoichiometry), kf, kb, extracted_rate_expr
+    return np.array(stoichiometry), kf, kb
