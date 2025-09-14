@@ -15,12 +15,6 @@ __all__ = ('Reaction', 'Rxn', 'IrreversibleReaction', 'IrrevRxn',
            'ReversibleReaction', 'RevRxn',
            'ChemicalEquation')
 
-#%% Abstract class for parameters describing reaction kinetics
-class ReactionParameters():
-    
-    def __init__(self):
-        pass
-    
 #%% Abstract chemical equation class
 
 class ChemicalEquation():
@@ -405,8 +399,11 @@ class Reaction(AbstractReaction):
             rate_params['kb'] = float(kb)
         
         self.rate_params = rate_params
-        self._freeze_kf = freeze_kf
-        self._freeze_kb = freeze_kb
+        
+        self._freeze_params = []
+        
+        # self._freeze_kf = freeze_kf
+        # self._freeze_kb = freeze_kb
         
         self.get_exponents_from_stoich = get_exponents_from_stoich
         
@@ -438,7 +435,7 @@ class Reaction(AbstractReaction):
         """
         Set the forward reaction rate constant, kf.
         
-        If `freeze_kf` is True, the value is not updated and a warning is issued.
+        If 'kf' is `freeze_params`, the value is not updated and a warning is issued.
         
         Parameters
         ----------
@@ -446,7 +443,7 @@ class Reaction(AbstractReaction):
             New value for the forward reaction rate constant, kf.
             
         """
-        if not self._freeze_kf:
+        if not 'kf' in self.freeze_params:
             self.rate_params['kf'] = new_kf
         else:
             warn(f'kf for Reaction {self.ID} was not changed to {new_kf} as _freeze_kf was True.\n',
@@ -469,7 +466,7 @@ class Reaction(AbstractReaction):
         """
         Set the backward reaction rate constant, kb.
         
-        If `freeze_kb` is True, the value is not updated and a warning is issued.
+        If 'kB' is `freeze_params`, the value is not updated and a warning is issued.
         
         Parameters
         ----------
@@ -477,7 +474,7 @@ class Reaction(AbstractReaction):
             New value for the backward reaction rate constant, kb.
             
         """
-        if not self._freeze_kb:
+        if not 'kb' in self.freeze_params:
             self.rate_params['kb'] = new_kb
         else:
             warn(f'kb for Reaction {self.ID} was not changed to {new_kb} as _freeze_kb was True.\n',

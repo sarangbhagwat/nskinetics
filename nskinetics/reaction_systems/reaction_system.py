@@ -740,7 +740,7 @@ class ReactionSystem():
             elif isinstance(r, ReactionSystem):
                 reactions_flattened.extend(r._get_all_reactions_flattened())
         return reactions_flattened
-
+    
     @property
     def reactions_flattened(self):
         """
@@ -770,20 +770,17 @@ class ReactionSystem():
         rf = self.reactions_flattened
         param_vector = []
         param_keys = []
+        exclude_frozen = self._exclude_frozen_params
         
-        if self._exclude_frozen_params:
-            for r in rf:
-                if not r._freeze_kf:
-                    param_vector.append(r.kf)
-                    param_keys.append((r.ID+': '+r.get_equation_str(), 'kf'))
-                if not r._freeze_kb:
-                    param_vector.append(r.kb)
-                    param_keys.append((r.ID+': '+r.get_equation_str(), 'kb'))
-        else:
-            for r in rf:
-                param_vector.extend([r.kf, r.kb])
-                param_keys.append((r.ID+': '+r.get_equation_str(), 'kf'))
-                param_keys.append((r.ID+': '+r.get_equation_str(), 'kb'))
+        for r in rf:
+            for k, v in list(r.rate_params.items()):
+                # if ((k=='kf' and r._freeze_kf and exclude_frozen)
+                # or (k=='kb' and r._freeze_kb and exclude_frozen)):
+                if k in r._freeze_params:
+                    continue
+                
+                param_keys.append((r.ID+': '+r.get_equation_str(), k))
+                param_vector.append(v)
         
         self._reaction_kinetic_param_keys = param_keys
         return np_array(param_vector)
@@ -840,11 +837,10 @@ class ReactionSystem():
         
         curr_param_ind = 0
         for r in rf:
-            if not r._freeze_kf:
-                r.kf = param_vector[curr_param_ind]
-                curr_param_ind += 1
-            if not r._freeze_kb:
-                r.kb = param_vector[curr_param_ind]
+            for k, v in list(r.rate_params.items()):
+                if k in r._freeze_params:
+                    continue
+                r.rate_params[k] = param_vector[curr_param_ind]
                 curr_param_ind += 1
                 
     def _extract_t_spIDs_y(self,
