@@ -81,6 +81,8 @@ def fit_multiple_dependent_variables(f,
         return 1 - r2_score(ypred, ydata_transpose,
                           multioutput=r2_score_multioutput)
     
+    # globals().update({'load_get_obj_f': load_get_obj_f}) # pickling in multiprocessing (used by scipy.optimize.differential_evolution) can't handle locally defined objective function # updating globals() doesn't work either
+    
     best_result = None
     for i in range(n_minimize_runs):
         if show_progress:
