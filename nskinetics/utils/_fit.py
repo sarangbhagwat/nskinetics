@@ -6,138 +6,257 @@
 # https://github.com/sarangbhagwat/nskinetics/blob/main/LICENSE
 # for license details.
 
-from sklearn.metrics import r2_score
-from scipy.optimize import minimize
-from scipy.optimize import differential_evolution
+from __future__ import annotations
+from dataclasses import dataclass
+from typing import Callable, Sequence, Tuple, Dict, Any, List, Optional
+
 import numpy as np
+import pickle
+from multiprocessing import cpu_count
+from multiprocessing.pool import ThreadPool
 
-__all__ = ('fit_multiple_dependent_variables',)
+try:
+    from scipy.optimize import differential_evolution, basinhopping, minimize
+except Exception:
+    differential_evolution = None
+    basinhopping = None
+    minimize = None
 
-def fit_multiple_dependent_variables(f, 
-                                     xdata, ydata,
-                                     p0,
-                                     r2_score_multioutput='uniform_average',
-                                     n_minimize_runs=2,
-                                     n_de_runs=5,
-                                     minimize_kwargs=None,
-                                     differential_evolution_kwargs=None,
-                                     show_progress=False,
-                                     **kwargs):
+__all__ = ('hybrid_global_optimize',)
+
+#%%
+@dataclass
+class GlobalOptResult:
+    x: np.ndarray
+    fun: float
+    success: bool
+    message: str
+    nfev: int
+    history: List[Dict[str, Any]]
+    meta: Dict[str, Any]
+
+
+def _ensure_bounds(bounds: Sequence[Tuple[float, float]]) -> np.ndarray:
+    B = np.asarray(bounds, dtype=float)
+    if B.ndim != 2 or B.shape[1] != 2:
+        raise ValueError("bounds must be a sequence of (low, high) pairs.")
+    if np.any(B[:, 0] >= B[:, 1]):
+        raise ValueError("Each bound must satisfy low < high.")
+    return B
+
+
+def hybrid_global_optimize(
+    objective: Callable[[np.ndarray], float],
+    bounds: Sequence[Tuple[float, float]],
+    *,
+    # Parallelism control
+    parallel: str = "threads",           # "none" | "threads" | "processes"
+    workers: int | None | str = None,    # -1, int, None, or "auto"
+    # Differential Evolution
+    de_popsize: int = 15,
+    de_maxiter: int = 2000,
+    de_tol: float = 1e-6,
+    de_strategy: str = "best1bin",
+    de_mutation: tuple = (0.5, 1.0),
+    de_recombination: float = 0.7,
+    # Basin Hopping
+    do_basinhop: bool = True,
+    bh_niter: int = 10,
+    bh_stepsize: float = 0.5,
+    # Local polish
+    local_method: str = "L-BFGS-B",
+    local_maxiter: int = 1000,
+    polish_top_k: int = 5,
+    # General
+    random_state: Optional[int] = None,
+    callback: Optional[Callable[[np.ndarray, float, Dict[str, Any]], None]] = None,
+    return_all: bool = False,
+    **minimize_kwargs,
+) -> GlobalOptResult:
     """
-    Fit a model function to multiple dependent variables using a shared set of parameters.
-    
-    Parameters
-    ----------
-    f : callable
-        A model function that takes two arguments: an array of independent variables `xdata`
-        and a parameter array `p`, and returns an array of shape (N, M) or (M, N), where N is
-        the number of dependent variables and M is the number of data points.
-    xdata : array-like
-        A 1D array of independent variable values of shape (M,).
-    ydata : array-like
-        A 2D array of observed dependent variable values of shape (N, M), where each row corresponds
-        to a dependent variable.
-    p0 : array-like, optional
-        Initial guess for the parameters to be optimized.
-        Only used in the first minimization run (thereafter random).
-    n_minimize_runs : int, optional
-        Number of local optimization (minimization) runs to perform, each with a different
-        starting point (first uses `p0`, others use DE output).
-    n_de_runs : int, optional
-        Number of differential evolution runs per minimization run to generate good starting
-        guesses; the best DE result is used to initialize the local minimization.
-    minimize_kwargs : dict
-        Additional keyword arguments passed to `scipy.optimize.minimize`.
-    differential_evolution_kwargs : dict
-        Additional keyword arguments passed to `scipy.optimize.differential_evolution_kwargs`.
-        
-    Returns
-    -------
-    p_opt : ndarray
-        Optimized parameter values that best fit the model.
-    score : float
-        The mean R² score achieved by the optimized parameters.
-    success : bool
-        Whether the finally used optimization result was flagged as successful.
-        
-    Notes
-    -----
-    - This function uses `scipy.optimize.minimize` and `scipy.optimize.differential_evolution` for optimization.
-    - R² scores are computed between the predicted and observed dependent variable arrays.
-    - The loss minimized is <one minus the mean R² score>.
-    
-    See Also
-        --------
-        `scipy.optimize.minimize <https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.minimize.html>`_
-        `scipy.optimize.differential_evolution <https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.differential_evolution.html>`_
-        
+    Hybrid global optimization using DE → (optional) Basin-Hopping → local polish.
+
+    `parallel`:
+        "threads" (safe in notebooks/Windows; default), "processes" (requires __main__ guard),
+        or "none" for serial.
+    `workers`:
+        None/1 (serial), int for #threads/processes, or -1/"auto" for all CPUs.
     """
+    if differential_evolution is None or minimize is None:
+        raise ImportError("SciPy (`scipy.optimize`) is required.")
+
+    rng = np.random.default_rng(random_state)
+    B = _ensure_bounds(bounds)
+    dim = len(B)
+
+    # ---- Normalize workers
+    w = workers
+    if w == "auto" or (isinstance(w, int) and w < 0):
+        try:
+            w = max(1, cpu_count())
+        except Exception:
+            w = None
+    if w in (None, 1):
+        parallel = "none"
+
+    # ---- Detect picklability (relevant for processes)
+    picklable = True
+    try:
+        pickle.dumps(objective)
+    except Exception:
+        picklable = False
+
+    history: List[Dict[str, Any]] = []
+    total_evals = 0
+
+    # ---------- 1) Differential Evolution ----------
+    pool = None
+    de_kwargs = dict(
+        func=objective,
+        bounds=bounds,
+        strategy=de_strategy,
+        maxiter=de_maxiter,
+        popsize=de_popsize,
+        tol=de_tol,
+        mutation=de_mutation,
+        recombination=de_recombination,
+        seed=random_state,
+        updating="deferred" if parallel != "none" else "immediate",
+    )
+
+    if parallel == "threads" and w not in (None, 1):
+        pool = ThreadPool(processes=w)
+        de_kwargs["workers"] = pool.map
+    elif parallel == "processes" and w not in (None, 1):
+        if not picklable:
+            # fall back safely
+            parallel = "none"
+        else:
+            de_kwargs["workers"] = w
+
+    try:
+        de_res = differential_evolution(**de_kwargs)
+    finally:
+        if pool is not None:
+            pool.close()
+            pool.join()
+
+    total_evals += int(getattr(de_res, "nfev", 0))
+
+    if return_all:
+        history.append({
+            "stage": "differential_evolution",
+            "x": de_res.x.copy(),
+            "fun": float(de_res.fun),
+            "nfev": int(getattr(de_res, "nfev", 0)),
+            "nit": int(getattr(de_res, "nit", 0)),
+            "message": str(de_res.message),
+        })
+    if callback:
+        callback(de_res.x, float(de_res.fun), {"stage": "differential_evolution", "result": de_res})
+
+    best_x = de_res.x.copy()
+    best_f = float(de_res.fun)
+
+    # ---------- 2) Basin-Hopping (optional) ----------
+    if do_basinhop and basinhopping is not None:
+        minimizer_kwargs = dict(method=local_method, bounds=bounds, options={"maxiter": local_maxiter})
+        minimizer_kwargs.update(minimize_kwargs)
+        bh = basinhopping(objective, best_x, niter=bh_niter, stepsize=bh_stepsize,
+                          minimizer_kwargs=minimizer_kwargs, seed=random_state, disp=False)
+        bh_x = np.asarray(bh.x, dtype=float)
+        bh_f = float(bh.fun)
+        if bh_f < best_f:
+            best_x, best_f = bh_x.copy(), bh_f
+        if return_all:
+            history.append({"stage": "basin_hopping", "x": bh_x.copy(), "fun": bh_f,
+                            "niter": bh_niter, "message": "Basin-hopping finished"})
+        if callback:
+            callback(bh_x, bh_f, {"stage": "basin_hopping"})
+
+    # ---------- 3) Local polish from top-k DE candidates ----------
+    candidates: List[Tuple[float, np.ndarray]] = [(float(de_res.fun), de_res.x.copy())]
+    try:
+        pop = np.asarray(de_res.population)
+        pop_f = np.asarray(de_res.population_energies)
+        idx = np.argsort(pop_f)[:max(polish_top_k, 1)]
+        for i in idx:
+            candidates.append((float(pop_f[i]), pop[i].copy()))
+    except Exception:
+        for _ in range(max(polish_top_k - 1, 0)):
+            r = rng.random(dim); x = B[:, 0] + r * (B[:, 1] - B[:, 0])
+            f = float(objective(x)); total_evals += 1
+            candidates.append((f, x))
+
+    # Deduplicate and sort
+    uniq: Dict[tuple, float] = {}
+    for f, x in candidates:
+        key = tuple(np.round(x, 12))
+        if key not in uniq or f < uniq[key]:
+            uniq[key] = f
+    cand_sorted = sorted(((f, np.array(x)) for x, f in uniq.items()), key=lambda t: t[0])[:max(polish_top_k, 1)]
+
+    local_best = (best_f, best_x.copy())
+    local_records = []
+    for rank, (f0, x0) in enumerate(cand_sorted, 1):
+        res_local = minimize(objective, x0, method=local_method, bounds=bounds,
+                             options={"maxiter": local_maxiter}, **minimize_kwargs)
+        total_evals += int(getattr(res_local, "nfev", 0))
+        local_records.append({
+            "rank": rank,
+            "x0": x0.copy(), "f0": float(f0),
+            "x": res_local.x.copy(), "fun": float(res_local.fun),
+            "success": bool(res_local.success),
+            "message": str(res_local.message),
+            "nfev": int(getattr(res_local, "nfev", 0)),
+            "nit": int(getattr(res_local, "nit", 0)) if hasattr(res_local, "nit") else None,
+        })
+        if res_local.fun < local_best[0]:
+            local_best = (float(res_local.fun), res_local.x.copy())
+        if callback:
+            callback(res_local.x, float(res_local.fun), {"stage": "local_polish", "rank": rank})
+
+    if return_all:
+        history.append({"stage": "local_polish", "records": local_records,
+                        "message": f"Polished {len(local_records)} starts with {local_method}"})
+
+    best_f2, best_x2 = local_best
+    if best_f2 < best_f:
+        best_f, best_x = best_f2, best_x2
+
+    return GlobalOptResult(
+        x=np.asarray(best_x, float),
+        fun=float(best_f),
+        success=True,
+        message=f"Finished (DE → {'BH → ' if do_basinhop else ''}{local_method})",
+        nfev=int(total_evals),
+        history=history,
+        meta={"parallel": parallel, "workers": w, "dim": dim,
+              "options": {"de_popsize": de_popsize, "de_maxiter": de_maxiter,
+                          "bh_niter": bh_niter, "local_maxiter": local_maxiter}}
+    )
+
+
+#%%
+if __name__ == "__main__":
     
-    implemented_fit_methods = ('mean r^2',)
-    ydata_transpose = ydata.transpose()
+    # Noisy, multi-modal Rastrigin-like objective
+    def obj(x):
+        A = 10
+        return A * len(x) + np.sum(x**2 - A * np.cos(2 * np.pi * x))
     
-    def load_get_obj_f(p):
-        ypred = f(xdata, p).transpose()
-        return 1 - r2_score(ypred, ydata_transpose,
-                          multioutput=r2_score_multioutput)
+    bounds = [(-5.12, 5.12)] * 5
     
-    # globals().update({'load_get_obj_f': load_get_obj_f}) # pickling in multiprocessing (used by scipy.optimize.differential_evolution) can't handle locally defined objective function # updating globals() doesn't work either
+    res = hybrid_global_optimize(
+        obj, bounds,
+        parallel='threads',
+        de_popsize=12, de_maxiter=300, workers=-1,   # use all CPUs
+        do_basinhop=True, bh_niter=10, bh_stepsize=0.25,
+        local_method="L-BFGS-B", polish_top_k=7,
+        random_state=42, return_all=True
+    )
     
-    best_result = None
-    for i in range(n_minimize_runs):
-        if show_progress:
-            print(f'\n\nMinimization run {i+1}:')
-            print('------------------\n')
-        
-        best_de_result = None
-        
-        bounds_de = differential_evolution_kwargs['bounds']
-        
-        if i>0:
-            # p0 = np.random.rand(1)*random_param_bound*np.random.rand(*p0.shape)
-            for j in range(n_de_runs):
-                bounds_de_to_use = []
-                for (b1, b2) in bounds_de:
-                    bounds_de_to_use.append((b1, b2/(10**j)))
-                differential_evolution_kwargs_to_use = differential_evolution_kwargs.copy()
-                differential_evolution_kwargs_to_use['bounds'] = bounds_de_to_use
-                if show_progress:
-                    print(f'\n\tDifferential evolution run {i+1}.{j+1}:')
-                    print('\t------------------------------')
-                    print('\n\t\tRunning differential evolution (DE) to get the initial guess (x0) for this minimization run ...\n')
-                    print('\t\t', differential_evolution_kwargs_to_use)
-                result_de = differential_evolution(load_get_obj_f,
-                                                   **differential_evolution_kwargs_to_use)
-                
-                if show_progress:
-                    print('\n\t\tDE run complete.')
-                    print('\t\tres.x =', result_de.x)
-                    print('\t\tR^2 =', 1. - result_de.fun)
-                    print('\t\tSuccess =', result_de.success)
-                
-                if best_de_result is None or result_de.fun < best_de_result.fun:
-                    best_de_result = result_de
-        
-        p0 = p0 if best_de_result is None else best_de_result.x
-        best_result = best_de_result
-        if show_progress:
-            print('\n\tRunning minimization to get the final set of parameters ...')
-            print(f'\tx0 = {p0}')
-            if best_de_result is not None:
-                print(f'\tInitial R^2 = {1. - best_de_result.fun}')
-            print('\t\t', differential_evolution_kwargs)
-        result = minimize(fun=load_get_obj_f,
-                 x0=p0,
-                 **minimize_kwargs)
-        if show_progress:
-            print('\n\tMinimization run complete.')
-            print('\tres.x =', result.x)
-            print('\tR^2 =', 1. - result.fun)
-            print('\tSuccess =', result.success)
-        if best_result is None or result.fun < best_result.fun:
-            best_result = result
-    
-    load_get_obj_f(best_result.x)
-    
-    return best_result.x, 1. - best_result.fun, best_result.success
-    
+    print("Best f:", res.fun)
+    print("Best x:", res.x)
+    print("Function evals:", res.nfev)
+    print("Message:", res.message)

@@ -27,7 +27,7 @@ def test_simple_ESP_inverse_modeling_and_doe(plot=True,
     # Describe reactions by writing chemical equations and kinetic parameter info
     reactions = [
                 'E + S <-> ES; kf = 1200.0, kb = 1000.0', # kf = kon, kb = koff
-                'ES -> E + P; kf = 0.1' # kf = kcat (enzyme turnover number)
+                'ES -> E + P; kf = 1200' # kf = kcat (enzyme turnover number)
                 ]
     
     # Generate a ReactionSystem from strings
@@ -40,9 +40,9 @@ def test_simple_ESP_inverse_modeling_and_doe(plot=True,
     #%% Define batches to run
     
     batch_concs = [
-                   # np.array([1e-4, 1e-4, 0., 0.]),
+                   np.array([1e-2, 1e-4, 0., 0.]),
                    # np.array([0.1, 0.89656207, 0., 0.]),
-                   np.array([0.08966552, 2.5, 0., 0.]),
+                   # np.array([0.08966552, 2.5, 0., 0.]),
                    # np.array([0.08966552, 0.31041379, 0., 0.]),
                    ]
     batch_t_spans = [
@@ -73,9 +73,10 @@ def test_simple_ESP_inverse_modeling_and_doe(plot=True,
         if plot:
             rxn_sys.plot_solution()
             rxn_sys.plot_solution(sps_to_include=['ES'])
+            rxn_sys.plot_solution(sps_to_include=['S', 'P'])
     
     #%% Fit kinetic parameters to saved results from simulating with original set of kinetic parameters
-    breakpoint()
+    # breakpoint()
     # print(rxn_sys._timeout_solve_ivp)
     rxn_sys.fit_reaction_kinetic_parameters_to_data(
                                                     # data=[f'solution{i}.xlsx'
@@ -91,16 +92,9 @@ def test_simple_ESP_inverse_modeling_and_doe(plot=True,
                                                     # plot_during_fit=True,
                                                     show_progress=show_progress,
                                                     show_output=show_output,
-                                                    n_minimize_runs=3,
-                                                    n_de_runs=3,
-                                                    differential_evolution_kwargs={'maxiter':100,
-                                                                                   'bounds': [(0,5e4) for i in range(len(rxn_sys.reaction_kinetic_params))],
-                                                                                   'polish': False,
-                                                                                   'disp': show_progress,
-                                                                                   'workers': 1,
-                                                                                   'popsize': 10,
-                                                                                   'tol': 1e-3,
-                                                                                   }
+                                                    bounds=[(0,5e4) for i in range(len(rxn_sys.reaction_kinetic_params))],
+                                                    solve_method='LSODA',
+                                                    de_workers=1,
                                                     )
     
     #%% Simulate batches with inverse-modeled rxn_sys

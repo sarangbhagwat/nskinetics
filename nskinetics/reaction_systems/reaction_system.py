@@ -14,6 +14,8 @@ from scipy.integrate import solve_ivp
 from scipy.interpolate import interp1d
 from numba import njit
 
+from sklearn.metrics import r2_score
+
 from typing import Union, Tuple, List  
 
 from matplotlib import pyplot as plt     
@@ -26,7 +28,7 @@ from matplotlib.ticker import MaxNLocator, AutoLocator, AutoMinorLocator
 
 from ..reactions import Reaction
 from ..utils import create_function, is_number, is_array_of_numbers,\
-                    is_list_of_strings, fit_multiple_dependent_variables
+                    is_list_of_strings, hybrid_global_optimize
                     
 from ..gui import ReactionSystemGUI
 from tkinter import Tk
@@ -893,14 +895,13 @@ class ReactionSystem():
 
     def fit_reaction_kinetic_parameters_to_data(self,
                                                 data,
+                                                bounds,
+                                                solve_method='DOP853', # LSODA can't have multiple instances run in parallel
+                                                de_workers=1, # -1 => use all available CPUs
                                                 p0=None,
                                                 all_species_tracked=False,
                                                 use_only=None,
                                                 normalize=True,
-                                                n_de_runs=5,
-                                                n_minimize_runs=2,
-                                                minimize_kwargs=None,
-                                                differential_evolution_kwargs=None,
                                                 show_output=True,
                                                 show_progress=False,
                                                 plot_during_fit=False,
@@ -1038,13 +1039,13 @@ class ReactionSystem():
                 # get initial concentrations of all species in the dataset,
                 # even if using only those in use_only for actual fitting
                 y0[sp_sys.index(spID)] = y_[data_sp_IDs.index(spID), 0]
-            
+                # print(y0)
             structured_xdata.append((tdata, y_maxes, y0))
         
-        if p0 is None:
-            rkp = self.reaction_kinetic_params
-            if not np.any(np.isinf(rkp)) or np.any(np.isnan(rkp)):
-                p0 = rkp
+        # if p0 is None:
+        #     rkp = self.reaction_kinetic_params
+        #     if not np.any(np.isinf(rkp)) or np.any(np.isnan(rkp)):
+        #         p0 = rkp
         
         
         
@@ -1071,6 +1072,7 @@ class ReactionSystem():
         # zeros_like_y_dataset_normalized = np.zeros(shape=y_dataset_normalized.shape)
         # nans_like_y_dataset_normalized = np.full(y_dataset_normalized.shape, np.nan)
         
+        sp_inds_for_sp_sys_concs = [all_sp_IDs.index(i) for i in sp_IDs_to_use] #!!!
         def f_single_xdata(xdata, new_rxn_kp):
             tdata, y_maxes, y0 = xdata
             t_span = np.min(tdata), np.max(tdata)
@@ -1079,7 +1081,8 @@ class ReactionSystem():
                 c(new_rxn_kp)
             solve(t_span=t_span, 
                   y0=y0, 
-                  save_events_df=False,)
+                  save_events_df=False,
+                  method=solve_method)
             
             for sol in self._solution['sol']:
                 if (not sol.success) or (sol.status==1):
@@ -1088,7 +1091,7 @@ class ReactionSystem():
             _update_C_at_t()
             if not all_species_tracked:
                 ypred = np_array([self._C_at_t_fs_indiv_sps[ind](tdata)
-                        for ind in sp_inds])
+                        for ind in sp_inds_for_sp_sys_concs])
                 if normalize: ypred/= y_maxes
                 return ypred
             else:
@@ -1103,39 +1106,63 @@ class ReactionSystem():
                 ypred_normalized_concat = ypred_normalized_concat.transpose()
             return ypred_normalized_concat
         
-        if minimize_kwargs is None:
-            minimize_kwargs = {'method': 'Powell',
-                               'bounds':[(0., None) for i in p0],
-                               }
-        if differential_evolution_kwargs is None:
-            differential_evolution_kwargs = {'strategy': 'best1bin',
-                                             'bounds': [(0, 1e8) for i in p0]}
-        elif 'bounds' not in differential_evolution_kwargs:
-            differential_evolution_kwargs['bounds'] = [(0, 1e8) for i in p0]
-        fitsol = fit_multiple_dependent_variables(f=f,
-                                                   xdata=structured_xdata,
-                                                   ydata=y_dataset_normalized,
-                                                   p0=p0, # 
-                                                   minimize_kwargs=minimize_kwargs,
-                                                   differential_evolution_kwargs=differential_evolution_kwargs,
-                                                   n_de_runs=n_de_runs,
-                                                   n_minimize_runs=n_minimize_runs,
-                                                   show_progress=show_progress,
-                                                   # options={'maxiter':5},
-                                                   )
         
-        set_rxn_kp(fitsol[0])
+        ydata_transpose = y_dataset_normalized.transpose()
+        
+        r2_score_multioutput = 'uniform_average'
+        
+        # import threading
+        # _eval_sema = threading.BoundedSemaphore(value=1)  # allow 1 integration at a time
+        # breakpoint()
+        def load_get_obj_f_with_LSODA(p):
+            # with _eval_sema:
+            try:
+                ypred = f(structured_xdata, p).transpose()
+                return 1.0 - r2_score(ypred, ydata_transpose,
+                                  multioutput=r2_score_multioutput)
+            except:
+                return 2.0
+                    
+        def load_get_obj_f(p):
+            try:
+                ypred = f(structured_xdata, p).transpose()
+                return 1.0 - r2_score(ypred, ydata_transpose,
+                                  multioutput=r2_score_multioutput)
+            except:
+                return 2.0
+        
+        load_get_obj_f = load_get_obj_f_with_LSODA if solve_method=='LSODA'\
+            else load_get_obj_f
+            
+        fitsol = hybrid_global_optimize(
+            load_get_obj_f, bounds,
+            parallel='threads',
+            de_popsize=10, de_maxiter=10, workers=de_workers, # workers=-1 => use all CPUs
+            do_basinhop=True, bh_niter=10, bh_stepsize=0.25,
+            local_method="L-BFGS-B", polish_top_k=7,
+            random_state=42, return_all=True
+        )
+        
+        if show_output: 
+            print("Best f:", fitsol.fun)
+            print("Best R^2:", 1-fitsol.fun)
+            print("Best x:", fitsol.x)
+            print("Function evals:", fitsol.nfev)
+            print("Message:", fitsol.message)
+        
+        
+        set_rxn_kp(fitsol.x)
         self._fitsol = fitsol
         
         self._timeout_solve_ivp = _orig_timeout_solve_ivp # reset to original, usually None
         
-        if show_output: 
-            print('\n')
-            print('Fit results')
-            print('-----------\n')
-            print(f'R^2={fitsol[1]}\n')
-            print(self.__str__())
-            print('\n\n')
+        # if show_output: 
+        #     print('\n')
+        #     print('Fit results')
+        #     print('-----------\n')
+        #     print(f'R^2={fitsol[1]}\n')
+        #     print(self.__str__())
+        #     print('\n\n')
             
     def add_reaction(self, reaction):
         """
