@@ -435,7 +435,7 @@ class Reaction(AbstractReaction):
         """
         Set the forward reaction rate constant, kf.
         
-        If 'kf' is `freeze_params`, the value is not updated and a warning is issued.
+        If 'kf' is `_freeze_params`, the value is not updated and a warning is issued.
         
         Parameters
         ----------
@@ -443,7 +443,7 @@ class Reaction(AbstractReaction):
             New value for the forward reaction rate constant, kf.
             
         """
-        if not 'kf' in self.freeze_params:
+        if not 'kf' in self._freeze_params:
             self.rate_params['kf'] = new_kf
         else:
             warn(f'kf for Reaction {self.ID} was not changed to {new_kf} as _freeze_kf was True.\n',
@@ -466,7 +466,7 @@ class Reaction(AbstractReaction):
         """
         Set the backward reaction rate constant, kb.
         
-        If 'kB' is `freeze_params`, the value is not updated and a warning is issued.
+        If 'kB' is `_freeze_params`, the value is not updated and a warning is issued.
         
         Parameters
         ----------
@@ -474,7 +474,7 @@ class Reaction(AbstractReaction):
             New value for the backward reaction rate constant, kb.
             
         """
-        if not 'kb' in self.freeze_params:
+        if not 'kb' in self._freeze_params:
             self.rate_params['kb'] = new_kb
         else:
             warn(f'kb for Reaction {self.ID} was not changed to {new_kb} as _freeze_kb was True.\n',
