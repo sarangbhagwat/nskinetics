@@ -896,8 +896,16 @@ class ReactionSystem():
     def fit_reaction_kinetic_parameters_to_data(self,
                                                 data,
                                                 bounds,
-                                                solve_method='DOP853', # LSODA can't have multiple instances run in parallel
+                                                solve_method='LSODA', # 'LSODA' can't have multiple instances run in parallel, 'DOP853' can
                                                 de_workers=1, # -1 => use all available CPUs
+                                                de_popsize=200, 
+                                                de_maxiter=10, 
+                                                do_basinhop=True, 
+                                                bh_niter=10, 
+                                                bh_stepsize=0.25,
+                                                local_method="L-BFGS-B", 
+                                                polish_top_k=7,
+                                                seed=42, 
                                                 p0=None,
                                                 all_species_tracked=False,
                                                 use_only=None,
@@ -1135,12 +1143,13 @@ class ReactionSystem():
             else load_get_obj_f
             
         fitsol = hybrid_global_optimize(
-            load_get_obj_f, bounds,
+            objective=load_get_obj_f, 
+            bounds=bounds,
             parallel='threads',
-            de_popsize=10, de_maxiter=10, workers=de_workers, # workers=-1 => use all CPUs
-            do_basinhop=True, bh_niter=10, bh_stepsize=0.25,
-            local_method="L-BFGS-B", polish_top_k=7,
-            random_state=42, return_all=True
+            de_popsize=de_popsize, de_maxiter=de_maxiter, workers=de_workers, # workers=-1 => use all CPUs
+            do_basinhop=do_basinhop, bh_niter=bh_niter, bh_stepsize=bh_stepsize,
+            local_method=local_method, polish_top_k=polish_top_k,
+            random_state=seed, return_all=True
         )
         
         if show_output: 
