@@ -8,7 +8,9 @@
 
 import numpy as np
 
-__all__ = ('Species', 'SpeciesSystem',
+__all__ = ('Species', 
+           'Compartment',
+           'SpeciesSystem',
            'SimpleSpecies', 'ComplexSpecies')
 
 #%% Species and species system
@@ -135,10 +137,20 @@ class ComplexSpecies(Species):
                 ID+='~'+str(c[1])+'*('+c[0].ID+')'
         ID = ID[1:]
         return ID
+
+#%%
+
+# class SpeciesSystem():
+#     def __init__(self, ID, compartments):
+#         self.ID = ID
+#         self.compartments = compartments
     
+#%%
+# class Compartment():
 class SpeciesSystem():
     """
-    Abstract class for a system of chemical species.
+    Abstract class for a system containing 
+    defined chemical species.
     Note this class will, by convention,
     use "sp" to denote a single species and
     use "sps" to denote multiple species.
@@ -156,14 +168,15 @@ class SpeciesSystem():
         that of all_sps.
     
     """
-    def __init__(self, ID, all_sps, concentrations=None):
+    def __init__(self, ID, all_sps, concentrations=None,
+                 volume=1.0):
         self.ID = ID
         
         processed_all_sps = []
         for i in all_sps:
             if isinstance(i, str):
                 processed_all_sps.append(Species(ID=i))
-            elif isinstance(i, Species):
+            elif isinstance(i, (Species, SpeciesSystem)):
                 processed_all_sps.append(i)
             else:
                 raise TypeError(f"\nProvided member of all_sps '{i}' must be of type str or Species.\n")
@@ -175,6 +188,8 @@ class SpeciesSystem():
             concentrations = np.array(concentrations)
         
         self._concentrations = concentrations
+        
+        self._volume = volume
         
     def indices(self, some_sps):
         all_sps = self.all_sps
@@ -256,4 +271,17 @@ class SpeciesSystem():
         concs = list(self._concentrations)
         concs.pop(index)
         self._concentrations = np.array(concs)
+    
+    @property
+    def volume(self):
+        return self._volume
+    
+    @volume.setter
+    def volume(self, volume):
+        self._volume = volume
         
+    @property
+    def amounts(self):
+        return self.volume * self.concentrations
+
+Compartment = SpeciesSystem
