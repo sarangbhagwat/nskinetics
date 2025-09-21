@@ -90,23 +90,41 @@ def reformat_to_handle_numbers_in_sp_IDs(eqn_only,
 
 def get_stoichiometry(eqn_only_split, all_sp_IDs, arrows):
     # Get stoichiometry array
-    stoichiometry = []
-    arrow_ind = None
-    for arrow in arrows:
-        if arrow in eqn_only_split:
-            arrow_ind = eqn_only_split.index(arrow)
+    stoichiometry = np.zeros(len(all_sp_IDs))
     
-    for sp_ID in all_sp_IDs:
-        if sp_ID in eqn_only_split:
-            try:
-                stoichiometry.append(float(eqn_only_split[eqn_only_split.index(sp_ID)-1]))
-            except:
-                stoichiometry.append(1.)
-            if eqn_only_split.index(sp_ID)<arrow_ind:
-                stoichiometry[-1] *= -1
-        else:
-            stoichiometry.append(0.)
+    for sp_ID in all_sp_IDs*2: #all_sp_IDs*2 in case the sp_ID appears twice -- i.e., on both sides of the equation
+
+        if sp_ID in eqn_only_split: 
+            stoich = 0.0
+            sp_index_in_eqn_only_split = eqn_only_split.index(sp_ID)
+            indices_to_delete = [sp_index_in_eqn_only_split]
             
+            
+            arrow_ind = None
+            for arrow in arrows:
+                if arrow in eqn_only_split:
+                    arrow_ind = eqn_only_split.index(arrow) # need to get this at each iteration since we remove items from eqn_only_split
+            
+            try: # see if stoichiometry is stated in the eqn
+                potential_stoich_index = sp_index_in_eqn_only_split-1
+                if potential_stoich_index==-1: raise ValueError('potential_stoich_index was -1')
+                stoich = float(eqn_only_split[potential_stoich_index]) # supposed to fail if not float
+                indices_to_delete.append(potential_stoich_index)
+            except: # if not, assume 1.0
+                stoich = 1.0
+                
+            if sp_index_in_eqn_only_split<arrow_ind: # if sp_ID is a reactant
+                stoich *= -1
+            
+            indices_to_delete.sort(reverse=True)
+            for itd in indices_to_delete:
+                del eqn_only_split[itd] # in case the sp_ID appears twice -- i.e., on both sides of the equation
+            
+            stoichiometry[all_sp_IDs.index(sp_ID)] += stoich # in case the sp_ID appears twice -- i.e., on both sides of the equation
+        
+        else:
+            pass
+        
     # print(stoichiometry)
     return stoichiometry
 

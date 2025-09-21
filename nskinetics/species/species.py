@@ -39,6 +39,7 @@ class Species():
     def MW(self): 
         return self._MW
     
+
 class SimpleSpecies(Species):
     """
     Abstract class for a single chemical species that is not a complex
@@ -54,6 +55,7 @@ class SimpleSpecies(Species):
     """
     def __init__(self, ID, MW=1.):
         Species.__init__(self, ID=ID, MW=MW)
+
 
 class ComplexSpecies(Species):
     """
@@ -138,15 +140,8 @@ class ComplexSpecies(Species):
         ID = ID[1:]
         return ID
 
-#%%
 
-# class SpeciesSystem():
-#     def __init__(self, ID, compartments):
-#         self.ID = ID
-#         self.compartments = compartments
-    
 #%%
-# class Compartment():
 class SpeciesSystem():
     """
     Abstract class for a system containing 
@@ -166,7 +161,9 @@ class SpeciesSystem():
         Concentrations of species, indexed the same way as
         all_sps. Defaults to zero-array of length equal to
         that of all_sps.
-    
+    volume: float
+        Volume of this system (used to calculate 'amounts'
+                               by multiplying with 'concentrations')
     """
     def __init__(self, ID, all_sps, concentrations=None,
                  volume=1.0):
