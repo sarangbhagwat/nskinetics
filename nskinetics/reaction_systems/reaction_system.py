@@ -565,6 +565,8 @@ class ReactionSystem():
         if sps_to_include is None:
             sps_to_include = self.species_system.all_sp_IDs
         
+        include_set = set(str(x) for x in (sps_to_include or []))
+        
         sol = self._solution
         t, y = sol['t'], sol['y']
         t_events, y_events = sol['t_events'], sol['y_events']
@@ -578,14 +580,18 @@ class ReactionSystem():
         # y_max = np.max(y)
         
         # print(sps_to_include)
-        for i, sp in zip(range(len(all_sps)), all_sps):
-            if sp in sps_to_include or sp.ID in sps_to_include:
-                ax.plot(t, y[i, :], 
-                        label=sp.ID,
-                        linestyle='solid',
-                        linewidth=1.)
-                y_max = max(y_max, np.max(y[i, :]))
-                
+        for i, sp in enumerate(all_sps):
+            if (sp.ID in include_set) or (sp in include_set):  # latter covers if user passed Species objects
+                ax.plot(t, y[i, :], label=sp.ID, linestyle='solid', linewidth=1.0)
+                y_max = max(y_max, float(np.max(y[i, :])))
+                any_plotted = True
+        
+        if not any_plotted:
+            # fall back to plotting all, labeled by full IDs
+            for i, sp in enumerate(all_sps):
+                ax.plot(t, y[i, :], label=sp.ID, linestyle='solid', linewidth=1.0)
+                y_max = max(y_max, float(np.max(y[i, :])))
+            
         ax.set_xlabel('Time [s]')
         ax.set_ylabel('Concentration [mol/L]')
     
@@ -1283,10 +1289,13 @@ class ReactionSystem():
                    for i in s.split(';')]
         action = split_s[0].lower()
         action, species, value = split_s
+        
+
         action = action.lower()
         value = float(value)
         
-        sp_ind = sp_sys.index(species)
+        species_token = species  # already stripped
+        sp_ind = sp_sys.index(species_token)  # accepts 'S[c]' now
         
         if action=='change':
             dconcs = np.zeros((len(sp_sys.concentrations)))

@@ -162,7 +162,7 @@ def read_equation_str(equation_str, species_system):
     
     param_info_junk = ['=', ',',]
     
-    all_sp_IDs = [i.ID for i in species_system.all_sps]
+    all_sp_IDs = species_system.all_sp_IDs
     
     eqn_only, param_info = get_eqn_and_param_info_strs(
         equation_str=equation_str, 

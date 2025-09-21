@@ -316,6 +316,7 @@ def dconcs_dt_custom_rate_f(
         
     return result
 
+
 class Reaction(AbstractReaction):
     """
     A complete chemical reaction object that includes kinetic parameters and rate law information.
@@ -374,6 +375,7 @@ class Reaction(AbstractReaction):
                  chem_equation=None,
                  stoichiometry=None,
                  exponents=None,
+                 is_transport=False, # note all reactants must have the same compartment and all products must have the same compartment
                  get_exponents_from_stoich=False,
                  freeze_kf=False,
                  freeze_kb=False,
@@ -414,10 +416,18 @@ class Reaction(AbstractReaction):
                 self.exponents = np.ones(len(stoich))
         else:
             self.exponents = exponents
-        self.reactant_indices = np.where(stoich<0)[0]
-        self.product_indices = np.where(stoich>0)[0]
+        self.reactant_indices = reactant_indices = np.where(stoich<0)[0]
+        self.product_indices = product_indices = np.where(stoich>0)[0]
         self._load_full_string()
-    
+        
+        all_sps = species_system.all_sps
+        self.source = all_sps[reactant_indices[0]].compartment
+        self.is_transport = is_transport
+        if not is_transport:
+            self.destination = self.source
+        else:
+            self.destination = all_sps[product_indices[0]].compartment
+            
     @property
     def kf(self):
         """
@@ -496,33 +506,51 @@ class Reaction(AbstractReaction):
         
         """
         rate_f = self.rate_f
-        if rate_f is not None:
-            change = rate_f(species_concs_vector=self.species_system._concentrations, 
-            rxn_stoichs=self.stoichiometry,
-            rl_exps=self.exponents,
-            reactant_indices=self.reactant_indices,
-            product_indices=self.product_indices,
-            **self.rate_params)
-            
-            return dconcs_dt_custom_rate_f(change=change, 
-            species_concs_vector=self.species_system._concentrations, 
-            rxn_stoichs=self.stoichiometry,
-            rl_exps=self.exponents,
-            reactant_indices=self.reactant_indices,
-            product_indices=self.product_indices,)
-        
         kf, kb = self.kf, self.kb
-        if not kf==kb==0:
-            return dconcs_dt_v0_3(kf=kf, 
+        sp_sys = self.species_system
+        species_concs_vector = sp_sys._concentrations
+        stoichiometry = self.stoichiometry
+        exponents = self.exponents
+        reactant_indices = self.reactant_indices
+        product_indices = self.product_indices
+        rate_params = self.rate_params
+        
+        dconcs_dt_vector = None
+        
+        if rate_f is not None:
+            change = rate_f(species_concs_vector=species_concs_vector, 
+            rxn_stoichs=stoichiometry,
+            rl_exps=exponents,
+            reactant_indices=reactant_indices,
+            product_indices=product_indices,
+            **rate_params)
+            
+            dconcs_dt_vector =  dconcs_dt_custom_rate_f(change=change, 
+            species_concs_vector=species_concs_vector, 
+            rxn_stoichs=stoichiometry,
+            rl_exps=exponents,
+            reactant_indices=reactant_indices,
+            product_indices=product_indices,)
+        
+        elif not kf==kb==0:
+            dconcs_dt_vector = dconcs_dt_v0_3(kf=kf, 
                                  kb=kb,
-                                 species_concs_vector=self.species_system._concentrations, 
-                                 rxn_stoichs=self.stoichiometry,
-                                 rl_exps=self.exponents,
-                                 reactant_indices=self.reactant_indices,
-                                 product_indices=self.product_indices)
+                                 species_concs_vector=species_concs_vector, 
+                                 rxn_stoichs=stoichiometry,
+                                 rl_exps=exponents,
+                                 reactant_indices=reactant_indices,
+                                 product_indices=product_indices)
         
         else:
-            return np.zeros(shape=self.species_system.concentrations.shape)
+            dconcs_dt_vector = np.zeros(shape=species_concs_vector.shape)
+        
+        if self.is_transport:
+            comps = sp_sys.compartments
+            vol_ratio = comps[self.source]/comps[self.destination]
+            for i in product_indices:
+                dconcs_dt_vector[i] *= vol_ratio
+                
+        return dconcs_dt_vector
     
     def _load_full_string(self):
         """
@@ -586,7 +614,7 @@ class Reaction(AbstractReaction):
                       rate_f=None, # overrides any parameter info in the chem_equation string
                       rate_params=None, # overrides any parameter info in the chem_equation string
                       exponents=None, get_exponents_from_stoich=False,
-                      **kwargs):
+                      is_transport=False):
         """
         Create a Reaction object from a ChemicalEquation object or string.
         
@@ -651,6 +679,7 @@ class Reaction(AbstractReaction):
                 exponents=exponents,
                 freeze_kf=False,
                 freeze_kb=freeze_kb,
-                get_exponents_from_stoich=get_exponents_from_stoich,)
+                get_exponents_from_stoich=get_exponents_from_stoich,
+                is_transport=is_transport,)
         
 Rxn = IrreversibleReaction = ReversibleReaction = IrrevRxn = RevRxn = Reaction
