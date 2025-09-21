@@ -222,6 +222,7 @@ class ReactionSystemGUI:
         self.system.plot_solution(fig=self.fig, ax=self.ax,
                                   sps_to_include=self.sps_to_include,
                                   auto_ticks=False, show=False)
+        self.ax.set_xlim(self.t_span)
         self.canvas.draw()
     
     def simulate_and_update_plot(self):
