@@ -191,19 +191,27 @@ class SpeciesSystem():
         Concentrations of species, indexed the same way as
         all_sps. Defaults to zero-array of length equal to
         that of all_sps.
+    compartments: dict
+        Dictionary with keys as compartment IDs and values as volumes.
+        Volumes can be either a float or a callable that returns a float
+        given the SpeciesSystem object as an argument.
     """
     def __init__(self, ID, all_sps, concentrations=None, compartments=None, default_volume=1.0):
        self.ID = ID
-
+       
        # compartments: dict like {'c': 1.0, 'm': 0.5} (liters)
        self._compartments = {}
        if compartments is not None:
            for k, v in compartments.items():
-               self._compartments[k] = float(v)
+               if not callable(v):
+                   self._compartments[k] = float(v)
+               else:
+                   self._compartments[k] = v
+                   
        else:
            # Provide a default unnamed compartment if none specified
-           self._compartments[''] = float(default_volume)
-
+           self._compartments[''] = default_volume
+           
        processed_all_sps = []
        for i in all_sps:
            if isinstance(i, str):
@@ -212,7 +220,7 @@ class SpeciesSystem():
                    base, comp = i[:-1].split('[', 1)
                    if comp not in self._compartments:
                        # if unseen, add with default volume
-                       self._compartments[comp] = float(default_volume)
+                       self._compartments[comp] = default_volume
                    processed_all_sps.append(Species(ID=base, compartment=comp))
                else:
                    processed_all_sps.append(Species(ID=i))
@@ -220,30 +228,35 @@ class SpeciesSystem():
                # ensure its compartment exists
                comp = i.compartment or ''
                if comp not in self._compartments:
-                   self._compartments[comp] = float(default_volume)
+                   self._compartments[comp] = default_volume
                processed_all_sps.append(i)
            else:
                raise TypeError(f"\nProvided member of all_sps '{i}' must be of type str or Species.\n")
        self.all_sps = processed_all_sps
-
+       
        if concentrations is None:
            concentrations = np.zeros(len(processed_all_sps))
        else:
            concentrations = np.array(concentrations, dtype=float)
        self._concentrations = concentrations
-
-       # Keep legacy ._volume as the *default* system volume (used if no compartment)
-       # (Fix undefined variable bug)
-       self._volume = float(default_volume)
+       
+       self._volume = default_volume
         
     @property
     def compartments(self):
-        """dict: {compartment_id: volume_L}"""
+        """dict: {compartment_id: volume}"""
         return self._compartments
 
-    def set_compartment_volume(self, comp_id, volume):
-        self._compartments[comp_id] = float(volume)
-
+    def set_compartment_volume(self, comp_ID, volume):
+        self._compartments[comp_ID] = volume
+    
+    def get_compartment_volume(self, comp_ID):
+        _vol = self._compartments[comp_ID]
+        if not callable(_vol):
+            return _vol
+        else:
+            return _vol(self)
+        
     def species(self, ID_or_index):
         if isinstance(ID_or_index, int):
             return self.all_sps[ID_or_index]
@@ -263,12 +276,12 @@ class SpeciesSystem():
             raise ValueError(f"Species '{ID_or_index}' not found.")
         else:
             raise ValueError(f"ID_or_index must be int or str, got {type(ID_or_index)}")
-
+            
     @property
     def all_sp_IDs(self):
         # Return display IDs including compartment tags (so parsers/events work)
         return [sp.ID for sp in self.all_sps]
-
+    
     def index_from_ID(self, sp_ID: str) -> int:
         # Exact full-ID match required; fall back to base_ID if unique
         for i, sp in enumerate(self.all_sps):
@@ -299,7 +312,7 @@ class SpeciesSystem():
             return self.all_sps.index(sp)
         elif isinstance(sp, str):
             return self.index_from_ID(sp)
-
+        
     @property
     def amounts(self):
         """
@@ -308,30 +321,22 @@ class SpeciesSystem():
         amts = np.zeros_like(self._concentrations)
         for i, sp in enumerate(self.all_sps):
             comp = sp.compartment or ''
-            vol = self._compartments.get(comp, self._volume)
+            # vol = self._compartments.get(comp, self._volume)
+            vol = self.get_compartment_volume(comp)
             amts[i] = vol * self._concentrations[i]
         return amts
-
-    # Keep legacy volume property for back-compat; treat as default volume
-    @property
-    def volume(self):
-        return self._volume
-
-    @volume.setter
-    def volume(self, volume):
-        self._volume = float(volume)
         
     def indices(self, some_sps):
         all_sps = self.all_sps
         indices = [all_sps.index(i) for i in some_sps]
         return indices
-
+    
     def contains(self, sp):
         if sp in self.all_sps + self.all_sp_IDs:
             return True
         else:
             return False
-        
+    
     @property
     def concentrations(self):
         return self._concentrations
@@ -339,6 +344,10 @@ class SpeciesSystem():
     @concentrations.setter
     def concentrations(self, concentrations):
         self._concentrations = concentrations
+    
+    def concentration(self, sp_ID):
+        concs = self.concentrations
+        return concs[self.index_from_ID(sp_ID)]
     
     def add_species(self, species, concentration=0.0):
         all_sps = self.all_sps

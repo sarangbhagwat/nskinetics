@@ -376,6 +376,7 @@ class Reaction(AbstractReaction):
                  stoichiometry=None,
                  exponents=None,
                  is_transport=False, # note all reactants must have the same compartment and all products must have the same compartment
+                 # also, a transport reaction should only dictate how concentrations change
                  get_exponents_from_stoich=False,
                  freeze_kf=False,
                  freeze_kb=False,
@@ -421,7 +422,10 @@ class Reaction(AbstractReaction):
         self._load_full_string()
         
         all_sps = species_system.all_sps
-        self.source = all_sps[reactant_indices[0]].compartment
+        try:
+            self.source = all_sps[reactant_indices[0]].compartment
+        except:
+            breakpoint()
         self.is_transport = is_transport
         if not is_transport:
             self.destination = self.source
@@ -544,9 +548,9 @@ class Reaction(AbstractReaction):
         else:
             dconcs_dt_vector = np.zeros(shape=species_concs_vector.shape)
         
-        if self.is_transport:
-            comps = sp_sys.compartments
-            vol_ratio = comps[self.source]/comps[self.destination]
+        if self.is_transport: # multiply by volume ratio for conservation of mass 
+            get_comp_vol = sp_sys.get_compartment_volume
+            vol_ratio = get_comp_vol(self.source)/get_comp_vol(self.destination)
             for i in product_indices:
                 dconcs_dt_vector[i] *= vol_ratio
                 
