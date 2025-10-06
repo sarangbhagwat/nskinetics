@@ -82,7 +82,7 @@ class ReactionSystemGUI:
         controls_outer = ttk.Frame(root, padding=5)
         controls_outer.pack(side=tk.LEFT, fill=tk.BOTH, padx=5, pady=5)
         
-        controls_scroll = ScrollableFrame(controls_outer, width=500, height=700)
+        controls_scroll = ScrollableFrame(controls_outer, width=850, height=700)
         controls_scroll.pack(fill=tk.BOTH, expand=True)
         controls_frame = controls_scroll.scrollable_frame
         

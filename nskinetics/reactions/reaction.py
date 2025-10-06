@@ -377,6 +377,7 @@ class Reaction(AbstractReaction):
                  exponents=None,
                  is_transport=False, # note all reactants must have the same compartment and all products must have the same compartment
                  # also, a transport reaction should only dictate how concentrations change
+                 is_multicompartment=False, # all reactants must have the same compartment; products may all have mutually different compartments
                  get_exponents_from_stoich=False,
                  freeze_kf=False,
                  freeze_kb=False,
@@ -426,12 +427,15 @@ class Reaction(AbstractReaction):
             self.source = all_sps[reactant_indices[0]].compartment
         except:
             breakpoint()
-        self.is_transport = is_transport
-        if not is_transport:
-            self.destination = self.source
-        else:
-            self.destination = all_sps[product_indices[0]].compartment
             
+        self.is_transport = is_transport
+        self.is_multicompartment = is_multicompartment
+        
+        if not (is_transport or is_multicompartment):
+            self.destination = self.source
+        elif is_transport:
+            self.destination = all_sps[product_indices[0]].compartment
+        
     @property
     def kf(self):
         """
@@ -510,7 +514,6 @@ class Reaction(AbstractReaction):
         
         """
         rate_f = self.rate_f
-        kf, kb = self.kf, self.kb
         sp_sys = self.species_system
         species_concs_vector = sp_sys._concentrations
         stoichiometry = self.stoichiometry
@@ -536,24 +539,32 @@ class Reaction(AbstractReaction):
             reactant_indices=reactant_indices,
             product_indices=product_indices,)
         
-        elif not kf==kb==0:
-            dconcs_dt_vector = dconcs_dt_v0_3(kf=kf, 
-                                 kb=kb,
-                                 species_concs_vector=species_concs_vector, 
-                                 rxn_stoichs=stoichiometry,
-                                 rl_exps=exponents,
-                                 reactant_indices=reactant_indices,
-                                 product_indices=product_indices)
-        
         else:
-            dconcs_dt_vector = np.zeros(shape=species_concs_vector.shape)
-        
-        if self.is_transport: # multiply by volume ratio for conservation of mass 
-            get_comp_vol = sp_sys.get_compartment_volume
-            vol_ratio = get_comp_vol(self.source)/get_comp_vol(self.destination)
-            for i in product_indices:
-                dconcs_dt_vector[i] *= vol_ratio
-                
+            kf, kb = self.kf, self.kb
+            if not kf==kb==0:
+                dconcs_dt_vector = dconcs_dt_v0_3(kf=kf, 
+                                     kb=kb,
+                                     species_concs_vector=species_concs_vector, 
+                                     rxn_stoichs=stoichiometry,
+                                     rl_exps=exponents,
+                                     reactant_indices=reactant_indices,
+                                     product_indices=product_indices)
+            
+            else:
+                dconcs_dt_vector = np.zeros(shape=species_concs_vector.shape)
+            
+            if self.is_transport: # multiply by volume ratio for conservation of mass 
+                get_comp_vol = sp_sys.get_compartment_volume
+                vol_ratio = get_comp_vol(self.source)/get_comp_vol(self.destination)
+                for i in product_indices:
+                    dconcs_dt_vector[i] *= vol_ratio
+            elif self.is_multicompartment: # multiply each species conc change by volume ratio for conservation of mass
+                get_comp_vol = sp_sys.get_compartment_volume
+                src_vol = get_comp_vol(self.source)
+                all_sps = sp_sys.all_sps
+                for i in product_indices:
+                    dconcs_dt_vector[i] *= src_vol/get_comp_vol(all_sps[i].compartment)
+                    
         return dconcs_dt_vector
     
     def _load_full_string(self):
@@ -618,7 +629,7 @@ class Reaction(AbstractReaction):
                       rate_f=None, # overrides any parameter info in the chem_equation string
                       rate_params=None, # overrides any parameter info in the chem_equation string
                       exponents=None, get_exponents_from_stoich=False,
-                      is_transport=False):
+                      is_transport=False, is_multicompartment=False):
         """
         Create a Reaction object from a ChemicalEquation object or string.
         
@@ -650,6 +661,7 @@ class Reaction(AbstractReaction):
             and additional keyword arguments for parameters from Reaction.rate_params.
         rate_params: dict, optional
             Dictionary of parameters passed as keyword arguments to Reaction.rate_f.
+            Each parameter value must be float.
         exponents : ndarray, optional
             Rate law exponents.
         get_exponents_from_stoich : bool, optional
@@ -672,7 +684,7 @@ class Reaction(AbstractReaction):
             kf = kf_
         if kb is None:
             kb = kb_
-        
+            
         return cls(ID=ID,
                 species_system=species_system,
                 chem_equation=chem_equation,
@@ -684,6 +696,7 @@ class Reaction(AbstractReaction):
                 freeze_kf=False,
                 freeze_kb=freeze_kb,
                 get_exponents_from_stoich=get_exponents_from_stoich,
-                is_transport=is_transport,)
+                is_transport=is_transport,
+                is_multicompartment=is_multicompartment)
         
 Rxn = IrreversibleReaction = ReversibleReaction = IrrevRxn = RevRxn = Reaction

@@ -747,6 +747,8 @@ class ReactionSystem():
                 reactions_flattened.append(r)
             elif isinstance(r, ReactionSystem):
                 reactions_flattened.extend(r._get_all_reactions_flattened())
+            else:
+                breakpoint()
         return reactions_flattened
     
     @property
@@ -780,19 +782,29 @@ class ReactionSystem():
         param_keys = []
         exclude_frozen = self._exclude_frozen_params
         
+        ndarray = np.ndarray
         for r in rf:
             for k, v in list(r.rate_params.items()):
                 # if ((k=='kf' and r._freeze_kf and exclude_frozen)
                 # or (k=='kb' and r._freeze_kb and exclude_frozen)):
-                if k in r._freeze_params:
+                if k in r._freeze_params and exclude_frozen:
                     continue
-                
-                param_keys.append((r.ID+': '+r.get_equation_str(), k))
-                param_vector.append(v)
+                if isinstance(v, (list, ndarray)):
+                    for i, vi in zip(range(len(v)), v):
+                        if k+f'_{i}' in r._freeze_params and exclude_frozen:
+                            continue
+                        param_keys.append((r.ID+': '+r.get_equation_str(), k+f'_{i}'))
+                        param_vector.append(vi)
+                else:
+                    param_keys.append((r.ID+': '+r.get_equation_str(), k))
+                    param_vector.append(v)
         
         self._reaction_kinetic_param_keys = param_keys
-        return np_array(param_vector)
-    
+        try:
+            return np_array(param_vector)
+        except:
+            breakpoint()
+            
     @property
     def reaction_kinetic_params(self):
         """
@@ -844,12 +856,21 @@ class ReactionSystem():
         #     r.kb = param_vector[2*i + 1]
         
         curr_param_ind = 0
+        ndarray = np.ndarray
+        exclude_frozen = self._exclude_frozen_params
         for r in rf:
             for k, v in list(r.rate_params.items()):
-                if k in r._freeze_params:
+                if k in r._freeze_params and exclude_frozen:
                     continue
-                r.rate_params[k] = param_vector[curr_param_ind]
-                curr_param_ind += 1
+                if isinstance(v, (list, ndarray)):
+                    for i, vi in zip(range(len(v)), v):
+                        if k+f'_{i}' in r._freeze_params and exclude_frozen:
+                            continue
+                        r.rate_params[k][i] = param_vector[curr_param_ind]
+                        curr_param_ind += 1
+                else:
+                    r.rate_params[k] = param_vector[curr_param_ind]
+                    curr_param_ind += 1
                 
     def _extract_t_spIDs_y(self,
                            data: Union[str, dict, pd.DataFrame]) -> Tuple[pd.Series, pd.DataFrame, List[str]]:
