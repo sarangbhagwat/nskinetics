@@ -381,6 +381,7 @@ class Reaction(AbstractReaction):
                  get_exponents_from_stoich=False,
                  freeze_kf=False,
                  freeze_kb=False,
+                 atol=1e-6,
                  ):
         AbstractReaction.__init__(self, ID, 
                      species_system,
@@ -435,6 +436,8 @@ class Reaction(AbstractReaction):
             self.destination = self.source
         elif is_transport:
             self.destination = all_sps[product_indices[0]].compartment
+        
+        self.atol = atol
         
     @property
     def kf(self):
@@ -522,9 +525,12 @@ class Reaction(AbstractReaction):
         product_indices = self.product_indices
         rate_params = self.rate_params
         
-        dconcs_dt_vector = None
+        dconcs_dt_vector = np.zeros(shape=species_concs_vector.shape)
         
-        if rate_f is not None:
+        if np.all(species_concs_vector[reactant_indices]<self.atol):
+            pass
+        
+        elif rate_f is not None:
             change = rate_f(species_concs_vector=species_concs_vector, 
             rxn_stoichs=stoichiometry,
             rl_exps=exponents,
