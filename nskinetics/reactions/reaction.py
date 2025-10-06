@@ -404,7 +404,7 @@ class Reaction(AbstractReaction):
         
         self.rate_params = rate_params
         
-        self._freeze_params = []
+        self._freeze_params = set()
         
         # self._freeze_kf = freeze_kf
         # self._freeze_kb = freeze_kb
@@ -661,7 +661,7 @@ class Reaction(AbstractReaction):
             and additional keyword arguments for parameters from Reaction.rate_params.
         rate_params: dict, optional
             Dictionary of parameters passed as keyword arguments to Reaction.rate_f.
-            Each parameter value must be float.
+            Each parameter value can be a float or 1-d array.
         exponents : ndarray, optional
             Rate law exponents.
         get_exponents_from_stoich : bool, optional

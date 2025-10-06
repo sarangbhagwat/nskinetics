@@ -22,7 +22,8 @@ class MonodCellGrowthReactionSystem(RxnSys):
                  stoich=1.0,
                  k_inhibs=None,
                  inhibitors=None,
-                 ID=None):
+                 ID=None,
+                 freeze_species_index_params=True):
         if inhibitors is None:
             inhibitors = []
         if k_inhibs is None:
@@ -67,6 +68,12 @@ class MonodCellGrowthReactionSystem(RxnSys):
                                is_multicompartment=False)
         RxnSys.__init__(self, ID=ID, reactions=[reaction], species_system=species_system)
     
+        self.freeze_species_index_params = freeze_species_index_params
+        if freeze_species_index_params:
+            reaction._freeze_params.add('S_index')
+            for i in range(len(inhib_indices)):
+                reaction._freeze_params.add(f'inhib_indices_{i}')
+            
     @property
     def kcat(self):
         return self.reaction.rate_params['kcat']

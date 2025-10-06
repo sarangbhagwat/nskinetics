@@ -29,7 +29,8 @@ class MichaelisMentenReactionSystem(RxnSys):
                  kcat, KM,
                  species_system,
                  stoich=1.0,
-                 ID=None):
+                 ID=None,
+                 freeze_species_index_params=True,):
         if ID is None:
             ID = f'MM_{E}_{S}_{P}'
         self.E = E
@@ -51,6 +52,11 @@ class MichaelisMentenReactionSystem(RxnSys):
                                is_multicompartment=False)
         RxnSys.__init__(self, ID=ID, reactions=[reaction], species_system=species_system)
     
+        self.freeze_species_index_params = freeze_species_index_params
+        if freeze_species_index_params:
+            reaction._freeze_params.add('E_index')
+            reaction._freeze_params.add('S_index')
+            
     @property
     def kcat(self):
         return self.reaction.rate_params['kcat']
@@ -69,11 +75,12 @@ MichaelisMenten = MichaelisMentenReactionSystem
 
 #%%
 class MichaelisMentenCellularReactionSystem(RxnSys):
-    def __init__(self, C, C_E_frac, S, P, 
+    def __init__(self, C, E_per_C, S, P, 
                  kcat, KM,
                  species_system,
                  stoich=1.0,
-                 ID=None):
+                 ID=None,
+                 freeze_species_index_params=True,):
         if ID is None:
             ID = f'MMC_{C}_{S}_{P}'
         self.C = C
@@ -82,22 +89,27 @@ class MichaelisMentenCellularReactionSystem(RxnSys):
         C_index = species_system.index(C)
         S_index = species_system.index(S)
         def rate_f(species_concs_vector, rxn_stoichs, rl_exps, reactant_indices, product_indices, 
-                   kcat, KM, C_index, C_E_frac, S_index, # rate_params
+                   kcat, KM, C_index, E_per_C, S_index, # rate_params
                    ):
             S_conc = species_concs_vector[S_index]
-            return kcat * species_concs_vector[C_index] * C_E_frac * S_conc /(KM + S_conc)
+            return kcat * species_concs_vector[C_index] * E_per_C * S_conc /(KM + S_conc)
         
         self.reaction = reaction = Rxn.from_equation(ID=f'r_{ID}', 
                                chem_equation=f'{C} + {S} <-> {C} + {stoich} {P}', 
                                rate_f=rate_f,
                                rate_params={'kcat':kcat, 'KM':KM, 
-                                            'C_index':C_index, 'C_E_frac':C_E_frac,
+                                            'C_index':C_index, 'E_per_C':E_per_C,
                                             'S_index':S_index},
                                species_system=species_system, 
                                is_multicompartment=False)
         
         RxnSys.__init__(self, ID=ID, reactions=[reaction], species_system=species_system)
-    
+        
+        self.freeze_species_index_params = freeze_species_index_params
+        if freeze_species_index_params:
+            reaction._freeze_params.add('C_index')
+            reaction._freeze_params.add('S_index')
+            
     @property
     def kcat(self):
         return self.reaction.rate_params['kcat']
@@ -113,10 +125,10 @@ class MichaelisMentenCellularReactionSystem(RxnSys):
         self.reaction.rate_params['KM'] = float(val)
         
     @property
-    def C_E_frac(self):
-        return self.reaction.rate_params['C_E_frac']
-    @C_E_frac.setter
-    def C_E_frac(self, val):
-        self.reaction.rate_params['C_E_frac'] = float(val)
+    def E_per_C(self):
+        return self.reaction.rate_params['E_per_C']
+    @E_per_C.setter
+    def E_per_C(self, val):
+        self.reaction.rate_params['E_per_C'] = float(val)
         
 MichaelisMentenCellular = MichaelisMentenCellularReactionSystem
