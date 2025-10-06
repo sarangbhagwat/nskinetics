@@ -137,7 +137,7 @@ class ReactionSystem():
               t_span,
               t_eval=None,
               method='LSODA',
-              atol=None, rtol=1e-6, 
+              atol=None, rtol=1e-4, 
               events=None,
               sp_conc_for_events=None, # dict or None
               dense_output=False,
@@ -211,8 +211,8 @@ class ReactionSystem():
                              y0=np.log(y0_clean),
                              t_eval=t_eval,
                              # atol=atol/np.max(y0), 
-                             atol=1e-4,
-                             rtol=1e-4,
+                             atol=atol,
+                             rtol=rtol,
                              # the solver keeps the local error estimates less than atol + rtol * abs(y)
                              events=events,
                              method=method,
