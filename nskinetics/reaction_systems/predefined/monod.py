@@ -54,8 +54,7 @@ class MonodCellGrowthReactionSystem(RxnSys):
                    ):
             S_conc = species_concs_vector[S_index]
             u = umax * S_conc /(KS + S_conc)
-            for k, i in zip(k_inhibs, inhib_indices):
-                u *= exp(k*species_concs_vector[i])
+            u *= exp(sum([-k*species_concs_vector[i] for k, i in zip(k_inhibs, inhib_indices)]))
             return u
         
         self.reaction = reaction = Rxn.from_equation(ID=f'r_{ID}', 
