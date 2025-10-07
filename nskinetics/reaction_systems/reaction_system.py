@@ -136,7 +136,7 @@ class ReactionSystem():
     def _solve_single_phase(self, 
               t_span,
               t_eval=None,
-              method='LSODA',
+              method='BDF',
               atol=1e-6, rtol=1e-4, 
               events=None,
               sp_conc_for_events=None, # dict or None
@@ -151,7 +151,7 @@ class ReactionSystem():
             Time interval (start, end) for integration.
         t_eval : array_like, optional
             Time points at which to store the computed solution.
-        method : str, default 'LSODA'
+        method : str, default 'BDF'
             Integration method to use.
         atol : float, optional
             Absolute tolerance.
@@ -250,9 +250,9 @@ class ReactionSystem():
               sp_conc_for_events=None, # dict or None
               events=None,
               spikes=None,
-              method='LSODA',
+              method='BDF',
               t_eval=None,
-              atol=None, rtol=1e-6, 
+              atol=1e-6, rtol=1e-4, 
               dense_output=False,
               y0=None,
               dt_spike=1e-6, # long dt_spike (e.g., slow feeding) not supported, only spikes in concentrations
@@ -923,7 +923,7 @@ class ReactionSystem():
     def fit_reaction_kinetic_parameters_to_data(self,
                                                 data,
                                                 bounds,
-                                                solve_method='LSODA', # 'LSODA' can't have multiple instances run in parallel, 'DOP853' can
+                                                solve_method='BDF', # 'LSODA' can't have multiple instances run in parallel, 'DOP853' can
                                                 de_workers=1, # -1 => use all available CPUs
                                                 de_popsize=200, 
                                                 de_maxiter=10, 
