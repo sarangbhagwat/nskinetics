@@ -579,6 +579,8 @@ class ReactionSystem():
         y_max = 0  # for auto y-axis limit
         # y_max = np.max(y)
         
+        any_plotted = False
+        
         # print(sps_to_include)
         for i, sp in enumerate(all_sps):
             if (sp.ID in include_set) or (sp in include_set):  # latter covers if user passed Species objects
