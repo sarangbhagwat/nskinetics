@@ -26,6 +26,8 @@ from . import utils
 
 from . import tests
 
+from . import units
+
 __all__ = (
      *species.__all__,
      *reactions.__all__,
@@ -33,4 +35,5 @@ __all__ = (
      'utils',
      'doe',
      'tests',
+     'units'
      )
