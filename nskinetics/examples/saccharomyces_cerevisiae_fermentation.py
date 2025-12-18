@@ -11,7 +11,7 @@ import biosteam as bst
 import tellurium as te
 import simplesbml
 
-__all__ = ('R302',)
+__all__ = ('te_r', 'reset_kinetic_reaction_system',)
 
 #%% Import SBML
 # filename = 'BIOMD0000000245_url.xml' # Lei et al., 2001
@@ -184,10 +184,10 @@ if replace_active_BM_degradation:
     
     model.addReaction(rxn_id='r10', 
                       reactants=['a',
-                                 # 'x', # added modifiers to both reactants and products since modifiers can't be passed as argument
+                                 'x', # added modifiers to both reactants and products since modifiers can't be passed as argument
                                  ],
                       products=[
-                              # 'x', # added modifiers to both reactants and products since modifiers can't be passed as argument
+                              'x', # added modifiers to both reactants and products since modifiers can't be passed as argument
                               ],
                       expression='k_10 * x * X_a * env'
                       )
@@ -235,47 +235,52 @@ r.D = 0 # dilution rate # note r.S_f (inlet glucose conc) does not matter when D
 # r.k_10e = 0 # ethanol-based active biomass degradation
 # r.K_10e = 42.2 # ethanol-based active biomass degradation # updated based on Atitallah et al., 2020 https://doi.org/10.1016/j.renene.2020.03.010
 
-#%%  simulations
-r.reset()
-r.s_glu = 100 # initial glucose conc
-r.x = 2 # initial biomass conc
-print(r.s_glu, r.x, r.X_a, r.s_EtOH, r.s_acetate, r.s_acetald)
 
-r.simulate(0, 300, 300, 
-           # ['time', 'X_a', 'X_AcDH', 
-            # 'a',
-            # ],
-           )
-
-print(r.s_glu, r.x, r.X_a, r.s_EtOH, r.s_acetate, r.s_acetald)
-r.plot()
 
 #%% Create NSKinetics Reaction System
 te_r = nsk.TelluriumReactionSystem(r)
 te_r._units['time'] = 'h'
 te_r._units['conc'] = 'g/L'
-
-#%%
-
-bst.settings.set_thermo(['Water', 'Carbon', 'Glucose', 'Ethanol', 'Sucrose'])
-
-feed = bst.Stream('feed', Water=100, Carbon=1, Glucose=1)
-
-map_chemicals_nsk_to_bst = {'s_glu': 'Glucose',
-                            'x': 'Carbon',
-                            's_EtOH': 'Ethanol',}
-
+    
 def reset_kinetic_reaction_system(r):
     r.reset()
     r._te.n_glu_spikes = 0
-    
-R302 = nsk.units.NSKFermentation('R302', 
-                                 ins=feed, 
-                                 kinetic_reaction_system=te_r,
-                                 map_chemicals_nsk_to_bst=map_chemicals_nsk_to_bst,
-                                 n_simulation_steps=None,
-                                 f_reset_kinetic_reaction_system=reset_kinetic_reaction_system,
-                                 tau=3*24)
+        
+#%%  simulations
 
-R302.simulate()
+simulate = False
+if simulate:
+    r.reset()
+    r.s_glu = 100 # initial glucose conc
+    r.x = 2 # initial biomass conc
+    print(r.s_glu, r.x, r.X_a, r.s_EtOH, r.s_acetate, r.s_acetald)
+    
+    r.simulate(0, 300, 300, 
+               # ['time', 'X_a', 'X_AcDH', 
+                # 'a',
+                # ],
+               )
+    
+    print(r.s_glu, r.x, r.X_a, r.s_EtOH, r.s_acetate, r.s_acetald)
+    r.plot()
+    
+    bst.settings.set_thermo(['Water', 'Carbon', 'Glucose', 'Ethanol', 'Sucrose'])
+    
+    feed = bst.Stream('feed', Water=100, Carbon=1, Glucose=1)
+    
+    map_chemicals_nsk_to_bst = {'s_glu': 'Glucose',
+                                'x': 'Carbon',
+                                's_EtOH': 'Ethanol',}
+
+        
+    R302 = nsk.units.NSKFermentation('R302', 
+                                     ins=feed, 
+                                     kinetic_reaction_system=te_r,
+                                     map_chemicals_nsk_to_bst=map_chemicals_nsk_to_bst,
+                                     n_simulation_steps=None,
+                                     f_reset_kinetic_reaction_system=reset_kinetic_reaction_system,
+                                     tau=3*24)
+    
+    R302.simulate()
+    r.plot()
 

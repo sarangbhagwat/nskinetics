@@ -28,6 +28,8 @@ from . import tests
 
 from . import units
 
+from . import examples 
+
 __all__ = (
      *species.__all__,
      *reactions.__all__,
@@ -35,5 +37,6 @@ __all__ = (
      'utils',
      'doe',
      'tests',
-     'units'
+     'units',
+     'examples'
      )

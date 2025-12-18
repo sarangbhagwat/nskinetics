@@ -138,7 +138,6 @@ class NSKFermentation(BatchBioreactor):
             exec(f'te_r.{c_nsk} = feed.{material_indexer}[c_bst]/feed.{volume_indexer}')
             exec(f'initial_concentrations[c_nsk] = te_r.{c_nsk}')
         
-        
         te_r.simulate(0, tau*time_conv_factor, self.n_simulation_steps)
         
         effluent = feed.copy()
