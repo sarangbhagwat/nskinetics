@@ -9,7 +9,10 @@
 from . import fermentation
 from .fermentation import *
 
+from . import _feeding_strategy_specification
+from ._feeding_strategy_specification import *
 
 __all__ = (
      *fermentation.__all__,
+     *_feeding_strategy_specification.__all__,
      )

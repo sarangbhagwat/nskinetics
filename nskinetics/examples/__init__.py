@@ -7,8 +7,10 @@
 # for license details.
 
 from . import saccharomyces_cerevisiae_fermentation
+from . import saccharomyces_cerevisiae_fermentation_etoh_ibo
 # from .fim import *
 
 __all__ = (
-     'saccharomyces_cerevisiae_fermentation'
+     'saccharomyces_cerevisiae_fermentation',
+     'saccharomyces_cerevisiae_fermentation_etoh_ibo',
      )

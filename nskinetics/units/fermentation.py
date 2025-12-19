@@ -17,7 +17,7 @@ References
     Report NREL/TP-5100-47764
 """
 
-import numpy as np
+# import numpy as np
 from biosteam.units import BatchBioreactor
 from thermosteam import Reaction, ParallelReaction
 from ..reaction_systems.tellurium_based.tellurium_sbml import TelluriumReactionSystem
@@ -74,6 +74,10 @@ class NSKFermentation(BatchBioreactor):
     """
     line = 'NSKFermentation'
     _ins_size_is_fixed = False
+    # Ins size is not fixed; however, the first three ins streams must be as follows:
+    # 0. Initial feed
+    # 1. Seed culture
+    # 2. Spike feed (optional; for fed-batch only)
     
     autoselect_N = True
     
@@ -84,13 +88,15 @@ class NSKFermentation(BatchBioreactor):
               n_simulation_steps=1000,
               f_reset_kinetic_reaction_system=None,
               N=None, V=None, T=305.15, P=101325., Nmin=2, Nmax=36,
-              efficiency=None):
+              sugar_IDs=('Sucrose', 'Glucose', 'Xylose'),
+              perform_hydrolysis=True):
         
         BatchBioreactor._init(self, tau=tau, N=N, V=V, T=T, P=P, Nmin=Nmin, Nmax=Nmax)
         self._load_components()
         
         chemicals = self.chemicals
-        self.hydrolysis_reaction = Reaction('Sucrose + Water -> 2Glucose', 'Sucrose', 1.00, chemicals)
+        if perform_hydrolysis:
+            self.hydrolysis_reaction = Reaction('Sucrose + Water -> 2Glucose', 'Sucrose', 1.00, chemicals)
         
         self.kinetic_reaction_system = kinetic_reaction_system
         if isinstance(kinetic_reaction_system, TelluriumReactionSystem):
@@ -101,6 +107,9 @@ class NSKFermentation(BatchBioreactor):
         self.map_chemicals_nsk_to_bst = map_chemicals_nsk_to_bst
         self.n_simulation_steps = n_simulation_steps
         self.f_reset_kinetic_reaction_system = f_reset_kinetic_reaction_system if f_reset_kinetic_reaction_system is not None else lambda model: model.reset()
+        
+        self.sugar_IDs = sugar_IDs
+        self.perform_hydrolysis = perform_hydrolysis
         
     def _nsk_simulate_kinetics(self, feed, tau, feed_spike_condition=None, plot=False): 
         # !!!
@@ -158,9 +167,28 @@ class NSKFermentation(BatchBioreactor):
     
     def _run(self):
         vent, effluent = self.outs
-        effluent.mix_from(self.ins)
-        self.hydrolysis_reaction.force_reaction(effluent)
+        ins = self.ins
+        spike_feed = ins[2]
+        initial_feed_seed_others = (i for i in ins if not i==spike_feed) # exclude spike feed initially
+        effluent.mix_from(initial_feed_seed_others)
+        
+        if self.perform_hydrolysis:
+            self.hydrolysis_reaction.force_reaction(effluent)
+            self.hydrolysis_reaction.force_reaction(spike_feed)
+        
         effluent.copy_like(self.simulate_kinetics(feed=effluent, tau=self._tau))
+        te_r = self.kinetic_reaction_system._te
+        
+        # effluent.F_vol *= (te_r.env)/(te_r.env-te_r.tot_vol_glu_feed_added)
+        effluent.F_vol *= (effluent.F_vol + spike_feed.F_vol)/effluent.F_vol
+        
+        # effluent.mix_from((effluent, spike_feed))
+        for i in effluent.chemicals:
+            if not i.ID in list(self.map_chemicals_nsk_to_bst.values()) + ['Water',]:
+                effluent.imol[i.ID] += spike_feed.imol[i.ID]
+            
+        effluent.imol['NH3'] = 0. # NH3 in ins must be based on final Yeast mass
+        
         effluent.empty_negative_flows()
         vent.empty()
         vent.receive_vent(effluent, energy_balance=False)

@@ -31,7 +31,11 @@ te_r._units['conc'] = 'g/L'
     
 def reset_kinetic_reaction_system(r):
     r.reset()
-    r._te.n_glu_spikes = 0
+    r_te = r._te
+    r_te.n_glu_spikes = 0
+    r_te.last_vol_glu_feed_added = 0.
+    r_te.tot_vol_glu_feed_added = 0.
+    r_te.env = 1.
     
 #%%
 simulate = True
