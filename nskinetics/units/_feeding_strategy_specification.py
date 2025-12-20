@@ -81,8 +81,8 @@ class FedBatchStrategySpecification:
         feed_mixer,
         spike_evaporator,
         spike_mixer,
-        other_feed_units=None,
-        other_spike_units=None,
+        feed_units_sequential=None,
+        spike_units_sequential=None,
         sugar_IDs=['Glucose', 'Sucrose', 'Xylose']
         ):
         # self.kinetic_reaction_system = kinetic_reaction_system
@@ -95,10 +95,10 @@ class FedBatchStrategySpecification:
         self.splitter = splitter
         self.feed_evaporator = feed_evaporator
         self.feed_mixer = feed_mixer
-        self.other_feed_units = other_feed_units
+        self.feed_units_sequential = feed_units_sequential
         self.spike_evaporator = spike_evaporator
         self.spike_mixer = spike_mixer
-        self.other_spike_units = other_spike_units
+        self.spike_units_sequential = spike_units_sequential
         
         self._validate_parameters()
         
@@ -134,7 +134,7 @@ class FedBatchStrategySpecification:
                             conc_sugars_feed_spike,
                             threshold_conc_sugars,
                             tau,
-                            evaporator_V_ub=0.95, evaporator_V_lb=0.0,
+                            evaporator_V_ub=0.8, evaporator_V_lb=0.0,
                             mixer_dil_lb=0., mixer_dil_ub=100_000
                             ):
         self.load_desired_concs_sugars(target_conc_sugars=target_conc_sugars, 
@@ -159,17 +159,23 @@ class FedBatchStrategySpecification:
         spike_evaporator = self.spike_evaporator
         spike_mixer = self.spike_mixer
         
+        fermentation_reactor = self.fermentation_reactor
+        
         self._estimate_set_V_and_dil(desired_conc_sugars=target_conc_sugars,
                                evaporator=feed_evaporator,
                                mixer=feed_mixer,
                                evaporator_V_lb=evaporator_V_lb, evaporator_V_ub=evaporator_V_ub,
-                               mixer_dil_lb=mixer_dil_lb, mixer_dil_ub=mixer_dil_ub)
+                               mixer_dil_lb=mixer_dil_lb, mixer_dil_ub=mixer_dil_ub,
+                               f_simulate_units_sequential=self._simulate_feed_units,
+                               terminal_stream=fermentation_reactor.ins[0])
         
         self._estimate_set_V_and_dil(desired_conc_sugars=conc_sugars_feed_spike,
                                evaporator=spike_evaporator,
                                mixer=spike_mixer,
                                evaporator_V_lb=evaporator_V_lb, evaporator_V_ub=evaporator_V_ub,
-                               mixer_dil_lb=mixer_dil_lb, mixer_dil_ub=mixer_dil_ub)
+                               mixer_dil_lb=mixer_dil_lb, mixer_dil_ub=mixer_dil_ub,
+                               f_simulate_units_sequential=self._simulate_spike_units,
+                               terminal_stream=fermentation_reactor.ins[2])
     
     def load_threshold_conc_sugars_and_tau(self,
                                            threshold_conc_sugars,
@@ -197,22 +203,24 @@ class FedBatchStrategySpecification:
                                desired_conc_sugars,
                                evaporator, mixer, 
                                evaporator_V_lb, evaporator_V_ub,
-                               mixer_dil_lb, mixer_dil_ub):
+                               mixer_dil_lb, mixer_dil_ub,
+                               f_simulate_units_sequential,
+                               terminal_stream):
+        
         get_conc_sugars = self.get_conc_sugars
-        evaporator.simulate()
-        evaporator.outs[0].sink.simulate() # !!! update inelegant solution
-        mixer.simulate()
+        f_simulate_units_sequential()
+        # breakpoint()
         
         if mixer.outs[0].F_vol:
             def _evaporator_obj_f(V):
                 evaporator.V = V
-                evaporator.simulate()
-                return get_conc_sugars(evaporator.outs[0]) - desired_conc_sugars
+                f_simulate_units_sequential()
+                return get_conc_sugars(terminal_stream) - desired_conc_sugars
                     
             def _mixer_obj_f(water_to_sugar_mol_ratio):
                 mixer.water_to_sugar_mol_ratio = water_to_sugar_mol_ratio
-                mixer.simulate()
-                return get_conc_sugars(mixer.outs[0]) - desired_conc_sugars
+                f_simulate_units_sequential()
+                return get_conc_sugars(terminal_stream) - desired_conc_sugars
             
             _evaporator_obj_f(evaporator_V_lb)
             
@@ -234,26 +242,22 @@ class FedBatchStrategySpecification:
                     breakpoint()
     
     def _simulate_feed_units(self):
-        for i in self.other_feed_units: i.simulate() # !!! update inelegant solution
-        self.feed_evaporator.simulate()
-        for i in self.other_feed_units: i.simulate()
-        self.feed_mixer.simulate()
-        for i in self.other_feed_units: i.simulate()
+        self.splitter.simulate()
+        for i in self.feed_units_sequential:
+            i.simulate()
     
     def _simulate_spike_units(self):
-        for i in self.other_spike_units: i.simulate()
-        self.spike_evaporator.simulate()
-        for i in self.other_spike_units: i.simulate()
-        self.spike_mixer.simulate()
-        for i in self.other_spike_units: i.simulate()
+        self.splitter.simulate()
+        for i in self.spike_units_sequential:
+            i.simulate()
     
     def _simulate_upstream_units(self):
-        self.splitter.simulate()
+        # self.splitter.simulate()
         self._simulate_feed_units()
         self._simulate_spike_units()
     
     def get_conc_sugars(self, stream):
-        return stream.imass[self.sugar_IDs].sum()/stream.F_vol
+        return stream.imass[self.sugar_IDs].sum()/stream.ivol['Water']
     
     def get_feed_conc_sugars(self):
         return self.get_conc_sugars(stream=self.feed_mixer.outs[0])

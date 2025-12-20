@@ -137,15 +137,17 @@ class NSKFermentation(BatchBioreactor):
         conc_units = kinetic_reaction_system._units['conc']
         if conc_units in ('M', 'mol/L', 'kg/m3', 'kg/m^3'):
             material_indexer = 'imol'
-            volume_indexer = 'F_vol'
+            volume_attribute = "ivol['Water']"
         elif conc_units in ('g/L', 'kg/m3', 'kg/m^3'):
             material_indexer = 'imass'
-            volume_indexer = 'F_vol'
+            volume_attribute = "ivol['Water']"
             
         self._nsk_initial_concentration = initial_concentrations = {}
         for c_nsk, c_bst in map_chemicals_nsk_to_bst.items():
-            exec(f'te_r.{c_nsk} = feed.{material_indexer}[c_bst]/feed.{volume_indexer}')
+            exec(f'te_r.{c_nsk} = feed.{material_indexer}[c_bst]/feed.{volume_attribute}')
             exec(f'initial_concentrations[c_nsk] = te_r.{c_nsk}')
+        
+        initial_conc_sugars = te_r.s_glu
         
         te_r.simulate(0, tau*time_conv_factor, self.n_simulation_steps)
         
@@ -154,15 +156,23 @@ class NSKFermentation(BatchBioreactor):
         initially_nonzero = []
         # breakpoint()
         for c_nsk, c_bst in map_chemicals_nsk_to_bst.items():
-            if initial_concentrations[c_nsk] > 0.0:
-                exec(f'effluent.{material_indexer}[c_bst] *= te_r.{c_nsk}/initial_concentrations[c_nsk]')
-                initially_nonzero.append((c_nsk, c_bst))
-            else:
-                initially_zero.append((c_nsk, c_bst))
+            exec(f'effluent.{material_indexer}[c_bst] = te_r.{c_nsk} * effluent.{volume_attribute}')
+            # if initial_concentrations[c_nsk] > 0.0:
+                # exec(f'effluent.{material_indexer}[c_bst] *= te_r.{c_nsk}/initial_concentrations[c_nsk]')
+                # initially_nonzero.append((c_nsk, c_bst))
+            # else:
+            #     initially_zero.append((c_nsk, c_bst))
         
-        for c_nsk, c_bst in initially_zero:
-            exec(f'material_factor = feed.{material_indexer}[initially_nonzero[0][1]]/initial_concentrations[initially_nonzero[0][0]]; effluent.{material_indexer}[c_bst] = material_factor * te_r.{c_nsk}')
-                
+        # for c_nsk, c_bst in initially_zero:
+        #     exec(f'material_factor = feed.{material_indexer}[initially_nonzero[0][1]]/initial_concentrations[initially_nonzero[0][0]]; effluent.{material_indexer}[c_bst] = material_factor * te_r.{c_nsk}')
+        
+        self.amt_sugars_spiked = amt_sugars_spiked = te_r.conc_glu_feed_spike * te_r.tot_vol_glu_feed_added
+        self.amt_sugars_initial = amt_sugars_initial = initial_conc_sugars*(te_r.env - te_r.tot_vol_glu_feed_added)
+        
+        effluent.F_vol *= te_r.env/(te_r.env - te_r.tot_vol_glu_feed_added)
+        
+        # effluent.F_vol *= (amt_sugars_initial + amt_sugars_spiked)/amt_sugars_initial
+        
         return effluent
     
     def _run(self):
@@ -176,17 +186,26 @@ class NSKFermentation(BatchBioreactor):
             self.hydrolysis_reaction.force_reaction(effluent)
             self.hydrolysis_reaction.force_reaction(spike_feed)
         
-        effluent.copy_like(self.simulate_kinetics(feed=effluent, tau=self._tau))
+        minimal_feed = effluent.copy()
+        
+        for i in minimal_feed.chemicals:
+            if not i.ID in list(self.map_chemicals_nsk_to_bst.values()) + ['Water',]:
+                minimal_feed.imol[i.ID] = 0.0
+        minimal_effluent = self.simulate_kinetics(feed=minimal_feed, tau=self._tau)
+        
         te_r = self.kinetic_reaction_system._te
         
         # effluent.F_vol *= (te_r.env)/(te_r.env-te_r.tot_vol_glu_feed_added)
-        effluent.F_vol *= (effluent.F_vol + spike_feed.F_vol)/effluent.F_vol
+        # effluent.F_vol *= (effluent.F_vol + spike_feed.F_vol)/effluent.F_vol
         
         # effluent.mix_from((effluent, spike_feed))
-        for i in effluent.chemicals:
+        # copy non-nskinetics chemicals to minimal_effluent from effluent and spike_feed
+        for i in minimal_effluent.chemicals:
             if not i.ID in list(self.map_chemicals_nsk_to_bst.values()) + ['Water',]:
-                effluent.imol[i.ID] += spike_feed.imol[i.ID]
-            
+                minimal_effluent.imol[i.ID] += effluent.imol[i.ID]
+                minimal_effluent.imol[i.ID] += spike_feed.imol[i.ID]
+        
+        effluent.copy_like(minimal_effluent)
         effluent.imol['NH3'] = 0. # NH3 in ins must be based on final Yeast mass
         
         effluent.empty_negative_flows()
