@@ -1,13 +1,11 @@
 // Created by libAntimony v3.0.0
-model *bhagwat2026()
+model *lei2001()
 
   // Compartments and Species:
-  var compartment env, cell;
+  compartment env, cell;
   species s_glu in env, s_pyr in env, s_acetate in env, s_acetald in env;
   species s_EtOH in env, x in env, $a in env, $AcDH in env, $CO2 in env, $Red in env;
   species $S_f in env;
-  species s_AL in env, s_DHI in env, s_KIV in env;
-  species s_IBO in env;
 
   // Assignment Rules:
   a := x*X_a;
@@ -20,12 +18,12 @@ model *bhagwat2026()
   X_AcDH' = (r9 - r11 - (0.732*r7 + 0.619*r8)*X_AcDH)/(x*env);
 
   // Reactions:
-  r1: s_glu + s_acetald + x + s_EtOH + s_acetate + s_IBO => 0.978 s_pyr + 0.178 $Red + s_acetald + x + s_EtOH + s_acetate + s_IBO; (k_1l*s_glu/(s_glu + K_1l) + k_1h*s_glu/(s_glu + K_1h) + k_1e*s_acetald*s_glu/(s_glu*(K_1i*s_acetald + 1) + K_1e))*2.71828^(-k_1ie*s_EtOH)*2.71828^(-k_1ia*s_acetate)*2.71828^(-k_1ii*s_IBO)*x*X_a*env;
+  r1: s_glu + s_acetald + x + s_EtOH + s_acetate => 0.978 s_pyr + 0.178 $Red + s_acetald + x + s_EtOH + s_acetate; (k_1l*s_glu/(s_glu + K_1l) + k_1h*s_glu/(s_glu + K_1h) + k_1e*s_acetald*s_glu/(s_glu*(K_1i*s_acetald + 1) + K_1e))*x*X_a*env*2.71828^(-k_1ie*s_EtOH)*2.71828^(-k_1ia*s_acetate);
   r2: s_pyr => 1.499 $CO2 + 0.908 $Red; (k_2*s_pyr/((s_pyr + K_2)*(K_2i*s_glu + 1)))*x*X_a*env;
-  r4: s_acetald + x + s_EtOH + s_acetate + s_IBO => 1.363 s_acetate + 0.363 $Red + x + s_EtOH + s_acetate + s_IBO; (k_4*s_acetald*2.71828^(-k_4ie*s_EtOH)*2.71828^(-k_4ia*s_acetate)*2.71828^(-k_4ii*s_IBO)/(s_acetald + K_4))*x*X_a*X_AcDH*env;
+  r4: s_acetald + x + s_EtOH + s_acetate => 1.363 s_acetate + 0.363 $Red + x + s_EtOH + s_acetate; (k_4*s_acetald*2.71828^(-k_4ie*s_EtOH)*2.71828^(-k_4ia*s_acetate)/(s_acetald + K_4))*x*X_a*X_AcDH*env;
   r5: s_acetate => 1.446 $CO2 + 1.066 $Red; (k_5*s_acetate/(s_acetate + K_5) + k_5e*s_acetate/((s_acetate + K_5e)*(1 + K_5i*s_glu)))*x*X_a*env;
   r6: s_acetald + 0.363 $Red -> 1.045 s_EtOH; (k_6*(s_acetald - k_6r*s_EtOH)/(s_acetald + K_6 + K_6e*s_EtOH))*x*X_a*env;
-  r7: s_glu + x + s_EtOH + s_acetate + s_IBO => 0.732 x + 0.127 $CO2 + 0.063 $Red + x + s_EtOH + s_acetate + s_IBO; (k_7*s_glu*2.71828^(-k_7ie*s_EtOH)*2.71828^(-k_7ia*s_acetate)*2.71828^(-k_7ii*s_IBO)/(s_glu + K_7))*x*X_a*env;
+  r7: s_glu + x + s_EtOH + s_acetate => 0.732 x + 0.127 $CO2 + 0.063 $Red + x + s_EtOH + s_acetate; (k_7*s_glu*2.71828^(-k_7ie*s_EtOH)*2.71828^(-k_7ia*s_acetate)/(s_glu + K_7))*x*X_a*env;
   r8: s_acetate => 0.619 x + 0.325 $CO2 + 0.214 $Red; (k_8*s_acetate/((s_acetate + K_5e)*(1 + K_5i*s_glu)))*x*X_a*env;
   r3: s_pyr => 0.5 s_acetald + 0.33 $CO2; (k_3*s_pyr^4/(s_pyr^4 + K_3))*x*X_a*env;
   r9: $a => $AcDH; ((k_9*s_glu/(s_glu + K_9) + k_9e*s_EtOH/(s_EtOH + K_9e))/(K_9i*s_glu + 1) + k_9c*s_glu/(s_glu + K_9))*X_a*x*env;
@@ -40,30 +38,20 @@ model *bhagwat2026()
   a_out: $a => ; a*D*env;
   x_out: x => ; x*D*env;
   AcDH_out: $AcDH => ; AcDH*D*env;
-  r13: s_pyr => 0.750 s_AL; (k_13*s_pyr/(K_13 + s_pyr))*x*X_a*env
-  r14: s_AL => 1.015 s_DHI; (k_14*s_AL/(K_14 + s_AL))*x*X_a*env
-  r15: s_DHI => 0.866 s_KIV; (k_15*s_DHI/(K_15 + s_DHI))*x*X_a*env
-  r16: s_KIV + 0.363 $Red -> 0.638 s_IBO; (k_16*(s_KIV - k_16r*s_IBO)/(s_KIV + K_16 + K_16i*s_IBO))*x*X_a*env;
 
   // Events:
-  glucose_feed_spike_a: at glucose_feed_spikeDelay after (s_glu <= threshold_conc_glu_spike) && (n_glu_spikes < max_n_glu_spikes), priority=5: last_vol_glu_feed_added = env*(target_conc_glu_spike - s_glu)/(conc_glu_feed_spike - target_conc_glu_spike);
-  glucose_feed_spike_b: at glucose_feed_spikeDelay after (s_glu <= threshold_conc_glu_spike) && (n_glu_spikes < max_n_glu_spikes), priority=4, fromTrigger=false: env = env + last_vol_glu_feed_added, tot_vol_glu_feed_added = tot_vol_glu_feed_added + last_vol_glu_feed_added; 
-  glucose_feed_spike_c: at glucose_feed_spikeDelay after (s_glu <= threshold_conc_glu_spike) && (n_glu_spikes < max_n_glu_spikes), priority=3, fromTrigger=false: s_glu = target_conc_glu_spike, n_glu_spikes = n_glu_spikes + 1;
+  glucose_feed_spike: at glucose_feed_spikeDelay after (s_glu <= -1) && (n_glu_spikes < 2): n_glu_spikes = n_glu_spikes + 1, s_glu = 100;
 
   // Species initializations:
-  s_glu = 15/env;
+  s_glu = 100/env;
   s_pyr = 0;
   s_acetate = 0;
   s_acetald = 0;
   s_EtOH = 0;
-  x = 0.002/env;
+  x = 2/env;
   CO2 = 0;
   Red = 0;
   S_f = 15;
-  s_AL = 0;
-  s_DHI = 0;
-  s_KIV = 0;
-  s_IBO = 0;
 
   // Compartment initializations:
   env = 1;
@@ -76,18 +64,6 @@ model *bhagwat2026()
   X_AcDH has dimensionless;
   n_glu_spikes = 0;
   n_glu_spikes has dimensionless;
-  max_n_glu_spikes = 5;
-  max_n_glu_spikes has dimensionless;
-  threshold_conc_glu_spike = 10;
-  threshold_conc_glu_spike has g_per_l;
-  target_conc_glu_spike = 100;
-  target_conc_glu_spike has g_per_l;
-  conc_glu_feed_spike = 600;
-  conc_glu_feed_spike has g_per_l;
-  last_vol_glu_feed_added = 0;
-  last_vol_glu_feed_added has volume;
-  tot_vol_glu_feed_added = 0;
-  tot_vol_glu_feed_added has volume;
   glucose_feed_spikeDelay = 0;
   glucose_feed_spikeDelay has time_unit;
   qO2 has mmole_per_g_per_h;
@@ -164,51 +140,23 @@ model *bhagwat2026()
   k_7ie has g_per_l_per_h;
   k_7ia = 0.12;
   k_7ia has g_per_l_per_h;
-  k_7ii = 0.04;
-  k_7ii has g_per_l_per_h;
   k_1ie = 0.04;
   k_1ie has g_per_l_per_h;
   k_1ia = 0.12;
   k_1ia has g_per_l_per_h;
-  k_1ii = 0.04;
-  k_1ii has g_per_l_per_h;
   k_4ie = 0.04;
   k_4ie has g_per_l_per_h;
   k_4ia = 0.12;
   k_4ia has g_per_l_per_h;
-  k_4ii = 0.04;
-  k_4ii has g_per_l_per_h;
   k_10 = 0.06;
   k_10 has g_per_l_per_h;
-  k_13 = 0.501;
-  k_13 has g_per_l_per_h;
-  k_14 = 0.501;
-  k_14 has g_per_l_per_h;
-  k_15 = 0.501;
-  k_15 has g_per_l_per_h;
-  k_16 = 0.501;
-  k_16 has g_per_l_per_h;
-  K_13 = 0.000264;
-  K_13 has g_per_l;
-  K_14 = 0.000264;
-  K_14 has g_per_l;
-  K_15 = 0.000264;
-  K_15 has g_per_l;
-  K_16 = 0.000264;
-  K_16 has g_per_l;
-  k_16r = 0.0125;
-  k_16r has dimensionless;
-  K_16i = 0.057;
-  K_16i has g_per_l;
 
   // Other declarations:
-  var X_a, X_AcDH, qO2, qCO2;
-  var n_glu_spikes, glucose_feed_spikeDelay, threshold_conc_glu_spike, target_conc_glu_spike, conc_glu_feed_spike, last_vol_glu_feed_added, tot_vol_glu_feed_added;
-  const k_7ie, k_7ia, k_7ii, k_1ie, k_1ia, k_1ii, k_4ie, k_4ia, k_4ii, k_10;
-  const k_1h, K_1h, k_1l, K_1l, k_1e, K_1e, K_1i, k_2, K_2, K_2i;
+  var X_a, X_AcDH, n_glu_spikes, glucose_feed_spikeDelay, qO2, qCO2, k_7ie;
+  var k_7ia, k_1ie, k_1ia, k_4ie, k_4ia, k_10;
+  const env, cell, k_1h, K_1h, k_1l, K_1l, k_1e, K_1e, K_1i, k_2, K_2, K_2i;
   const k_3, K_3, k_4, K_4, k_5, K_5, k_5e, K_5e, K_5i, k_6, K_6, k_6r, K_6e;
   const k_7, K_7, k_8, k_9, K_9, k_9e, K_9e, K_9i, k_9c, k_11, D;
-  const k_13, K_13, k_14, K_14, k_15, K_15, k_16, K_16, k_16r, K_16i
 
   // Unit definitions:
   unit substance = gram;
@@ -235,7 +183,6 @@ model *bhagwat2026()
   s_acetate is "Acetate";
   s_acetald is "Acetaldehyde";
   s_EtOH is "EtOH";
-  s_IBO is "Isobutanol";
   x is "BM";
   a is "BM(active)";
   AcDH is "BM(AcDH)";
@@ -372,4 +319,4 @@ To cite BioModels Database, please use [Le Novère N., Bornstein B., Broicher A.
 ```
 end
 
-bhagwat2026 is "Bhagwat2026_Yeast_Ethanol_Isobutanol"
+lei2001 is "Lei2001_Yeast_Aerobic_Metabolism"

@@ -6,11 +6,15 @@
 # https://github.com/sarangbhagwat/nskinetics/blob/main/LICENSE
 # for license details.
 
-from . import saccharomyces_cerevisiae_fermentation
-from . import saccharomyces_cerevisiae_fermentation_etoh_ibo
+from . import s_cerevisiae_ferm
+from . import s_cerevisiae_ferm_fb_growthinhibonlymod
+from . import s_cerevisiae_ferm_inhib_mod
+from . import s_cerevisiae_ferm_fb_inhib_mod_ibo
 # from .fim import *
 
 __all__ = (
-     'saccharomyces_cerevisiae_fermentation',
-     'saccharomyces_cerevisiae_fermentation_etoh_ibo',
+     's_cerevisiae_ferm',
+     's_cerevisiae_ferm_fb_growthinhibonlymod',
+     's_cerevisiae_ferm_inhib_mod',
+     's_cerevisiae_ferm_fb_inhib_mod_ibo',
      )

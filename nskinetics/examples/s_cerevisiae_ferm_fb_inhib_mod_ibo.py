@@ -21,7 +21,7 @@ nsk_filepath = nsk.__file__.replace('\\__init__.py', '')
 nsk_examples_filepath = nsk_filepath + '\\examples\\'
 
 #%%
-antimony_filename = 'saccharomyces_cerevisiae_fermentation_etoh_ibo_antimony.txt'
+antimony_filename = 's_cerevisiae_ferm_fb_inhib_mod_ibo_antimony.txt'
 r = te.loadAntimonyModel(f'{nsk_examples_filepath}\\{antimony_filename}')
 
 #%% Create NSKinetics Reaction System
@@ -36,19 +36,24 @@ def reset_kinetic_reaction_system(r):
     r_te.last_vol_glu_feed_added = 0.
     r_te.tot_vol_glu_feed_added = 0.
     r_te.env = 1.
-    
+
+#%% Document references for IBO pathway kinetic parameters
+
+# r.k_6 = 2.9 * 88.06 * 1e-6 * 60 # 2.9 uM/min # Zhao 2021 https://doi.org/10.3390/foods10051013
+# r.K_6 = 31.8 * 88.06 * 1e-3 # 31.8 mM # Zhao 2021 https://doi.org/10.3390/foods10051013
 #%%
-simulate = True
+simulate = False
 if simulate:
-    r.reset()
+    reset_kinetic_reaction_system(te_r)
     r.s_glu = 100 # initial glucose conc
-    r.x = 2 # initial biomass conc
+    r.x = 1 # initial biomass conc
     print(r.s_glu, r.x, r.X_a, r.s_EtOH, r.s_acetate, r.s_acetald, r.s_AL, r.s_DHI, r.s_KIV, r.s_IBO)
     
-    r.simulate(0, 300, 2000
+    r.simulate(0, 300, 2000,
+               # ['time', 's_glu', '[s_glu]'],
                # ['time', 'X_a', 'X_AcDH', 
-                # 'a',
-                # ],
+               #  'a',
+               #  ],
                )
     
     print(r.s_glu, r.x, r.X_a, r.s_EtOH, r.s_acetate, r.s_acetald, r.s_AL, r.s_DHI, r.s_KIV, r.s_IBO)

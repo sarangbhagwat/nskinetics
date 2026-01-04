@@ -245,7 +245,16 @@ te_r._units['conc'] = 'g/L'
 def reset_kinetic_reaction_system(r):
     r.reset()
     r._te.n_glu_spikes = 0
-        
+
+#%% Set initial concs
+    
+r.s_glu = 100 # initial glucose conc
+r.x = 2 # initial biomass conc
+
+#%% Export to antimony
+
+r.exportToAntimony('s_cerevisiae_ferm_inhib_mod.txt', current=True)
+
 #%%  simulations
 
 simulate = False
