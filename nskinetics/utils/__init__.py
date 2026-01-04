@@ -15,8 +15,12 @@ from ._argument_checks import *
 from .import _fit
 from ._fit import *
 
+from .import _indexing
+from ._indexing import *
+
 __all__ = (
      *_create_function.__all__,
      *_argument_checks.__all__,
      *_fit.__all__,
+     *_indexing.__all__,
      )

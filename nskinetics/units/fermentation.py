@@ -17,11 +17,12 @@ References
     Report NREL/TP-5100-47764
 """
 
-# import numpy as np
+import numpy as np
 from biosteam.units import BatchBioreactor
 from thermosteam import Reaction, ParallelReaction
 from ..reaction_systems.tellurium_based.tellurium_sbml import TelluriumReactionSystem
 from ..reaction_systems.reaction_system import ReactionSystem
+from ..utils import get_index_nearest_element_from_sorted_array
 
 __all__ = ('NSKFermentation',)
 
@@ -89,6 +90,8 @@ class NSKFermentation(BatchBioreactor):
               f_reset_kinetic_reaction_system=None,
               N=None, V=None, T=305.15, P=101325., Nmin=2, Nmax=36,
               sugar_IDs=('Sucrose', 'Glucose', 'Xylose'),
+              tau_max=24.*7.,
+              tau_update_policy=('max', 's_IBO'),
               perform_hydrolysis=True):
         
         BatchBioreactor._init(self, tau=tau, N=N, V=V, T=T, P=P, Nmin=Nmin, Nmax=Nmax)
@@ -111,6 +114,9 @@ class NSKFermentation(BatchBioreactor):
         self.sugar_IDs = sugar_IDs
         self.perform_hydrolysis = perform_hydrolysis
         
+        self.tau_max = tau_max
+        self.tau_update_policy = tau_update_policy
+        
     def _nsk_simulate_kinetics(self, feed, tau, feed_spike_condition=None, plot=False): 
         # !!!
         self.tau = tau
@@ -118,12 +124,12 @@ class NSKFermentation(BatchBioreactor):
         return effluent
     
     def _nsk_te_simulate_kinetics(self, feed, tau, feed_spike_condition=None, plot=False):
-        self.tau = tau
+        # self.tau = tau
         map_chemicals_nsk_to_bst = self.map_chemicals_nsk_to_bst
         kinetic_reaction_system = self.kinetic_reaction_system
         self.f_reset_kinetic_reaction_system(kinetic_reaction_system)
         te_r = kinetic_reaction_system._te
-        
+        chems_nsk = list(map_chemicals_nsk_to_bst.keys())
         # get unit conversion factors and unit-based material indexers
         
         time_units = kinetic_reaction_system._units['time']
@@ -144,34 +150,49 @@ class NSKFermentation(BatchBioreactor):
             
         self._nsk_initial_concentration = initial_concentrations = {}
         for c_nsk, c_bst in map_chemicals_nsk_to_bst.items():
-            exec(f'te_r.{c_nsk} = feed.{material_indexer}[c_bst]/feed.{volume_attribute}')
-            exec(f'initial_concentrations[c_nsk] = te_r.{c_nsk}')
+            exec(f'te_r.{c_nsk.replace("[", "").replace("]", "")} = feed.{material_indexer}[c_bst]/feed.{volume_attribute}')
+            exec(f'initial_concentrations[c_nsk] = te_r.{c_nsk.replace("[", "").replace("]", "")}')
         
         initial_conc_sugars = te_r.s_glu
         
-        te_r.simulate(0, tau*time_conv_factor, self.n_simulation_steps)
+        results_col_names = ['time']+chems_nsk
+        try:
+            self.results = results = te_r.simulate(0, self.tau_max*time_conv_factor, self.n_simulation_steps,
+                                    results_col_names,
+                                    )
+        except Exception as e:
+            print(str(e))
+            breakpoint()
+            
+        tau_index = -1
+        tau_update_policy = self.tau_update_policy
+        
+        if tau_update_policy is None:
+            tau_index = get_index_nearest_element_from_sorted_array(results[:, results_col_names.index('time')])
+            
+        elif tau_update_policy[0]=='max':
+            chem_to_max = tau_update_policy[1]
+            index_chem_to_max = results_col_names.index(chem_to_max)
+            results = np.array(results)
+            index_tau_with_max_chem = np.where(results[:, index_chem_to_max] == results[:, index_chem_to_max].max())
+            tau_index = index_tau_with_max_chem
+            
+        self.results_specific_tau = results_specific_tau = results[tau_index][0]
         
         effluent = feed.copy()
-        initially_zero = []
-        initially_nonzero = []
-        # breakpoint()
         for c_nsk, c_bst in map_chemicals_nsk_to_bst.items():
-            exec(f'effluent.{material_indexer}[c_bst] = te_r.{c_nsk} * effluent.{volume_attribute}')
-            # if initial_concentrations[c_nsk] > 0.0:
-                # exec(f'effluent.{material_indexer}[c_bst] *= te_r.{c_nsk}/initial_concentrations[c_nsk]')
-                # initially_nonzero.append((c_nsk, c_bst))
-            # else:
-            #     initially_zero.append((c_nsk, c_bst))
-        
-        # for c_nsk, c_bst in initially_zero:
-        #     exec(f'material_factor = feed.{material_indexer}[initially_nonzero[0][1]]/initial_concentrations[initially_nonzero[0][0]]; effluent.{material_indexer}[c_bst] = material_factor * te_r.{c_nsk}')
-        
+            # exec(f'effluent.{material_indexer}[c_bst] = te_r.{c_nsk.replace("[", "").replace("]", "")} * effluent.{volume_attribute}')
+            # breakpoint()
+            exec(f'effluent.{material_indexer}[c_bst] = results_specific_tau[results_col_names.index(c_nsk)] * effluent.{volume_attribute}')
+
         self.amt_sugars_spiked = amt_sugars_spiked = te_r.conc_glu_feed_spike * te_r.tot_vol_glu_feed_added
         self.amt_sugars_initial = amt_sugars_initial = initial_conc_sugars*(te_r.env - te_r.tot_vol_glu_feed_added)
         
         effluent.F_vol *= te_r.env/(te_r.env - te_r.tot_vol_glu_feed_added)
         
         # effluent.F_vol *= (amt_sugars_initial + amt_sugars_spiked)/amt_sugars_initial
+        
+        self.tau = results_specific_tau[results_col_names.index('time')]
         
         return effluent
     
@@ -211,3 +232,7 @@ class NSKFermentation(BatchBioreactor):
         effluent.empty_negative_flows()
         vent.empty()
         vent.receive_vent(effluent, energy_balance=False)
+
+    # @property
+    # def Hnet(self):
+    #     return 0
