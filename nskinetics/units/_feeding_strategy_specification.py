@@ -31,7 +31,7 @@ class FedBatchStrategySpecification:
     - Setting desired sugar concentrations for continuous feed and spike feed
       via evaporator volume and mixer dilution adjustments.
     - Defining a threshold sugar concentration that triggers spike feeding.
-    - Updating reactor residence time (tau) and propagating its effects
+    - Updating maximum reactor residence time (tau_max) and propagating its effects
       upstream through splitter and feed unit simulations.
     - Coordinated simulation of all upstream units to ensure consistency
       between specified targets and achievable process conditions.
@@ -47,8 +47,8 @@ class FedBatchStrategySpecification:
     conc_sugars_feed_spike : float
         Target sugar concentration of the spike feed stream used during
         threshold-triggered feeding.
-    tau : float
-        Residence time of the fermentation reactor.
+    tau_max : float
+        Maximum residence time of the fermentation reactor.
     fermentation_reactor : object
         Fermentation reactor unit, expected to expose a kinetic reaction system
         and support simulation with spike feeding logic.
@@ -74,7 +74,7 @@ class FedBatchStrategySpecification:
         target_conc_sugars: float,
         threshold_conc_sugars: float,
         conc_sugars_feed_spike: float,
-        tau: float,
+        tau_max: float,
         fermentation_reactor,
         splitter,
         feed_evaporator,
@@ -90,6 +90,7 @@ class FedBatchStrategySpecification:
         self.threshold_conc_sugars = threshold_conc_sugars
         self.conc_sugars_feed_spike = conc_sugars_feed_spike
         self.sugar_IDs = sugar_IDs
+        self.tau_max = tau_max
         
         self.fermentation_reactor = fermentation_reactor
         self.splitter = splitter
@@ -133,7 +134,7 @@ class FedBatchStrategySpecification:
                             target_conc_sugars, 
                             conc_sugars_feed_spike,
                             threshold_conc_sugars,
-                            tau,
+                            tau_max,
                             evaporator_V_ub=0.8, evaporator_V_lb=0.0,
                             mixer_dil_lb=0., mixer_dil_ub=100_000
                             ):
@@ -142,8 +143,8 @@ class FedBatchStrategySpecification:
             evaporator_V_ub=evaporator_V_ub, evaporator_V_lb=evaporator_V_lb,
             mixer_dil_lb=mixer_dil_lb, mixer_dil_ub=mixer_dil_ub)
         
-        self.load_threshold_conc_sugars_and_tau(threshold_conc_sugars=threshold_conc_sugars,
-                                                tau=tau)
+        self.load_threshold_conc_sugars_and_tau_max(threshold_conc_sugars=threshold_conc_sugars,
+                                                tau_max=tau_max)
         
     def load_desired_concs_sugars(self, 
                                 target_conc_sugars, 
@@ -152,7 +153,11 @@ class FedBatchStrategySpecification:
                                 mixer_dil_lb, mixer_dil_ub):
         # clear_units([V301, K301])
         self.target_conc_sugars = target_conc_sugars
-        self.conc_sugars_feed_spike = self.conc_sugars_feed_spike
+        self.conc_sugars_feed_spike = conc_sugars_feed_spike
+        
+        te_r = self.fermentation_reactor.kinetic_reaction_system._te
+        te_r.conc_glu_feed_spike = conc_sugars_feed_spike
+        te_r.target_conc_glu_spike = target_conc_sugars
         
         feed_evaporator = self.feed_evaporator
         feed_mixer = self.feed_mixer
@@ -177,13 +182,14 @@ class FedBatchStrategySpecification:
                                f_simulate_units_sequential=self._simulate_spike_units,
                                terminal_stream=fermentation_reactor.ins[2])
     
-    def load_threshold_conc_sugars_and_tau(self,
+    def load_threshold_conc_sugars_and_tau_max(self,
                                            threshold_conc_sugars,
-                                           tau):
+                                           tau_max):
+        self.threshold_conc_sugars = threshold_conc_sugars
         fermentation_reactor = self.fermentation_reactor
         te_r = fermentation_reactor.kinetic_reaction_system._te
         
-        fermentation_reactor.tau = tau
+        fermentation_reactor.tau_max = tau_max
         te_r.threshold_conc_glu_spike = threshold_conc_sugars
         
         self._simulate_upstream_units()
