@@ -18,7 +18,8 @@ model *bhagwat2026()
   cell := x*env*0.0015;
 
   tot_mass_glu := (conc_glu_feed_spike*tot_vol_glu_feed_added) + target_conc_glu_spike*(env - tot_vol_glu_feed_added);
-  y_EtOH_glu := s_EtOH*env/tot_mass_glu;
+  y_EtOH_glu_added := s_EtOH*env/tot_mass_glu;
+  y_EtOH_glu_consumed := s_EtOH*env/(tot_mass_glu-s_glu*env);
   prod_EtOH := s_EtOH/time;
   
   curr_n_glu_spikes := n_glu_spikes
@@ -223,7 +224,7 @@ model *bhagwat2026()
   var X_a, X_AcDH, qO2, qCO2;
 
   var n_glu_spikes, glucose_feed_spikeDelay, threshold_conc_glu_spike, target_conc_glu_spike, conc_glu_feed_spike, last_vol_glu_feed_added, tot_vol_glu_feed_added;
-  var tot_mass_glu, y_EtOH_glu;
+  var tot_mass_glu, y_EtOH_glu_added, y_EtOH_glu_consumed;
   var curr_n_glu_spikes, curr_env, curr_tot_vol_glu_feed_added;
 
   const k_7ie, k_7ia, k_7ii, k_1ie, k_1ia, k_1ii, k_4ie, k_4ia, k_4ii, k_10;
