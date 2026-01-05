@@ -21,17 +21,18 @@ model *bhagwat2026()
   X_AcDH' = (r9 - r11 - (0.732*r7 + 0.619*r8)*X_AcDH)/(x*env);
 
   // Reactions:
-  r1: s_glu + s_acetald + x + s_EtOH + s_acetate + s_IBO => 0.978 s_pyr + 0.178 $Red + s_acetald + x + s_EtOH + s_acetate + s_IBO; (k_1l*s_glu/(s_glu + K_1l) + k_1h*s_glu/(s_glu + K_1h) + k_1e*s_acetald*s_glu/(s_glu*(K_1i*s_acetald + 1) + K_1e))*2.71828^(-k_1ie*s_EtOH)*2.71828^(-k_1ia*s_acetate)*2.71828^(-k_1ii*s_IBO)*x*X_a*env;
-  r2: s_pyr => 1.499 $CO2 + 0.908 $Red; (k_2*s_pyr/((s_pyr + K_2)*(K_2i*s_glu + 1)))*x*X_a*env;
-  r4: s_acetald + x + s_EtOH + s_acetate + s_IBO => 1.363 s_acetate + 0.363 $Red + x + s_EtOH + s_acetate + s_IBO; (k_4*s_acetald*2.71828^(-k_4ie*s_EtOH)*2.71828^(-k_4ia*s_acetate)*2.71828^(-k_4ii*s_IBO)/(s_acetald + K_4))*x*X_a*X_AcDH*env;
-  r5: s_acetate => 1.446 $CO2 + 1.066 $Red; (k_5*s_acetate/(s_acetate + K_5) + k_5e*s_acetate/((s_acetate + K_5e)*(1 + K_5i*s_glu)))*x*X_a*env;
-  r6: s_acetald + 0.363 $Red -> 1.045 s_EtOH; (k_6*(s_acetald - k_6r*s_EtOH)/(s_acetald + K_6 + K_6e*s_EtOH))*x*X_a*env;
-  r7: s_glu + s_EtOH + s_acetate + s_IBO => 0.732 x + 0.127 $CO2 + 0.063 $Red + s_EtOH + s_acetate + s_IBO; (k_7*s_glu*2.71828^(-k_7ie*s_EtOH)*2.71828^(-k_7ia*s_acetate)*2.71828^(-k_7ii*s_IBO)/(s_glu + K_7))*x*X_a*env;
-  r8: s_acetate => 0.619 x + 0.325 $CO2 + 0.214 $Red; (k_8*s_acetate/((s_acetate + K_5e)*(1 + K_5i*s_glu)))*x*X_a*env;
-  r3: s_pyr => 0.5 s_acetald + 0.33 $CO2; (k_3*s_pyr^4/(s_pyr^4 + K_3))*x*X_a*env;
-  r9: $a => $AcDH; ((k_9*s_glu/(s_glu + K_9) + k_9e*s_EtOH/(s_EtOH + K_9e))/(K_9i*s_glu + 1) + k_9c*s_glu/(s_glu + K_9))*X_a*x*env;
-  r10: $a + x => x; k_10*x*X_a*env;
-  r11: $AcDH => ; k_11*X_AcDH*x*env;
+  r1: s_glu => 0.978 s_pyr + 0.178 $Red; (k_1l*s_glu/(s_glu + K_1l) + k_1h*s_glu/(s_glu + K_1h) + k_1e*s_acetald*s_glu/(s_glu*(K_1i*s_acetald + 1) + K_1e))*2.71828^(-k_1ie*0.40*s_EtOH)*2.71828^(-k_1ia*0.40*s_acetate)*2.71828^(-k_1ii*0.40*s_IBO)*a*env;
+  r2: s_pyr => 1.499 $CO2 + 0.908 $Red; (k_2*s_pyr/((s_pyr + K_2)*(K_2i*s_glu + 1)))*a*env;
+  r3: s_pyr => 0.5 s_acetald + 0.33 $CO2; (k_3*s_pyr^4/(s_pyr^4 + K_3))*a*env;
+  r4: s_acetald => 1.363 s_acetate + 0.363 $Red; (k_4*s_acetald*2.71828^(-k_4ie*s_EtOH)*2.71828^(-k_4ia*s_acetate)*2.71828^(-k_4ii*s_IBO)/(s_acetald + K_4))*a*X_AcDH*env;
+  r5: s_acetate => 1.446 $CO2 + 1.066 $Red; (k_5*s_acetate/(s_acetate + K_5) + k_5e*s_acetate/((s_acetate + K_5e)*(1 + K_5i*s_glu)))*a*env;
+  r6: s_acetald + 0.363 $Red -> 1.045 s_EtOH; (k_6*(s_acetald - k_6r*s_EtOH)/(s_acetald + K_6 + K_6e*s_EtOH))*a*env;
+  r7: s_glu => 0.732 x + 0.127 $CO2 + 0.063 $Red; (k_7*s_glu*2.71828^(-k_7ie*s_EtOH)*2.71828^(-k_7ia*s_acetate)*2.71828^(-k_7ii*s_IBO)/(s_glu + K_7))*a*env;
+  r8: s_acetate => 0.619 x + 0.325 $CO2 + 0.214 $Red; (k_8*s_acetate/((s_acetate + K_5e)*(1 + K_5i*s_glu)))*a*env;
+  r9: $a => $AcDH; ((k_9*s_glu/(s_glu + K_9) + k_9e*s_EtOH/(s_EtOH + K_9e))/(K_9i*s_glu + 1) + k_9c*s_glu/(s_glu + K_9))*a*env;
+  r10: $a => ; k_10*a*env;
+  r11: $AcDH => ; k_11*AcDH*env;
+
   s_glu_in: $S_f => s_glu; S_f*D*env;
   s_glu_out: s_glu => ; s_glu*D*env;
   s_pyr_out: s_pyr => ; s_pyr*D*env;
@@ -41,10 +42,11 @@ model *bhagwat2026()
   a_out: $a => ; a*D*env;
   x_out: x => ; x*D*env;
   AcDH_out: $AcDH => ; AcDH*D*env;
-  r13: s_pyr => 0.750 s_AL; (k_13*s_pyr/(K_13 + s_pyr))*x*X_a*env;
-  r14: s_AL => 1.015 s_DHI; (k_14*s_AL/(K_14 + s_AL))*x*X_a*env;
-  r15: s_DHI => 0.866 s_KIV; (k_15*s_DHI/(K_15 + s_DHI))*x*X_a*env;
-  r16: s_KIV + 0.363 $Red -> 0.638 s_IBO; (k_16*(s_KIV - k_16r*s_IBO)/(s_KIV + K_16 + K_16i*s_IBO))*x*X_a*env;
+
+  r13: s_pyr => 0.750 s_AL; (k_13*s_pyr/(K_13 + s_pyr))*a*env;
+  r14: s_AL => 1.015 s_DHI; (k_14*s_AL/(K_14 + s_AL))*a*env;
+  r15: s_DHI => 0.866 s_KIV; (k_15*s_DHI/(K_15 + s_DHI))*a*env;
+  r16: s_KIV + 0.363 $Red -> 0.638 s_IBO; (k_16*(s_KIV - k_16r*s_IBO)/(s_KIV + K_16 + K_16i*s_IBO))*a*env;
 
   // Events:
   glucose_feed_spike_a: at glucose_feed_spikeDelay after (s_glu <= threshold_conc_glu_spike) && (n_glu_spikes < max_n_glu_spikes), priority=5: last_vol_glu_feed_added = env*(target_conc_glu_spike - s_glu)/(conc_glu_feed_spike - target_conc_glu_spike);
