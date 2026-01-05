@@ -14,7 +14,16 @@ model *bhagwat2026()
   AcDH := x*X_AcDH;
   qO2 := (1000/32)*((0.178*r1 + 0.908*r2 + 0.363*r4 + 1.066*r5 - 0.363*r6) + 0.063*r7 + 0.214*r8)/(x*env);
   qCO2 := (1000/44.01)*(1.499*r2 + 0.5*r3 + 1.466*r5 + 0.127*r7 + 0.325*r8)/(x*env);
-  cell := x*env*0.0015
+
+  cell := x*env*0.0015;
+
+  tot_mass_glu := (conc_glu_feed_spike*tot_vol_glu_feed_added) + target_conc_glu_spike*(env - tot_vol_glu_feed_added);
+  y_EtOH_glu := s_EtOH*env/tot_mass_glu;
+  prod_EtOH := s_EtOH/time;
+  
+  curr_n_glu_spikes := n_glu_spikes
+  curr_env := env
+  curr_tot_vol_glu_feed_added := tot_vol_glu_feed_added
 
   // Rate Rules:
   X_a' = ((0.732*r7 + 0.619*r8)*(1 - X_a) - r9 - r10)/(x*env);
@@ -50,7 +59,9 @@ model *bhagwat2026()
 
   // Events:
   glucose_feed_spike_a: at glucose_feed_spikeDelay after (s_glu <= threshold_conc_glu_spike) && (n_glu_spikes < max_n_glu_spikes), priority=5: last_vol_glu_feed_added = env*(target_conc_glu_spike - s_glu)/(conc_glu_feed_spike - target_conc_glu_spike);
+
   glucose_feed_spike_b: at glucose_feed_spikeDelay after (s_glu <= threshold_conc_glu_spike) && (n_glu_spikes < max_n_glu_spikes), priority=4, fromTrigger=false: env = env + last_vol_glu_feed_added, tot_vol_glu_feed_added = tot_vol_glu_feed_added + last_vol_glu_feed_added; 
+
   glucose_feed_spike_c: at glucose_feed_spike_dissolveDelay after (s_glu <= threshold_conc_glu_spike) && (n_glu_spikes < max_n_glu_spikes), priority=3, fromTrigger=false: s_glu = target_conc_glu_spike, n_glu_spikes = n_glu_spikes + 1;
 
   // Species initializations:
@@ -71,12 +82,12 @@ model *bhagwat2026()
   // Compartment initializations:
   env = 1;
 
-
   // Variable initializations:
   X_a = 0.1;
   X_a has dimensionless;
   X_AcDH = 0.0075;
   X_AcDH has dimensionless;
+
   n_glu_spikes = 0;
   n_glu_spikes has dimensionless;
   max_n_glu_spikes = 5;
@@ -95,8 +106,10 @@ model *bhagwat2026()
   glucose_feed_spikeDelay has time_unit;
   glucose_feed_spike_dissolveDelay = 0.001;
   glucose_feed_spike_dissolveDelay has time_unit;
+
   qO2 has mmole_per_g_per_h;
   qCO2 has mmole_per_g_per_h;
+
   k_1h = 0.584;
   k_1h has g_per_l_per_h;
   K_1h = 0.0116;
@@ -208,7 +221,11 @@ model *bhagwat2026()
 
   // Other declarations:
   var X_a, X_AcDH, qO2, qCO2;
+
   var n_glu_spikes, glucose_feed_spikeDelay, threshold_conc_glu_spike, target_conc_glu_spike, conc_glu_feed_spike, last_vol_glu_feed_added, tot_vol_glu_feed_added;
+  var tot_mass_glu, y_EtOH_glu;
+  var curr_n_glu_spikes, curr_env, curr_tot_vol_glu_feed_added;
+
   const k_7ie, k_7ia, k_7ii, k_1ie, k_1ia, k_1ii, k_4ie, k_4ia, k_4ii, k_10;
   const k_1h, K_1h, k_1l, K_1l, k_1e, K_1e, K_1i, k_2, K_2, K_2i;
   const k_3, K_3, k_4, K_4, k_5, K_5, k_5e, K_5e, K_5i, k_6, K_6, k_6r, K_6e;

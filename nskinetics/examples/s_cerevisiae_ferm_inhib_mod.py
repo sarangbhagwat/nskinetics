@@ -252,8 +252,9 @@ r.s_glu = 100 # initial glucose conc
 r.x = 2 # initial biomass conc
 
 #%% Export to antimony
-
-r.exportToAntimony('s_cerevisiae_ferm_inhib_mod.txt', current=True)
+export = False
+if export:
+    r.exportToAntimony('s_cerevisiae_ferm_inhib_mod.txt', current=True)
 
 #%%  simulations
 

@@ -185,18 +185,21 @@ class FedBatchStrategySpecification:
     def load_threshold_conc_sugars_and_tau_max(self,
                                            threshold_conc_sugars,
                                            tau_max):
-        self.threshold_conc_sugars = threshold_conc_sugars
         fermentation_reactor = self.fermentation_reactor
         te_r = fermentation_reactor.kinetic_reaction_system._te
         
+        self.tau_max = tau_max
         fermentation_reactor.tau_max = tau_max
+        
+        self.threshold_conc_sugars = threshold_conc_sugars
         te_r.threshold_conc_glu_spike = threshold_conc_sugars
         
         self._simulate_upstream_units()
         fermentation_reactor.simulate()
         
-        final_env_vol = te_r.env
-        vol_spike_added = te_r.tot_vol_glu_feed_added
+        final_env_vol = fermentation_reactor.results_specific_tau[fermentation_reactor.results_col_names.index('curr_env')]
+        vol_spike_added = fermentation_reactor.results_specific_tau[fermentation_reactor.results_col_names.index('curr_tot_vol_glu_feed_added')]
+        
         initial_env_vol = final_env_vol - vol_spike_added
         sugars_in_initial_feed = initial_env_vol * self.target_conc_sugars
         sugars_in_spikes = vol_spike_added * self.conc_sugars_feed_spike
