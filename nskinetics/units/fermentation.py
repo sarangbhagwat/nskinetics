@@ -119,6 +119,8 @@ class NSKFermentation(BatchBioreactor):
         self.tau_max = tau_max
         self.tau_update_policy = tau_update_policy
         
+        self.run_type = 'simulate kinetics'
+        
     def _nsk_simulate_kinetics(self, feed, tau, feed_spike_condition=None, plot=False): 
         # !!!
         self.tau = tau
@@ -150,7 +152,10 @@ class NSKFermentation(BatchBioreactor):
         elif conc_units in ('g/L', 'kg/m3', 'kg/m^3'):
             material_indexer = 'imass'
             volume_attribute = "ivol['Water']"
-            
+        
+        self.material_indexer = material_indexer
+        self.volume_attribute = volume_attribute
+        
         self._nsk_initial_concentration = initial_concentrations = {}
         for c_nsk, c_bst in map_chemicals_nsk_to_bst.items():
             exec(f'te_r.{c_nsk.replace("[", "").replace("]", "")} = feed.{material_indexer}[c_bst]/feed.{volume_attribute}')
@@ -167,38 +172,69 @@ class NSKFermentation(BatchBioreactor):
                                     ))
         except Exception as e:
             print(str(e))
-            breakpoint()
+            raise e
+            # breakpoint()
             
         tau_index = -1
         tau_update_policy = self.tau_update_policy
         
         if tau_update_policy is None:
-            tau_index = get_index_nearest_element_from_sorted_array(results[:, results_col_names.index('time')])
+            tau_index = get_index_nearest_element_from_sorted_array(results[:, results_col_names.index('time')], tau)
             
         elif tau_update_policy[0]=='max':
             var_to_max = tau_update_policy[1]
             index_var_to_max = results_col_names.index(var_to_max)
             # results = np.array(results)
-            index_tau_with_max_var = np.where(results[:, index_var_to_max] == results[:, index_var_to_max].max())
+            index_tau_with_max_var = np.where(results[:, index_var_to_max] == results[:, index_var_to_max].max())[0][0]
             tau_index = index_tau_with_max_var
+        
+        self.results_specific_tau = results_specific_tau = results[tau_index]
+        
+        # effluent = feed.copy()
+        # for c_nsk, c_bst in map_chemicals_nsk_to_bst.items():
+        #     exec(f'effluent.{material_indexer}[c_bst] = results_specific_tau[results_col_names.index(c_nsk)] * effluent.{volume_attribute}')
             
-        self.results_specific_tau = results_specific_tau = results[tau_index][0]
+        # # self._amt_sugars_spiked = te_r.conc_glu_feed_spike * te_r.tot_vol_glu_feed_added
+        # # self._amt_sugars_initial = initial_conc_sugars*(te_r.env - te_r.tot_vol_glu_feed_added)
         
-        effluent = feed.copy()
-        for c_nsk, c_bst in map_chemicals_nsk_to_bst.items():
-            # exec(f'effluent.{material_indexer}[c_bst] = te_r.{c_nsk.replace("[", "").replace("]", "")} * effluent.{volume_attribute}')
-            exec(f'effluent.{material_indexer}[c_bst] = results_specific_tau[results_col_names.index(c_nsk)] * effluent.{volume_attribute}')
-
-        self._amt_sugars_spiked = te_r.conc_glu_feed_spike * te_r.tot_vol_glu_feed_added
-        self._amt_sugars_initial = initial_conc_sugars*(te_r.env - te_r.tot_vol_glu_feed_added)
-        
-        effluent.F_vol *= te_r.env/(te_r.env - te_r.tot_vol_glu_feed_added)
+        # effluent.F_vol *= te_r.env/(te_r.env - te_r.tot_vol_glu_feed_added)
         
         self.tau = results_specific_tau[results_col_names.index('time')]
         
         self.results_dict = {results_col_names[i]: results[:, i] for i in range(len(results_col_names))}
         self.results_specific_tau_dict = {results_col_names[i]: results_specific_tau[i] for i in range(len(results_col_names))}
         
+        effluent = self._get_minimal_effluent(feed)
+        
+        return effluent
+    
+    def _load_results_specific_tau(self, tau):
+        results = self.results
+        results_col_names = self.results_col_names
+        try:
+            self.tau_index = tau_index = get_index_nearest_element_from_sorted_array(results[:, results_col_names.index('time')], tau)
+        except:
+            breakpoint()
+        self.results_specific_tau = results_specific_tau = results[tau_index]
+        try:
+            self.results_specific_tau_dict = {results_col_names[i]: results_specific_tau[i] for i in range(len(results_col_names))}
+        except:
+            breakpoint()
+        return results_specific_tau
+    
+    def _get_minimal_effluent(self, minimal_feed):
+        feed = minimal_feed
+        results_specific_tau = self.results_specific_tau
+        results_specific_tau_dict = self.results_specific_tau_dict
+        results_col_names = self.results_col_names
+        material_indexer = self.material_indexer
+        volume_attribute = self.volume_attribute
+        effluent = feed.copy()
+        for c_nsk, c_bst in self.map_chemicals_nsk_to_bst.items():
+            exec(f'effluent.{material_indexer}[c_bst] = results_specific_tau[results_col_names.index(c_nsk)] * effluent.{volume_attribute}')
+        
+        curr_env = results_specific_tau_dict['curr_env']
+        effluent.F_vol *= curr_env/(curr_env - results_specific_tau_dict['curr_tot_vol_glu_feed_added'])
         return effluent
     
     def _run(self):
@@ -217,9 +253,15 @@ class NSKFermentation(BatchBioreactor):
         for i in minimal_feed.chemicals:
             if not i.ID in list(self.map_chemicals_nsk_to_bst.values()) + ['Water',]:
                 minimal_feed.imol[i.ID] = 0.0
-        minimal_effluent = self.simulate_kinetics(feed=minimal_feed, tau=self._tau)
         
-        te_r = self.kinetic_reaction_system._te
+        run_type = self.run_type
+        if run_type in ('simulate kinetics',):
+            minimal_effluent = self.simulate_kinetics(feed=minimal_feed, tau=self._tau)
+        elif run_type in ('index saved results by tau',):
+            self._load_results_specific_tau(self.tau)
+            minimal_effluent = self._get_minimal_effluent(minimal_feed)
+        
+        # te_r = self.kinetic_reaction_system._te
         
         # copy non-nskinetics chemicals to minimal_effluent from effluent and spike_feed
         for i in minimal_effluent.chemicals:
