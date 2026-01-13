@@ -37,6 +37,11 @@ def reset_kinetic_reaction_system(r):
     r_te.tot_vol_glu_feed_added = 0.
     r_te.env = 1.
 
+#%% Set tolerances
+integrator = r.getIntegrator()
+integrator.absolute_tolerance = 1e-9
+integrator.relative_tolerance = 1e-6
+
 #%% Document references for IBO pathway kinetic parameters
 
 # r.k_6 = 2.9 * 88.06 * 1e-6 * 60 # 2.9 uM/min # Zhao 2021 https://doi.org/10.3390/foods10051013

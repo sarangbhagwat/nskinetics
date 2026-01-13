@@ -275,7 +275,16 @@ class NSKFermentation(BatchBioreactor):
         effluent.empty_negative_flows()
         vent.empty()
         vent.receive_vent(effluent, energy_balance=False)
-
+    
+    def set_tolerances_kinetic_simulation(self, atol, rtol):
+        kinetic_reaction_system = self.kinetic_reaction_system
+        if isinstance(kinetic_reaction_system, TelluriumReactionSystem):
+            r = kinetic_reaction_system._te
+            integrator = r.getIntegrator()
+            integrator.absolute_tolerance = atol
+            integrator.relative_tolerance = rtol
+        else: # !!!
+            breakpoint()
     # @property
     # def Hnet(self):
     #     return 0
