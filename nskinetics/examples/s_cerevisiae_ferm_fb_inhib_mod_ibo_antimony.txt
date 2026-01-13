@@ -63,7 +63,7 @@ model *bhagwat2026()
 
   glucose_feed_spike_b: at glucose_feed_spikeDelay after (s_glu <= threshold_conc_glu_spike) && (n_glu_spikes < max_n_glu_spikes), priority=4, fromTrigger=false: env = env + last_vol_glu_feed_added, tot_vol_glu_feed_added = tot_vol_glu_feed_added + last_vol_glu_feed_added; 
 
-  glucose_feed_spike_c: at glucose_feed_spike_dissolveDelay after (s_glu <= threshold_conc_glu_spike) && (n_glu_spikes < max_n_glu_spikes), priority=3, fromTrigger=false: s_glu = target_conc_glu_spike, n_glu_spikes = n_glu_spikes + 1;
+  glucose_feed_spike_c: at glucose_feed_spikeDelay after (s_glu <= threshold_conc_glu_spike) && (n_glu_spikes < max_n_glu_spikes), priority=3, fromTrigger=false: s_glu = target_conc_glu_spike, n_glu_spikes = n_glu_spikes + 1;
 
   // Species initializations:
   s_glu = 15/env;
