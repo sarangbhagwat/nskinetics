@@ -144,14 +144,29 @@ class FedBatchStrategySpecification:
         )
     
     def load_specifications(self,
-                            target_conc_sugars, 
-                            conc_sugars_feed_spike,
-                            threshold_conc_sugars,
-                            tau_max,
-                            max_n_glu_spikes,
+                            target_conc_sugars=None, 
+                            conc_sugars_feed_spike=None,
+                            threshold_conc_sugars=None,
+                            tau_max=None,
+                            max_n_glu_spikes=None,
                             evaporator_V_ub=0.8, evaporator_V_lb=0.0,
                             mixer_dil_lb=0., mixer_dil_ub=100_000
                             ):
+        if target_conc_sugars is None:
+            target_conc_sugars = self.target_conc_sugars
+        
+        if threshold_conc_sugars is None:
+            threshold_conc_sugars = self.threshold_conc_sugars
+        
+        if conc_sugars_feed_spike is None:
+            conc_sugars_feed_spike = self.conc_sugars_feed_spike
+        
+        if tau_max is None:
+            tau_max = self.tau_max
+        
+        if max_n_glu_spikes is None:
+            max_n_glu_spikes = self.max_n_glu_spikes
+            
         if not (threshold_conc_sugars<target_conc_sugars and target_conc_sugars<conc_sugars_feed_spike):
             raise ValueError(f'Specifications do not meet required condition: threshold_conc_sugars ({threshold_conc_sugars}) < target_conc_sugars ({target_conc_sugars}) < conc_sugars_feed_spike ({conc_sugars_feed_spike}).\n')
         
