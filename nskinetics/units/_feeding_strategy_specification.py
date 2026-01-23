@@ -75,7 +75,6 @@ class FedBatchStrategySpecification:
         threshold_conc_sugars: float,
         conc_sugars_feed_spike: float,
         tau_max: float,
-        max_n_glu_spikes: int,
         fermentation_reactor,
         splitter,
         feed_evaporator,
@@ -92,13 +91,11 @@ class FedBatchStrategySpecification:
         self.threshold_conc_sugars = threshold_conc_sugars
         self.conc_sugars_feed_spike = conc_sugars_feed_spike
         self.tau_max = tau_max
-        self.max_n_glu_spikes = max_n_glu_spikes
         
         self._spec_names = ['target_conc_sugars', 
                             'threshold_conc_sugars',
                             'conc_sugars_feed_spike',
                             'tau_max',
-                            'max_n_glu_spikes',
                             ]
         
         self._baseline_specifications = baseline_specifications
@@ -148,7 +145,6 @@ class FedBatchStrategySpecification:
                             conc_sugars_feed_spike=None,
                             threshold_conc_sugars=None,
                             tau_max=None,
-                            max_n_glu_spikes=None,
                             evaporator_V_ub=0.8, evaporator_V_lb=0.0,
                             mixer_dil_lb=0., mixer_dil_ub=100_000
                             ):
@@ -164,13 +160,9 @@ class FedBatchStrategySpecification:
         if tau_max is None:
             tau_max = self.tau_max
         
-        if max_n_glu_spikes is None:
-            max_n_glu_spikes = self.max_n_glu_spikes
             
         if not (threshold_conc_sugars<target_conc_sugars and target_conc_sugars<conc_sugars_feed_spike):
             raise ValueError(f'Specifications do not meet required condition: threshold_conc_sugars ({threshold_conc_sugars}) < target_conc_sugars ({target_conc_sugars}) < conc_sugars_feed_spike ({conc_sugars_feed_spike}).\n')
-        
-        self.load_max_n_glu_spikes(max_n_glu_spikes)
         
         self.load_desired_concs_sugars(target_conc_sugars=target_conc_sugars, 
             conc_sugars_feed_spike=conc_sugars_feed_spike,
@@ -180,10 +172,6 @@ class FedBatchStrategySpecification:
         self.load_threshold_conc_sugars_and_tau_max(threshold_conc_sugars=threshold_conc_sugars,
                                                 tau_max=tau_max)
     
-    def load_max_n_glu_spikes(self, max_n_glu_spikes):
-        te_r = self.fermentation_reactor.kinetic_reaction_system._te
-        self.max_n_glu_spikes = max_n_glu_spikes
-        te_r.max_n_glu_spikes = max_n_glu_spikes
         
     def load_desired_concs_sugars(self, 
                                 target_conc_sugars, 
