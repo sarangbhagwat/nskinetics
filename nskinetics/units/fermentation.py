@@ -92,7 +92,8 @@ class NSKFermentation(BatchBioreactor):
               N=None, V=None, T=305.15, P=101325., Nmin=2, Nmax=36,
               sugar_IDs=('Sucrose', 'Glucose', 'Xylose'),
               tau_max=24.*7.,
-              tau_update_policy=('max', 's_IBO'),
+              tau_update_policy=None,
+              try_fewer_n_spikes_until=lambda r: True,
               perform_hydrolysis=True):
         
         BatchBioreactor._init(self, tau=tau, N=N, V=V, T=T, P=P, Nmin=Nmin, Nmax=Nmax)
@@ -119,8 +120,14 @@ class NSKFermentation(BatchBioreactor):
         self.tau_max = tau_max
         self.tau_update_policy = tau_update_policy
         
+        self.try_fewer_n_spikes_until = try_fewer_n_spikes_until
+        
         self.run_type = 'simulate kinetics'
         
+        self._material_indexer = None
+        self._volume_attribute = None
+        self._time_conv_factor = None
+            
     def _nsk_simulate_kinetics(self, feed, tau, feed_spike_condition=None, plot=False): 
         # !!!
         self.tau = tau
@@ -128,55 +135,25 @@ class NSKFermentation(BatchBioreactor):
         return effluent
     
     def _nsk_te_simulate_kinetics(self, feed, tau, feed_spike_condition=None, plot=False):
-        # self.tau = tau
-        map_chemicals_nsk_to_bst = self.map_chemicals_nsk_to_bst
+        
         kinetic_reaction_system = self.kinetic_reaction_system
-        self.f_reset_kinetic_reaction_system(kinetic_reaction_system)
+        self.f_reset_kinetic_reaction_system(kinetic_reaction_system, reset_max_n_glu_spikes=True)
+        
         te_r = kinetic_reaction_system._te
-        chems_nsk = list(map_chemicals_nsk_to_bst.keys())
+        try_fewer_n_spikes_until = self.try_fewer_n_spikes_until
         
-        # get unit conversion factors and unit-based material indexers
+        n_sims = 0
         
-        time_units = kinetic_reaction_system._units['time']
-        if time_units.lower() in ('min', 'm'):
-            time_conv_factor = 60.0
-        elif time_units.lower() in ('sec', 's'):
-            time_conv_factor = 3600.0
-        elif time_units.lower() in ('hr', 'h'):
-            time_conv_factor = 1.0
-            
-        conc_units = kinetic_reaction_system._units['conc']
-        if conc_units in ('M', 'mol/L', 'kg/m3', 'kg/m^3'):
-            material_indexer = 'imol'
-            volume_attribute = "ivol['Water']"
-        elif conc_units in ('g/L', 'kg/m3', 'kg/m^3'):
-            material_indexer = 'imass'
-            volume_attribute = "ivol['Water']"
-        
-        self.material_indexer = material_indexer
-        self.volume_attribute = volume_attribute
-        
-        self._nsk_initial_concentration = initial_concentrations = {}
-        for c_nsk, c_bst in map_chemicals_nsk_to_bst.items():
-            exec(f'te_r.{c_nsk.replace("[", "").replace("]", "")} = feed.{material_indexer}[c_bst]/feed.{volume_attribute}')
-            exec(f'initial_concentrations[c_nsk] = te_r.{c_nsk.replace("[", "").replace("]", "")}')
-        
-        initial_conc_sugars = te_r.s_glu
-        
-        self.results_col_names = results_col_names = ['time', 'curr_env', 'curr_n_glu_spikes', 'curr_tot_vol_glu_feed_added'] +\
-                                                     self.track_vars + chems_nsk
-        
-        try:
-            self.results = results = np.array(te_r.simulate(0, self.tau_max*time_conv_factor, self.n_simulation_steps,
-                                    results_col_names,
-                                    ))
-        except Exception as e:
-            print(str(e))
-            raise e
-            # breakpoint()
-            
+        while ((not try_fewer_n_spikes_until(te_r)) and (te_r.max_n_glu_spikes>0)):
+            te_r.max_n_glu_spikes -=1
+            self._helper_nsk_te_reset_and_simulate(feed=feed, tau=tau, feed_spike_condition=feed_spike_condition, plot=plot)
+            n_sims += 1
+                
         tau_index = -1
         tau_update_policy = self.tau_update_policy
+        
+        results = self.results
+        results_col_names = self.results_col_names
         
         if tau_update_policy is None:
             tau_index = get_index_nearest_element_from_sorted_array(results[:, results_col_names.index('time')], tau)
@@ -190,24 +167,75 @@ class NSKFermentation(BatchBioreactor):
         
         self.results_specific_tau = results_specific_tau = results[tau_index]
         
-        # effluent = feed.copy()
-        # for c_nsk, c_bst in map_chemicals_nsk_to_bst.items():
-        #     exec(f'effluent.{material_indexer}[c_bst] = results_specific_tau[results_col_names.index(c_nsk)] * effluent.{volume_attribute}')
-            
-        # # self._amt_sugars_spiked = te_r.conc_glu_feed_spike * te_r.tot_vol_glu_feed_added
-        # # self._amt_sugars_initial = initial_conc_sugars*(te_r.env - te_r.tot_vol_glu_feed_added)
-        
-        # effluent.F_vol *= te_r.env/(te_r.env - te_r.tot_vol_glu_feed_added)
-        
         self.tau = results_specific_tau[results_col_names.index('time')]
         
-        self.results_dict = {results_col_names[i]: results[:, i] for i in range(len(results_col_names))}
         self.results_specific_tau_dict = {results_col_names[i]: results_specific_tau[i] for i in range(len(results_col_names))}
         
         effluent = self._get_minimal_effluent(feed)
         
+        if plot: te_r.plot()
+        
         return effluent
     
+    def _helper_nsk_te_reset_and_simulate(self, feed, tau, feed_spike_condition=None, plot=False):
+        map_chemicals_nsk_to_bst = self.map_chemicals_nsk_to_bst
+        kinetic_reaction_system = self.kinetic_reaction_system
+        self.f_reset_kinetic_reaction_system(kinetic_reaction_system, reset_max_n_glu_spikes=False)
+        te_r = kinetic_reaction_system._te
+        chems_nsk = list(map_chemicals_nsk_to_bst.keys())
+        
+        # print('help', te_r.max_n_glu_spikes)
+        # get unit conversion factors and unit-based material indexers
+        
+        if (not self._material_indexer) or (not self._volume_attribute) or (not self._time_conv_factor):
+            time_units = kinetic_reaction_system._units['time']
+            if time_units.lower() in ('min', 'm'):
+                _time_conv_factor = 60.0
+            elif time_units.lower() in ('sec', 's'):
+                _time_conv_factor = 3600.0
+            elif time_units.lower() in ('hr', 'h'):
+                _time_conv_factor = 1.0
+            
+            conc_units = kinetic_reaction_system._units['conc']
+            if conc_units in ('M', 'mol/L', 'kg/m3', 'kg/m^3'):
+                _material_indexer = 'imol'
+                _volume_attribute = "ivol['Water']"
+            elif conc_units in ('g/L', 'kg/m3', 'kg/m^3'):
+                _material_indexer = 'imass'
+                _volume_attribute = "ivol['Water']"
+        
+            self._material_indexer = _material_indexer
+            self._volume_attribute = _volume_attribute
+            self._time_conv_factor = _time_conv_factor
+        
+        _material_indexer = self._material_indexer
+        _volume_attribute = self._volume_attribute
+        _time_conv_factor = self._time_conv_factor
+        
+        self._nsk_initial_concentration = initial_concentrations = {}
+        for c_nsk, c_bst in map_chemicals_nsk_to_bst.items():
+            exec(f'te_r.{c_nsk.replace("[", "").replace("]", "")} = feed.{_material_indexer}[c_bst]/feed.{_volume_attribute}')
+            exec(f'initial_concentrations[c_nsk] = te_r.{c_nsk.replace("[", "").replace("]", "")}')
+        
+        self.results_col_names = results_col_names = ['time', 'curr_env', 'curr_n_glu_spikes', 'curr_tot_vol_glu_feed_added'] +\
+                                                     self.track_vars + chems_nsk
+                                                     
+        try_fewer_n_spikes_until = self.try_fewer_n_spikes_until
+        n_spikes = te_r.max_n_glu_spikes
+        
+        try:
+            self.results = results = np.array(te_r.simulate(0, 
+                                                            self.tau_max*_time_conv_factor, 
+                                                            self.n_simulation_steps,
+                                                            results_col_names,))
+        except Exception as e:
+            # print(str(e))
+            raise e
+        
+        self.results_dict = {results_col_names[i]: results[:, i] for i in range(len(results_col_names))}
+        # print(self.results_dict)
+        if plot: te_r.plot()
+        
     def _load_results_specific_tau(self, tau):
         results = self.results
         results_col_names = self.results_col_names
@@ -227,11 +255,11 @@ class NSKFermentation(BatchBioreactor):
         results_specific_tau = self.results_specific_tau
         results_specific_tau_dict = self.results_specific_tau_dict
         results_col_names = self.results_col_names
-        material_indexer = self.material_indexer
-        volume_attribute = self.volume_attribute
+        _material_indexer = self._material_indexer
+        _volume_attribute = self._volume_attribute
         effluent = feed.copy()
         for c_nsk, c_bst in self.map_chemicals_nsk_to_bst.items():
-            exec(f'effluent.{material_indexer}[c_bst] = results_specific_tau[results_col_names.index(c_nsk)] * effluent.{volume_attribute}')
+            exec(f'effluent.{_material_indexer}[c_bst] = results_specific_tau[results_col_names.index(c_nsk)] * effluent.{_volume_attribute}')
         
         curr_env = results_specific_tau_dict['curr_env']
         effluent.F_vol *= curr_env/(curr_env - results_specific_tau_dict['curr_tot_vol_glu_feed_added'])

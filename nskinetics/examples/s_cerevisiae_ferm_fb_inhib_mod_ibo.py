@@ -29,18 +29,19 @@ te_r = nsk.TelluriumReactionSystem(r)
 te_r._units['time'] = 'h'
 te_r._units['conc'] = 'g/L'
     
-def reset_kinetic_reaction_system(r):
+def reset_kinetic_reaction_system(r, reset_max_n_glu_spikes=True):
     r.reset()
     r_te = r._te
     r_te.n_glu_spikes = 0
     r_te.last_vol_glu_feed_added = 0.
     r_te.tot_vol_glu_feed_added = 0.
     r_te.env = 1.
+    if reset_max_n_glu_spikes: r_te.max_n_glu_spikes = 10
 
 #%% Set tolerances
-integrator = r.getIntegrator()
+integrator = r.integrator
 integrator.absolute_tolerance = 1e-9
-integrator.relative_tolerance = 1e-6
+integrator.relative_tolerance = 1e-5
 
 #%% Document references for IBO pathway kinetic parameters
 
