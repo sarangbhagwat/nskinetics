@@ -42,6 +42,7 @@ def reset_kinetic_reaction_system(r, reset_max_n_glu_spikes=True):
 integrator = r.integrator
 integrator.absolute_tolerance = 1e-9
 integrator.relative_tolerance = 1e-5
+# integrator.variable_step_size = True
 
 #%% Document references for IBO pathway kinetic parameters
 
