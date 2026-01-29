@@ -20,11 +20,17 @@ model *bhagwat2026()
   tot_mass_glu := (conc_glu_feed_spike*tot_vol_glu_feed_added) + target_conc_glu_spike*(env - tot_vol_glu_feed_added);
   y_EtOH_glu_added := s_EtOH*env/tot_mass_glu;
   y_EtOH_glu_consumed := s_EtOH*env/(tot_mass_glu-s_glu*env);
+
+  y_IBO_glu_added := s_IBO*env/tot_mass_glu;
+  y_IBO_glu_consumed := s_IBO*env/(tot_mass_glu-s_glu*env);
+
+  y_EtOH_IBO_glu_added := y_EtOH_glu_added + y_IBO_glu_added;
+
   prod_EtOH := s_EtOH/time;
   
-  curr_n_glu_spikes := n_glu_spikes
-  curr_env := env
-  curr_tot_vol_glu_feed_added := tot_vol_glu_feed_added
+  curr_n_glu_spikes := n_glu_spikes;
+  curr_env := env;
+  curr_tot_vol_glu_feed_added := tot_vol_glu_feed_added;
 
   // Rate Rules:
   X_a' = ((0.732*r7 + 0.619*r8)*(1 - X_a) - r9 - r10)/(x*env);

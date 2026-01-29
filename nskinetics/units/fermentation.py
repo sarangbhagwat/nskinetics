@@ -162,8 +162,13 @@ class NSKFermentation(BatchBioreactor):
             var_to_max = tau_update_policy[1]
             index_var_to_max = results_col_names.index(var_to_max)
             # results = np.array(results)
-            index_tau_with_max_var = np.where(results[:, index_var_to_max] == results[:, index_var_to_max].max())[0][0]
+            index_tau_with_max_var = np.where(
+                np.round(results[:, index_var_to_max],2) == 
+                np.round(results[:, index_var_to_max].max(), 2))[0][0]
             tau_index = index_tau_with_max_var
+            # print(np.where(
+            #     np.round(results[:, index_var_to_max],2) == 
+            #     np.round(results[:, index_var_to_max].max(), 2)))
         
         self.results_specific_tau = results_specific_tau = results[tau_index]
         
