@@ -142,9 +142,12 @@ class NSKFermentation(BatchBioreactor):
         te_r = kinetic_reaction_system._te
         try_fewer_n_spikes_until = self.try_fewer_n_spikes_until
         
+        self._helper_nsk_te_reset_and_simulate(feed=feed, tau=tau, feed_spike_condition=feed_spike_condition, plot=plot)
+        te_r.max_n_glu_spikes = list(self.results_dict['curr_n_glu_spikes'])[-1] - 1
+            
         while ((not try_fewer_n_spikes_until(te_r)) and (te_r.max_n_glu_spikes>0)):
             self._helper_nsk_te_reset_and_simulate(feed=feed, tau=tau, feed_spike_condition=feed_spike_condition, plot=plot)
-            te_r.max_n_glu_spikes = list(self.results_dict['curr_n_glu_spikes'])[-1] - 1
+            te_r.max_n_glu_spikes -= 1
             
         tau_index = -1
         tau_update_policy = self.tau_update_policy
