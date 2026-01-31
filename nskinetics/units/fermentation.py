@@ -148,6 +148,11 @@ class NSKFermentation(BatchBioreactor):
         while ((not try_fewer_n_spikes_until(te_r)) and (te_r.max_n_glu_spikes>0)):
             self._helper_nsk_te_reset_and_simulate(feed=feed, tau=tau, feed_spike_condition=feed_spike_condition, plot=plot)
             te_r.max_n_glu_spikes -= 1
+        
+        if np.any(
+                np.round([te_r.x, te_r.s_glu, te_r.s_EtOH, 
+                          te_r.s_IBO, te_r.s_acetate], 2)<0):
+            raise RuntimeError(f'Negative concentrations in final kinetic simulation.')
             
         tau_index = -1
         tau_update_policy = self.tau_update_policy
@@ -164,7 +169,8 @@ class NSKFermentation(BatchBioreactor):
             # results = np.array(results)
             index_tau_with_max_var = np.where(
                 np.round(results[:, index_var_to_max],2) == 
-                np.round(results[:, index_var_to_max].max(), 2))[0][0]
+                np.round(results[:, index_var_to_max].max(), 2)
+                )[0][0]
             tau_index = index_tau_with_max_var
             # print(np.where(
             #     np.round(results[:, index_var_to_max],2) == 
