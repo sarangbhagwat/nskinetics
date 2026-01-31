@@ -36,7 +36,7 @@ def reset_kinetic_reaction_system(r, reset_max_n_glu_spikes=True):
     r_te.last_vol_glu_feed_added = 0.
     r_te.tot_vol_glu_feed_added = 0.
     r_te.env = 1.
-    if reset_max_n_glu_spikes: r_te.max_n_glu_spikes = 10
+    if reset_max_n_glu_spikes: r_te.max_n_glu_spikes = 200
 
 #%% Set tolerances
 integrator = r.integrator

@@ -31,6 +31,7 @@ model *bhagwat2026()
   curr_n_glu_spikes := n_glu_spikes;
   curr_env := env;
   curr_tot_vol_glu_feed_added := tot_vol_glu_feed_added;
+  curr_a := a;
 
   // Rate Rules:
   X_a' = ((0.732*r7 + 0.619*r8)*(1 - X_a) - r9 - r10)/(x*env);
