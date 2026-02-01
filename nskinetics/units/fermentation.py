@@ -162,8 +162,11 @@ class NSKFermentation(BatchBioreactor):
         results = self.results
         results_col_names = self.results_col_names
         
+        self._tau_update_success = False
+        
         if tau_update_policy is None:
             tau_index = get_index_nearest_element_from_sorted_array(results[:, results_col_names.index('time')], tau)
+            self._tau_update_success = True
             
         elif tau_update_policy[0] in('max', 'min'):
             param_to_opt = tau_update_policy[1] # name of parameter to maximize or minimize
@@ -174,7 +177,22 @@ class NSKFermentation(BatchBioreactor):
                 np.round(results[:, index_param_to_opt].__getattribute__(tau_update_policy[0])(), n_decimal_places_for_tau_update_policy)
                 )[0][0] # get the very first instance of the param being equal to the max/min value, both rounded to n_decimal_places_for_tau_update_policy
             tau_index = index_tau_with_max_var
-        
+            self._tau_update_success = True
+            
+        elif tau_update_policy[0] in('equals'):
+            param_to_opt = tau_update_policy[1] # name of parameter to check value of
+            index_param_to_opt = results_col_names.index(param_to_opt)
+            n_decimal_places_for_tau_update_policy = self.n_decimal_places_for_tau_update_policy
+            try:
+                index_tau_with_max_var = np.where(
+                    np.round(results[:, index_param_to_opt], n_decimal_places_for_tau_update_policy) == 
+                    np.round(tau_update_policy[2], n_decimal_places_for_tau_update_policy)
+                    )[0][0] # get the very first instance of the param being equal to the specified value, both rounded to n_decimal_places_for_tau_update_policy
+                tau_index = index_tau_with_max_var
+                self._tau_update_success = True
+            except:
+                pass
+            
         self.results_specific_tau = results_specific_tau = results[tau_index]
         
         self.tau = results_specific_tau[results_col_names.index('time')]
