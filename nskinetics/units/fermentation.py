@@ -93,6 +93,7 @@ class NSKFermentation(BatchBioreactor):
               sugar_IDs=('Sucrose', 'Glucose', 'Xylose'),
               tau_max=24.*7.,
               tau_update_policy=None,
+              n_decimal_places_for_tau_update_policy=2,
               try_fewer_n_spikes_until=lambda r: True,
               perform_hydrolysis=True):
         
@@ -119,6 +120,7 @@ class NSKFermentation(BatchBioreactor):
         
         self.tau_max = tau_max
         self.tau_update_policy = tau_update_policy
+        self.n_decimal_places_for_tau_update_policy = n_decimal_places_for_tau_update_policy
         
         self.try_fewer_n_spikes_until = try_fewer_n_spikes_until
         
@@ -167,9 +169,10 @@ class NSKFermentation(BatchBioreactor):
             var_to_max = tau_update_policy[1]
             index_var_to_max = results_col_names.index(var_to_max)
             # results = np.array(results)
+            n_decimal_places_for_tau_update_policy = self.n_decimal_places_for_tau_update_policy
             index_tau_with_max_var = np.where(
-                np.round(results[:, index_var_to_max],2) == 
-                np.round(results[:, index_var_to_max].max(), 2)
+                np.round(results[:, index_var_to_max], n_decimal_places_for_tau_update_policy) == 
+                np.round(results[:, index_var_to_max].max(), n_decimal_places_for_tau_update_policy)
                 )[0][0]
             tau_index = index_tau_with_max_var
             # print(np.where(
