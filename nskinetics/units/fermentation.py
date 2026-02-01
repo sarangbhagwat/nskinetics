@@ -165,19 +165,15 @@ class NSKFermentation(BatchBioreactor):
         if tau_update_policy is None:
             tau_index = get_index_nearest_element_from_sorted_array(results[:, results_col_names.index('time')], tau)
             
-        elif tau_update_policy[0]=='max':
-            var_to_max = tau_update_policy[1]
-            index_var_to_max = results_col_names.index(var_to_max)
-            # results = np.array(results)
+        elif tau_update_policy[0] in('max', 'min'):
+            param_to_opt = tau_update_policy[1] # name of parameter to maximize or minimize
+            index_param_to_opt = results_col_names.index(param_to_opt)
             n_decimal_places_for_tau_update_policy = self.n_decimal_places_for_tau_update_policy
             index_tau_with_max_var = np.where(
-                np.round(results[:, index_var_to_max], n_decimal_places_for_tau_update_policy) == 
-                np.round(results[:, index_var_to_max].max(), n_decimal_places_for_tau_update_policy)
-                )[0][0]
+                np.round(results[:, index_param_to_opt], n_decimal_places_for_tau_update_policy) == 
+                np.round(results[:, index_param_to_opt].__getattribute__(tau_update_policy[0])(), n_decimal_places_for_tau_update_policy)
+                )[0][0] # get the very first instance of the param being equal to the max/min value, both rounded to n_decimal_places_for_tau_update_policy
             tau_index = index_tau_with_max_var
-            # print(np.where(
-            #     np.round(results[:, index_var_to_max],2) == 
-            #     np.round(results[:, index_var_to_max].max(), 2)))
         
         self.results_specific_tau = results_specific_tau = results[tau_index]
         
