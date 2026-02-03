@@ -48,6 +48,7 @@ integrator.relative_tolerance = 1e-5
 
 # r.k_6 = 2.9 * 88.06 * 1e-6 * 60 # 2.9 uM/min # Zhao 2021 https://doi.org/10.3390/foods10051013
 # r.K_6 = 31.8 * 88.06 * 1e-3 # 31.8 mM # Zhao 2021 https://doi.org/10.3390/foods10051013
+
 #%%
 simulate = False
 if simulate:

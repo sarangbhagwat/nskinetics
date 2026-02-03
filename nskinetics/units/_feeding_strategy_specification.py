@@ -224,8 +224,8 @@ class FedBatchStrategySpecification:
         self._simulate_upstream_units()
         fermentation_reactor.simulate()
         
-        final_env_vol = fermentation_reactor.results_specific_tau[fermentation_reactor.results_col_names.index('curr_env')]
-        vol_spike_added = fermentation_reactor.results_specific_tau[fermentation_reactor.results_col_names.index('curr_tot_vol_glu_feed_added')]
+        final_env_vol = fermentation_reactor.nsk_results_specific_tau[fermentation_reactor.nsk_results_col_names.index('curr_env')]
+        vol_spike_added = fermentation_reactor.nsk_results_specific_tau[fermentation_reactor.nsk_results_col_names.index('curr_tot_vol_glu_feed_added')]
         
         initial_env_vol = final_env_vol - vol_spike_added
         sugars_in_initial_feed = initial_env_vol * self.target_conc_sugars

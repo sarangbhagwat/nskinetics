@@ -145,7 +145,7 @@ class NSKFermentation(BatchBioreactor):
         try_fewer_n_spikes_until = self.try_fewer_n_spikes_until
         
         self._helper_nsk_te_reset_and_simulate(feed=feed, tau=tau, feed_spike_condition=feed_spike_condition, plot=plot)
-        te_r.max_n_glu_spikes = list(self.results_dict['curr_n_glu_spikes'])[-1] - 1
+        te_r.max_n_glu_spikes = list(self.nsk_results_dict['curr_n_glu_spikes'])[-1] - 1
             
         while ((not try_fewer_n_spikes_until(te_r)) and (te_r.max_n_glu_spikes>0)):
             self._helper_nsk_te_reset_and_simulate(feed=feed, tau=tau, feed_spike_condition=feed_spike_condition, plot=plot)
@@ -159,33 +159,33 @@ class NSKFermentation(BatchBioreactor):
         tau_index = -1
         tau_update_policy = self.tau_update_policy
         
-        results = self.results
-        results_col_names = self.results_col_names
+        nsk_results = self.nsk_results
+        nsk_results_col_names = self.nsk_results_col_names
         
         self._tau_update_success = False
         
         if tau_update_policy is None:
-            tau_index = get_index_nearest_element_from_sorted_array(results[:, results_col_names.index('time')], tau)
+            tau_index = get_index_nearest_element_from_sorted_array(nsk_results[:, nsk_results_col_names.index('time')], tau)
             self._tau_update_success = True
             
         elif tau_update_policy[0] in('max', 'min'):
             param_to_opt = tau_update_policy[1] # name of parameter to maximize or minimize
-            index_param_to_opt = results_col_names.index(param_to_opt)
+            index_param_to_opt = nsk_results_col_names.index(param_to_opt)
             n_decimal_places_for_tau_update_policy = self.n_decimal_places_for_tau_update_policy
             index_tau_with_max_var = np.where(
-                np.round(results[:, index_param_to_opt], n_decimal_places_for_tau_update_policy) == 
-                np.round(results[:, index_param_to_opt].__getattribute__(tau_update_policy[0])(), n_decimal_places_for_tau_update_policy)
+                np.round(nsk_results[:, index_param_to_opt], n_decimal_places_for_tau_update_policy) == 
+                np.round(nsk_results[:, index_param_to_opt].__getattribute__(tau_update_policy[0])(), n_decimal_places_for_tau_update_policy)
                 )[0][0] # get the very first instance of the param being equal to the max/min value, both rounded to n_decimal_places_for_tau_update_policy
             tau_index = index_tau_with_max_var
             self._tau_update_success = True
             
         elif tau_update_policy[0] in('equals'):
             param_to_opt = tau_update_policy[1] # name of parameter to check value of
-            index_param_to_opt = results_col_names.index(param_to_opt)
+            index_param_to_opt = nsk_results_col_names.index(param_to_opt)
             n_decimal_places_for_tau_update_policy = self.n_decimal_places_for_tau_update_policy
             try:
                 index_tau_with_max_var = np.where(
-                    np.round(results[:, index_param_to_opt], n_decimal_places_for_tau_update_policy) == 
+                    np.round(nsk_results[:, index_param_to_opt], n_decimal_places_for_tau_update_policy) == 
                     np.round(tau_update_policy[2], n_decimal_places_for_tau_update_policy)
                     )[0][0] # get the very first instance of the param being equal to the specified value, both rounded to n_decimal_places_for_tau_update_policy
                 tau_index = index_tau_with_max_var
@@ -193,11 +193,11 @@ class NSKFermentation(BatchBioreactor):
             except:
                 pass
             
-        self.results_specific_tau = results_specific_tau = results[tau_index]
+        self.nsk_results_specific_tau = nsk_results_specific_tau = nsk_results[tau_index]
         
-        self.tau = results_specific_tau[results_col_names.index('time')]
+        self.tau = nsk_results_specific_tau[nsk_results_col_names.index('time')]
         
-        self.results_specific_tau_dict = {results_col_names[i]: results_specific_tau[i] for i in range(len(results_col_names))}
+        self.nsk_results_specific_tau_dict = {nsk_results_col_names[i]: nsk_results_specific_tau[i] for i in range(len(nsk_results_col_names))}
         
         effluent = self._get_minimal_effluent(feed)
         
@@ -245,57 +245,61 @@ class NSKFermentation(BatchBioreactor):
             exec(f'te_r.{c_nsk.replace("[", "").replace("]", "")} = feed.{_material_indexer}[c_bst]/feed.{_volume_attribute}')
             exec(f'initial_concentrations[c_nsk] = te_r.{c_nsk.replace("[", "").replace("]", "")}')
         
-        self.results_col_names = results_col_names = ['time', 'curr_env', 'curr_n_glu_spikes', 'curr_tot_vol_glu_feed_added'] +\
+        self.nsk_results_col_names = nsk_results_col_names = ['time', 'curr_env', 'curr_n_glu_spikes', 'curr_tot_vol_glu_feed_added'] +\
                                                      self.track_vars + chems_nsk
                                                      
         try_fewer_n_spikes_until = self.try_fewer_n_spikes_until
         n_spikes = te_r.max_n_glu_spikes
         
         try:
-            self.results = results = np.array(te_r.simulate(0, 
+            self.nsk_results = nsk_results = np.array(te_r.simulate(0, 
                                                             self.tau_max*_time_conv_factor, 
                                                             self.n_simulation_steps,
-                                                            results_col_names,))
+                                                            nsk_results_col_names,))
         except Exception as e:
             # print(str(e))
             raise e
         
-        self.results_dict = {results_col_names[i]: results[:, i] for i in range(len(results_col_names))}
-        # print(self.results_dict)
+        self.nsk_results_dict = {nsk_results_col_names[i]: nsk_results[:, i] for i in range(len(nsk_results_col_names))}
+        # print(self.nsk_results_dict)
         if plot: te_r.plot()
         
-    def _load_results_specific_tau(self, tau):
-        results = self.results
-        results_col_names = self.results_col_names
+    def _load_nsk_results_specific_tau(self, tau):
+        nsk_results = self.nsk_results
+        nsk_results_col_names = self.nsk_results_col_names
         try:
-            self.tau_index = tau_index = get_index_nearest_element_from_sorted_array(results[:, results_col_names.index('time')], tau)
+            self.tau_index = tau_index = get_index_nearest_element_from_sorted_array(nsk_results[:, nsk_results_col_names.index('time')], tau)
         except:
             breakpoint()
-        self.results_specific_tau = results_specific_tau = results[tau_index]
+        self.nsk_results_specific_tau = nsk_results_specific_tau = nsk_results[tau_index]
         try:
-            self.results_specific_tau_dict = {results_col_names[i]: results_specific_tau[i] for i in range(len(results_col_names))}
+            self.nsk_results_specific_tau_dict = {nsk_results_col_names[i]: nsk_results_specific_tau[i] for i in range(len(nsk_results_col_names))}
         except:
             breakpoint()
-        return results_specific_tau
+        return nsk_results_specific_tau
     
     def _get_minimal_effluent(self, minimal_feed):
         feed = minimal_feed
-        results_specific_tau = self.results_specific_tau
-        results_specific_tau_dict = self.results_specific_tau_dict
-        results_col_names = self.results_col_names
+        nsk_results_specific_tau = self.nsk_results_specific_tau
+        nsk_results_specific_tau_dict = self.nsk_results_specific_tau_dict
+        nsk_results_col_names = self.nsk_results_col_names
         _material_indexer = self._material_indexer
         _volume_attribute = self._volume_attribute
         effluent = feed.copy()
         for c_nsk, c_bst in self.map_chemicals_nsk_to_bst.items():
-            exec(f'effluent.{_material_indexer}[c_bst] = results_specific_tau[results_col_names.index(c_nsk)] * effluent.{_volume_attribute}')
+            exec(f'effluent.{_material_indexer}[c_bst] = nsk_results_specific_tau[nsk_results_col_names.index(c_nsk)] * effluent.{_volume_attribute}')
         
-        curr_env = results_specific_tau_dict['curr_env']
-        effluent.F_vol *= curr_env/(curr_env - results_specific_tau_dict['curr_tot_vol_glu_feed_added'])
+        curr_env = nsk_results_specific_tau_dict['curr_env']
+        effluent.F_vol *= curr_env/(curr_env - nsk_results_specific_tau_dict['curr_tot_vol_glu_feed_added'])
         return effluent
     
     def _run(self):
         vent, effluent = self.outs
         ins = self.ins
+        
+        vent.empty()
+        effluent.empty()
+        
         spike_feed = ins[2]
         initial_feed_seed_others = (i for i in ins if not i==spike_feed) # exclude spike feed initially
         effluent.mix_from(initial_feed_seed_others)
@@ -313,8 +317,8 @@ class NSKFermentation(BatchBioreactor):
         run_type = self.run_type
         if run_type in ('simulate kinetics',):
             minimal_effluent = self.simulate_kinetics(feed=minimal_feed, tau=self._tau)
-        elif run_type in ('index saved results by tau',):
-            self._load_results_specific_tau(self.tau)
+        elif run_type in ('index saved nsk_results by tau',):
+            self._load_nsk_results_specific_tau(self.tau)
             minimal_effluent = self._get_minimal_effluent(minimal_feed)
         
         # te_r = self.kinetic_reaction_system._te
@@ -328,8 +332,13 @@ class NSKFermentation(BatchBioreactor):
         effluent.copy_like(minimal_effluent)
         effluent.imol['NH3'] = 0. # NH3 in ins must be based on final Yeast mass
         
+        # effluent.imol['CO2'] = 6.0*(feed.imol['Glucose']+spike_feed.imol['Glucose'])\
+        #                       -2.0*(effluent.imol['Ethanol'])\
+        #                       -1.0*(effluent.imol['Yeast'])
+        
+        effluent.imol['CO2'] = sum([i.get_atomic_flow('C') for i in self.ins]) - sum([i.get_atomic_flow('C') for i in self.outs])
         effluent.empty_negative_flows()
-        vent.empty()
+        # vent.empty()
         vent.receive_vent(effluent, energy_balance=False)
     
     def set_tolerances_kinetic_simulation(self, atol, rtol):
