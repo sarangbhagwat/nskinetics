@@ -160,7 +160,11 @@ class FedBatchStrategySpecification:
         if tau_max is None:
             tau_max = self.tau_max
         
-            
+        
+        self.threshold_conc_sugars = threshold_conc_sugars
+        self.target_conc_sugars = target_conc_sugars
+        self.conc_sugars_feed_spike = conc_sugars_feed_spike
+        
         if not (threshold_conc_sugars<target_conc_sugars and target_conc_sugars<conc_sugars_feed_spike):
             raise ValueError(f'Specifications do not meet required condition: threshold_conc_sugars ({threshold_conc_sugars}) < target_conc_sugars ({target_conc_sugars}) < conc_sugars_feed_spike ({conc_sugars_feed_spike}).\n')
         
@@ -179,8 +183,8 @@ class FedBatchStrategySpecification:
                                 evaporator_V_ub, evaporator_V_lb,
                                 mixer_dil_lb, mixer_dil_ub):
         # clear_units([V301, K301])
-        self.target_conc_sugars = target_conc_sugars
-        self.conc_sugars_feed_spike = conc_sugars_feed_spike
+        # self.target_conc_sugars = target_conc_sugars
+        # self.conc_sugars_feed_spike = conc_sugars_feed_spike
         
         te_r = self.fermentation_reactor.kinetic_reaction_system._te
         te_r.conc_glu_feed_spike = conc_sugars_feed_spike
@@ -218,7 +222,7 @@ class FedBatchStrategySpecification:
         self.tau_max = tau_max
         fermentation_reactor.tau_max = tau_max
         
-        self.threshold_conc_sugars = threshold_conc_sugars
+        # self.threshold_conc_sugars = threshold_conc_sugars
         te_r.threshold_conc_glu_spike = threshold_conc_sugars
         
         self._simulate_upstream_units()
