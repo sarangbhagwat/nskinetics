@@ -208,23 +208,23 @@ model *bhagwat2026()
   k_10 has g_per_l_per_h;
   k_13 = 0.0;
   k_13 has g_per_l_per_h;
+  K_13 = 5e-07;
+  K_13 has g_per_l;
   k_14 = 0.0;
   k_14 has g_per_l_per_h;
+  K_14 = 5e-07;
+  K_14 has g_per_l;
   k_15 = 0.0;
   k_15 has g_per_l_per_h;
+  K_15 = 5e-07;
+  K_15 has g_per_l;
   k_16 = 0.0;
   k_16 has g_per_l_per_h;
-  K_13 = 1.0;
-  K_13 has g_per_l;
-  K_14 = 1.0;
-  K_14 has g_per_l;
-  K_15 = 1.0;
-  K_15 has g_per_l;
-  K_16 = 1.0;
+  K_16 = 0.034;
   K_16 has g_per_l;
   k_16r = 0.0;
   k_16r has dimensionless;
-  K_16i = 0.0;
+  K_16i = 0.057;
   K_16i has g_per_l;
 
   // Other declarations:
