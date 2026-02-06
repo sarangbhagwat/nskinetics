@@ -60,7 +60,7 @@ model *bhagwat2026()
   x_out: x => ; x*D*env;
   AcDH_out: $AcDH => ; AcDH*D*env;
 
-  r13: s_pyr => 0.750 s_AL; (k_13*s_pyr/(K_13 + s_pyr))*a*env;
+  r13: s_pyr => 0.750 s_AL; (k_13*s_pyr^4/(K_13 + s_pyr^4))*a*env;
   r14: s_AL => 1.015 s_DHI; (k_14*s_AL/(K_14 + s_AL))*a*env;
   r15: s_DHI => 0.866 s_KIV; (k_15*s_DHI/(K_15 + s_DHI))*a*env;
   r16: s_KIV + 0.363 $Red -> 0.638 s_IBO; (k_16*(s_KIV - k_16r*s_IBO)/(s_KIV + K_16 + K_16i*s_IBO))*a*env;
@@ -212,11 +212,11 @@ model *bhagwat2026()
   K_13 has g_per_l;
   k_14 = 0.0;
   k_14 has g_per_l_per_h;
-  K_14 = 5e-07;
+  K_14 = 0.000264;
   K_14 has g_per_l;
   k_15 = 0.0;
   k_15 has g_per_l_per_h;
-  K_15 = 5e-07;
+  K_15 = 0.000264;
   K_15 has g_per_l;
   k_16 = 0.0;
   k_16 has g_per_l_per_h;
