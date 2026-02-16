@@ -147,14 +147,16 @@ class NSKFermentation(BatchBioreactor):
         self._helper_nsk_te_reset_and_simulate(feed=feed, tau=tau, feed_spike_condition=feed_spike_condition, plot=plot)
         te_r.max_n_glu_spikes = list(self.nsk_results_dict['curr_n_glu_spikes'])[-1] - 1
             
-        while ((not try_fewer_n_spikes_until(te_r)) and (te_r.max_n_glu_spikes>0)):
+        while ((not try_fewer_n_spikes_until(te_r)) and (te_r.max_n_glu_spikes>=0)): #!!!
             self._helper_nsk_te_reset_and_simulate(feed=feed, tau=tau, feed_spike_condition=feed_spike_condition, plot=plot)
             te_r.max_n_glu_spikes -= 1
         
         if np.any(
                 np.round([te_r.x, te_r.s_glu, te_r.s_EtOH, 
                           te_r.s_IBO, te_r.s_acetate], 2)<0):
-            raise RuntimeError(f'Negative concentrations in final kinetic simulation.')
+            raise RuntimeError(f'MassBalError: Negative concentrations in final kinetic simulation.')
+        elif np.any([te_r.y_EtOH_glu_added>0.511, te_r.y_IBO_glu_added>0.410]):
+            raise RuntimeError(f'MassBalError: Yield over theoretical maximum in final kinetic simulation.')
             
         tau_index = -1
         tau_update_policy = self.tau_update_policy
@@ -340,7 +342,9 @@ class NSKFermentation(BatchBioreactor):
         effluent.empty_negative_flows()
         # vent.empty()
         vent.receive_vent(effluent, energy_balance=False)
-    
+        effluent.imol['Ethanol'] += max(0.0, vent.imol['Ethanol'])
+        vent.imol['Ethanol'] = 0.0
+        
     def set_tolerances_kinetic_simulation(self, atol, rtol):
         kinetic_reaction_system = self.kinetic_reaction_system
         if isinstance(kinetic_reaction_system, TelluriumReactionSystem):

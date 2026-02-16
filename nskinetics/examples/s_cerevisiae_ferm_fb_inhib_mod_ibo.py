@@ -28,6 +28,7 @@ r = te.loadAntimonyModel(f'{nsk_examples_filepath}\\{antimony_filename}')
 te_r = nsk.TelluriumReactionSystem(r)
 te_r._units['time'] = 'h'
 te_r._units['conc'] = 'g/L'
+te_r.default_max_n_glu_spikes = 200
     
 def reset_kinetic_reaction_system(r, reset_max_n_glu_spikes=True):
     r.reset()
@@ -36,12 +37,12 @@ def reset_kinetic_reaction_system(r, reset_max_n_glu_spikes=True):
     r_te.last_vol_glu_feed_added = 0.
     r_te.tot_vol_glu_feed_added = 0.
     r_te.env = 1.
-    if reset_max_n_glu_spikes: r_te.max_n_glu_spikes = 200
+    if reset_max_n_glu_spikes: r_te.max_n_glu_spikes = r.default_max_n_glu_spikes
 
 #%% Set tolerances
 integrator = r.integrator
 integrator.absolute_tolerance = 1e-9
-integrator.relative_tolerance = 1e-5
+integrator.relative_tolerance = 1e-9
 # integrator.variable_step_size = True
 
 #%% Document references for IBO pathway kinetic parameters
