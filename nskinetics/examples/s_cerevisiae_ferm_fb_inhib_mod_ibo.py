@@ -41,7 +41,7 @@ def reset_kinetic_reaction_system(r, reset_max_n_glu_spikes=True):
 
 #%% Set tolerances
 integrator = r.integrator
-integrator.absolute_tolerance = 1e-9
+integrator.absolute_tolerance = 1e-10
 integrator.relative_tolerance = 1e-9
 # integrator.variable_step_size = True
 
