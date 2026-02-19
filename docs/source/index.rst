@@ -1,5 +1,5 @@
-Non-Steady State Kinetics Simulation
-====================================
+(Non-)Steady State Kinetics Simulation
+======================================
 
 .. toctree::
    :maxdepth: 2
