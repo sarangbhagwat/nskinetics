@@ -28,7 +28,7 @@ The (Non-)Steady state Kinetics simulation package (NSKinetics)
 What is NSKinetics?
 -------------------
 
-NSKinetics is a fast, flexible, and convenient package to simulate steady and non-steady state reaction kinetics and to connect them with techno-economic analysis (TEA) and life cycle assessment (LCA) under uncertainty. NSKinetics enables the construction, simulation, and analysis of reaction systems governed by mass action kinetics or other user-defined rate laws. It supports features such as species concentration spikes, event triggers, inverse modeling (parameter fitting to experimental data), parameter identifiability analysis, and optimal design of experiments.
+NSKinetics is a fast, flexible, and convenient package in Python to simulate steady and non-steady state reaction kinetics and to connect them with techno-economic analysis (TEA) and life cycle assessment (LCA) under uncertainty. NSKinetics enables the construction, simulation, and analysis of reaction systems governed by mass action kinetics or other user-defined rate laws. It supports features such as species concentration spikes, event triggers, inverse modeling (parameter fitting to experimental data), parameter identifiability analysis, and optimal design of experiments.
 
 Installation
 ------------
