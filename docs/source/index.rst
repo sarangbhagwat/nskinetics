@@ -24,11 +24,13 @@ Non-Steady State Kinetics Simulation
 
     .. grid-item::
 
-        **NSKinetics** is a fast, flexible, `open-source <https://github.com/sarangbhagwat/nskinetics>`__ platform in Python to simulate and evaluate
-        non-steady state reaction kinetics, especially for systems involving enzymatic conversions 
-        with inhibitory phenomena. NSKinetics enables the construction, simulation, and analysis 
-        of reaction systems governed by mass action kinetics or other user-defined rate laws, 
-        as well as the optimal design of experiments for parameter identifiability.
+        NSKinetics is a fast, flexible, and convenient package in Python to simulate steady and non-steady state reaction kinetics and to connect 
+        them with techno-economic analysis (TEA) and life cycle assessment (LCA) under uncertainty. 
+        NSKinetics enables the construction, simulation, and analysis of reaction systems governed by mass action kinetics or other user-defined 
+        rate laws. It supports features such as species concentration spikes, event triggers, inverse modeling (parameter fitting to experimental data), 
+        parameter identifiability analysis, and optimal design of experiments.
+
+
 
 
 .. grid:: 1 2 3 4
