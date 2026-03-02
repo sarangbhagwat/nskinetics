@@ -321,7 +321,7 @@ class NSKFermentation(BatchBioreactor):
         effluent.empty()
         
         spike_feed = ins[2]
-        compressed_air = ins[3]
+        self.compressed_air = compressed_air = ins[3]
         ins_to_mix = (i for i in ins if not i in [spike_feed, compressed_air]) # exclude spike feed and comp air initially
         effluent.mix_from(ins_to_mix)
         
@@ -365,7 +365,6 @@ class NSKFermentation(BatchBioreactor):
         vent.imol['Ethanol'] = 0.0
         
         # compressed air calcs
-        compressed_air = ins[3]
         compressed_air.empty()
         xO2_air = 0.21
         compressed_air.imol['O2'] = xO2_air
