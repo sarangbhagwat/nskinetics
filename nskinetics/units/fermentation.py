@@ -95,7 +95,8 @@ class NSKFermentation(BatchBioreactor):
               tau_update_policy=None,
               n_decimal_places_for_tau_update_policy=2,
               try_fewer_n_spikes_until=lambda r: True,
-              perform_hydrolysis=True):
+              perform_hydrolysis=True,
+              aeration_safety_factor=2.0):
         
         BatchBioreactor._init(self, tau=tau, N=N, V=V, T=T, P=P, Nmin=Nmin, Nmax=Nmax)
         self._load_components()
@@ -129,6 +130,8 @@ class NSKFermentation(BatchBioreactor):
         self._material_indexer = None
         self._volume_attribute = None
         self._time_conv_factor = None
+        
+        self.aeration_safety_factor = aeration_safety_factor
             
     def _nsk_simulate_kinetics(self, feed, tau, feed_spike_condition=None, plot=False): 
         # !!!
@@ -201,6 +204,11 @@ class NSKFermentation(BatchBioreactor):
         
         self.nsk_results_specific_tau_dict = {nsk_results_col_names[i]: nsk_results_specific_tau[i] for i in range(len(nsk_results_col_names))}
         
+        try:
+            self.cumulative_qO2 = self.nsk_results_dict['qO2'][:tau_index].sum()
+        except:
+            breakpoint()
+            
         effluent = self._get_minimal_effluent(feed)
         
         if plot: te_r.plot()
@@ -247,7 +255,10 @@ class NSKFermentation(BatchBioreactor):
             exec(f'te_r.{c_nsk.replace("[", "").replace("]", "")} = feed.{_material_indexer}[c_bst]/feed.{_volume_attribute}')
             exec(f'initial_concentrations[c_nsk] = te_r.{c_nsk.replace("[", "").replace("]", "")}')
         
-        self.nsk_results_col_names = nsk_results_col_names = ['time', 'curr_env', 'curr_n_glu_spikes', 'curr_tot_vol_glu_feed_added'] +\
+        self.nsk_results_col_names = nsk_results_col_names = ['time', 'curr_env',
+                                                              'curr_n_glu_spikes', 
+                                                              'curr_tot_vol_glu_feed_added',
+                                                              'qO2',] +\
                                                      self.track_vars + chems_nsk
                                                      
         try_fewer_n_spikes_until = self.try_fewer_n_spikes_until
@@ -275,9 +286,16 @@ class NSKFermentation(BatchBioreactor):
             breakpoint()
         self.nsk_results_specific_tau = nsk_results_specific_tau = nsk_results[tau_index]
         try:
-            self.nsk_results_specific_tau_dict = {nsk_results_col_names[i]: nsk_results_specific_tau[i] for i in range(len(nsk_results_col_names))}
+            self.nsk_results_specific_tau_dict = nsk_results_specific_tau_dict =\
+                {nsk_results_col_names[i]: nsk_results_specific_tau[i] 
+                 for i in range(len(nsk_results_col_names))}
         except:
             breakpoint()
+        try:
+            self.cumulative_qO2 = self.nsk_results_dict['qO2'][:tau_index].sum()
+        except:
+            breakpoint()
+            
         return nsk_results_specific_tau
     
     def _get_minimal_effluent(self, minimal_feed):
@@ -303,8 +321,9 @@ class NSKFermentation(BatchBioreactor):
         effluent.empty()
         
         spike_feed = ins[2]
-        initial_feed_seed_others = (i for i in ins if not i==spike_feed) # exclude spike feed initially
-        effluent.mix_from(initial_feed_seed_others)
+        compressed_air = ins[3]
+        ins_to_mix = (i for i in ins if not i in [spike_feed, compressed_air]) # exclude spike feed and comp air initially
+        effluent.mix_from(ins_to_mix)
         
         if self.perform_hydrolysis:
             self.hydrolysis_reaction.force_reaction(effluent)
@@ -344,6 +363,18 @@ class NSKFermentation(BatchBioreactor):
         vent.receive_vent(effluent, energy_balance=False)
         effluent.imol['Ethanol'] += max(0.0, vent.imol['Ethanol'])
         vent.imol['Ethanol'] = 0.0
+        
+        # compressed air calcs
+        compressed_air = ins[3]
+        compressed_air.empty()
+        xO2_air = 0.21
+        compressed_air.imol['O2'] = xO2_air
+        compressed_air.imol['N2'] = 1.0 - xO2_air
+        self.stoich_air_flow_req = stoich_air_flow_req = self.cumulative_qO2 / (self.tau * xO2_air)
+        self.stoich_O2_flow_req = stoich_O2_flow_req = xO2_air * stoich_air_flow_req
+        compressed_air.F_mol = stoich_air_flow_req * self.aeration_safety_factor
+        vent.imol['O2'] += max(0, compressed_air.imol['O2'] - stoich_O2_flow_req)
+        vent.imol['N2'] += compressed_air.imol['N2']
         
     def set_tolerances_kinetic_simulation(self, atol, rtol):
         kinetic_reaction_system = self.kinetic_reaction_system
