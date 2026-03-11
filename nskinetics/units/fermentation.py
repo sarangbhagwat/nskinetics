@@ -96,7 +96,8 @@ class NSKFermentation(BatchBioreactor):
               n_decimal_places_for_tau_update_policy=2,
               try_fewer_n_spikes_until=lambda r: True,
               perform_hydrolysis=True,
-              aeration_safety_factor=2.0):
+              aeration_safety_factor=2.0,
+              stage_1_time=np.inf,):
         
         BatchBioreactor._init(self, tau=tau, N=N, V=V, T=T, P=P, Nmin=Nmin, Nmax=Nmax)
         self._load_components()
@@ -132,7 +133,17 @@ class NSKFermentation(BatchBioreactor):
         self._time_conv_factor = None
         
         self.aeration_safety_factor = aeration_safety_factor
-            
+        self.stage_1_time = stage_1_time
+    
+    @property
+    def stage_1_time(self):
+        return self._stage_1_time
+    
+    @stage_1_time.setter
+    def stage_1_time(self, val):
+        self._stage_1_time = val
+        self.kinetic_reaction_system._te.stage_1_time = val
+        
     def _nsk_simulate_kinetics(self, feed, tau, feed_spike_condition=None, plot=False): 
         # !!!
         self.tau = tau
