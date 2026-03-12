@@ -97,7 +97,7 @@ class NSKFermentation(BatchBioreactor):
               try_fewer_n_spikes_until=lambda r: True,
               perform_hydrolysis=True,
               aeration_safety_factor=2.0,
-              stage_1_time=np.inf,):
+              stage_1_time=15.0,):
         
         BatchBioreactor._init(self, tau=tau, N=N, V=V, T=T, P=P, Nmin=Nmin, Nmax=Nmax)
         self._load_components()

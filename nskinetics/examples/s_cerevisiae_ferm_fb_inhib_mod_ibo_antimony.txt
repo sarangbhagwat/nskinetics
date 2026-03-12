@@ -44,8 +44,8 @@ model *bhagwat2026()
   r4: s_acetald => 1.363 s_acetate + 0.363 $Red; (k_4*s_acetald*2.71828^(-k_4ie*s_EtOH)*2.71828^(-k_4ia*s_acetate)*2.71828^(-k_4ii*s_IBO)/(s_acetald + K_4))*a*X_AcDH*env;
   r5: s_acetate => 1.446 $CO2 + 1.066 $Red; is_aerobic*(k_5*s_acetate/(s_acetate + K_5) + k_5e*s_acetate/((s_acetate + K_5e)*(1 + K_5i*s_glu)))*a*env;
   r6: s_acetald + 0.363 $Red -> 1.045 s_EtOH; (k_6*(s_acetald - k_6r*s_EtOH)/(s_acetald + K_6 + K_6e*s_EtOH))*a*env;
-  r7: s_glu => 0.732 x + 0.127 $CO2 + 0.063 $Red; (k_7*s_glu*2.71828^(-k_7ie*s_EtOH)*2.71828^(-k_7ia*s_acetate)*2.71828^(-k_7ii*s_IBO)/(s_glu + K_7))*a*env;
-  r8: s_acetate => 0.619 x + 0.325 $CO2 + 0.214 $Red; (k_8*s_acetate/((s_acetate + K_5e)*(1 + K_5i*s_glu)))*a*env;
+  r7: s_glu => 0.732 x + 0.127 $CO2 + 0.063 $Red; is_aerobic*(k_7*s_glu*2.71828^(-k_7ie*s_EtOH)*2.71828^(-k_7ia*s_acetate)*2.71828^(-k_7ii*s_IBO)/(s_glu + K_7))*a*env;
+  r8: s_acetate => 0.619 x + 0.325 $CO2 + 0.214 $Red; is_aerobic*(k_8*s_acetate/((s_acetate + K_5e)*(1 + K_5i*s_glu)))*a*env;
   r9: $a => $AcDH; ((k_9*s_glu/(s_glu + K_9) + k_9e*s_EtOH/(s_EtOH + K_9e))/(K_9i*s_glu + 1) + k_9c*s_glu/(s_glu + K_9))*a*env;
   r10: $a => ; k_10*a*env;
   r11: $AcDH => ; k_11*AcDH*env;
