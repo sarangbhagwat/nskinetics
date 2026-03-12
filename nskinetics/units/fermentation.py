@@ -98,7 +98,8 @@ class NSKFermentation(BatchBioreactor):
               perform_hydrolysis=True,
               aeration_safety_factor=2.0,
               stage_1_time=np.inf,
-              stop_aeration_when_cell_density_plateaus=True,):
+              stop_aeration_when_cell_density_plateaus=True,
+              factor_for_cell_density_plateau=0.5):
         
         BatchBioreactor._init(self, tau=tau, N=N, V=V, T=T, P=P, Nmin=Nmin, Nmax=Nmax)
         self._load_components()
@@ -135,7 +136,9 @@ class NSKFermentation(BatchBioreactor):
         
         self.aeration_safety_factor = aeration_safety_factor
         self.stage_1_time = stage_1_time
-    
+        self.stop_aeration_when_cell_density_plateaus = stop_aeration_when_cell_density_plateaus
+        self.factor_for_cell_density_plateau = factor_for_cell_density_plateau
+        
     @property
     def stage_1_time(self):
         return self._stage_1_time
@@ -216,8 +219,15 @@ class NSKFermentation(BatchBioreactor):
         
         self.nsk_results_specific_tau_dict = {nsk_results_col_names[i]: nsk_results_specific_tau[i] for i in range(len(nsk_results_col_names))}
         
+        nsk_results_dict = self.nsk_results_dict
+        
         try:
-            self.cumulative_qO2 = self.nsk_results_dict['qO2'][:tau_index].sum()
+            if self.stop_aeration_when_cell_density_plateaus:
+                self.tau_index_cell_density_plateau = tau_index_cell_density_plateau = self.get_tau_index_cell_density_plateau()
+                self.tau_cell_density_plateau = nsk_results_dict['time'][tau_index_cell_density_plateau]
+                self.cumulative_qO2 = nsk_results_dict['qO2'][:min(tau_index, tau_index_cell_density_plateau)].sum()
+            else:
+                self.cumulative_qO2 = nsk_results_dict['qO2'][tau_index].sum()
         except:
             breakpoint()
             
@@ -288,10 +298,25 @@ class NSKFermentation(BatchBioreactor):
         self.nsk_results_dict = {nsk_results_col_names[i]: nsk_results[:, i] for i in range(len(nsk_results_col_names))}
         # print(self.nsk_results_dict)
         if plot: te_r.plot()
-        
+    
+    def get_tau_index_cell_density_plateau(self):
+        nsk_results_dict = self.nsk_results_dict
+        x_arr = nsk_results_dict['[x]']
+        growth_rate_arr = np.diff(x_arr)
+        max_growth_rate = growth_rate_arr.max()
+        index_max_growth_rate = np.where(growth_rate_arr==max_growth_rate)[0][0]
+        index_growth_plateau = None
+        factor_for_cell_density_plateau = self.factor_for_cell_density_plateau
+        for i in range (index_max_growth_rate, len(growth_rate_arr)):
+            if growth_rate_arr[i] < factor_for_cell_density_plateau * max_growth_rate:
+                index_growth_plateau = i
+                break
+        return index_growth_plateau-1
+    
     def _load_nsk_results_specific_tau(self, tau):
         nsk_results = self.nsk_results
         nsk_results_col_names = self.nsk_results_col_names
+        nsk_results_dict = self.nsk_results_dict
         try:
             self.tau_index = tau_index = get_index_nearest_element_from_sorted_array(nsk_results[:, nsk_results_col_names.index('time')], tau)
         except:
@@ -304,7 +329,12 @@ class NSKFermentation(BatchBioreactor):
         except:
             breakpoint()
         try:
-            self.cumulative_qO2 = self.nsk_results_dict['qO2'][:tau_index].sum()
+            if self.stop_aeration_when_cell_density_plateaus:
+                self.tau_index_cell_density_plateau = tau_index_cell_density_plateau = self.get_tau_index_cell_density_plateau()
+                self.tau_cell_density_plateau = nsk_results_dict['time'][tau_index_cell_density_plateau]
+                self.cumulative_qO2 = nsk_results_dict['qO2'][:min(tau_index, tau_index_cell_density_plateau)].sum()
+            else:
+                self.cumulative_qO2 = nsk_results_dict['qO2'][tau_index].sum()
         except:
             breakpoint()
             
