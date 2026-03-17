@@ -72,7 +72,8 @@ model *bhagwat2026()
 
   glucose_feed_spike_c: at glucose_feed_spikeDelay after (s_glu <= threshold_conc_glu_spike) && (n_glu_spikes < max_n_glu_spikes), priority=3, fromTrigger=false: s_glu = target_conc_glu_spike, n_glu_spikes = n_glu_spikes + 1;
 
-  stage_1_complete: at (time > stage_1_time): is_aerobic = 0;
+  stage_1_complete_max_time: at (time > stage_1_max_time): is_aerobic = 0;
+  stage_1_complete_x_target: at (x > stage_1_x_target): is_aerobic = 0;
 
   // Species initializations:
   s_glu = 15/env;
@@ -119,8 +120,10 @@ model *bhagwat2026()
 
   is_aerobic = 1;
   is_aerobic has dimensionless;
-  stage_1_time = infinity;
-  stage_1_time has time_unit;
+  stage_1_max_time = infinity;
+  stage_1_max_time has time_unit;
+  stage_1_x_target = infinity;
+  stage_1_x_target has g_per_l;
 
   qO2 has mmole_per_g_per_h;
   qCO2 has mmole_per_g_per_h;

@@ -97,8 +97,9 @@ class NSKFermentation(BatchBioreactor):
               try_fewer_n_spikes_until=lambda r: True,
               perform_hydrolysis=True,
               aeration_safety_factor=2.0,
-              stage_1_time=np.inf,
-              stop_aeration_when_cell_density_plateaus=True,
+              stage_1_max_time=np.inf,
+              stage_1_x_target=np.inf,
+              stop_aeration_when_cell_density_plateaus=False,
               factor_for_cell_density_plateau=0.5):
         
         BatchBioreactor._init(self, tau=tau, N=N, V=V, T=T, P=P, Nmin=Nmin, Nmax=Nmax)
@@ -135,19 +136,30 @@ class NSKFermentation(BatchBioreactor):
         self._time_conv_factor = None
         
         self.aeration_safety_factor = aeration_safety_factor
-        self.stage_1_time = stage_1_time
+        self.stage_1_max_time = stage_1_max_time
+        self.stage_1_x_target = stage_1_x_target
+        
         self.stop_aeration_when_cell_density_plateaus = stop_aeration_when_cell_density_plateaus
         self.factor_for_cell_density_plateau = factor_for_cell_density_plateau
         
     @property
-    def stage_1_time(self):
-        return self._stage_1_time
+    def stage_1_max_time(self):
+        return self._stage_1_max_time
     
-    @stage_1_time.setter
-    def stage_1_time(self, val):
-        self._stage_1_time = val
-        self.kinetic_reaction_system._te.stage_1_time = val
-        
+    @stage_1_max_time.setter
+    def stage_1_max_time(self, val):
+        self._stage_1_max_time = val
+        self.kinetic_reaction_system._te.stage_1_max_time = val
+    
+    @property
+    def stage_1_x_target(self):
+        return self._stage_1_x_target
+    
+    @stage_1_x_target.setter
+    def stage_1_x_target(self, val):
+        self._stage_1_x_target = val
+        self.kinetic_reaction_system._te.stage_1_x_target = val
+    
     def _nsk_simulate_kinetics(self, feed, tau, feed_spike_condition=None, plot=False): 
         # !!!
         self.tau = tau
@@ -225,9 +237,16 @@ class NSKFermentation(BatchBioreactor):
             if self.stop_aeration_when_cell_density_plateaus:
                 self.tau_index_cell_density_plateau = tau_index_cell_density_plateau = self.get_tau_index_cell_density_plateau()
                 self.tau_cell_density_plateau = nsk_results_dict['time'][tau_index_cell_density_plateau]
-                self.cumulative_qO2 = nsk_results_dict['qO2'][:min(tau_index, tau_index_cell_density_plateau)].sum()
+                self.tau_index_stop_aeration = tau_index_cell_density_plateau
             else:
-                self.cumulative_qO2 = nsk_results_dict['qO2'][tau_index].sum()
+                try:
+                    self.tau_index_stop_aeration = np.where(nsk_results_dict['is_aerobic']==0.0)[0][0]
+                except:
+                    self.tau_index_stop_aeration = tau_index
+            self.tau_stop_aeration = nsk_results_dict['time'][self.tau_index_stop_aeration]
+            self._stepwise_O2 = stepwise_O2 = nsk_results_dict['qO2'][:-1] * nsk_results_dict['[x]'][:-1] * np.diff(nsk_results_dict['time'])
+            self.cumulative_O2 = stepwise_O2[:self.tau_index_stop_aeration].sum()
+            
         except:
             breakpoint()
             
@@ -280,7 +299,8 @@ class NSKFermentation(BatchBioreactor):
         self.nsk_results_col_names = nsk_results_col_names = ['time', 'curr_env',
                                                               'curr_n_glu_spikes', 
                                                               'curr_tot_vol_glu_feed_added',
-                                                              'qO2',] +\
+                                                              'qO2','qO2_TCA_growth_only',
+                                                              'is_aerobic',] +\
                                                      self.track_vars + chems_nsk
                                                      
         try_fewer_n_spikes_until = self.try_fewer_n_spikes_until
@@ -311,7 +331,10 @@ class NSKFermentation(BatchBioreactor):
             if growth_rate_arr[i] < factor_for_cell_density_plateau * max_growth_rate:
                 index_growth_plateau = i
                 break
-        return index_growth_plateau-1
+        if index_growth_plateau is None:
+            return len(x_arr) - 1
+        else:
+            return index_growth_plateau-1
     
     def _load_nsk_results_specific_tau(self, tau):
         nsk_results = self.nsk_results
@@ -332,9 +355,16 @@ class NSKFermentation(BatchBioreactor):
             if self.stop_aeration_when_cell_density_plateaus:
                 self.tau_index_cell_density_plateau = tau_index_cell_density_plateau = self.get_tau_index_cell_density_plateau()
                 self.tau_cell_density_plateau = nsk_results_dict['time'][tau_index_cell_density_plateau]
-                self.cumulative_qO2 = nsk_results_dict['qO2'][:min(tau_index, tau_index_cell_density_plateau)].sum()
+                self.tau_index_stop_aeration = tau_index_cell_density_plateau
             else:
-                self.cumulative_qO2 = nsk_results_dict['qO2'][tau_index].sum()
+                try:
+                    self.tau_index_stop_aeration = np.where(nsk_results_dict['is_aerobic']==0.0)[0][0]
+                except:
+                    self.tau_index_stop_aeration = self.tau_index
+            self.tau_stop_aeration = nsk_results_dict['time'][self.tau_index_stop_aeration]
+            self._stepwise_O2 = stepwise_O2 = nsk_results_dict['qO2'][:-1] * nsk_results_dict['[x]'][:-1] * np.diff(nsk_results_dict['time'])
+            self.cumulative_O2 = stepwise_O2[:self.tau_index_stop_aeration].sum()
+
         except:
             breakpoint()
             
@@ -411,8 +441,14 @@ class NSKFermentation(BatchBioreactor):
         xO2_air = 0.21
         compressed_air.imol['O2'] = xO2_air
         compressed_air.imol['N2'] = 1.0 - xO2_air
-        self.stoich_air_flow_req = stoich_air_flow_req = self.cumulative_qO2 / (self.tau * xO2_air)
-        self.stoich_O2_flow_req = stoich_O2_flow_req = xO2_air * stoich_air_flow_req
+        # self.stoich_O2_flow_req = stoich_O2_flow_req = xO2_air * stoich_air_flow_req
+        # self.stoich_air_flow_req = stoich_air_flow_req = self.cumulative_O2 / (self.tau * xO2_air)
+        nsk_results_specific_tau_dict = self.nsk_results_specific_tau_dict
+        cumulative_gram_x = nsk_results_specific_tau_dict['[x]'] * nsk_results_specific_tau_dict['curr_env']
+        material_factor_nsk_to_bst = effluent.imass['Yeast']*1e3/cumulative_gram_x
+        mmol_to_kmol = 1e-6
+        self.stoich_O2_flow_req = stoich_O2_flow_req = mmol_to_kmol * self.cumulative_O2 * material_factor_nsk_to_bst
+        self.stoich_air_flow_req = stoich_air_flow_req = stoich_O2_flow_req / xO2_air
         compressed_air.F_mol = stoich_air_flow_req * self.aeration_safety_factor
         vent.imol['O2'] += max(0, compressed_air.imol['O2'] - stoich_O2_flow_req)
         vent.imol['N2'] += compressed_air.imol['N2']
