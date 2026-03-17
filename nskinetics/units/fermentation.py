@@ -98,7 +98,7 @@ class NSKFermentation(BatchBioreactor):
               perform_hydrolysis=True,
               aeration_safety_factor=2.0,
               stage_1_max_time=np.inf,
-              stage_1_x_target=np.inf,
+              stage_1_max_x=np.inf,
               stop_aeration_when_cell_density_plateaus=False,
               factor_for_cell_density_plateau=0.5):
         
@@ -137,7 +137,7 @@ class NSKFermentation(BatchBioreactor):
         
         self.aeration_safety_factor = aeration_safety_factor
         self.stage_1_max_time = stage_1_max_time
-        self.stage_1_x_target = stage_1_x_target
+        self.stage_1_max_x = stage_1_max_x
         
         self.stop_aeration_when_cell_density_plateaus = stop_aeration_when_cell_density_plateaus
         self.factor_for_cell_density_plateau = factor_for_cell_density_plateau
@@ -152,13 +152,13 @@ class NSKFermentation(BatchBioreactor):
         self.kinetic_reaction_system._te.stage_1_max_time = val
     
     @property
-    def stage_1_x_target(self):
-        return self._stage_1_x_target
+    def stage_1_max_x(self):
+        return self._stage_1_max_x
     
-    @stage_1_x_target.setter
-    def stage_1_x_target(self, val):
-        self._stage_1_x_target = val
-        self.kinetic_reaction_system._te.stage_1_x_target = val
+    @stage_1_max_x.setter
+    def stage_1_max_x(self, val):
+        self._stage_1_max_x = val
+        self.kinetic_reaction_system._te.stage_1_max_x = val
     
     def _nsk_simulate_kinetics(self, feed, tau, feed_spike_condition=None, plot=False): 
         # !!!
@@ -240,7 +240,7 @@ class NSKFermentation(BatchBioreactor):
                 self.tau_index_stop_aeration = tau_index_cell_density_plateau
             else:
                 try:
-                    self.tau_index_stop_aeration = np.where(nsk_results_dict['is_aerobic']==0.0)[0][0]
+                    self.tau_index_stop_aeration = min(tau_index, np.where(nsk_results_dict['is_aerobic']==0.0)[0][0])
                 except:
                     self.tau_index_stop_aeration = tau_index
             self.tau_stop_aeration = nsk_results_dict['time'][self.tau_index_stop_aeration]
@@ -358,7 +358,7 @@ class NSKFermentation(BatchBioreactor):
                 self.tau_index_stop_aeration = tau_index_cell_density_plateau
             else:
                 try:
-                    self.tau_index_stop_aeration = np.where(nsk_results_dict['is_aerobic']==0.0)[0][0]
+                    self.tau_index_stop_aeration = min(self.tau_index, np.where(nsk_results_dict['is_aerobic']==0.0)[0][0])
                 except:
                     self.tau_index_stop_aeration = self.tau_index
             self.tau_stop_aeration = nsk_results_dict['time'][self.tau_index_stop_aeration]
