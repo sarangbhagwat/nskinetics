@@ -124,7 +124,7 @@ model *bhagwat2026()
   stage_1_max_time has time_unit;
   stage_1_max_x = infinity;
   stage_1_max_x has g_per_l;
-  anaerobic_growth_mult = 0.2;
+  anaerobic_growth_mult = 1.0;
   anaerobic_growth_mult has dimensionless;
 
   qO2 has mmole_per_g_per_h;
