@@ -1,9 +1,9 @@
 .. image:: docs/source/_static/images/logo/logo_nskinetics_light_white-circle.png
   :width: 250
 
-=============================================================
+===============================================================
 The (Non-)Steady state Kinetics simulation package (NSKinetics)
-=============================================================
+===============================================================
 
 .. image:: http://img.shields.io/pypi/v/nskinetics.svg?style=flat
    :target: https://pypi.python.org/pypi/nskinetics

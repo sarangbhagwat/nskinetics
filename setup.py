@@ -9,11 +9,13 @@ from setuptools import setup, find_packages
 
 setup(
     name='nskinetics',
+
     packages=find_packages(),
     license='MIT',
     version='0.2.4',
     description='Simulation of Non-Steady state enzyme Kinetics and inhibitory phenomena',
     long_description=open('README.rst', encoding='utf-8').read(),
+    long_description_content_type="text/markdown",
     author='Sarang S. Bhagwat',
     install_requires=['IPython>=7.9.0',
                       'numpy>=1.26.4,<2.0.0', 
