@@ -232,6 +232,34 @@ _COLS = ['time', 's_glu', 's_EtOH', 's_IBO', 'x', 'n_glu_spikes',
          'curr_tot_vol_glu_feed_added']
 
 
+_RATE_RULE_MODEL = """
+model rate_rule_bug()
+  compartment env; species s in env; s = 10; env = 1;
+  w = 0.5; w has dimensionless;
+  w' = 0;
+  s' = 0;
+  flag = 1;
+end
+"""
+
+
+def test_compile_events_preserves_rate_rule_initial_values():
+    # Regression test for a roadrunner bug: regenerateModel() (triggered by
+    # compiling an event) leaves the model's stored init(X) bookkeeping stale
+    # for any rate-rule-governed variable with an explicit initial value; a
+    # plain reset() afterward then reads back a corrupted value instead of
+    # the SBML-defined initial value. compile_events() guards against this by
+    # calling resetToOrigin() right after regenerateModel(). `w` here is a
+    # rate-rule-governed variable (w' = 0) with an explicit initial value
+    # (w = 0.5), i.e. exactly the kind of variable the bug corrupts.
+    r = te.loadAntimonyModel(_RATE_RULE_MODEL)
+    trs = nsk.TelluriumReactionSystem(r, units={'time': 'h', 'conc': 'g/L'})
+    trs.add_event(nsk.Event(when='time >= 5', do={'flag': '0'}, name='ev'))
+    trs.compile_events()
+    trs.reset()
+    assert r['w'] == 0.5
+
+
 def test_migration_equivalence_ibo_events():
     with open(_REF_ANTIMONY, encoding='utf-8') as f:
         ref_text = f.read()

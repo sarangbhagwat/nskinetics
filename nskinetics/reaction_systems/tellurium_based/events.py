@@ -59,6 +59,14 @@ class Event:
         force_regenerate : bool
             If ``True``, regenerate the model immediately. Pass ``False`` to
             batch multiple events and regenerate once afterward.
+
+        Notes
+        -----
+        When ``force_regenerate`` is ``True``, compiling this event regenerates
+        the model and resets all model state to its SBML-defined origin values
+        as a side effect. Set any custom initial conditions or parameter
+        overrides AFTER compiling events, not before, or they will be
+        discarded.
         """
         name = self.name
         try:
@@ -167,7 +175,16 @@ class FeedSpike:
         return [a, b, c]
 
     def compile(self, r, force_regenerate=True):
-        """Expand and compile all three events into roadrunner model ``r``."""
+        """Expand and compile all three events into roadrunner model ``r``.
+
+        Notes
+        -----
+        When ``force_regenerate`` is ``True``, compiling this spike regenerates
+        the model and resets all model state to its SBML-defined origin values
+        as a side effect. Set any custom initial conditions or parameter
+        overrides AFTER compiling events, not before, or they will be
+        discarded.
+        """
         events = self.expand()
         for event in events:
             event.compile(r, force_regenerate=False)

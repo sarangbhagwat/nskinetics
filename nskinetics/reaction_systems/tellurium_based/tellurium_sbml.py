@@ -110,6 +110,13 @@ class TelluriumReactionSystem():
 
         Guarded so repeated calls do not double-inject. Raises
         :class:`EventCompilationError` with context on failure.
+
+        Notes
+        -----
+        Compiling events regenerates the model and resets all model state to
+        its SBML-defined origin values as a side effect. Set any custom
+        initial conditions or parameter overrides AFTER compiling events, not
+        before, or they will be discarded.
         """
         if self._events_compiled:
             return
