@@ -66,14 +66,6 @@ model *bhagwat2026()
   r16: s_KIV + 0.363 $Red -> 0.638 s_IBO; (k_16*(s_KIV - k_16r*s_IBO)/(s_KIV + K_16 + K_16i*s_IBO))*a*env;
 
   // Events:
-  glucose_feed_spike_a: at glucose_feed_spikeDelay after (s_glu <= threshold_conc_glu_spike) && (n_glu_spikes < max_n_glu_spikes), priority=5: last_vol_glu_feed_added = env*(target_conc_glu_spike - s_glu)/(conc_glu_feed_spike - target_conc_glu_spike);
-
-  glucose_feed_spike_b: at glucose_feed_spikeDelay after (s_glu <= threshold_conc_glu_spike) && (n_glu_spikes < max_n_glu_spikes), priority=4, fromTrigger=false: env = env + last_vol_glu_feed_added, tot_vol_glu_feed_added = tot_vol_glu_feed_added + last_vol_glu_feed_added; 
-
-  glucose_feed_spike_c: at glucose_feed_spikeDelay after (s_glu <= threshold_conc_glu_spike) && (n_glu_spikes < max_n_glu_spikes), priority=3, fromTrigger=false: s_glu = target_conc_glu_spike, n_glu_spikes = n_glu_spikes + 1;
-
-  stage_1_complete_max_time: at (time >= stage_1_max_time): is_aerobic = 0;
-  stage_1_complete_x_target: at (x >= stage_1_max_x): is_aerobic = 0;
 
   // Species initializations:
   s_glu = 15/env;

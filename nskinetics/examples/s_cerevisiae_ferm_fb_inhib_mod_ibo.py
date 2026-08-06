@@ -29,7 +29,34 @@ te_r = nsk.TelluriumReactionSystem(r)
 te_r._units['time'] = 'h'
 te_r._units['conc'] = 'g/L'
 te_r.default_max_n_glu_spikes = 200
-    
+
+#%% Declare fed-batch + stage-1 events via the NSKinetics event API
+glucose_feed_spike = nsk.FeedSpike(
+    species='s_glu',
+    when='s_glu <= threshold_conc_glu_spike',
+    target='target_conc_glu_spike',
+    feed_conc='conc_glu_feed_spike',
+    volume_var='env',
+    max_count='max_n_glu_spikes',
+    count_var='n_glu_spikes',
+    last_vol_var='last_vol_glu_feed_added',
+    tot_vol_var='tot_vol_glu_feed_added',
+    delay='glucose_feed_spikeDelay',
+    priority=5,
+    name='glucose_feed_spike',
+)
+for _event in glucose_feed_spike.expand():
+    te_r.add_event(_event)
+
+te_r.add_event(nsk.Event(when='time >= stage_1_max_time',
+                         do={'is_aerobic': '0'},
+                         name='stage_1_complete_max_time'))
+te_r.add_event(nsk.Event(when='x >= stage_1_max_x',
+                         do={'is_aerobic': '0'},
+                         name='stage_1_complete_x_target'))
+
+te_r.compile_events()
+
 def reset_kinetic_reaction_system(r, reset_max_n_glu_spikes=True):
     r.reset()
     r_te = r._te
