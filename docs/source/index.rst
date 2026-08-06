@@ -98,6 +98,16 @@ bridge.
        :link-type: doc
        :padding: 1
 
+       .. image:: _static/images/icons/concepts_dark.png
+          :height: 100
+          :class: only-dark
+          :align: center
+
+       .. image:: _static/images/icons/concepts_light.png
+          :height: 100
+          :class: only-light
+          :align: center
+
        The ideas behind NSKinetics
 
 
