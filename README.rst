@@ -50,7 +50,7 @@ For help on common installation issues, please visit the `documentation <https:/
 Documentation
 -------------
 
-NSKinetic's `full documentation <https://nskinetics.readthedocs.io/en/latest/>`__ includes a staged tutorial, starting from a minimal model and building up to a full process/TEA-coupled fed-batch fermentation. Here are the first three stages to get started:
+NSKinetic's `full documentation <https://nskinetics.readthedocs.io/en/latest/>`__ includes a staged tutorial, starting from a minimal model and building up to a full process/TEA-coupled fed-batch fermentation. Here are three stages to get started:
 
 **Example 1: Build and simulate a minimal model**
 
@@ -83,7 +83,7 @@ This prints, in the ``HP_2024`` environment:
 
     t=10: [10.     0.498  9.502]
 
-``S`` has decayed from its initial concentration of 10 g/L to about 0.498 g/L by ``t=10`` h, while ``P`` has risen to about 9.502 g/L — the full stoichiometric conversion of ``S`` into ``P`` under first-order decay with ``k=0.3``.
+``S`` has decayed from its initial concentration of 10 g/L to about 0.498 g/L by ``t=10`` h, while ``P`` has risen to about 9.502 g/L — the stoichiometric (1:1) conversion of ``S`` into ``P`` under first-order decay with ``k=0.3``.
 
 **Example 2: Add an event**
 

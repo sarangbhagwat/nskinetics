@@ -59,8 +59,8 @@ Once units are set, two properties become meaningful:
    print('time_factor:', trs.time_factor, 'indexer:', trs.material_indexer)
 
 :attr:`~nskinetics.TelluriumReactionSystem.time_factor` gives hours per
-model time unit (here ``1.0``, since the model's time unit already is
-hours); :attr:`~nskinetics.TelluriumReactionSystem.material_indexer`
+model time unit (here ``1.0``, since you declared the model's time unit as
+hours via ``units={'time': 'h'}``); :attr:`~nskinetics.TelluriumReactionSystem.material_indexer`
 resolves the concentration unit to the matching biosteam stream indexer
 (``'imass'`` for a mass unit like ``g/L``, ``'imol'`` for a molar one) —
 used by the process bridge described in later tutorial pages.
@@ -121,7 +121,7 @@ environment prints:
 (``S = 10``, ``env = 1``, so concentration equals amount); and the final
 row of the simulated array shows ``S`` decayed from ``10`` to about
 ``0.498`` g/L by ``t=10`` h while ``P`` rose to about ``9.502`` g/L — the
-full stoichiometric conversion of ``S`` into ``P`` under first-order decay,
+stoichiometric (1:1) conversion of ``S`` into ``P`` under first-order decay,
 as expected from ``k=0.3``.
 
 Next: :doc:`03_events` introduces the event API used to change model state
