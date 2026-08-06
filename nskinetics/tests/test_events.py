@@ -172,3 +172,85 @@ def test_feedspike_fires_and_caps_at_max_count():
     assert res[:, 2].max() == 2.0
     # after the cap, s_glu is allowed to decay below threshold and stay there
     assert res[-1, 1] < 10.0
+
+
+import os
+
+_DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
+_REF_ANTIMONY = os.path.join(_DATA_DIR, 'ibo_antimony_with_events_reference.txt')
+
+# Event-block line prefixes to strip when building the "base" (no-events) model.
+_EVENT_NAMES = ('glucose_feed_spike_a', 'glucose_feed_spike_b',
+                'glucose_feed_spike_c', 'stage_1_complete_max_time',
+                'stage_1_complete_x_target')
+
+
+def _strip_event_blocks(antimony_text):
+    """Remove the five hand-written event definition lines, keeping everything
+    else (species, rate laws, parameters, assignment rules)."""
+    kept = []
+    for line in antimony_text.splitlines():
+        stripped = line.strip()
+        if any(stripped.startswith(name + ':') for name in _EVENT_NAMES):
+            continue
+        kept.append(line)
+    return '\n'.join(kept)
+
+
+def _api_events():
+    """The isobutanol events, declared via the Python API (mirrors Task 11)."""
+    spike = nsk.FeedSpike(
+        species='s_glu', when='s_glu <= threshold_conc_glu_spike',
+        target='target_conc_glu_spike', feed_conc='conc_glu_feed_spike',
+        volume_var='env', max_count='max_n_glu_spikes', count_var='n_glu_spikes',
+        last_vol_var='last_vol_glu_feed_added', tot_vol_var='tot_vol_glu_feed_added',
+        delay='glucose_feed_spikeDelay', priority=5, name='glucose_feed_spike')
+    stage_time = nsk.Event(when='time >= stage_1_max_time', do={'is_aerobic': '0'},
+                           name='stage_1_complete_max_time')
+    stage_x = nsk.Event(when='x >= stage_1_max_x', do={'is_aerobic': '0'},
+                        name='stage_1_complete_x_target')
+    return spike, stage_time, stage_x
+
+
+def _setup_ibo_run(r):
+    """Set integrator tolerances and initial conditions matching the example."""
+    integ = r.getIntegrator()
+    integ.absolute_tolerance = 1e-10
+    integ.relative_tolerance = 1e-9
+    r.reset()
+    r.n_glu_spikes = 0
+    r.last_vol_glu_feed_added = 0.
+    r.tot_vol_glu_feed_added = 0.
+    r.env = 1.
+    r.is_aerobic = 1
+    r.max_n_glu_spikes = 20
+    r.s_glu = 100
+    r.x = 1
+
+
+_COLS = ['time', 's_glu', 's_EtOH', 's_IBO', 'x', 'n_glu_spikes',
+         'curr_tot_vol_glu_feed_added']
+
+
+def test_migration_equivalence_ibo_events():
+    with open(_REF_ANTIMONY, encoding='utf-8') as f:
+        ref_text = f.read()
+
+    # Reference: hand-written Antimony events.
+    r_ref = te.loadAntimonyModel(ref_text)
+    _setup_ibo_run(r_ref)
+    out_ref = np.array(r_ref.simulate(0, 200, 2001, _COLS))
+
+    # Migrated: base model (events stripped) + events injected via the API.
+    r_api = te.loadAntimonyModel(_strip_event_blocks(ref_text))
+    trs = nsk.TelluriumReactionSystem(r_api, units={'time': 'h', 'conc': 'g/L'})
+    spike, stage_time, stage_x = _api_events()
+    for e in spike.expand():
+        trs.add_event(e)
+    trs.add_event(stage_time)
+    trs.add_event(stage_x)
+    trs.compile_events()
+    _setup_ibo_run(r_api)
+    out_api = np.array(r_api.simulate(0, 200, 2001, _COLS))
+
+    assert np.allclose(out_ref, out_api, rtol=1e-3, atol=1e-6)
