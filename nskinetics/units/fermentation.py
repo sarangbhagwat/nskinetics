@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 # NSKinetics: simulation of Non-Steady state enzyme Kinetics and inhibitory phenomena
 # Copyright (C) 2025-, Sarang S. Bhagwat <sarangbhagwat.developer@gmail.com>
-# 
-# This module is under the MIT open-source license. See 
+#
+# This module is under the MIT open-source license. See
 # https://github.com/sarangbhagwat/nskinetics/blob/main/LICENSE
 # for license details.
 """
@@ -18,80 +18,76 @@ References
 """
 
 import numpy as np
-from biosteam.units import BatchBioreactor
-from thermosteam import Reaction, ParallelReaction
-from ..reaction_systems.tellurium_based.tellurium_sbml import TelluriumReactionSystem
-from ..reaction_systems.reaction_system import ReactionSystem
-from ..utils import get_index_nearest_element_from_sorted_array
+from thermosteam import Reaction
+
+from .batch_reactor import NSKBatchReactor, AerationSpec, SpikeReduceRetry
 
 __all__ = ('NSKFermentation',)
 
 
-class NSKFermentation(BatchBioreactor):
+def _negative_concentration_validator(model):
+    from ..exceptions import MassBalanceError
+    if np.any(np.round([model.x, model.s_glu, model.s_EtOH,
+                        model.s_IBO, model.s_acetate], 2) < 0):
+        raise MassBalanceError(
+            'Negative concentrations in final kinetic simulation.')
+
+
+def _yield_over_theoretical_validator(model):
+    from ..exceptions import MassBalanceError
+    if np.any([model.y_EtOH_glu_added > 0.511, model.y_IBO_glu_added > 0.410]):
+        raise MassBalanceError(
+            'Yield over theoretical maximum in final kinetic simulation.')
+
+
+class NSKFermentation(NSKBatchReactor):
     """
-    Create a unit that models large-scale batch fermentation
-    for the production of 1st-generation ethanol using Saccharomyces cerevisiae.
-    Only sucrose and glucose are taken into account for conversion.
-    Conversion is based on reaction time, `tau`. Cleaning and unloading time,
-    `tau_0`, fraction of working volume, `V_wf`, and number of reactors,
-    `N_reactors`, are attributes that can be changed. Cost of a reactor
-    is based on the NREL batch fermentation tank cost assuming volumetric
-    scaling with a 6/10th exponent [1]_. 
-    
+    S. cerevisiae fed-batch fermentation for 1st-generation ethanol (and
+    isobutanol) production. Thin :class:`NSKBatchReactor` subclass that
+    configures aeration, glucose fed-batch spike-count retry, sucrose
+    hydrolysis, and yield/mass-balance validators.
+
     Parameters
     ----------
-    ins : 
-        Inlet fluids to be mixed into the fermentor.
-    outs : 
+    ins :
+        Inlet fluids to be mixed into the fermentor. The first inlets are:
+        [0] initial feed, [1] seed culture, [2] spike feed (fed-batch),
+        [3] compressed air (aeration).
+    outs :
         * [0] Vent
         * [1] Effluent
     tau : float
         Reaction time [h].
-    N : int, optional
-        Number of batch reactors
-    V : float, optional
-        Target volume of reactors [m^3].
-    T=305.15 : float
-        Temperature of reactor [K].
-    P=101325 : float
-        Operating pressure of reactor [Pa].
-    Nmin=2 : int
-        Minimum number of fermentors.
-    Nmax=36: int
-        Maximum number of fermentors.  
-    kinetic_reaction_system: nskinetics.ReactionSystem or nskinetics.TelluriumReactionSystem object.
-        Reaction system used for kinetic simulation.
-    map_chemicals_nsk_to_bst: dict.
-        Dictionary with keys as nskinetics species ID strings and values as biosteam chemical ID strings.
+    kinetic_reaction_system : TelluriumReactionSystem
+        Kinetic model driving the fermentation.
+    map_chemicals_nsk_to_bst : dict
+        ``{model var: biosteam chemical ID}``. Preferred alias:
+        ``map_species_to_chemicals``.
+    perform_hydrolysis : bool
+        If ``True``, apply ``Sucrose + Water -> 2 Glucose`` to feed and spike-feed.
+    try_fewer_n_spikes_until : callable
+        ``stop_when(model) -> bool`` for the spike-count retry loop.
+    aeration_safety_factor, stage_1_max_time, stage_1_max_x,
+    stop_aeration_when_cell_density_plateaus, factor_for_cell_density_plateau :
+        Aeration configuration (see :class:`AerationSpec`).
+    sugar_IDs : tuple
+        Sugar chemical IDs (retained for back-compat).
+
     Notes
     -----
-    Either N or V must be given.
-    
-    Examples
-    --------
-    
-    
-    
+    Either ``N`` or ``V`` must be given.
     """
     line = 'NSKFermentation'
-    _ins_size_is_fixed = False
-    # Ins size is not fixed; however, the first three ins streams must be as follows:
-    # 0. Initial feed
-    # 1. Seed culture
-    # 2. Spike feed (optional; for fed-batch only)
-    
-    autoselect_N = True
-    
-    def _init(self, 
-              tau, 
-              kinetic_reaction_system, 
-              map_chemicals_nsk_to_bst={}, 
+
+    def _init(self, tau, kinetic_reaction_system,
+              map_chemicals_nsk_to_bst=None,
+              map_species_to_chemicals=None,
               track_vars=None,
               n_simulation_steps=1000,
               f_reset_kinetic_reaction_system=None,
               N=None, V=None, T=305.15, P=101325., Nmin=2, Nmax=36,
               sugar_IDs=('Sucrose', 'Glucose', 'Xylose'),
-              tau_max=24.*7.,
+              tau_max=24. * 7.,
               tau_update_policy=None,
               n_decimal_places_for_tau_update_policy=2,
               try_fewer_n_spikes_until=lambda r: True,
@@ -101,367 +97,93 @@ class NSKFermentation(BatchBioreactor):
               stage_1_max_x=np.inf,
               stop_aeration_when_cell_density_plateaus=False,
               factor_for_cell_density_plateau=0.5):
-        
-        BatchBioreactor._init(self, tau=tau, N=N, V=V, T=T, P=P, Nmin=Nmin, Nmax=Nmax)
-        self._load_components()
-        
+
+        # Resolve the species->chemical map (new name preferred, old name accepted).
+        if map_species_to_chemicals is None:
+            map_species_to_chemicals = map_chemicals_nsk_to_bst or {}
+        if track_vars is None:
+            track_vars = []
+
+        # Reset function: adapt the old signature to the parent's reset(model, **kw).
+        if f_reset_kinetic_reaction_system is None:
+            reset = lambda model, **kw: model.reset()
+        else:
+            def reset(model, **kw):
+                f_reset_kinetic_reaction_system(
+                    model, reset_max_n_glu_spikes=kw.get('reset_max_n_glu_spikes', True))
+
+        aeration = AerationSpec(
+            qO2_var='qO2', is_aerobic_var='is_aerobic', biomass_var='[x]',
+            volume_var='curr_env', biomass_chemical='Yeast',
+            safety_factor=aeration_safety_factor, air_index=3,
+            stop_when_cell_density_plateaus=stop_aeration_when_cell_density_plateaus,
+            factor_for_cell_density_plateau=factor_for_cell_density_plateau,
+            stage_1_max_time=stage_1_max_time, stage_1_max_x=stage_1_max_x)
+
+        spike_retry = SpikeReduceRetry(
+            max_count_var='max_n_glu_spikes', stop_when=try_fewer_n_spikes_until)
+
+        NSKBatchReactor._init(
+            self, kinetic_reaction_system=kinetic_reaction_system,
+            tau=tau, tau_max=tau_max,
+            map_species_to_chemicals=map_species_to_chemicals,
+            track_vars=track_vars, n_simulation_steps=n_simulation_steps,
+            tau_update_policy=tau_update_policy,
+            n_decimal_places_for_tau_update_policy=n_decimal_places_for_tau_update_policy,
+            reset=reset, volume_var='curr_env',
+            aeration=aeration, spike_retry=spike_retry,
+            pre_reactions=(), validators=(
+                _negative_concentration_validator,
+                _yield_over_theoretical_validator),
+            spike_feed_index=2,
+            N=N, V=V, T=T, P=P, Nmin=Nmin, Nmax=Nmax)
+
         chemicals = self.chemicals
-        if perform_hydrolysis:
-            self.hydrolysis_reaction = Reaction('Sucrose + Water -> 2Glucose', 'Sucrose', 1.00, chemicals)
-        
-        self.kinetic_reaction_system = kinetic_reaction_system
-        if isinstance(kinetic_reaction_system, TelluriumReactionSystem):
-            self.simulate_kinetics = self._nsk_te_simulate_kinetics
-        elif isinstance(kinetic_reaction_system, ReactionSystem):
-            self.simulate_kinetics = self._nsk_simulate_kinetics
-        
-        self.map_chemicals_nsk_to_bst = map_chemicals_nsk_to_bst
-        self.track_vars = track_vars
-        self.n_simulation_steps = n_simulation_steps
-        self.f_reset_kinetic_reaction_system = f_reset_kinetic_reaction_system if f_reset_kinetic_reaction_system is not None else lambda model: model.reset()
-        
-        self.sugar_IDs = sugar_IDs
         self.perform_hydrolysis = perform_hydrolysis
-        
-        self.tau_max = tau_max
-        self.tau_update_policy = tau_update_policy
-        self.n_decimal_places_for_tau_update_policy = n_decimal_places_for_tau_update_policy
-        
-        self.try_fewer_n_spikes_until = try_fewer_n_spikes_until
-        
-        self.run_type = 'simulate kinetics'
-        
-        self._material_indexer = None
-        self._volume_attribute = None
-        self._time_conv_factor = None
-        
+        if perform_hydrolysis:
+            self.hydrolysis_reaction = Reaction(
+                'Sucrose + Water -> 2Glucose', 'Sucrose', 1.00, chemicals)
+            self.pre_reactions = [self.hydrolysis_reaction]
+
+        self.sugar_IDs = sugar_IDs
+        self.f_reset_kinetic_reaction_system = f_reset_kinetic_reaction_system
+        self.stop_aeration_when_cell_density_plateaus = \
+            stop_aeration_when_cell_density_plateaus
+        self.factor_for_cell_density_plateau = factor_for_cell_density_plateau
         self.aeration_safety_factor = aeration_safety_factor
+        # mirror stage-1 cutoffs onto the model (property setters below)
         self.stage_1_max_time = stage_1_max_time
         self.stage_1_max_x = stage_1_max_x
-        
-        self.stop_aeration_when_cell_density_plateaus = stop_aeration_when_cell_density_plateaus
-        self.factor_for_cell_density_plateau = factor_for_cell_density_plateau
-        
+
+    # --- stage-1 cutoffs mirror onto the kinetic model ---------------------
     @property
     def stage_1_max_time(self):
         return self._stage_1_max_time
-    
+
     @stage_1_max_time.setter
     def stage_1_max_time(self, val):
         self._stage_1_max_time = val
         self.kinetic_reaction_system._te.stage_1_max_time = val
-    
+        if self.aeration is not None:
+            self.aeration.stage_1_max_time = val
+
     @property
     def stage_1_max_x(self):
         return self._stage_1_max_x
-    
+
     @stage_1_max_x.setter
     def stage_1_max_x(self, val):
         self._stage_1_max_x = val
         self.kinetic_reaction_system._te.stage_1_max_x = val
-    
-    def _nsk_simulate_kinetics(self, feed, tau, feed_spike_condition=None, plot=False): 
-        # !!!
-        self.tau = tau
-        effluent = feed.copy()
-        return effluent
-    
-    def _nsk_te_simulate_kinetics(self, feed, tau, feed_spike_condition=None, plot=False):
-        
-        kinetic_reaction_system = self.kinetic_reaction_system
-        self.f_reset_kinetic_reaction_system(kinetic_reaction_system, reset_max_n_glu_spikes=True)
-        
-        te_r = kinetic_reaction_system._te
-        try_fewer_n_spikes_until = self.try_fewer_n_spikes_until
-        
-        self._helper_nsk_te_reset_and_simulate(feed=feed, tau=tau, feed_spike_condition=feed_spike_condition, plot=plot)
-        te_r.max_n_glu_spikes = list(self.nsk_results_dict['curr_n_glu_spikes'])[-1] - 1
-            
-        while ((not try_fewer_n_spikes_until(te_r)) and (te_r.max_n_glu_spikes>=0)): #!!!
-            self._helper_nsk_te_reset_and_simulate(feed=feed, tau=tau, feed_spike_condition=feed_spike_condition, plot=plot)
-            te_r.max_n_glu_spikes -= 1
-        
-        if np.any(
-                np.round([te_r.x, te_r.s_glu, te_r.s_EtOH, 
-                          te_r.s_IBO, te_r.s_acetate], 2)<0):
-            raise RuntimeError(f'MassBalError: Negative concentrations in final kinetic simulation.')
-        elif np.any([te_r.y_EtOH_glu_added>0.511, te_r.y_IBO_glu_added>0.410]):
-            raise RuntimeError(f'MassBalError: Yield over theoretical maximum in final kinetic simulation.')
-            
-        tau_index = -1
-        tau_update_policy = self.tau_update_policy
-        
-        nsk_results = self.nsk_results
-        nsk_results_col_names = self.nsk_results_col_names
-        
-        self._tau_update_success = False
-        
-        if tau_update_policy is None:
-            tau_index = get_index_nearest_element_from_sorted_array(nsk_results[:, nsk_results_col_names.index('time')], tau)
-            self._tau_update_success = True
-            
-        elif tau_update_policy[0] in('max', 'min'):
-            param_to_opt = tau_update_policy[1] # name of parameter to maximize or minimize
-            index_param_to_opt = nsk_results_col_names.index(param_to_opt)
-            n_decimal_places_for_tau_update_policy = self.n_decimal_places_for_tau_update_policy
-            index_tau_with_max_var = np.where(
-                np.round(nsk_results[:, index_param_to_opt], n_decimal_places_for_tau_update_policy) == 
-                np.round(nsk_results[:, index_param_to_opt].__getattribute__(tau_update_policy[0])(), n_decimal_places_for_tau_update_policy)
-                )[0][0] # get the very first instance of the param being equal to the max/min value, both rounded to n_decimal_places_for_tau_update_policy
-            tau_index = index_tau_with_max_var
-            self._tau_update_success = True
-            
-        elif tau_update_policy[0] in('equals'):
-            param_to_opt = tau_update_policy[1] # name of parameter to check value of
-            index_param_to_opt = nsk_results_col_names.index(param_to_opt)
-            n_decimal_places_for_tau_update_policy = self.n_decimal_places_for_tau_update_policy
-            try:
-                index_tau_with_max_var = np.where(
-                    np.round(nsk_results[:, index_param_to_opt], n_decimal_places_for_tau_update_policy) == 
-                    np.round(tau_update_policy[2], n_decimal_places_for_tau_update_policy)
-                    )[0][0] # get the very first instance of the param being equal to the specified value, both rounded to n_decimal_places_for_tau_update_policy
-                tau_index = index_tau_with_max_var
-                self._tau_update_success = True
-            except:
-                pass
-            
-        self.nsk_results_specific_tau = nsk_results_specific_tau = nsk_results[tau_index]
-        
-        self.tau = nsk_results_specific_tau[nsk_results_col_names.index('time')]
-        
-        self.nsk_results_specific_tau_dict = {nsk_results_col_names[i]: nsk_results_specific_tau[i] for i in range(len(nsk_results_col_names))}
-        
-        nsk_results_dict = self.nsk_results_dict
-        
-        try:
-            if self.stop_aeration_when_cell_density_plateaus:
-                self.tau_index_cell_density_plateau = tau_index_cell_density_plateau = self.get_tau_index_cell_density_plateau()
-                self.tau_cell_density_plateau = nsk_results_dict['time'][tau_index_cell_density_plateau]
-                self.tau_index_stop_aeration = tau_index_cell_density_plateau
-            else:
-                try:
-                    self.tau_index_stop_aeration = min(tau_index, np.where(nsk_results_dict['is_aerobic']==0.0)[0][0])
-                except:
-                    self.tau_index_stop_aeration = tau_index
-            self.tau_stop_aeration = nsk_results_dict['time'][self.tau_index_stop_aeration]
-            self._stepwise_O2 = stepwise_O2 = nsk_results_dict['qO2'][:-1] * nsk_results_dict['[x]'][:-1] * np.diff(nsk_results_dict['time'])
-            self.cumulative_O2 = stepwise_O2[:self.tau_index_stop_aeration].sum()
-            
-        except:
-            breakpoint()
-            
-        effluent = self._get_minimal_effluent(feed)
-        
-        if plot: te_r.plot()
-        
-        return effluent
-    
-    def _helper_nsk_te_reset_and_simulate(self, feed, tau, feed_spike_condition=None, plot=False):
-        map_chemicals_nsk_to_bst = self.map_chemicals_nsk_to_bst
-        kinetic_reaction_system = self.kinetic_reaction_system
-        self.f_reset_kinetic_reaction_system(kinetic_reaction_system, reset_max_n_glu_spikes=False)
-        te_r = kinetic_reaction_system._te
-        chems_nsk = list(map_chemicals_nsk_to_bst.keys())
-        
-        # print('help', te_r.max_n_glu_spikes)
-        # get unit conversion factors and unit-based material indexers
-        
-        if (not self._material_indexer) or (not self._volume_attribute) or (not self._time_conv_factor):
-            time_units = kinetic_reaction_system._units['time']
-            if time_units.lower() in ('min', 'm'):
-                _time_conv_factor = 60.0
-            elif time_units.lower() in ('sec', 's'):
-                _time_conv_factor = 3600.0
-            elif time_units.lower() in ('hr', 'h'):
-                _time_conv_factor = 1.0
-            
-            conc_units = kinetic_reaction_system._units['conc']
-            if conc_units in ('M', 'mol/L', 'kg/m3', 'kg/m^3'):
-                _material_indexer = 'imol'
-                _volume_attribute = "ivol['Water']"
-            elif conc_units in ('g/L', 'kg/m3', 'kg/m^3'):
-                _material_indexer = 'imass'
-                _volume_attribute = "ivol['Water']"
-        
-            self._material_indexer = _material_indexer
-            self._volume_attribute = _volume_attribute
-            self._time_conv_factor = _time_conv_factor
-        
-        _material_indexer = self._material_indexer
-        _volume_attribute = self._volume_attribute
-        _time_conv_factor = self._time_conv_factor
-        
-        self._nsk_initial_concentration = initial_concentrations = {}
-        for c_nsk, c_bst in map_chemicals_nsk_to_bst.items():
-            exec(f'te_r.{c_nsk.replace("[", "").replace("]", "")} = feed.{_material_indexer}[c_bst]/feed.{_volume_attribute}')
-            exec(f'initial_concentrations[c_nsk] = te_r.{c_nsk.replace("[", "").replace("]", "")}')
-        
-        self.nsk_results_col_names = nsk_results_col_names = ['time', 'curr_env',
-                                                              'curr_n_glu_spikes', 
-                                                              'curr_tot_vol_glu_feed_added',
-                                                              'qO2','qO2_TCA_growth_only',
-                                                              'is_aerobic',] +\
-                                                     self.track_vars + chems_nsk
-                                                     
-        try_fewer_n_spikes_until = self.try_fewer_n_spikes_until
-        n_spikes = te_r.max_n_glu_spikes
-        
-        try:
-            self.nsk_results = nsk_results = np.array(te_r.simulate(0, 
-                                                            self.tau_max*_time_conv_factor, 
-                                                            self.n_simulation_steps,
-                                                            nsk_results_col_names,))
-        except Exception as e:
-            # print(str(e))
-            raise e
-        
-        self.nsk_results_dict = {nsk_results_col_names[i]: nsk_results[:, i] for i in range(len(nsk_results_col_names))}
-        # print(self.nsk_results_dict)
-        if plot: te_r.plot()
-    
-    def get_tau_index_cell_density_plateau(self):
-        nsk_results_dict = self.nsk_results_dict
-        x_arr = nsk_results_dict['[x]']
-        growth_rate_arr = np.diff(x_arr)
-        max_growth_rate = growth_rate_arr.max()
-        index_max_growth_rate = np.where(growth_rate_arr==max_growth_rate)[0][0]
-        index_growth_plateau = None
-        factor_for_cell_density_plateau = self.factor_for_cell_density_plateau
-        for i in range (index_max_growth_rate, len(growth_rate_arr)):
-            if growth_rate_arr[i] < factor_for_cell_density_plateau * max_growth_rate:
-                index_growth_plateau = i
-                break
-        if index_growth_plateau is None:
-            return len(x_arr) - 1
-        else:
-            return index_growth_plateau-1
-    
-    def _load_nsk_results_specific_tau(self, tau):
-        nsk_results = self.nsk_results
-        nsk_results_col_names = self.nsk_results_col_names
-        nsk_results_dict = self.nsk_results_dict
-        try:
-            self.tau_index = tau_index = get_index_nearest_element_from_sorted_array(nsk_results[:, nsk_results_col_names.index('time')], tau)
-        except:
-            breakpoint()
-        self.nsk_results_specific_tau = nsk_results_specific_tau = nsk_results[tau_index]
-        try:
-            self.nsk_results_specific_tau_dict = nsk_results_specific_tau_dict =\
-                {nsk_results_col_names[i]: nsk_results_specific_tau[i] 
-                 for i in range(len(nsk_results_col_names))}
-        except:
-            breakpoint()
-        try:
-            if self.stop_aeration_when_cell_density_plateaus:
-                self.tau_index_cell_density_plateau = tau_index_cell_density_plateau = self.get_tau_index_cell_density_plateau()
-                self.tau_cell_density_plateau = nsk_results_dict['time'][tau_index_cell_density_plateau]
-                self.tau_index_stop_aeration = tau_index_cell_density_plateau
-            else:
-                try:
-                    self.tau_index_stop_aeration = min(self.tau_index, np.where(nsk_results_dict['is_aerobic']==0.0)[0][0])
-                except:
-                    self.tau_index_stop_aeration = self.tau_index
-            self.tau_stop_aeration = nsk_results_dict['time'][self.tau_index_stop_aeration]
-            self._stepwise_O2 = stepwise_O2 = nsk_results_dict['qO2'][:-1] * nsk_results_dict['[x]'][:-1] * np.diff(nsk_results_dict['time'])
-            self.cumulative_O2 = stepwise_O2[:self.tau_index_stop_aeration].sum()
+        if self.aeration is not None:
+            self.aeration.stage_1_max_x = val
 
-        except:
-            breakpoint()
-            
-        return nsk_results_specific_tau
-    
-    def _get_minimal_effluent(self, minimal_feed):
-        feed = minimal_feed
-        nsk_results_specific_tau = self.nsk_results_specific_tau
-        nsk_results_specific_tau_dict = self.nsk_results_specific_tau_dict
-        nsk_results_col_names = self.nsk_results_col_names
-        _material_indexer = self._material_indexer
-        _volume_attribute = self._volume_attribute
-        effluent = feed.copy()
-        for c_nsk, c_bst in self.map_chemicals_nsk_to_bst.items():
-            exec(f'effluent.{_material_indexer}[c_bst] = nsk_results_specific_tau[nsk_results_col_names.index(c_nsk)] * effluent.{_volume_attribute}')
-        
-        curr_env = nsk_results_specific_tau_dict['curr_env']
-        effluent.F_vol *= curr_env/(curr_env - nsk_results_specific_tau_dict['curr_tot_vol_glu_feed_added'])
-        return effluent
-    
-    def _run(self):
-        vent, effluent = self.outs
-        ins = self.ins
-        
-        vent.empty()
-        effluent.empty()
-        
-        spike_feed = ins[2]
-        self.compressed_air = compressed_air = ins[3]
-        ins_to_mix = (i for i in ins if not i in [spike_feed, compressed_air]) # exclude spike feed and comp air initially
-        effluent.mix_from(ins_to_mix)
-        
-        if self.perform_hydrolysis:
-            self.hydrolysis_reaction.force_reaction(effluent)
-            self.hydrolysis_reaction.force_reaction(spike_feed)
-        
-        minimal_feed = effluent.copy()
-        
-        for i in minimal_feed.chemicals:
-            if not i.ID in list(self.map_chemicals_nsk_to_bst.values()) + ['Water',]:
-                minimal_feed.imol[i.ID] = 0.0
-        
-        run_type = self.run_type
-        if run_type in ('simulate kinetics',):
-            minimal_effluent = self.simulate_kinetics(feed=minimal_feed, tau=self._tau)
-        elif run_type in ('index saved nsk_results by tau',):
-            self._load_nsk_results_specific_tau(self.tau)
-            minimal_effluent = self._get_minimal_effluent(minimal_feed)
-        
-        # te_r = self.kinetic_reaction_system._te
-        
-        # copy non-nskinetics chemicals to minimal_effluent from effluent and spike_feed
-        for i in minimal_effluent.chemicals:
-            if not i.ID in list(self.map_chemicals_nsk_to_bst.values()) + ['Water',]:
-                minimal_effluent.imol[i.ID] += effluent.imol[i.ID]
-                minimal_effluent.imol[i.ID] += spike_feed.imol[i.ID]
-        
-        effluent.copy_like(minimal_effluent)
-        effluent.imol['NH3'] = 0. # NH3 in ins must be based on final Yeast mass
-        
-        # effluent.imol['CO2'] = 6.0*(feed.imol['Glucose']+spike_feed.imol['Glucose'])\
-        #                       -2.0*(effluent.imol['Ethanol'])\
-        #                       -1.0*(effluent.imol['Yeast'])
-        
-        effluent.imol['CO2'] = sum([i.get_atomic_flow('C') for i in self.ins]) - sum([i.get_atomic_flow('C') for i in self.outs])
+    # --- isobutanol-specific effluent finishing ----------------------------
+    def _finalize_effluent(self, effluent, vent, feed):
+        effluent.imol['NH3'] = 0.  # NH3 in ins must be based on final Yeast mass
+        effluent.imol['CO2'] = (sum(i.get_atomic_flow('C') for i in self.ins)
+                                - sum(i.get_atomic_flow('C') for i in self.outs))
         effluent.empty_negative_flows()
-        # vent.empty()
         vent.receive_vent(effluent, energy_balance=False)
         effluent.imol['Ethanol'] += max(0.0, vent.imol['Ethanol'])
         vent.imol['Ethanol'] = 0.0
-        
-        # compressed air calcs
-        compressed_air.empty()
-        xO2_air = 0.21
-        compressed_air.imol['O2'] = xO2_air
-        compressed_air.imol['N2'] = 1.0 - xO2_air
-        # self.stoich_O2_flow_req = stoich_O2_flow_req = xO2_air * stoich_air_flow_req
-        # self.stoich_air_flow_req = stoich_air_flow_req = self.cumulative_O2 / (self.tau * xO2_air)
-        nsk_results_specific_tau_dict = self.nsk_results_specific_tau_dict
-        cumulative_gram_x = nsk_results_specific_tau_dict['[x]'] * nsk_results_specific_tau_dict['curr_env']
-        material_factor_nsk_to_bst = effluent.imass['Yeast']*1e3/cumulative_gram_x
-        mmol_to_kmol = 1e-6
-        self.stoich_O2_flow_req = stoich_O2_flow_req = mmol_to_kmol * self.cumulative_O2 * material_factor_nsk_to_bst
-        self.stoich_air_flow_req = stoich_air_flow_req = stoich_O2_flow_req / xO2_air
-        compressed_air.F_mol = stoich_air_flow_req * self.aeration_safety_factor
-        vent.imol['O2'] += max(0, compressed_air.imol['O2'] - stoich_O2_flow_req)
-        vent.imol['N2'] += compressed_air.imol['N2']
-        
-    def set_tolerances_kinetic_simulation(self, atol, rtol):
-        kinetic_reaction_system = self.kinetic_reaction_system
-        if isinstance(kinetic_reaction_system, TelluriumReactionSystem):
-            r = kinetic_reaction_system._te
-            integrator = r.getIntegrator()
-            integrator.absolute_tolerance = atol
-            integrator.relative_tolerance = rtol
-        else: # !!!
-            breakpoint()
-    # @property
-    # def Hnet(self):
-    #     return 0
