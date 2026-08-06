@@ -263,7 +263,7 @@
       <parameter id="X_a" value="0.1" units="dimensionless" constant="false"/>
       <parameter id="X_AcDH" value="0.0075" units="dimensionless" constant="false"/>
       <parameter id="qO2" units="mmole_per_g_per_h" constant="false"/>
-      <parameter id="is_aerobic" value="1" units="dimensionless" constant="true"/>
+      <parameter id="is_aerobic" value="1" units="dimensionless" constant="false"/>
       <parameter id="qCO2" units="mmole_per_g_per_h" constant="false"/>
       <parameter id="qO2_TCA_growth_only" constant="false"/>
       <parameter id="tot_mass_glu" constant="false"/>
