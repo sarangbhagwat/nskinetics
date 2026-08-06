@@ -282,3 +282,24 @@ def test_migration_equivalence_ibo_events():
     out_api = np.array(r_api.simulate(0, 200, 2001, _COLS))
 
     assert np.allclose(out_ref, out_api, rtol=1e-3, atol=1e-6)
+
+
+def test_select_tau_index_policies():
+    from nskinetics.units.batch_reactor import select_tau_index
+    cols = ['time', 'val']
+    results = np.array([[0.0, 1.0], [1.0, 5.0], [2.0, 5.0], [3.0, 2.0]])
+    # None -> nearest time index
+    idx, ok = select_tau_index(results, cols, tau=2.4, policy=None)
+    assert (idx, ok) == (2, True)
+    # ('max', var) -> first index achieving the max
+    idx, ok = select_tau_index(results, cols, tau=None, policy=('max', 'val'))
+    assert (idx, ok) == (1, True)
+    # ('min', var) -> first index achieving the min
+    idx, ok = select_tau_index(results, cols, tau=None, policy=('min', 'val'))
+    assert (idx, ok) == (0, True)
+    # ('equals', var, value) -> first index equal (rounded) to value
+    idx, ok = select_tau_index(results, cols, tau=None, policy=('equals', 'val', 2.0))
+    assert (idx, ok) == (3, True)
+    # ('equals', ...) with no match -> success False, index -1
+    idx, ok = select_tau_index(results, cols, tau=None, policy=('equals', 'val', 99.0))
+    assert ok is False and idx == -1
