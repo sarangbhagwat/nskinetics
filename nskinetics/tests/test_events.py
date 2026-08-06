@@ -111,3 +111,64 @@ def test_remove_and_clear_events():
     assert [e.name for e in trs.events] == ['b']
     trs.clear_events()
     assert trs.events == []
+
+
+def test_feedspike_expansion_shape():
+    fs = nsk.FeedSpike(
+        species='s_glu', when='s_glu <= threshold_conc_glu_spike',
+        target='target_conc_glu_spike', feed_conc='conc_glu_feed_spike',
+        volume_var='env', max_count='max_n_glu_spikes', count_var='n_glu_spikes',
+        last_vol_var='last_vol_glu_feed_added', tot_vol_var='tot_vol_glu_feed_added',
+        delay='glucose_feed_spikeDelay', priority=5, name='glucose_feed_spike',
+    )
+    events = fs.expand()
+    assert [e.name for e in events] == [
+        'glucose_feed_spike_a', 'glucose_feed_spike_b', 'glucose_feed_spike_c']
+    a, b, c = events
+    # descending priorities enforce a -> b -> c ordering
+    assert (a.priority, b.priority, c.priority) == (5, 4, 3)
+    assert a.use_trigger_time_values is True
+    assert b.use_trigger_time_values is False and c.use_trigger_time_values is False
+    # max_count folds into every trigger
+    for e in events:
+        assert '(n_glu_spikes < max_n_glu_spikes)' in e.when
+    # a computes last_vol; b updates volume + tot_vol; c sets target + counter
+    assert a.do == {'last_vol_glu_feed_added':
+                    'env*(target_conc_glu_spike - s_glu)/(conc_glu_feed_spike - target_conc_glu_spike)'}
+    assert b.do == {'env': 'env + last_vol_glu_feed_added',
+                    'tot_vol_glu_feed_added': 'tot_vol_glu_feed_added + last_vol_glu_feed_added'}
+    assert c.do == {'s_glu': 'target_conc_glu_spike',
+                    'n_glu_spikes': 'n_glu_spikes + 1'}
+
+
+def test_feedspike_fires_and_caps_at_max_count():
+    # Model where s_glu decays; each spike resets s_glu to target and bumps count.
+    model = """
+    model spiker()
+      compartment env; species s_glu in env;
+      s_glu = 100; env = 1; k = 1;
+      threshold = 10; target = 100; feed_conc = 600;
+      n_spk = 0; n_max = 2;
+      last_vol = 0; tot_vol = 0; dly = 0;
+      n_spk has dimensionless; n_max has dimensionless;
+      s_glu' = -k*s_glu;
+    end
+    """
+    r = te.loadAntimonyModel(model)
+    trs = nsk.TelluriumReactionSystem(r, units={'time': 'h', 'conc': 'g/L'})
+    fs = nsk.FeedSpike(
+        species='s_glu', when='s_glu <= threshold',
+        target='target', feed_conc='feed_conc', volume_var='env',
+        max_count='n_max', count_var='n_spk',
+        last_vol_var='last_vol', tot_vol_var='tot_vol',
+        delay='dly', priority=5, name='spk',
+    )
+    for e in fs.expand():
+        trs.add_event(e)
+    trs.compile_events()
+    trs.reset()
+    res = np.array(r.simulate(0, 40, 401, ['time', 's_glu', 'n_spk']))
+    # counter never exceeds the cap
+    assert res[:, 2].max() == 2.0
+    # after the cap, s_glu is allowed to decay below threshold and stay there
+    assert res[-1, 1] < 10.0
