@@ -12,7 +12,7 @@ setup(
 
     packages=find_packages(),
     license='MIT',
-    version='0.2.4',
+    version='0.2.5',
     description='Simulation of Non-Steady state enzyme Kinetics and inhibitory phenomena',
     long_description=open('README.rst', encoding='utf-8').read(),
     long_description_content_type="text/markdown",
@@ -25,6 +25,7 @@ setup(
                       'xlsxwriter>=3.2.5,<4.0.0',
                       'scikit-learn',
                       'pandas>=2.2.2,<3.0.0',
+                      'tellurium',
                       # 'python-libsbml>=5.20.5,<6.0.0',
 		     ],
     # extras_require={ 
