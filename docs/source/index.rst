@@ -1,6 +1,8 @@
 (Non-)Steady State Kinetics Simulation
 ======================================
 
+.. currentmodule:: nskinetics
+
 .. toctree::
    :maxdepth: 2
    :hidden:
@@ -25,29 +27,63 @@
 
     .. grid-item::
 
-        NSKinetics is a fast, flexible, and convenient package in Python to simulate steady and non-steady state reaction kinetics and to connect 
-        them with techno-economic analysis (TEA) and life cycle assessment (LCA) under uncertainty. 
-        NSKinetics enables the construction, simulation, and analysis of reaction systems governed by mass action kinetics or other user-defined 
-        rate laws. It supports features such as species concentration spikes, event triggers, inverse modeling (parameter fitting to experimental data), 
-        parameter identifiability analysis, and optimal design of experiments.
+        NSKinetics is a fast, flexible, and convenient package in Python for simulating steady- and non-steady-state
+        reaction kinetics — especially enzyme kinetics and inhibitory phenomena — and connecting them to
+        techno-economic analysis (TEA) and life-cycle assessment (LCA) under uncertainty. Kinetic models are
+        declared as SBML — most easily authored as `Antimony <https://tellurium.readthedocs.io/en/latest/antimony.html>`__
+        text, or imported from an existing SBML file — and wrapped in a :class:`TelluriumReactionSystem`, which
+        adds unit-aware value access and a Python event API (:class:`Event`, and the higher-level
+        :class:`FeedSpike` for fed-batch feeding) on top of a Tellurium RoadRunner engine that performs the actual
+        ODE integration. The same reaction system can then drive a biosteam process unit through the
+        :class:`~nskinetics.units.NSKFermentation` bridge, coupling kinetics directly to TEA.
 
+Quickstart
+----------
 
+Write a tiny kinetic model in Antimony, wrap it in a :class:`TelluriumReactionSystem`, and simulate it through
+the underlying RoadRunner object:
+
+.. code-block:: python
+
+   import numpy as np
+   import tellurium as te
+   import nskinetics as nsk
+
+   model = """
+   model demo()
+     compartment env; species S in env, P in env;
+     S = 10; P = 0; env = 1; k = 0.3;
+     J: S => P; k*S*env;
+   end
+   """
+   r = te.loadAntimonyModel(model)
+   trs = nsk.TelluriumReactionSystem(r, units={'time': 'h', 'conc': 'g/L'})
+   trs.validate_units()
+   trs.reset()
+
+   result = np.array(r.simulate(0, 10, 101, ['time', 'S', 'P']))
+   print('t=10:', result[-1])
+
+This prints ``t=10: [10.     0.498  9.502]`` — species ``S`` has decayed from an initial concentration of 10 g/L
+to about 0.498 g/L by ``t=10`` h under first-order decay (``k=0.3``), while ``P`` has risen to about 9.502 g/L.
+See :doc:`tutorial/index` for the full walkthrough, including events, fed-batch feeding, and the biosteam/TEA
+bridge.
 
 
 .. grid:: 1 2 3 4
-   
-   
+
+
     .. grid-item-card:: Getting Started
        :text-align: center
        :link: tutorial/index
        :link-type: doc
        :padding: 1
-          
+
        .. image:: _static/images/icons/getting-started_dark.png
           :height: 100
           :class: only-dark
           :align: center
-          
+
        .. image:: _static/images/icons/getting-started_light.png
           :height: 100
           :class: only-light
@@ -56,17 +92,26 @@
        Tutorials on NSKinetics
 
 
+    .. grid-item-card:: Key Concepts
+       :text-align: center
+       :link: concepts
+       :link-type: doc
+       :padding: 1
+
+       The ideas behind NSKinetics
+
+
     .. grid-item-card:: API Reference
        :text-align: center
        :link: API/api
        :link-type: doc
        :padding: 1
-       
+
        .. image:: _static/images/icons/api_dark.png
           :height: 100
           :class: only-dark
           :align: center
-          
+
        .. image:: _static/images/icons/api_light.png
           :height: 100
           :class: only-light
