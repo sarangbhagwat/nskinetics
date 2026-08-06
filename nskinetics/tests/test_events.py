@@ -61,3 +61,30 @@ def test_validate_units_rejects_unknown():
     import pytest
     with pytest.raises(KineticSimulationError):
         trs.validate_units()
+
+
+import numpy as np
+
+_DECAY_MODEL = """
+model decay()
+  species s; s = 100; k = 1; flag = 1;
+  s' = -k*flag*s;
+end
+"""
+
+
+def test_event_fires():
+    r = te.loadAntimonyModel(_DECAY_MODEL)
+    ev = nsk.Event(when='time >= 5', do={'flag': '0'}, name='stop_decay')
+    ev.compile(r)                      # single event -> regenerate now
+    r.reset()
+    res = np.array(r.simulate(0, 10, 11, ['time', 's', 'flag']))
+    # flag is 1 up to t<5, then 0; decay halts after the event fires
+    assert res[4, 2] == 1.0            # t=4 -> flag still 1
+    assert res[5, 2] == 0.0            # t=5 -> event fired, flag 0
+    assert np.isclose(res[6, 1], res[5, 1], rtol=1e-6)   # s frozen after event
+
+
+def test_event_autogenerates_name():
+    ev = nsk.Event(when='time >= 1', do={'flag': '0'})
+    assert isinstance(ev.name, str) and ev.name
