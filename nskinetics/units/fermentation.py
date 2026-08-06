@@ -67,8 +67,7 @@ class NSKFermentation(NSKBatchReactor):
         If ``True``, apply ``Sucrose + Water -> 2 Glucose`` to feed and spike-feed.
     try_fewer_n_spikes_until : callable
         ``stop_when(model) -> bool`` for the spike-count retry loop.
-    aeration_safety_factor, stage_1_max_time, stage_1_max_x,
-    stop_aeration_when_cell_density_plateaus, factor_for_cell_density_plateau :
+    aeration_safety_factor, stage_1_max_time, stage_1_max_x, stop_aeration_when_cell_density_plateaus, factor_for_cell_density_plateau :
         Aeration configuration (see :class:`AerationSpec`).
     sugar_IDs : tuple
         Sugar chemical IDs (retained for back-compat).
