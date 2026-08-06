@@ -88,3 +88,26 @@ def test_event_fires():
 def test_event_autogenerates_name():
     ev = nsk.Event(when='time >= 1', do={'flag': '0'})
     assert isinstance(ev.name, str) and ev.name
+
+
+def test_compile_events_batches_and_fires():
+    r = te.loadAntimonyModel(_DECAY_MODEL)
+    trs = nsk.TelluriumReactionSystem(r, units={'time': 'h', 'conc': 'g/L'})
+    trs.add_event(nsk.Event(when='time >= 5', do={'flag': '0'}, name='ev'))
+    trs.compile_events()
+    trs.reset()
+    res = np.array(r.simulate(0, 10, 11, ['time', 's', 'flag']))
+    assert res[5, 2] == 0.0
+    # double-compile is a guarded no-op (no duplicate-event error)
+    trs.compile_events()
+
+
+def test_remove_and_clear_events():
+    r = te.loadAntimonyModel(_DECAY_MODEL)
+    trs = nsk.TelluriumReactionSystem(r)
+    trs.add_event(nsk.Event(when='time >= 5', do={'flag': '0'}, name='a'))
+    trs.add_event(nsk.Event(when='time >= 6', do={'flag': '0'}, name='b'))
+    trs.remove_event('a')
+    assert [e.name for e in trs.events] == ['b']
+    trs.clear_events()
+    assert trs.events == []

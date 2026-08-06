@@ -8,7 +8,7 @@
 
 import tellurium as te
 
-from ...exceptions import KineticSimulationError
+from ...exceptions import KineticSimulationError, EventCompilationError
 
 __all__ = ('TelluriumReactionSystem',)
 
@@ -88,6 +88,42 @@ class TelluriumReactionSystem():
         if conc_u not in _MOLAR_CONC_UNITS and conc_u not in _MASS_CONC_UNITS:
             raise KineticSimulationError(
                 f'Unrecognized concentration units {conc_u!r}.')
+
+    # --- events -------------------------------------------------------------
+    def add_event(self, event):
+        """Append an :class:`Event` to the pending list (compiled by
+        :meth:`compile_events`). Returns the event."""
+        self.events.append(event)
+        self._events_compiled = False
+        return event
+
+    def remove_event(self, name):
+        """Remove a pending event by name."""
+        self.events = [e for e in self.events if e.name != name]
+
+    def clear_events(self):
+        """Drop all pending events."""
+        self.events = []
+
+    def compile_events(self):
+        """Inject all pending events into the model, then regenerate once.
+
+        Guarded so repeated calls do not double-inject. Raises
+        :class:`EventCompilationError` with context on failure.
+        """
+        if self._events_compiled:
+            return
+        r = self._te
+        try:
+            for event in self.events:
+                event.compile(r, force_regenerate=False)
+            r.regenerateModel()
+        except EventCompilationError:
+            raise
+        except Exception as e:
+            raise EventCompilationError(
+                f'Failed to compile {len(self.events)} event(s): {e}') from e
+        self._events_compiled = True
 
     # --- reset --------------------------------------------------------------
     def reset(self, **kwargs):
