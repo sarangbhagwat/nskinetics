@@ -9,8 +9,9 @@
 """
 Minimal, non-isobutanol demonstration that ``NSKBatchReactor`` is general:
 a generic Tellurium model with a single substrate consumed to product, plus one
-``FeedSpike``, driving a biosteam batch reactor. Run directly to build and
-simulate the reactor.
+``FeedSpike``, driving a biosteam batch reactor. Run directly to build the
+reactor, simulate it end-to-end (kinetics -> effluent -> biosteam sizing/cost),
+and print a short summary.
 """
 import tellurium as te
 
@@ -60,10 +61,32 @@ def build_demo_reactor():
         kinetic_reaction_system=te_r,
         map_species_to_chemicals={'S': 'Glucose', 'P': 'Ethanol'},
         tau=48., tau_max=120., volume_var='curr_env',
+        feed_volume_added_var='tot_vol',  # exercise the fed-batch volume correction
         spike_feed_index=2, V=100.)
     return reactor, te_r
 
 
 if __name__ == '__main__':
+    import warnings
+
     reactor, te_r = build_demo_reactor()
-    print('Built NSKBatchReactor:', reactor.ID)
+
+    # Standalone `simulate()` runs biosteam's design/cost over several internal
+    # passes and does not re-clear results between them, so a later pass sees the
+    # previous pass's costs and trips biosteam's "_run added unit results" check.
+    # The kinetic `_run` adds no costs (early passes are clean), so this warning
+    # is a benign standalone-simulation artifact; silence just that one message.
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            'ignore', message=r'.*method added unit results.*',
+            category=RuntimeWarning)
+        reactor.simulate()
+
+    d = reactor.nsk_results_specific_tau_dict
+    effluent = reactor.outs[1]
+    print('Built and simulated NSKBatchReactor:', reactor.ID)
+    print(f'  selected tau     : {reactor.tau:.3g} h')
+    print(f'  substrate [S]    : {d["S"]:.3g} g/L  ->  product [P]: {d["P"]:.3g} g/L')
+    print(f'  fed-batch spikes : {int(round(te_r.get_value("n_spk")))}')
+    print(f'  effluent Ethanol : {effluent.imass["Ethanol"]:.3g} kg/hr')
+    print(f'  installed cost   : ${reactor.installed_cost:,.0f}')
