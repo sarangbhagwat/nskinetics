@@ -6,7 +6,7 @@
 # https://github.com/sarangbhagwat/nskinetics/blob/main/LICENSE
 # for license details.
 
-__version__ = '0.2.7'
+__version__ = '0.3.0'
 
 # %% Initialize NSKinetics 
 
