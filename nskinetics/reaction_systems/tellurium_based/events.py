@@ -75,6 +75,13 @@ class Event:
                 f'do={self.do!r}): {e}') from e
         if force_regenerate:
             r.regenerateModel()
+            # roadrunner's regenerateModel() leaves the model's stored
+            # init(X) bookkeeping stale for any rate-rule-governed variable
+            # with an explicit initial value; a plain r.reset() afterward
+            # then reads back corrupted values. resetToOrigin() re-syncs
+            # init(X) to the SBML-defined values so later reset() calls are
+            # correct.
+            r.resetToOrigin()
 
 
 class FeedSpike:
@@ -166,3 +173,5 @@ class FeedSpike:
             event.compile(r, force_regenerate=False)
         if force_regenerate:
             r.regenerateModel()
+            # See the comment in Event.compile() for why this is needed.
+            r.resetToOrigin()

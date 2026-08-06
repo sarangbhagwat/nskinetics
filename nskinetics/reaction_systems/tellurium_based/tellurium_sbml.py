@@ -118,6 +118,13 @@ class TelluriumReactionSystem():
             for event in self.events:
                 event.compile(r, force_regenerate=False)
             r.regenerateModel()
+            # roadrunner's regenerateModel() leaves the model's stored
+            # init(X) bookkeeping stale for any rate-rule-governed variable
+            # with an explicit initial value; a plain r.reset() afterward
+            # then reads back corrupted values. resetToOrigin() re-syncs
+            # init(X) to the SBML-defined values so later reset() calls are
+            # correct.
+            r.resetToOrigin()
         except EventCompilationError:
             raise
         except Exception as e:
