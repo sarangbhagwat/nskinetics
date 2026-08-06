@@ -28,7 +28,7 @@ The (Non-)Steady state Kinetics simulation package (NSKinetics)
 What is NSKinetics?
 -------------------
 
-NSKinetics is a fast, flexible, and convenient package in Python for simulating steady- and non-steady-state reaction kinetics — especially enzyme kinetics and inhibitory phenomena — and connecting them to techno-economic analysis (TEA) and life-cycle assessment (LCA) under uncertainty. Kinetic models are declared as SBML — most easily authored as `Antimony <https://tellurium.readthedocs.io/en/latest/antimony.html>`__ text, or imported from an existing SBML file — and wrapped in a ``TelluriumReactionSystem``, which adds unit-aware value access and a Python event API on top of a Tellurium RoadRunner engine that performs the actual ODE integration. ``Event`` covers a single trigger/assignment pair (a parameter switch, a control action); the higher-level ``FeedSpike`` builds on it for fed-batch feeding, topping a species back up to a target concentration whenever it drops below a threshold. The same reaction system can then drive a biosteam process unit through the ``NSKFermentation`` bridge, coupling kinetics directly to TEA.
+NSKinetics is a fast, flexible, and convenient package in Python for simulating steady- and non-steady-state reaction kinetics — especially enzyme kinetics and inhibitory phenomena — and connecting them to techno-economic analysis (TEA) and life-cycle assessment (LCA) under uncertainty. Kinetic models are declared as SBML — most easily authored as `Antimony <https://tellurium.readthedocs.io/en/latest/antimony.html>`__ text, or imported from an existing SBML file — and wrapped in a ``TelluriumReactionSystem``, which adds unit-aware value access and a Python event API on top of a Tellurium RoadRunner engine that performs the actual ODE integration. ``Event`` covers a single trigger/assignment pair (a parameter switch, a control action); the higher-level ``FeedSpike`` builds on it for fed-batch feeding, topping a species back up to a target concentration whenever it drops below a threshold. The same reaction system can then drive a `BioSTEAM <https://biosteam.readthedocs.io/en/latest/>`__ process unit through the ``NSKFermentation`` bridge, coupling kinetics directly to TEA.
 
 Installation
 ------------
@@ -166,7 +166,7 @@ This prints, in the ``HP_2024`` environment:
 
 ``max spikes: 2.0`` confirms the cap was reached — exactly two spikes fired. After the second spike, no further trigger fires, so ``s_glu`` decays freely for the rest of the 40 h window, reaching essentially zero (``-6.19e-12`` g/L is floating-point noise).
 
-See the `full tutorial <https://nskinetics.readthedocs.io/en/latest/tutorial/index.html>`__ for the rest of the workflow, including loading real, shipped SBML models and coupling a reaction system to a biosteam process unit for TEA.
+See the `full tutorial <https://nskinetics.readthedocs.io/en/latest/tutorial/index.html>`__ for the rest of the workflow, including loading real, shipped SBML models and coupling a reaction system to a BioSTEAM process unit for TEA.
 
 
 Bug reports
