@@ -1,5 +1,4 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Created by libAntimony version v3.0.0 with libSBML version 5.20.5. -->
 <sbml xmlns="http://www.sbml.org/sbml/level3/version2/core" level="3" version="2">
   <model metaid="bhagwat2026" id="bhagwat2026" name="Bhagwat2026_Yeast_Ethanol_Isobutanol" substanceUnits="substance" timeUnits="time_unit" volumeUnits="volume">
     <notes>
@@ -337,13 +336,13 @@
       <parameter id="k_16r" value="0" units="dimensionless" constant="true"/>
       <parameter id="K_16" value="0.034" units="g_per_l" constant="true"/>
       <parameter id="K_16i" value="0.057" units="g_per_l" constant="true"/>
-      <parameter id="glucose_feed_spikeDelay" value="0" units="time_unit" constant="false"/>
-      <parameter id="threshold_conc_glu_spike" value="10" units="g_per_l" constant="false"/>
       <parameter id="max_n_glu_spikes" value="5" units="dimensionless" constant="true"/>
+      <parameter id="threshold_conc_glu_spike" value="10" units="g_per_l" constant="false"/>
       <parameter id="last_vol_glu_feed_added" value="0" units="volume" constant="false"/>
+      <parameter id="glucose_feed_spikeDelay" value="0" units="time_unit" constant="false"/>
+      <parameter id="glucose_feed_spike_dissolveDelay" value="0.001" units="time_unit" constant="true"/>
       <parameter id="stage_1_max_time" value="INF" units="time_unit" constant="true"/>
       <parameter id="stage_1_max_x" value="INF" units="g_per_l" constant="true"/>
-      <parameter id="glucose_feed_spike_dissolveDelay" value="0.001" units="time_unit" constant="true"/>
     </listOfParameters>
     <listOfRules>
       <assignmentRule variable="a">
@@ -746,11 +745,11 @@
           <speciesReference species="Red" stoichiometry="0.178" constant="true"/>
         </listOfProducts>
         <listOfModifiers>
+          <modifierSpeciesReference species="s_IBO"/>
           <modifierSpeciesReference species="s_acetate"/>
           <modifierSpeciesReference species="s_acetald"/>
           <modifierSpeciesReference species="s_EtOH"/>
           <modifierSpeciesReference species="a"/>
-          <modifierSpeciesReference species="s_IBO"/>
         </listOfModifiers>
         <kineticLaw>
           <math xmlns="http://www.w3.org/1998/Math/MathML">
@@ -924,9 +923,9 @@
           <speciesReference species="Red" stoichiometry="0.363" constant="true"/>
         </listOfProducts>
         <listOfModifiers>
+          <modifierSpeciesReference species="s_IBO"/>
           <modifierSpeciesReference species="s_EtOH"/>
           <modifierSpeciesReference species="a"/>
-          <modifierSpeciesReference species="s_IBO"/>
         </listOfModifiers>
         <kineticLaw>
           <math xmlns="http://www.w3.org/1998/Math/MathML">
@@ -1184,10 +1183,10 @@
           <speciesReference species="Red" stoichiometry="0.063" constant="true"/>
         </listOfProducts>
         <listOfModifiers>
+          <modifierSpeciesReference species="s_IBO"/>
           <modifierSpeciesReference species="s_acetate"/>
           <modifierSpeciesReference species="s_EtOH"/>
           <modifierSpeciesReference species="a"/>
-          <modifierSpeciesReference species="s_IBO"/>
         </listOfModifiers>
         <kineticLaw>
           <math xmlns="http://www.w3.org/1998/Math/MathML">
@@ -1758,189 +1757,5 @@
         </kineticLaw>
       </reaction>
     </listOfReactions>
-    <listOfEvents>
-      <event id="glucose_feed_spike_a" useValuesFromTriggerTime="true">
-        <trigger initialValue="true" persistent="true">
-          <math xmlns="http://www.w3.org/1998/Math/MathML">
-            <apply>
-              <and/>
-              <apply>
-                <leq/>
-                <ci> s_glu </ci>
-                <ci> threshold_conc_glu_spike </ci>
-              </apply>
-              <apply>
-                <lt/>
-                <ci> n_glu_spikes </ci>
-                <ci> max_n_glu_spikes </ci>
-              </apply>
-            </apply>
-          </math>
-        </trigger>
-        <delay>
-          <math xmlns="http://www.w3.org/1998/Math/MathML">
-            <ci> glucose_feed_spikeDelay </ci>
-          </math>
-        </delay>
-        <priority>
-          <math xmlns="http://www.w3.org/1998/Math/MathML">
-            <cn type="integer"> 5 </cn>
-          </math>
-        </priority>
-        <listOfEventAssignments>
-          <eventAssignment variable="last_vol_glu_feed_added">
-            <math xmlns="http://www.w3.org/1998/Math/MathML">
-              <apply>
-                <divide/>
-                <apply>
-                  <times/>
-                  <ci> env </ci>
-                  <apply>
-                    <minus/>
-                    <ci> target_conc_glu_spike </ci>
-                    <ci> s_glu </ci>
-                  </apply>
-                </apply>
-                <apply>
-                  <minus/>
-                  <ci> conc_glu_feed_spike </ci>
-                  <ci> target_conc_glu_spike </ci>
-                </apply>
-              </apply>
-            </math>
-          </eventAssignment>
-        </listOfEventAssignments>
-      </event>
-      <event id="glucose_feed_spike_b" useValuesFromTriggerTime="false">
-        <trigger initialValue="true" persistent="true">
-          <math xmlns="http://www.w3.org/1998/Math/MathML">
-            <apply>
-              <and/>
-              <apply>
-                <leq/>
-                <ci> s_glu </ci>
-                <ci> threshold_conc_glu_spike </ci>
-              </apply>
-              <apply>
-                <lt/>
-                <ci> n_glu_spikes </ci>
-                <ci> max_n_glu_spikes </ci>
-              </apply>
-            </apply>
-          </math>
-        </trigger>
-        <delay>
-          <math xmlns="http://www.w3.org/1998/Math/MathML">
-            <ci> glucose_feed_spikeDelay </ci>
-          </math>
-        </delay>
-        <priority>
-          <math xmlns="http://www.w3.org/1998/Math/MathML">
-            <cn type="integer"> 4 </cn>
-          </math>
-        </priority>
-        <listOfEventAssignments>
-          <eventAssignment variable="tot_vol_glu_feed_added">
-            <math xmlns="http://www.w3.org/1998/Math/MathML">
-              <apply>
-                <plus/>
-                <ci> tot_vol_glu_feed_added </ci>
-                <ci> last_vol_glu_feed_added </ci>
-              </apply>
-            </math>
-          </eventAssignment>
-          <eventAssignment variable="env">
-            <math xmlns="http://www.w3.org/1998/Math/MathML">
-              <apply>
-                <plus/>
-                <ci> env </ci>
-                <ci> last_vol_glu_feed_added </ci>
-              </apply>
-            </math>
-          </eventAssignment>
-        </listOfEventAssignments>
-      </event>
-      <event id="glucose_feed_spike_c" useValuesFromTriggerTime="false">
-        <trigger initialValue="true" persistent="true">
-          <math xmlns="http://www.w3.org/1998/Math/MathML">
-            <apply>
-              <and/>
-              <apply>
-                <leq/>
-                <ci> s_glu </ci>
-                <ci> threshold_conc_glu_spike </ci>
-              </apply>
-              <apply>
-                <lt/>
-                <ci> n_glu_spikes </ci>
-                <ci> max_n_glu_spikes </ci>
-              </apply>
-            </apply>
-          </math>
-        </trigger>
-        <delay>
-          <math xmlns="http://www.w3.org/1998/Math/MathML">
-            <ci> glucose_feed_spikeDelay </ci>
-          </math>
-        </delay>
-        <priority>
-          <math xmlns="http://www.w3.org/1998/Math/MathML">
-            <cn type="integer"> 3 </cn>
-          </math>
-        </priority>
-        <listOfEventAssignments>
-          <eventAssignment variable="n_glu_spikes">
-            <math xmlns="http://www.w3.org/1998/Math/MathML">
-              <apply>
-                <plus/>
-                <ci> n_glu_spikes </ci>
-                <cn type="integer"> 1 </cn>
-              </apply>
-            </math>
-          </eventAssignment>
-          <eventAssignment variable="s_glu">
-            <math xmlns="http://www.w3.org/1998/Math/MathML">
-              <ci> target_conc_glu_spike </ci>
-            </math>
-          </eventAssignment>
-        </listOfEventAssignments>
-      </event>
-      <event id="stage_1_complete_max_time" useValuesFromTriggerTime="true">
-        <trigger initialValue="true" persistent="true">
-          <math xmlns="http://www.w3.org/1998/Math/MathML">
-            <apply>
-              <geq/>
-              <csymbol encoding="text" definitionURL="http://www.sbml.org/sbml/symbols/time"> time </csymbol>
-              <ci> stage_1_max_time </ci>
-            </apply>
-          </math>
-        </trigger>
-        <listOfEventAssignments>
-          <eventAssignment variable="is_aerobic">
-            <math xmlns="http://www.w3.org/1998/Math/MathML">
-              <cn type="integer"> 0 </cn>
-            </math>
-          </eventAssignment>
-        </listOfEventAssignments>
-      </event>
-      <event id="stage_1_complete_x_target" useValuesFromTriggerTime="true">
-        <trigger initialValue="true" persistent="true">
-          <math xmlns="http://www.w3.org/1998/Math/MathML">
-            <apply>
-              <geq/>
-              <ci> x </ci>
-              <ci> stage_1_max_x </ci>
-            </apply>
-          </math>
-        </trigger>
-        <listOfEventAssignments>
-          <eventAssignment variable="is_aerobic">
-            <math xmlns="http://www.w3.org/1998/Math/MathML">
-              <cn type="integer"> 0 </cn>
-            </math>
-          </eventAssignment>
-        </listOfEventAssignments>
-      </event>
-    </listOfEvents>
   </model>
 </sbml>

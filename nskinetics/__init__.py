@@ -16,8 +16,11 @@ from .species import *
 from . import reactions
 from .reactions import *
 
-from . import reaction_systems 
+from . import reaction_systems
 from .reaction_systems import *
+
+from . import exceptions
+from .exceptions import *
 
 from . import doe
 # from .doe import *
@@ -31,6 +34,7 @@ from . import units
 from . import examples 
 
 __all__ = (
+     *exceptions.__all__,
      *species.__all__,
      *reactions.__all__,
      *reaction_systems.__all__,

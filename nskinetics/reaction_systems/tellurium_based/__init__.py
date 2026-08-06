@@ -8,7 +8,10 @@
 
 from . import tellurium_sbml
 from .tellurium_sbml import *
+from . import events
+from .events import *
 
 __all__ = (
      *tellurium_sbml.__all__,
+     *events.__all__,
      )
