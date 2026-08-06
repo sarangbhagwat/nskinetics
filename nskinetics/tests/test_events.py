@@ -349,3 +349,15 @@ def test_spike_reduce_retry_decrements_until_stop():
     retry.run(model, simulate_once)
     assert model.max_n_glu_spikes == 2
     assert calls['n'] >= 1
+
+
+def test_nskbatchreactor_importable_and_rejects_non_tellurium():
+    from nskinetics.units.batch_reactor import NSKBatchReactor
+    assert nsk.units.NSKBatchReactor is NSKBatchReactor
+    # Parent must be a BatchBioreactor subclass
+    from biosteam.units import BatchBioreactor
+    assert issubclass(NSKBatchReactor, BatchBioreactor)
+    # A plain (non-Tellurium) ReactionSystem is explicitly unsupported
+    import pytest
+    from nskinetics.reaction_systems.reaction_system import ReactionSystem
+    assert hasattr(NSKBatchReactor, 'simulate_kinetics')

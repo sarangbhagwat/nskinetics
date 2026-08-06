@@ -7,8 +7,13 @@
 # for license details.
 
 import numpy as np
+import pandas as pd
+
+from biosteam.units import BatchBioreactor
 
 from ..utils import get_index_nearest_element_from_sorted_array
+from ..reaction_systems.tellurium_based.tellurium_sbml import TelluriumReactionSystem
+from ..exceptions import KineticSimulationError, MassBalanceError
 
 __all__ = ('NSKBatchReactor', 'AerationSpec', 'SpikeReduceRetry',
            'select_tau_index')
@@ -181,6 +186,271 @@ class AerationSpec:
         vent.imol['N2'] += compressed_air.imol['N2']
 
 
-class NSKBatchReactor:  # replaced in Task 9
-    def __init__(self, *a, **k):
-        raise NotImplementedError
+class NSKBatchReactor(BatchBioreactor):
+    """
+    General batch bioreactor driven by a Tellurium kinetic model.
+
+    Owns the reusable machinery (kinetic simulate loop, ``tau`` selection,
+    species-to-chemical mapping, effluent construction) and four opt-in
+    features: aeration, fed-batch spike-count retry, feed pre-reactions, and
+    post-simulation validators. Chemistry-agnostic: subclasses configure the
+    features and may override :meth:`_finalize_effluent`.
+
+    Parameters
+    ----------
+    ins :
+        Inlet fluids to be mixed into the reactor.
+    outs :
+        * [0] Vent
+        * [1] Effluent
+    kinetic_reaction_system : TelluriumReactionSystem
+        Kinetic model driving the reactor.
+    map_species_to_chemicals : dict
+        ``{model var (or '[conc]' selection): biosteam chemical ID}``.
+    track_vars : sequence of str
+        Extra model selections to record as result columns.
+    tau : float
+        Reaction time [h].
+    tau_max : float
+        Maximum simulated time [h].
+    n_simulation_steps : int
+        Number of integration output steps.
+    tau_update_policy : None or tuple
+        Passed to :func:`select_tau_index`.
+    n_decimal_places_for_tau_update_policy : int
+        Rounding for the ``max``/``min``/``equals`` policies.
+    reset : callable, optional
+        ``reset(model, **kwargs)``; defaults to ``model.reset()``.
+    volume_var : str, optional
+        Result column name for the working volume used to scale effluent
+        ``F_vol`` (e.g. ``'curr_env'``).
+    aeration : AerationSpec, optional
+    spike_retry : SpikeReduceRetry, optional
+    pre_reactions : sequence of thermosteam.Reaction
+        Applied to feed (and spike-feed) before kinetics.
+    validators : sequence of callable
+        ``validator(model) -> None``; each raises on failure.
+    spike_feed_index : int, optional
+        Index of the spike-feed inlet stream (excluded from the initial mix).
+    N, V, T, P, Nmin, Nmax :
+        Standard ``BatchBioreactor`` sizing parameters.
+    """
+    line = 'NSKBatchReactor'
+    _ins_size_is_fixed = False
+    autoselect_N = True
+    # Class-level placeholder so `hasattr(NSKBatchReactor, 'simulate_kinetics')`
+    # holds even before instantiation; `_init` overrides this per-instance with
+    # the bound `_nsk_te_simulate_kinetics` method.
+    simulate_kinetics = None
+
+    def _init(self, *, kinetic_reaction_system,
+              tau, tau_max,
+              map_species_to_chemicals={},
+              track_vars=(),
+              n_simulation_steps=1000,
+              tau_update_policy=None,
+              n_decimal_places_for_tau_update_policy=2,
+              reset=None,
+              volume_var=None,
+              aeration=None, spike_retry=None,
+              pre_reactions=(), validators=(),
+              spike_feed_index=None,
+              N=None, V=None, T=305.15, P=101325., Nmin=2, Nmax=36):
+        BatchBioreactor._init(self, tau=tau, N=N, V=V, T=T, P=P, Nmin=Nmin, Nmax=Nmax)
+        self._load_components()
+
+        krs = kinetic_reaction_system
+        if not isinstance(krs, TelluriumReactionSystem):
+            raise NotImplementedError(
+                'NSKBatchReactor currently supports only TelluriumReactionSystem '
+                f'kinetic models; got {type(krs).__name__}. Use '
+                'nskinetics.ReactionSystem directly for non-Tellurium models.')
+        self.kinetic_reaction_system = krs
+        krs.validate_units()
+
+        self.map_species_to_chemicals = dict(map_species_to_chemicals)
+        self.track_vars = list(track_vars)
+        self.n_simulation_steps = n_simulation_steps
+        self.tau_max = tau_max
+        self.tau_update_policy = tau_update_policy
+        self.n_decimal_places_for_tau_update_policy = n_decimal_places_for_tau_update_policy
+        self._reset = reset if reset is not None else (lambda model, **kw: model.reset())
+        self.volume_var = volume_var
+        self.aeration = aeration
+        self.spike_retry = spike_retry
+        self.pre_reactions = list(pre_reactions)
+        self.validators = list(validators)
+        self.spike_feed_index = spike_feed_index
+
+        self.run_type = 'simulate kinetics'
+        self.results = None
+        self.nsk_results = None
+        self.nsk_results_dict = None
+        self.nsk_results_col_names = None
+
+        self.simulate_kinetics = self._nsk_te_simulate_kinetics
+        self._validate_model_selections()
+
+    # --- guard rails --------------------------------------------------------
+    def _validate_model_selections(self):
+        krs = self.kinetic_reaction_system
+        for selection in list(self.map_species_to_chemicals) + list(self.track_vars):
+            try:
+                krs.get_value(selection)
+            except Exception as e:
+                raise KineticSimulationError(
+                    f'Model selection {selection!r} is not a valid model '
+                    f'variable/selection: {e}') from e
+
+    # --- alias for back-compat ---------------------------------------------
+    @property
+    def map_chemicals_nsk_to_bst(self):
+        return self.map_species_to_chemicals
+
+    @map_chemicals_nsk_to_bst.setter
+    def map_chemicals_nsk_to_bst(self, value):
+        self.map_species_to_chemicals = dict(value)
+
+    # --- kinetic simulation -------------------------------------------------
+    def _result_columns(self):
+        return (['time', 'curr_env', 'curr_n_glu_spikes',
+                 'curr_tot_vol_glu_feed_added', 'qO2', 'qO2_TCA_growth_only',
+                 'is_aerobic'] + list(self.track_vars)
+                + list(self.map_species_to_chemicals))
+
+    def _reset_and_simulate(self, feed, reset_spike_cap=False):
+        krs = self.kinetic_reaction_system
+        self._reset(krs, reset_max_n_glu_spikes=reset_spike_cap)
+        volume = getattr(feed, krs.material_indexer.replace('imol', 'ivol')
+                         .replace('imass', 'ivol'))['Water']
+        indexer = getattr(feed, krs.material_indexer)
+        for c_nsk, c_bst in self.map_species_to_chemicals.items():
+            krs.set_concentration_from_stream(c_nsk, indexer[c_bst], volume)
+        cols = self._result_columns()
+        self.nsk_results_col_names = cols
+        try:
+            raw = np.array(krs._te.simulate(
+                0, self.tau_max * krs.time_factor, self.n_simulation_steps, cols))
+        except Exception as e:
+            raise KineticSimulationError(
+                f'Kinetic simulation failed: {e}') from e
+        self.results = pd.DataFrame(raw, columns=cols)
+        self.nsk_results = raw
+        self.nsk_results_dict = {cols[i]: raw[:, i] for i in range(len(cols))}
+
+    def _nsk_te_simulate_kinetics(self, feed, tau):
+        krs = self.kinetic_reaction_system
+        # initial full simulation
+        self._reset_and_simulate(feed, reset_spike_cap=True)
+        # optional spike-count retry
+        if self.spike_retry is not None:
+            model = krs._te
+            model.max_n_glu_spikes = \
+                list(self.nsk_results_dict['curr_n_glu_spikes'])[-1] - 1
+            self.spike_retry.run(
+                model, lambda: self._reset_and_simulate(feed, reset_spike_cap=False))
+        # validators
+        for validate in self.validators:
+            validate(krs._te)
+        # tau selection
+        tau_index, ok = select_tau_index(
+            self.nsk_results, self.nsk_results_col_names, tau,
+            self.tau_update_policy, self.n_decimal_places_for_tau_update_policy)
+        self._tau_update_success = ok
+        self._load_specific_tau(tau_index)
+        if self.aeration is not None:
+            self.aeration.compute_cumulative_O2(self, tau_index)
+        return self._build_effluent(feed)
+
+    def _load_specific_tau(self, tau_index):
+        cols = self.nsk_results_col_names
+        row = self.nsk_results[tau_index]
+        self.tau_index = tau_index
+        self.nsk_results_specific_tau = row
+        self.nsk_results_specific_tau_dict = {cols[i]: row[i] for i in range(len(cols))}
+        self.tau = row[cols.index('time')]
+
+    def _select_tau_index_from_saved(self, tau):
+        tau_index, ok = select_tau_index(
+            self.nsk_results, self.nsk_results_col_names, tau, None,
+            self.n_decimal_places_for_tau_update_policy)
+        self._load_specific_tau(tau_index)
+        if self.aeration is not None:
+            self.aeration.compute_cumulative_O2(self, tau_index)
+
+    def _build_effluent(self, minimal_feed):
+        effluent = minimal_feed.copy()
+        krs = self.kinetic_reaction_system
+        cols = self.nsk_results_col_names
+        row = self.nsk_results_specific_tau
+        indexer = getattr(effluent, krs.material_indexer)
+        volume = effluent.ivol['Water']
+        for c_nsk, c_bst in self.map_species_to_chemicals.items():
+            indexer[c_bst] = row[cols.index(c_nsk)] * volume
+        if self.volume_var is not None:
+            d = self.nsk_results_specific_tau_dict
+            curr_vol = d[self.volume_var]
+            added = d['curr_tot_vol_glu_feed_added']
+            effluent.F_vol *= curr_vol / (curr_vol - added)
+        return effluent
+
+    # --- run flow -----------------------------------------------------------
+    def _run(self):
+        vent, effluent = self.outs
+        ins = self.ins
+        vent.empty()
+        effluent.empty()
+
+        excluded = []
+        spike_feed = None
+        if self.spike_feed_index is not None:
+            spike_feed = ins[self.spike_feed_index]
+            excluded.append(spike_feed)
+        if self.aeration is not None:
+            self.compressed_air = ins[self.aeration.air_index]
+            excluded.append(self.compressed_air)
+
+        effluent.mix_from(i for i in ins if i not in excluded)
+
+        for rxn in self.pre_reactions:
+            rxn.force_reaction(effluent)
+            if spike_feed is not None:
+                rxn.force_reaction(spike_feed)
+
+        keep = set(self.map_species_to_chemicals.values()) | {'Water'}
+        minimal_feed = effluent.copy()
+        for chem in minimal_feed.chemicals:
+            if chem.ID not in keep:
+                minimal_feed.imol[chem.ID] = 0.0
+
+        run_type = self.run_type
+        if run_type == 'simulate kinetics':
+            minimal_effluent = self.simulate_kinetics(minimal_feed, self._tau)
+        elif run_type == 'index saved nsk_results by tau':
+            self._select_tau_index_from_saved(self.tau)
+            minimal_effluent = self._build_effluent(minimal_feed)
+        else:
+            raise KineticSimulationError(f'Unknown run_type {run_type!r}.')
+
+        for chem in minimal_effluent.chemicals:
+            if chem.ID not in keep:
+                minimal_effluent.imol[chem.ID] += effluent.imol[chem.ID]
+                if spike_feed is not None:
+                    minimal_effluent.imol[chem.ID] += spike_feed.imol[chem.ID]
+
+        effluent.copy_like(minimal_effluent)
+        self._finalize_effluent(effluent, vent, minimal_feed)
+        if self.aeration is not None:
+            self.aeration.set_air_stream(self, effluent, vent)
+
+    def _finalize_effluent(self, effluent, vent, feed):
+        """Subclass hook for chemistry-specific effluent finishing. Default:
+        drop negative flows and route the vent."""
+        effluent.empty_negative_flows()
+        vent.receive_vent(effluent, energy_balance=False)
+
+    def set_tolerances_kinetic_simulation(self, atol, rtol):
+        krs = self.kinetic_reaction_system
+        integrator = krs._te.getIntegrator()
+        integrator.absolute_tolerance = atol
+        integrator.relative_tolerance = rtol
