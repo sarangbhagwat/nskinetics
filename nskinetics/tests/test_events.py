@@ -303,3 +303,49 @@ def test_select_tau_index_policies():
     # ('equals', ...) with no match -> success False, index -1
     idx, ok = select_tau_index(results, cols, tau=None, policy=('equals', 'val', 99.0))
     assert ok is False and idx == -1
+
+
+class _FakeResultsUnit:
+    """Minimal stand-in exposing the attributes AerationSpec/SpikeReduceRetry read."""
+    def __init__(self, nsk_results_dict):
+        self.nsk_results_dict = nsk_results_dict
+        self.factor_for_cell_density_plateau = 0.5
+
+
+def test_aeration_cumulative_o2_no_plateau():
+    from nskinetics.units.batch_reactor import AerationSpec
+    d = {
+        'time': np.array([0.0, 1.0, 2.0, 3.0]),
+        'qO2': np.array([2.0, 2.0, 2.0, 2.0]),
+        '[x]': np.array([1.0, 1.0, 1.0, 1.0]),
+        'is_aerobic': np.array([1.0, 1.0, 0.0, 0.0]),
+    }
+    unit = _FakeResultsUnit(d)
+    spec = AerationSpec(stop_when_cell_density_plateaus=False)
+    cum = spec.compute_cumulative_O2(unit, tau_index=3)
+    # stops at first is_aerobic==0 (index 2); stepwise = qO2*[x]*dt = 2*1*1 per step
+    # sum of steps [0:2] = 2 + 2 = 4
+    assert unit.tau_index_stop_aeration == 2
+    assert np.isclose(cum, 4.0)
+
+
+def test_spike_reduce_retry_decrements_until_stop():
+    from nskinetics.units.batch_reactor import SpikeReduceRetry
+
+    class _Model:
+        def __init__(self):
+            self.max_n_glu_spikes = 5
+            self.calls = 0
+
+    model = _Model()
+    calls = {'n': 0}
+
+    def simulate_once():
+        calls['n'] += 1
+
+    # stop when cap has been reduced to <= 2
+    retry = SpikeReduceRetry(max_count_var='max_n_glu_spikes',
+                             stop_when=lambda r: r.max_n_glu_spikes <= 2)
+    retry.run(model, simulate_once)
+    assert model.max_n_glu_spikes == 2
+    assert calls['n'] >= 1
