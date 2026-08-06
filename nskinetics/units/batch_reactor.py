@@ -379,6 +379,8 @@ class NSKBatchReactor(BatchBioreactor):
         self.nsk_results_dict = {cols[i]: raw[:, i] for i in range(len(cols))}
 
     def _nsk_te_simulate_kinetics(self, feed, tau):
+        """Bound implementation of ``simulate_kinetics``: run the kinetic model
+        on ``feed`` for reaction time ``tau`` and return the effluent stream."""
         krs = self.kinetic_reaction_system
         # initial full simulation
         self._reset_and_simulate(feed, reset_spike_cap=True)
@@ -494,6 +496,14 @@ class NSKBatchReactor(BatchBioreactor):
         vent.receive_vent(effluent, energy_balance=False)
 
     def set_tolerances_kinetic_simulation(self, atol, rtol):
+        """Set the kinetic integrator's absolute/relative tolerances.
+
+        Parameters
+        ----------
+        atol, rtol : float
+            Absolute and relative tolerances applied to the underlying
+            RoadRunner integrator before simulation.
+        """
         krs = self.kinetic_reaction_system
         integrator = krs._te.getIntegrator()
         integrator.absolute_tolerance = atol

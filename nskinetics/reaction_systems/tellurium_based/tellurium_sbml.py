@@ -33,6 +33,12 @@ class TelluriumReactionSystem():
     units : dict, optional
         Mapping with keys ``'time'`` and ``'conc'``. Defaults to
         ``{'time': 'min', 'conc': 'M'}``.
+
+    Notes
+    -----
+    This wrapper has no ``solve``/``simulate`` method. Run the model through the
+    underlying RoadRunner object (``self._te.simulate(t0, t1, n, columns)``), or
+    drive it inside a process model with :class:`nskinetics.units.NSKBatchReactor`.
     """
     def __init__(self, te, units=None):
         self._te = te
@@ -45,6 +51,20 @@ class TelluriumReactionSystem():
 
     @classmethod
     def from_sbml(cls, filepath):
+        """Load an SBML file into a Tellurium RoadRunner and wrap it.
+
+        Parameters
+        ----------
+        filepath : str
+            Path to an SBML (``.xml``) file.
+
+        Returns
+        -------
+        TelluriumReactionSystem
+            Wrapper with default units ``{'time': 'min', 'conc': 'M'}``; set
+            :attr:`_units` or pass ``units`` to :class:`TelluriumReactionSystem`
+            directly if the model uses other units.
+        """
         return cls(te.loadSBMLModel(filepath))
 
     # --- value access -------------------------------------------------------
