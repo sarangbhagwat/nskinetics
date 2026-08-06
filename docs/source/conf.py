@@ -1,15 +1,12 @@
 # Configuration file for the Sphinx documentation builder.
-
-# -- Project information
+import nskinetics
 
 project = 'NSKinetics'
-copyright = '2025, Sarang S. Bhagwat'
+copyright = '2025-2026, Sarang S. Bhagwat'
 author = 'Sarang S. Bhagwat'
 
-release = ''
-version = ''
-
-# -- General configuration
+version = nskinetics.__version__
+release = nskinetics.__version__
 
 extensions = [
     'sphinx.ext.duration',
@@ -18,77 +15,49 @@ extensions = [
     'sphinx.ext.napoleon',
     'sphinx.ext.autosummary',
     'sphinx.ext.intersphinx',
-    'sphinx_design',
     'sphinx.ext.viewcode',
     'sphinx.ext.todo',
     'sphinx.ext.coverage',
     'sphinx.ext.mathjax',
-   # 'sphinx.ext.ifconfig',
     'sphinx_multitoc_numbering',
     'sphinx_autodoc_typehints',
-    'myst_parser',
-    'nbsphinx',
-    'nbsphinx_link',
+    'sphinx_design',
 ]
 
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3/', None),
-    'sphinx': ('https://www.sphinx-doc.org/en/master/', None),
+    'numpy': ('https://numpy.org/doc/stable/', None),
 }
 intersphinx_disabled_domains = ['std']
 
 templates_path = ['_templates']
 
-# -- Options for HTML output
-
-html_theme = "pydata_sphinx_theme"
+html_theme = 'pydata_sphinx_theme'
 html_static_path = ['_static']
-html_css_files = [
-    'css/custom.css',
-]
-
-#
+html_css_files = ['css/custom.css']
 html_theme_options = {
-    "logo" : {
+    'logo': {
         'image_light': '_static/images/logo/logo_nskinetics_light_white-circle.png',
-        'image_dark': '_static/images/logo/logo_nskinetics_dark_white-circle.png'
+        'image_dark': '_static/images/logo/logo_nskinetics_dark_white-circle.png',
     },
-    "show_toc_level": 2,
-#     "announcement": (
-#         "<p> ..."
-#         "<a href='https://...'>...</a></p>"
-#     ),
-#     "external_links": [
-#       {"name": "...", "url": "https://..."},
-#   ]
+    'show_toc_level': 2,
 }
 
-# -- Options for EPUB output
 epub_show_urls = 'footnote'
 
-# Autosummary settings
 autosummary_generate = True
-
-# Autodoc settings
 autodoc_default_options = {
     'members': True,
-    'undoc-members': True,
+    'undoc-members': False,
     'show-inheritance': True,
 }
+# RTD may not install the heavy runtime stack; mock it for autodoc imports.
+# numpy/pandas are cheap wheels and are used at import time (e.g. np.inf default
+# args), so they are NOT mocked.
+autodoc_mock_imports = ['tellurium', 'biosteam', 'thermosteam', 'numba']
 
-# Napoleon settings
-# napoleon_google_docstring = True
 napoleon_numpy_docstring = True
+napoleon_google_docstring = False
 napoleon_include_init_with_doc = False
-napoleon_include_private_with_doc = False
-napoleon_include_special_with_doc = True
-napoleon_use_admonition_for_examples = False
-napoleon_use_admonition_for_notes = False
-napoleon_use_admonition_for_references = False
-napoleon_use_ivar = False
 napoleon_use_param = True
 napoleon_use_rtype = True
-napoleon_preprocess_types = False
-napoleon_type_aliases = None
-napoleon_attr_annotations = True
-

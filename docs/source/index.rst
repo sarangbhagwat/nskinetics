@@ -4,9 +4,10 @@
 .. toctree::
    :maxdepth: 2
    :hidden:
-   
+
+   tutorial/index
+   concepts
    API/api
-   user_guide
 
 .. grid:: 1 1 2 2
 
@@ -38,8 +39,8 @@
    
     .. grid-item-card:: Getting Started
        :text-align: center
-       :link: https://nskinetics.readthedocs.io/en/latest/user_guide/Getting_started.html
-       :link-type: url
+       :link: tutorial/index
+       :link-type: doc
        :padding: 1
           
        .. image:: _static/images/icons/getting-started_dark.png
@@ -55,48 +56,10 @@
        Tutorials on NSKinetics
 
 
-    .. grid-item-card:: Inverse Modeling
-       :text-align: center
-       :link: https://nskinetics.readthedocs.io/en/latest/API/inverse_modeling.html
-       :link-type: url
-       :padding: 1
-       
-       .. image:: _static/images/icons/inverse-modeling_dark.png
-          :height: 100
-          :class: only-dark
-          :align: center
-          
-       .. image:: _static/images/icons/inverse-modeling_light.png
-          :height: 100
-          :class: only-light
-          :align: center
-       
-       Fit parameters to data
-
-       
-    .. grid-item-card:: Design of Experiments
-       :text-align: center
-       :link: https://nskinetics.readthedocs.io/en/latest/API/doe.html
-       :link-type: url
-       :padding: 1
-       
-       .. image:: _static/images/icons/doe_dark.png
-          :height: 100
-          :class: only-dark
-          :align: center
-          
-       .. image:: _static/images/icons/doe_light.png
-          :height: 100
-          :class: only-light
-          :align: center
-    
-       Computationally driven
-
-
     .. grid-item-card:: API Reference
        :text-align: center
-       :link: https://nskinetics.readthedocs.io/en/latest/API/api.html
-       :link-type: url
+       :link: API/api
+       :link-type: doc
        :padding: 1
        
        .. image:: _static/images/icons/api_dark.png
@@ -151,7 +114,4 @@ Common Issues
   .. code-block:: bash
 
      $ pip install nskinetics==0.1.4
-
-.. toctree::
-   :maxdepth: 2
 
