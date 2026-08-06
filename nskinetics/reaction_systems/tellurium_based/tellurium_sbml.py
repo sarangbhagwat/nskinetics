@@ -9,11 +9,15 @@
 import tellurium as te
 
 from ...exceptions import KineticSimulationError, EventCompilationError
+from .events import _regenerate_and_resync
 
 __all__ = ('TelluriumReactionSystem',)
 
 _TIME_FACTORS = {'h': 1.0, 'hr': 1.0, 'min': 60.0, 'm': 60.0, 's': 3600.0, 'sec': 3600.0}
-_MOLAR_CONC_UNITS = ('M', 'mol/L', 'kg/m3', 'kg/m^3')
+# 'kg/m3' (== 'g/L') is a *mass* concentration; it must live only in
+# _MASS_CONC_UNITS. material_indexer checks the molar tuple first, so listing it
+# in both would mis-resolve a mass unit to 'imol'.
+_MOLAR_CONC_UNITS = ('M', 'mol/L')
 _MASS_CONC_UNITS = ('g/L', 'kg/m3', 'kg/m^3')
 
 
@@ -65,12 +69,18 @@ class TelluriumReactionSystem():
     @property
     def time_factor(self):
         """Hours per model time unit."""
-        return _TIME_FACTORS[self._units['time'].lower()]
+        time = self._units.get('time', '')
+        try:
+            return _TIME_FACTORS[time.lower()]
+        except (AttributeError, KeyError):
+            raise KineticSimulationError(
+                f'Unrecognized time units {time!r}; '
+                f'expected one of {sorted(_TIME_FACTORS)}.')
 
     @property
     def material_indexer(self):
         """biosteam stream indexer matching the model's concentration units."""
-        conc = self._units['conc']
+        conc = self._units.get('conc')
         if conc in _MOLAR_CONC_UNITS:
             return 'imol'
         elif conc in _MASS_CONC_UNITS:
@@ -124,14 +134,7 @@ class TelluriumReactionSystem():
         try:
             for event in self.events:
                 event.compile(r, force_regenerate=False)
-            r.regenerateModel()
-            # roadrunner's regenerateModel() leaves the model's stored
-            # init(X) bookkeeping stale for any rate-rule-governed variable
-            # with an explicit initial value; a plain r.reset() afterward
-            # then reads back corrupted values. resetToOrigin() re-syncs
-            # init(X) to the SBML-defined values so later reset() calls are
-            # correct.
-            r.resetToOrigin()
+            _regenerate_and_resync(r)
         except EventCompilationError:
             raise
         except Exception as e:

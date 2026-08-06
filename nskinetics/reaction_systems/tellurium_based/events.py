@@ -18,6 +18,19 @@ def _next_event_name(prefix='nsk_event'):
     return f'{prefix}_{next(_event_counter)}'
 
 
+def _regenerate_and_resync(r):
+    """Regenerate roadrunner model ``r`` and resync its ``init(X)`` bookkeeping.
+
+    roadrunner's ``regenerateModel()`` leaves the model's stored ``init(X)``
+    bookkeeping stale for any rate-rule-governed variable with an explicit
+    initial value; a plain ``r.reset()`` afterward then reads back corrupted
+    values. ``resetToOrigin()`` re-syncs ``init(X)`` to the SBML-defined values
+    so later ``reset()`` calls are correct.
+    """
+    r.regenerateModel()
+    r.resetToOrigin()
+
+
 class Event:
     """
     A single SBML event, compiled into a native roadrunner event.
@@ -82,14 +95,7 @@ class Event:
                 f'Failed to compile event {name!r} (when={self.when!r}, '
                 f'do={self.do!r}): {e}') from e
         if force_regenerate:
-            r.regenerateModel()
-            # roadrunner's regenerateModel() leaves the model's stored
-            # init(X) bookkeeping stale for any rate-rule-governed variable
-            # with an explicit initial value; a plain r.reset() afterward
-            # then reads back corrupted values. resetToOrigin() re-syncs
-            # init(X) to the SBML-defined values so later reset() calls are
-            # correct.
-            r.resetToOrigin()
+            _regenerate_and_resync(r)
 
 
 class FeedSpike:
@@ -189,6 +195,4 @@ class FeedSpike:
         for event in events:
             event.compile(r, force_regenerate=False)
         if force_regenerate:
-            r.regenerateModel()
-            # See the comment in Event.compile() for why this is needed.
-            r.resetToOrigin()
+            _regenerate_and_resync(r)
