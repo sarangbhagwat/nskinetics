@@ -26,6 +26,7 @@ setup(
                       'scikit-learn',
                       'pandas>=2.2.2,<3.0.0',
                       'tellurium',
+                      'biosteam==2.47.0',
                       # 'python-libsbml>=5.20.5,<6.0.0',
 		     ],
     # extras_require={ 
