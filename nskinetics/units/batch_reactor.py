@@ -74,20 +74,25 @@ class SpikeReduceRetry:
     ----------
     max_count_var : str
         Model attribute capping the number of feed spikes (the same parameter a
-        :class:`FeedSpike` points ``max_count`` at).
+        :class:`FeedSpike` points ``max_count`` at). Required.
+    count_var : str, optional
+        Result-column name reporting the current spike count. Read by
+        :class:`NSKBatchReactor` to seed the cap before the retry loop; not used
+        by :meth:`run` itself.
     stop_when : callable
         ``stop_when(model) -> bool``; the loop stops when this returns ``True``
         or the cap reaches 0.
     """
-    def __init__(self, *, max_count_var='max_n_glu_spikes', stop_when=lambda r: True):
+    def __init__(self, *, max_count_var, count_var=None, stop_when=lambda r: True):
         self.max_count_var = max_count_var
+        self.count_var = count_var
         self.stop_when = stop_when
 
     def run(self, model, simulate_once):
         """Run ``simulate_once`` while decrementing the cap on ``model`` until
         ``stop_when(model)`` holds or the cap hits 0."""
         var = self.max_count_var
-        while (not self.stop_when(model)) and (getattr(model, var) >= 0):
+        while (not self.stop_when(model)) and (getattr(model, var) > 0):
             simulate_once()
             setattr(model, var, getattr(model, var) - 1)
 
@@ -102,9 +107,10 @@ class AerationSpec:
         biomass concentration.
     volume_var : str
         Result column name for the working volume (default ``'curr_env'``).
-    biomass_chemical : str
-        biosteam chemical ID for biomass (default ``'Yeast'``); used to convert
-        model biomass grams to biosteam moles when sizing the air stream.
+    biomass_chemical : str, optional
+        biosteam chemical ID for biomass; used to convert model biomass grams to
+        biosteam moles when sizing the air stream. Required whenever the air
+        stream is sized (:meth:`set_air_stream`); defaults to ``None``.
     safety_factor : float
         Multiplier applied to the stoichiometric air requirement.
     air_index : int
@@ -118,7 +124,7 @@ class AerationSpec:
         Stage-1 aerobic cutoffs (mirrored onto the model by the unit).
     """
     def __init__(self, *, qO2_var='qO2', is_aerobic_var='is_aerobic',
-                 biomass_var='[x]', volume_var='curr_env', biomass_chemical='Yeast',
+                 biomass_var='[x]', volume_var='curr_env', biomass_chemical=None,
                  safety_factor=2.0, air_index=3,
                  stop_when_cell_density_plateaus=False,
                  factor_for_cell_density_plateau=0.5,
@@ -134,6 +140,11 @@ class AerationSpec:
         self.factor_for_cell_density_plateau = factor_for_cell_density_plateau
         self.stage_1_max_time = stage_1_max_time
         self.stage_1_max_x = stage_1_max_x
+
+    def result_columns(self):
+        """Result columns this aeration model reads from the simulation."""
+        return (self.qO2_var, self.is_aerobic_var, self.biomass_var,
+                self.volume_var)
 
     def _tau_index_cell_density_plateau(self, unit):
         x_arr = unit.nsk_results_dict[self.biomass_var]
@@ -224,6 +235,11 @@ class NSKBatchReactor(BatchBioreactor):
     volume_var : str, optional
         Result column name for the working volume used to scale effluent
         ``F_vol`` (e.g. ``'curr_env'``).
+    feed_volume_added_var : str, optional
+        Result column name for the cumulative feed volume added during the run.
+        When given (with ``volume_var``), the effluent ``F_vol`` is corrected for
+        volume added by fed-batch feeding. Chemistry-agnostic; a fermentation
+        subclass maps this to its own bookkeeping variable.
     aeration : AerationSpec, optional
     spike_retry : SpikeReduceRetry, optional
     pre_reactions : sequence of thermosteam.Reaction
@@ -252,6 +268,7 @@ class NSKBatchReactor(BatchBioreactor):
               n_decimal_places_for_tau_update_policy=2,
               reset=None,
               volume_var=None,
+              feed_volume_added_var=None,
               aeration=None, spike_retry=None,
               pre_reactions=(), validators=(),
               spike_feed_index=None,
@@ -276,6 +293,7 @@ class NSKBatchReactor(BatchBioreactor):
         self.n_decimal_places_for_tau_update_policy = n_decimal_places_for_tau_update_policy
         self._reset = reset if reset is not None else (lambda model, **kw: model.reset())
         self.volume_var = volume_var
+        self.feed_volume_added_var = feed_volume_added_var
         self.aeration = aeration
         self.spike_retry = spike_retry
         self.pre_reactions = list(pre_reactions)
@@ -313,14 +331,36 @@ class NSKBatchReactor(BatchBioreactor):
 
     # --- kinetic simulation -------------------------------------------------
     def _result_columns(self):
-        return (['time', 'curr_env', 'curr_n_glu_spikes',
-                 'curr_tot_vol_glu_feed_added', 'qO2', 'qO2_TCA_growth_only',
-                 'is_aerobic'] + list(self.track_vars)
-                + list(self.map_species_to_chemicals))
+        """Assemble the ordered, de-duplicated result columns to request.
+
+        Built from the configured features (working volume, spike-count retry,
+        feed-volume tracking, aeration) plus ``track_vars`` and the
+        species->chemical map. Chemistry-agnostic: no feature-specific column
+        name is hardcoded here.
+        """
+        cols = []
+
+        def add(name):
+            if name is not None and name not in cols:
+                cols.append(name)
+
+        add('time')
+        add(self.volume_var)
+        if self.spike_retry is not None:
+            add(self.spike_retry.count_var)
+        add(self.feed_volume_added_var)
+        if self.aeration is not None:
+            for name in self.aeration.result_columns():
+                add(name)
+        for name in self.track_vars:
+            add(name)
+        for name in self.map_species_to_chemicals:
+            add(name)
+        return cols
 
     def _reset_and_simulate(self, feed, reset_spike_cap=False):
         krs = self.kinetic_reaction_system
-        self._reset(krs, reset_max_n_glu_spikes=reset_spike_cap)
+        self._reset(krs, reset_spike_cap=reset_spike_cap)
         volume = getattr(feed, krs.material_indexer.replace('imol', 'ivol')
                          .replace('imass', 'ivol'))['Water']
         indexer = getattr(feed, krs.material_indexer)
@@ -345,9 +385,12 @@ class NSKBatchReactor(BatchBioreactor):
         # optional spike-count retry
         if self.spike_retry is not None:
             model = krs._te
-            model.max_n_glu_spikes = \
-                list(self.nsk_results_dict['curr_n_glu_spikes'])[-1] - 1
-            self.spike_retry.run(
+            sr = self.spike_retry
+            # Seed the cap from the count reached by the full run, then let the
+            # retry loop honor the SAME cap attribute it decrements.
+            setattr(model, sr.max_count_var,
+                    list(self.nsk_results_dict[sr.count_var])[-1] - 1)
+            sr.run(
                 model, lambda: self._reset_and_simulate(feed, reset_spike_cap=False))
         # validators
         for validate in self.validators:
@@ -390,7 +433,8 @@ class NSKBatchReactor(BatchBioreactor):
         if self.volume_var is not None:
             d = self.nsk_results_specific_tau_dict
             curr_vol = d[self.volume_var]
-            added = d['curr_tot_vol_glu_feed_added']
+            added = (d[self.feed_volume_added_var]
+                     if self.feed_volume_added_var is not None else 0.0)
             effluent.F_vol *= curr_vol / (curr_vol - added)
         return effluent
 

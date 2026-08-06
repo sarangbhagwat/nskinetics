@@ -108,9 +108,11 @@ class NSKFermentation(NSKBatchReactor):
         if f_reset_kinetic_reaction_system is None:
             reset = lambda model, **kw: model.reset()
         else:
+            # Parent passes the generic ``reset_spike_cap`` flag; the isobutanol
+            # example's reset function still takes ``reset_max_n_glu_spikes``.
             def reset(model, **kw):
                 f_reset_kinetic_reaction_system(
-                    model, reset_max_n_glu_spikes=kw.get('reset_max_n_glu_spikes', True))
+                    model, reset_max_n_glu_spikes=kw.get('reset_spike_cap', True))
 
         aeration = AerationSpec(
             qO2_var='qO2', is_aerobic_var='is_aerobic', biomass_var='[x]',
@@ -121,7 +123,8 @@ class NSKFermentation(NSKBatchReactor):
             stage_1_max_time=stage_1_max_time, stage_1_max_x=stage_1_max_x)
 
         spike_retry = SpikeReduceRetry(
-            max_count_var='max_n_glu_spikes', stop_when=try_fewer_n_spikes_until)
+            max_count_var='max_n_glu_spikes', count_var='curr_n_glu_spikes',
+            stop_when=try_fewer_n_spikes_until)
 
         NSKBatchReactor._init(
             self, kinetic_reaction_system=kinetic_reaction_system,
@@ -131,6 +134,7 @@ class NSKFermentation(NSKBatchReactor):
             tau_update_policy=tau_update_policy,
             n_decimal_places_for_tau_update_policy=n_decimal_places_for_tau_update_policy,
             reset=reset, volume_var='curr_env',
+            feed_volume_added_var='curr_tot_vol_glu_feed_added',
             aeration=aeration, spike_retry=spike_retry,
             pre_reactions=(), validators=(
                 _negative_concentration_validator,
@@ -147,6 +151,9 @@ class NSKFermentation(NSKBatchReactor):
 
         self.sugar_IDs = sugar_IDs
         self.f_reset_kinetic_reaction_system = f_reset_kinetic_reaction_system
+        # These assignments go through property setters (below) that mirror the
+        # value onto self.aeration, so post-construction mutation takes effect at
+        # simulate time instead of silently no-op'ing.
         self.stop_aeration_when_cell_density_plateaus = \
             stop_aeration_when_cell_density_plateaus
         self.factor_for_cell_density_plateau = factor_for_cell_density_plateau
@@ -154,6 +161,37 @@ class NSKFermentation(NSKBatchReactor):
         # mirror stage-1 cutoffs onto the model (property setters below)
         self.stage_1_max_time = stage_1_max_time
         self.stage_1_max_x = stage_1_max_x
+
+    # --- aeration config mirrors onto the AerationSpec ----------------------
+    @property
+    def aeration_safety_factor(self):
+        return self._aeration_safety_factor
+
+    @aeration_safety_factor.setter
+    def aeration_safety_factor(self, val):
+        self._aeration_safety_factor = val
+        if self.aeration is not None:
+            self.aeration.safety_factor = val
+
+    @property
+    def stop_aeration_when_cell_density_plateaus(self):
+        return self._stop_aeration_when_cell_density_plateaus
+
+    @stop_aeration_when_cell_density_plateaus.setter
+    def stop_aeration_when_cell_density_plateaus(self, val):
+        self._stop_aeration_when_cell_density_plateaus = val
+        if self.aeration is not None:
+            self.aeration.stop_when_cell_density_plateaus = val
+
+    @property
+    def factor_for_cell_density_plateau(self):
+        return self._factor_for_cell_density_plateau
+
+    @factor_for_cell_density_plateau.setter
+    def factor_for_cell_density_plateau(self, val):
+        self._factor_for_cell_density_plateau = val
+        if self.aeration is not None:
+            self.aeration.factor_for_cell_density_plateau = val
 
     # --- stage-1 cutoffs mirror onto the kinetic model ---------------------
     @property

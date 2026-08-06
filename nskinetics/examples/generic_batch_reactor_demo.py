@@ -28,9 +28,6 @@ model generic_batch()
   n_spk has dimensionless; n_max has dimensionless;
   J: S => P; k*S*env;
   curr_env := env;
-  curr_n_glu_spikes := n_spk;
-  curr_tot_vol_glu_feed_added := tot_vol;
-  qO2 := 0; qO2_TCA_growth_only := 0; is_aerobic := 0;
 end
 """
 
