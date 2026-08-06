@@ -1,0 +1,14 @@
+include README.rst
+include LICENSE
+include requirements.txt
+include requirements_install.txt
+include requirements_test.txt
+
+# Bundled model files loaded by name at import/run time (antimony + SBML).
+recursive-include nskinetics/examples *.txt *.xml
+
+# Reference data used by the test suite.
+recursive-include nskinetics/tests/data *.txt
+
+# Bundled reference datasets (metabolite / SMILES tables).
+recursive-include nskinetics/data *.txt *.csv

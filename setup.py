@@ -29,15 +29,20 @@ setup(
                       'biosteam==2.47.0',
                       # 'python-libsbml>=5.20.5,<6.0.0',
 		     ],
-    # extras_require={ 
+    # extras_require={
     #     'dev': [
     #     ]
-    # }, 
-    # package_data={
-    #     'nskinetics': []
     # },
-    # exclude_package_data={
-    # },
+    include_package_data=True,
+    package_data={
+        # Shipped model files loaded by name at import/run time (e.g. the
+        # isobutanol example module loads its antimony .txt on import, and the
+        # tutorial loads the shipped SBML .xml). These must be in the wheel so
+        # installed (non-editable) copies can find them.
+        'nskinetics.examples': ['*.txt', '*.xml'],
+        # Reference antimony used by the events tests.
+        'nskinetics.tests': ['data/*.txt'],
+    },
     python_requires='>=3.9',
     platforms=['Windows', 'Mac', 'Linux'],
     author_email='sarangbhagwat.developer@gmail.com',
