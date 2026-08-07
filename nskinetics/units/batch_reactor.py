@@ -353,6 +353,46 @@ class NSKBatchReactor(BatchBioreactor):
         krs = getattr(self, 'kinetic_reaction_system', None)
         return krs.results_col_names if krs is not None else None
 
+    # --- plotting -----------------------------------------------------------
+    def plot_simulation_results(self, *args, show_fermentation_end=True,
+                                show_aeration_end=True, **kwargs):
+        """Plot the kinetic reaction system's most recent simulation, marking
+        the fermentation- and aeration-end times.
+
+        Delegates to
+        :meth:`nskinetics.TelluriumReactionSystem.plot_simulation_results`,
+        injecting dashed vertical event lines at the fermentation-end time
+        (``tau``) and, when aeration is configured, the aeration-end time
+        (``tau_stop_aeration``). All other positional and keyword arguments are
+        forwarded unchanged; keyword arguments override the injected lines when
+        their names collide.
+
+        Parameters
+        ----------
+        show_fermentation_end : bool
+            Draw the fermentation-end (``tau``) line. Defaults to ``True``.
+        show_aeration_end : bool
+            Draw the aeration-end (``tau_stop_aeration``) line when aeration is
+            configured. Defaults to ``True``.
+        *args, **kwargs
+            Forwarded to the reaction system's
+            :meth:`~nskinetics.TelluriumReactionSystem.plot_simulation_results`.
+        """
+        events = {}
+        if show_fermentation_end:
+            tau = getattr(self, 'tau', None)
+            if tau is not None:
+                events['fermentation_end'] = tau
+        if show_aeration_end and self.aeration is not None:
+            events['aeration_end'] = getattr(self, 'tau_stop_aeration', None)
+        # User kwargs win on name collisions and may add further event lines.
+        events.update(kwargs)
+        return self.kinetic_reaction_system.plot_simulation_results(
+            *args, **events)
+
+    plot_time_course = plot_simulation_results
+    plot_trajectory = plot_simulation_results
+
     # --- kinetic simulation -------------------------------------------------
     def _result_columns(self):
         """Assemble the ordered, de-duplicated result columns to request.

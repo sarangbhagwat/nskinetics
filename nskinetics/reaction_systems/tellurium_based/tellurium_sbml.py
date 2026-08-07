@@ -251,7 +251,8 @@ class TelluriumReactionSystem():
     # --- plotting -----------------------------------------------------------
     def plot_simulation_results(self, variables=None, labels=None,
                                 xlim=None, ylim=None, markers=None,
-                                save_fig=False, filename=None, figwidth=3.9):
+                                save_fig=False, filename=None, figwidth=3.9,
+                                **kwargs):
         """Plot concentration vs. time for the most recent simulation.
 
         Also available under the aliases :meth:`plot_time_course` and
@@ -279,6 +280,14 @@ class TelluriumReactionSystem():
             Output path used when ``save_fig`` is ``True``.
         figwidth : float
             Figure width in inches. Defaults to ``3.9``.
+        **kwargs
+            Named vertical event lines, as ``label=time`` pairs. Each draws a
+            labeled dashed line at ``time`` (in the plotted time units) and adds
+            it to the legend; underscores in the label become spaces. A value of
+            ``None`` is skipped, so a caller may pass an unavailable time
+            through harmlessly. Drivers such as
+            :class:`nskinetics.units.NSKBatchReactor` use this to mark the
+            aeration- and fermentation-end times.
 
         Returns
         -------
@@ -314,8 +323,6 @@ class TelluriumReactionSystem():
         time = d['time']
         for var, label in zip(variables, labels):
             ax.plot(time, d[var], label=label)
-        ax.legend(bbox_to_anchor=(1.05, 1.0), loc='upper left',
-                  edgecolor='white')
 
         time_u = self._units.get('time', '')
         conc_u = self._units.get('conc', '')
@@ -340,12 +347,32 @@ class TelluriumReactionSystem():
             ymax = max(float(np.max(d[var])) for var in variables)
             ax.set_ylim((0.0, 1.1 * ymax))
 
+        # Draw vertical lines within the finalized axes box, then reassert the
+        # limits so adding the line collections cannot rescale the view.
+        xlim_final = ax.get_xlim()
+        ylim_final = ax.get_ylim()
+        y0, y1 = ylim_final
         if markers:
-            y0, y1 = ax.get_ylim()
             for m in markers:
                 x = m[0] if isinstance(m, (tuple, list)) else m
-                ax.vlines(x=[x], ymin=[y0], ymax=[y1], linestyles='dashed',
+                ax.vlines(x=[x], ymin=y0, ymax=y1, linestyles='dashed',
                           linewidth=1.0, color='gray')
+        # Named event lines (e.g. aeration-/fermentation-end times injected by
+        # NSKBatchReactor); None values are skipped.
+        _event_colors = ('dimgray', 'black', 'saddlebrown', 'teal')
+        ci = 0
+        for name, x in kwargs.items():
+            if x is None:
+                continue
+            ax.vlines(x=[float(x)], ymin=y0, ymax=y1, linestyles='dashed',
+                      linewidth=1.2, color=_event_colors[ci % len(_event_colors)],
+                      label=name.replace('_', ' '))
+            ci += 1
+        ax.set_xlim(xlim_final)
+        ax.set_ylim(ylim_final)
+
+        ax.legend(bbox_to_anchor=(1.05, 1.0), loc='upper left',
+                  edgecolor='white')
 
         if save_fig:
             plt.savefig(filename, transparent=False, facecolor='white',
