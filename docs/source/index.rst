@@ -40,12 +40,10 @@
 Quickstart
 ----------
 
-Write a tiny kinetic model in Antimony, wrap it in a :class:`TelluriumReactionSystem`, and simulate it through
-the underlying RoadRunner object:
+Write a tiny kinetic model in Antimony, wrap it in a :class:`TelluriumReactionSystem`, and simulate it:
 
 .. code-block:: python
 
-   import numpy as np
    import tellurium as te
    import nskinetics as nsk
 
@@ -61,11 +59,18 @@ the underlying RoadRunner object:
    trs.validate_units()
    trs.reset()
 
-   result = np.array(r.simulate(0, 10, 101, ['time', 'S', 'P']))
+   result = trs.simulate(0, 10, 101, ['time', '[S]', '[P]'])
    print('t=10:', result[-1])
+   trs.plot_simulation_results(labels=['S', 'P'])
 
 This prints ``t=10: [10.     0.498  9.502]`` — species ``S`` has decayed from an initial concentration of 10 g/L
 to about 0.498 g/L by ``t=10`` h under first-order decay (``k=0.3``), while ``P`` has risen to about 9.502 g/L.
+
+.. figure:: /_static/images/examples/index_landing.png
+   :width: 400
+
+   ``trs.simulate`` records the trajectory; ``plot_simulation_results`` plots it.
+
 See :doc:`tutorial/index` for the full walkthrough, including events, fed-batch feeding, and the biosteam/TEA
 bridge.
 

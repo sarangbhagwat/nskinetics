@@ -21,17 +21,18 @@ object with :class:`nsk.TelluriumReactionSystem(r, units=...) <TelluriumReaction
 Either route produces the same wrapper, so the rest of the workflow (units,
 events, simulation) is identical regardless of how the model was authored.
 
-The RoadRunner is the engine
------------------------------
+Simulating and the RoadRunner engine
+-------------------------------------
 
-:class:`TelluriumReactionSystem` has no ``solve``/``simulate`` method of its
-own; it is a thin wrapper that adds unit-aware value access and a Python
-event API on top of a Tellurium extended RoadRunner instance. Simulation is
-always run through that underlying object directly:
-``r.simulate(t0, t1, n_points, ['time', 'A', 'B'])``, which returns a
-NumPy-like structured array (wrap it with ``np.array(...)`` for normal NumPy
-indexing). Use bracketed ``'[S]'`` selections to record concentrations, and
-plain variable names to record amounts.
+:class:`TelluriumReactionSystem` provides :meth:`~TelluriumReactionSystem.simulate`,
+which integrates the model over ``[t0, t_end]`` and stores the trajectory on
+the reaction system (``trs.results`` / ``.results_array`` / ``.results_dict``) —
+the object is the source of truth for full-trajectory results. The underlying
+RoadRunner engine remains directly accessible as ``trs._te`` for lower-level use.
+:meth:`~TelluriumReactionSystem.plot_simulation_results` (aliases
+``plot_time_course`` / ``plot_trajectory``) plots the most recent run. Use
+bracketed ``'[S]'`` selections to record concentrations, and plain variable
+names to record amounts.
 
 Units
 -----
