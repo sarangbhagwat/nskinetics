@@ -202,20 +202,39 @@ prints:
    [ 2.3   10.026 89.974  1.     0.   ] -> [ 2.31  99.262 77.01   1.18   1.   ]
    [  4.6    10.052 166.219   1.18    1.   ] -> [  4.61   99.519 141.389   1.392   2.   ]
 
-The plot keeps to ``[s_glu]`` and ``env``, since ``[p_eth]`` runs up to
-~241 g/L and would flatten the working-volume trace out of readability:
+The two concentrations go on one plot, since they share a y-axis:
 
 .. code-block:: python
 
-   trs.plot_simulation_results(variables=['[s_glu]', 'env'],
-                               labels=['[s_glu]', 'env'],
+   trs.plot_simulation_results(variables=['[s_glu]', '[p_eth]'],
+                               labels=['[s_glu]', '[p_eth]'],
                                markers=[(2.3, 'spike'), (4.6, 'spike')])
 
 .. figure:: /_static/images/examples/tutorial_04_fed_batch_ii.png
    :width: 400
 
-   Each spike snaps ``[s_glu]`` back up while the working volume ``env`` steps
-   up by the feed added (1.0 → 1.18 → 1.39).
+   Each spike snaps ``[s_glu]`` back up to ~100 g/L and knocks ``[p_eth]``
+   down by the dilution factor; ``[p_eth]`` then climbs to ~241 g/L as the
+   last charge of substrate is converted.
+
+``env`` needs its own plot. It is a *volume*, not a concentration, so it
+does not belong on the axis above — and on a 0–250 g/L scale its 1.0 → 1.39
+range would be flattened into an unreadable line at the axis floor.
+``ylabel``/``ylabel_unit`` relabel the y-axis for exactly this case:
+
+.. code-block:: python
+
+   trs.plot_simulation_results(variables=['env'], labels=['env'],
+                               ylabel='Working volume', ylabel_unit='L',
+                               markers=[(2.3, 'spike'), (4.6, 'spike')])
+
+.. figure:: /_static/images/examples/tutorial_04_fed_batch_iii.png
+   :width: 400
+
+   On its own axis the working volume is a clean staircase: ``env`` holds at
+   1.0 L, then steps to 1.18 L and 1.392 L as each spike's event **b** adds
+   the feed volume that event **a** computed. It is flat everywhere else —
+   volume changes only at a spike.
 
 .. warning::
 

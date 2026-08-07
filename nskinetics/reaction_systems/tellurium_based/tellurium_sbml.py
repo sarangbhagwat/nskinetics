@@ -35,6 +35,27 @@ _CONC_UNIT_LABELS = {
     'mol/L': r'\mathrm{mol} \cdot \mathrm{L}^{-1}',
 }
 
+# Renderings for the non-concentration quantities a trajectory may also carry
+# (working volume, most commonly), reachable via plot_simulation_results'
+# `ylabel_unit`. Merged with the concentration units for lookup.
+_OTHER_UNIT_LABELS = {
+    'L': r'\mathrm{L}',
+    'mL': r'\mathrm{mL}',
+    'm3': r'\mathrm{m}^{3}',
+    'm^3': r'\mathrm{m}^{3}',
+}
+
+_UNIT_LABELS = {**_CONC_UNIT_LABELS, **_OTHER_UNIT_LABELS}
+
+
+def _bf(text):
+    """Render ``text`` as a bold mathtext run, escaping spaces.
+
+    Mathtext collapses literal spaces, so a multi-word axis label such as
+    ``'Working volume'`` needs its spaces escaped to survive ``\\bf``.
+    """
+    return r'$\bf' + str(text).replace(' ', r'\ ') + '$'
+
 
 class TelluriumReactionSystem():
     """
@@ -292,7 +313,7 @@ class TelluriumReactionSystem():
     def plot_simulation_results(self, variables=None, labels=None,
                                 xlim=None, ylim=None, markers=None,
                                 save_fig=False, filename=None, figwidth=3.9,
-                                **kwargs):
+                                ylabel=None, ylabel_unit=None, **kwargs):
         """Plot concentration vs. time for the most recent simulation.
 
         Also available under the aliases :meth:`plot_time_course` and
@@ -320,6 +341,15 @@ class TelluriumReactionSystem():
             Output path used when ``save_fig`` is ``True``.
         figwidth : float
             Figure width in inches. Defaults to ``3.9``.
+        ylabel : str, optional
+            Quantity name for the y-axis, rendered in bold. Defaults to
+            ``'Concentration'``. Pass e.g. ``'Volume'`` when plotting a
+            non-concentration selection such as the working-volume compartment.
+        ylabel_unit : str, optional
+            Unit shown in brackets after ``ylabel``. Defaults to this system's
+            ``'conc'`` unit. Known units (``'g/L'``, ``'M'``, ``'L'``, ``'m3'``,
+            …) are rendered as LaTeX; anything else is shown verbatim. Pass e.g.
+            ``'L'`` alongside ``ylabel='Volume'``.
         **kwargs
             Named vertical event lines, as ``label=time`` pairs. Each draws a
             labeled dashed line at ``time`` (in the plotted time units) and adds
@@ -365,10 +395,11 @@ class TelluriumReactionSystem():
             ax.plot(time, d[var], label=label)
 
         time_u = self._units.get('time', '')
-        conc_u = self._units.get('conc', '')
-        conc_label = _CONC_UNIT_LABELS.get(conc_u, conc_u)
-        ax.set_xlabel(r"$\bfTime$" + f' [{time_u}]')
-        ax.set_ylabel(r"$\bfConcentration$" + ' [' + f'${conc_label}$' + ']')
+        y_quantity = 'Concentration' if ylabel is None else ylabel
+        y_u = self._units.get('conc', '') if ylabel_unit is None else ylabel_unit
+        y_u_label = _UNIT_LABELS.get(y_u, y_u)
+        ax.set_xlabel(_bf('Time') + f' [{time_u}]')
+        ax.set_ylabel(_bf(y_quantity) + ' [' + f'${y_u_label}$' + ']')
 
         ax.xaxis.set_minor_locator(AutoMinorLocator(n_minor_ticks + 1))
         ax.yaxis.set_minor_locator(AutoMinorLocator(n_minor_ticks + 1))
