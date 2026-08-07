@@ -62,6 +62,7 @@ is fully runnable on its own:
        'R_demo', ins=(feed, seed, spike_feed), outs=('vent', 'effluent'),
        kinetic_reaction_system=te_r,
        map_species_to_chemicals={'S': 'Glucose', 'P': 'Ethanol'},
+       track_vars=['[S]', '[P]'],
        tau=48., tau_max=120., volume_var='curr_env',
        feed_volume_added_var='tot_vol',
        spike_feed_index=2, V=100.)
@@ -100,6 +101,14 @@ The bridge-specific keyword arguments
 - ``spike_feed_index`` — the index into ``ins`` (here, ``2`` →
   ``spike_feed``) of the stream that supplies spike-feed composition/cost,
   excluded from the initial reactor charge so it is not double-counted.
+- ``track_vars`` — extra model selections to record as result columns beyond
+  those the reactor needs internally. The ``map_species_to_chemicals`` keys
+  (``'S'``, ``'P'``) record species *amounts* (what the effluent mass is built
+  from); adding the bracketed ``'[S]'`` / ``'[P]'`` selections here also records
+  the corresponding *concentrations*, so the plot below can show concentration
+  rather than amount. The distinction matters in a fed-batch run: each
+  ``FeedSpike`` enlarges the working volume, so an amount trace keeps climbing
+  even though the spike resets the *concentration* back to the same target.
 
 Simulating and reading results
 ----------------------------------
@@ -121,7 +130,7 @@ adds no costs itself, so the only effect is a benign, expected
    effluent = reactor.outs[1]
    print('Built and simulated NSKBatchReactor:', reactor.ID)
    print(f'  selected tau     : {reactor.tau:.3g} h')
-   print(f'  substrate [S]    : {d["S"]:.3g} g/L  ->  product [P]: {d["P"]:.3g} g/L')
+   print(f'  substrate [S]    : {d["[S]"]:.3g} g/L  ->  product [P]: {d["[P]"]:.3g} g/L')
    print(f'  fed-batch spikes : {int(round(te_r.get_value("n_spk")))}')
    print(f'  effluent Ethanol : {effluent.imass["Ethanol"]:.3g} kg/hr')
    print(f'  installed cost   : ${reactor.installed_cost:,.0f}')
@@ -133,7 +142,7 @@ prints:
 
    Built and simulated NSKBatchReactor: R_demo
      selected tau     : 48 h
-     substrate [S]    : 2.42e-06 g/L  ->  product [P]: 215 g/L
+     substrate [S]    : 1.82e-06 g/L  ->  product [P]: 161 g/L
      fed-batch spikes : 3
      effluent Ethanol : 290 kg/hr
      installed cost   : $598,662
@@ -141,8 +150,8 @@ prints:
 ``reactor.tau`` (``48`` h) is the reaction time read back off the reactor —
 matching the ``tau=48.`` requested since no ``tau_update_policy`` overrode
 it. ``reactor.nsk_results_specific_tau_dict`` holds the kinetic model's state
-*at that tau*: substrate ``S`` essentially fully consumed (``2.42e-06`` g/L)
-and product ``P`` accumulated to ``215`` g/L. ``fed-batch spikes: 3`` shows
+*at that tau*: substrate ``S`` essentially fully consumed (``1.82e-06`` g/L)
+and product ``P`` accumulated to ``161`` g/L. ``fed-batch spikes: 3`` shows
 the ``FeedSpike`` hit its ``n_max=3`` cap over the 48 h window — the same
 threshold/target/feed_conc mechanics from :doc:`04_fed_batch_feeding`,
 just driving a real biosteam effluent this time. ``reactor.installed_cost``
@@ -155,13 +164,14 @@ fermentation-end (``tau``) time on the kinetic trajectory:
 
 .. code-block:: python
 
-   reactor.plot_simulation_results(variables=['S', 'P'], labels=['S', 'P'])
+   reactor.plot_simulation_results(variables=['[S]', '[P]'], labels=['S', 'P'])
 
 .. figure:: /_static/images/examples/tutorial_06_process_tea_bridge.png
    :width: 400
 
-   Substrate ``S`` is consumed to product ``P``; the dashed line marks the
-   selected fermentation-end time ``tau`` (48 h). When an
+   Substrate ``S`` is consumed to product ``P`` (concentrations, ``[S]`` and
+   ``[P]``); each ``FeedSpike`` resets ``[S]`` to the same target, and the
+   dashed line marks the selected fermentation-end time ``tau`` (48 h). When an
    :class:`~nskinetics.units.AerationSpec` is configured (as in
    :class:`~nskinetics.units.NSKFermentation`), the aeration-end time is
    marked too.

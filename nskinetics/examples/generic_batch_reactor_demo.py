@@ -60,6 +60,7 @@ def build_demo_reactor():
         'R_demo', ins=(feed, seed, spike_feed), outs=('vent', 'effluent'),
         kinetic_reaction_system=te_r,
         map_species_to_chemicals={'S': 'Glucose', 'P': 'Ethanol'},
+        track_vars=['[S]', '[P]'],  # record concentrations for plotting
         tau=48., tau_max=120., volume_var='curr_env',
         feed_volume_added_var='tot_vol',  # exercise the fed-batch volume correction
         spike_feed_index=2, V=100.)
@@ -86,7 +87,7 @@ if __name__ == '__main__':
     effluent = reactor.outs[1]
     print('Built and simulated NSKBatchReactor:', reactor.ID)
     print(f'  selected tau     : {reactor.tau:.3g} h')
-    print(f'  substrate [S]    : {d["S"]:.3g} g/L  ->  product [P]: {d["P"]:.3g} g/L')
+    print(f'  substrate [S]    : {d["[S]"]:.3g} g/L  ->  product [P]: {d["[P]"]:.3g} g/L')
     print(f'  fed-batch spikes : {int(round(te_r.get_value("n_spk")))}')
     print(f'  effluent Ethanol : {effluent.imass["Ethanol"]:.3g} kg/hr')
     print(f'  installed cost   : ${reactor.installed_cost:,.0f}')
