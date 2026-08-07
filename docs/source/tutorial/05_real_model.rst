@@ -89,16 +89,39 @@ Tolerances and initial conditions — strictly after compiling
 As :doc:`03_events` warns, ``compile_events()`` regenerates the underlying
 RoadRunner model and resets it to its SBML-defined origin values. Integrator
 tolerances and initial conditions must therefore be set **after** it, never
-before:
+before. Rather than poking the raw RoadRunner object directly, this page
+attaches a custom ``reset_func`` to ``trs`` — the same mechanism
+``TelluriumReactionSystem(..., reset=...)`` accepts at construction time — so
+that every ``trs.reset()`` call, including ones a process unit triggers
+internally, re-seeds the fed-batch bookkeeping consistently:
 
 .. code-block:: python
 
    integ = r.getIntegrator()
    integ.absolute_tolerance = 1e-10
    integ.relative_tolerance = 1e-9
+
+   # Give the reaction system its own reset: it restores the RoadRunner model
+   # and re-seeds the fed-batch bookkeeping. Attaching it to `trs` means every
+   # `trs.reset()` (including the ones a process unit calls internally) runs it.
+   def reset_model(trs):
+       trs._te.reset()
+       m = trs._te
+       m.n_glu_spikes = 0; m.last_vol_glu_feed_added = 0.; m.tot_vol_glu_feed_added = 0.
+       m.env = 1.; m.is_aerobic = 1; m.max_n_glu_spikes = 20
+
+   trs.reset_func = reset_model
    trs.reset()
-   r.n_glu_spikes = 0; r.last_vol_glu_feed_added = 0.; r.tot_vol_glu_feed_added = 0.
-   r.env = 1.; r.is_aerobic = 1; r.max_n_glu_spikes = 20; r.s_glu = 100; r.x = 1
+   r.s_glu = 100; r.x = 1
+
+A custom ``reset_func`` **fully replaces** the default reset behavior rather
+than layering on top of it, so ``reset_model`` must call ``trs._te.reset()``
+itself to restore the RoadRunner model before re-seeding the bookkeeping
+variables — omitting that call would leave the model wherever the previous
+run left it. The initial concentrations ``s_glu`` and ``x`` are set *after*
+``trs.reset()`` returns, not inside ``reset_model`` and not before it:
+``reset()`` restores every floating species to its SBML-defined origin value,
+so setting them any earlier would simply be overwritten.
 
 The tightened tolerances (``1e-10``/``1e-9`` versus RoadRunner's looser
 defaults) matter here because the model's rate laws are numerically stiff

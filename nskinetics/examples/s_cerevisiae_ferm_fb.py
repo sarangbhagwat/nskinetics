@@ -29,13 +29,15 @@ te_r = nsk.TelluriumReactionSystem(r)
 te_r._units['time'] = 'h'
 te_r._units['conc'] = 'g/L'
     
-def reset_kinetic_reaction_system(r):
-    r.reset()
-    r_te = r._te
+def reset_kinetic_reaction_system(trs, **kwargs):
+    trs._te.reset()
+    r_te = trs._te
     r_te.n_glu_spikes = 0
     r_te.last_vol_glu_feed_added = 0.
     r_te.tot_vol_glu_feed_added = 0.
     r_te.env = 1.
+
+te_r.reset_func = reset_kinetic_reaction_system
 
 #%% Document references for IBO pathway kinetic parameters
 

@@ -57,15 +57,17 @@ te_r.add_event(nsk.Event(when='x >= stage_1_max_x',
 
 te_r.compile_events()
 
-def reset_kinetic_reaction_system(r, reset_max_n_glu_spikes=True):
-    r.reset()
-    r_te = r._te
+def reset_kinetic_reaction_system(trs, reset_spike_cap=True, **kwargs):
+    trs._te.reset()
+    r_te = trs._te
     r_te.n_glu_spikes = 0
     r_te.last_vol_glu_feed_added = 0.
     r_te.tot_vol_glu_feed_added = 0.
     r_te.env = 1.
     r_te.is_aerobic = 1
-    if reset_max_n_glu_spikes: r_te.max_n_glu_spikes = r.default_max_n_glu_spikes
+    if reset_spike_cap: r_te.max_n_glu_spikes = trs.default_max_n_glu_spikes
+
+te_r.reset_func = reset_kinetic_reaction_system
 
 #%% Set tolerances
 integrator = r.integrator

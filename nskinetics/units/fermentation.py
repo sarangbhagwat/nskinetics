@@ -83,7 +83,6 @@ class NSKFermentation(NSKBatchReactor):
               map_species_to_chemicals=None,
               track_vars=None,
               n_simulation_steps=1000,
-              f_reset_kinetic_reaction_system=None,
               N=None, V=None, T=305.15, P=101325., Nmin=2, Nmax=36,
               sugar_IDs=('Sucrose', 'Glucose', 'Xylose'),
               tau_max=24. * 7.,
@@ -102,16 +101,6 @@ class NSKFermentation(NSKBatchReactor):
             map_species_to_chemicals = map_chemicals_nsk_to_bst or {}
         if track_vars is None:
             track_vars = []
-
-        # Reset function: adapt the old signature to the parent's reset(model, **kw).
-        if f_reset_kinetic_reaction_system is None:
-            reset = lambda model, **kw: model.reset()
-        else:
-            # Parent passes the generic ``reset_spike_cap`` flag; the isobutanol
-            # example's reset function still takes ``reset_max_n_glu_spikes``.
-            def reset(model, **kw):
-                f_reset_kinetic_reaction_system(
-                    model, reset_max_n_glu_spikes=kw.get('reset_spike_cap', True))
 
         aeration = AerationSpec(
             qO2_var='qO2', is_aerobic_var='is_aerobic', biomass_var='[x]',
@@ -132,7 +121,7 @@ class NSKFermentation(NSKBatchReactor):
             track_vars=track_vars, n_simulation_steps=n_simulation_steps,
             tau_update_policy=tau_update_policy,
             n_decimal_places_for_tau_update_policy=n_decimal_places_for_tau_update_policy,
-            reset=reset, volume_var='curr_env',
+            volume_var='curr_env',
             feed_volume_added_var='curr_tot_vol_glu_feed_added',
             aeration=aeration, spike_retry=spike_retry,
             pre_reactions=(), validators=(
@@ -149,7 +138,6 @@ class NSKFermentation(NSKBatchReactor):
             self.pre_reactions = [self.hydrolysis_reaction]
 
         self.sugar_IDs = sugar_IDs
-        self.f_reset_kinetic_reaction_system = f_reset_kinetic_reaction_system
         # These assignments go through property setters (below) that mirror the
         # value onto self.aeration, so post-construction mutation takes effect at
         # simulate time instead of silently no-op'ing.

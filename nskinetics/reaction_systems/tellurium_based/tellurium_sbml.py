@@ -49,6 +49,13 @@ class TelluriumReactionSystem():
     units : dict, optional
         Mapping with keys ``'time'`` and ``'conc'``. Defaults to
         ``{'time': 'min', 'conc': 'M'}``.
+    reset : callable, optional
+        Custom reset function ``reset(trs, **kwargs)`` invoked by
+        :meth:`reset`. When given it fully replaces the default reset (it should
+        call ``trs._te.reset()`` itself if a base reset is wanted). Defaults to
+        ``None`` (reset the underlying RoadRunner model). Also settable after
+        construction via :attr:`reset_func`. Distinct from the boolean ``reset``
+        argument of :meth:`simulate`.
 
     Notes
     -----
@@ -62,12 +69,13 @@ class TelluriumReactionSystem():
     storing their own copy. The underlying RoadRunner object remains directly
     accessible as :attr:`_te` for lower-level use.
     """
-    def __init__(self, te, units=None):
+    def __init__(self, te, units=None, reset=None):
         self._te = te
         if units is not None:
             self._units = units
         else:
             self._units = {'time': 'min', 'conc': 'M'}
+        self._reset_func = reset
         self.events = []
         self._events_compiled = False
         # Most-recent simulation results (set by simulate); the TRS is the
@@ -191,10 +199,35 @@ class TelluriumReactionSystem():
         self._events_compiled = True
 
     # --- reset --------------------------------------------------------------
+    @property
+    def reset_func(self):
+        """The custom reset callable ``reset(trs, **kwargs)``, or ``None`` for
+        the default (plain ``self._te.reset()``)."""
+        return self._reset_func
+
+    @reset_func.setter
+    def reset_func(self, func):
+        self._reset_func = func
+
     def reset(self, **kwargs):
-        """Reset model state (not structure); extra kwargs are ignored so
-        callers may pass bookkeeping flags."""
-        self._te.reset()
+        """Reset model state (not structure).
+
+        If a custom reset function was supplied (constructor ``reset=`` or the
+        :attr:`reset_func` property), it is called as ``reset(self, **kwargs)``
+        and is *fully responsible* for restoring state (typically by calling
+        ``self._te.reset()`` itself); the default reset is not additionally
+        applied. Otherwise the underlying RoadRunner model is reset. Extra
+        kwargs are forwarded to the custom function and ignored by the default,
+        so callers may pass bookkeeping flags (e.g. ``reset_spike_cap``).
+
+        Not to be confused with the boolean ``reset`` parameter of
+        :meth:`simulate`, which selects *whether* to call this method before
+        integrating.
+        """
+        if self._reset_func is not None:
+            self._reset_func(self, **kwargs)
+        else:
+            self._te.reset()
 
     # --- simulation ---------------------------------------------------------
     def simulate(self, t0=0.0, t_end=None, n_steps=1000, selections=None,

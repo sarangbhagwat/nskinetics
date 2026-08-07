@@ -37,9 +37,11 @@ te_r = nsk.TelluriumReactionSystem(r)
 te_r._units['time'] = 'h'
 te_r._units['conc'] = 'g/L'
     
-def reset_kinetic_reaction_system(r):
-    r.reset()
-    r._te.n_glu_spikes = 0
+def reset_kinetic_reaction_system(trs, **kwargs):
+    trs._te.reset()
+    trs._te.n_glu_spikes = 0
+
+te_r.reset_func = reset_kinetic_reaction_system
 
 #%% Set initial concs
     
@@ -78,12 +80,11 @@ if simulate:
                                 's_EtOH': 'Ethanol',}
 
         
-    R302 = nsk.units.NSKFermentation('R302', 
-                                     ins=feed, 
+    R302 = nsk.units.NSKFermentation('R302',
+                                     ins=feed,
                                      kinetic_reaction_system=te_r,
                                      map_chemicals_nsk_to_bst=map_chemicals_nsk_to_bst,
                                      n_simulation_steps=None,
-                                     f_reset_kinetic_reaction_system=reset_kinetic_reaction_system,
                                      tau=3*24)
     
     R302.simulate()

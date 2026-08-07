@@ -239,8 +239,6 @@ class NSKBatchReactor(BatchBioreactor):
         Passed to :func:`select_tau_index`.
     n_decimal_places_for_tau_update_policy : int
         Rounding for the ``max``/``min``/``equals`` policies.
-    reset : callable, optional
-        ``reset(model, **kwargs)``; defaults to ``model.reset()``.
     volume_var : str, optional
         Result column name for the working volume used to scale effluent
         ``F_vol`` (e.g. ``'curr_env'``).
@@ -275,7 +273,6 @@ class NSKBatchReactor(BatchBioreactor):
               n_simulation_steps=1000,
               tau_update_policy=None,
               n_decimal_places_for_tau_update_policy=2,
-              reset=None,
               volume_var=None,
               feed_volume_added_var=None,
               aeration=None, spike_retry=None,
@@ -300,7 +297,6 @@ class NSKBatchReactor(BatchBioreactor):
         self.tau_max = tau_max
         self.tau_update_policy = tau_update_policy
         self.n_decimal_places_for_tau_update_policy = n_decimal_places_for_tau_update_policy
-        self._reset = reset if reset is not None else (lambda model, **kw: model.reset())
         self.volume_var = volume_var
         self.feed_volume_added_var = feed_volume_added_var
         self.aeration = aeration
@@ -434,7 +430,7 @@ class NSKBatchReactor(BatchBioreactor):
 
     def _reset_and_simulate(self, feed, reset_spike_cap=False):
         krs = self.kinetic_reaction_system
-        self._reset(krs, reset_spike_cap=reset_spike_cap)
+        krs.reset(reset_spike_cap=reset_spike_cap)
         volume = getattr(feed, krs.material_indexer.replace('imol', 'ivol')
                          .replace('imass', 'ivol'))['Water']
         indexer = getattr(feed, krs.material_indexer)
