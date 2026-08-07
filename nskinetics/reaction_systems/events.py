@@ -7,7 +7,7 @@
 # for license details.
 import itertools
 
-from ...exceptions import EventCompilationError
+from ..exceptions import EventCompilationError
 
 __all__ = ('Event', 'FeedSpike')
 

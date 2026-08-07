@@ -12,12 +12,15 @@ from . import steady
 from .steady import *
 from .import predefined
 from .predefined import *
-from .import tellurium_based
-from .tellurium_based import *
+from . import tellurium_sbml
+from .tellurium_sbml import *
+from . import events
+from .events import *
 
 __all__ = (
      *reaction_system.__all__,
      *steady.__all__,
      *predefined.__all__,
-     *tellurium_based.__all__,
+     *tellurium_sbml.__all__,
+     *events.__all__,
      )

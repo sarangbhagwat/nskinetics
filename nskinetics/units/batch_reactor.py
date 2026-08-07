@@ -11,7 +11,7 @@ import numpy as np
 from biosteam.units import BatchBioreactor
 
 from ..utils import get_index_nearest_element_from_sorted_array
-from ..reaction_systems.tellurium_based.tellurium_sbml import TelluriumReactionSystem
+from ..reaction_systems.tellurium_sbml import TelluriumReactionSystem
 from ..exceptions import KineticSimulationError, MassBalanceError
 
 __all__ = ('NSKBatchReactor', 'AerationSpec', 'SpikeReduceRetry',

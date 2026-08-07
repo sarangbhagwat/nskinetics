@@ -13,7 +13,7 @@ import tellurium as te
 from matplotlib import pyplot as plt
 from matplotlib.ticker import AutoMinorLocator
 
-from ...exceptions import KineticSimulationError, EventCompilationError
+from ..exceptions import KineticSimulationError, EventCompilationError
 from .events import _regenerate_and_resync
 
 __all__ = ('TelluriumReactionSystem',)
