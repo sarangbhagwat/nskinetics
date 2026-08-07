@@ -174,16 +174,14 @@ prints:
 
    trs.plot_simulation_results(
        variables=['[s_glu]', '[s_EtOH]', '[s_IBO]', '[x]'],
-       labels=['glucose', 'ethanol', 'isobutanol', 'biomass'],
-       markers=[5.5, 7.1, 8.8, 10.8, 13.5, 17.2, 23.0, 34.1])
+       labels=['glucose', 'ethanol', 'isobutanol', 'biomass'])
 
 .. figure:: /_static/images/examples/tutorial_05_real_model.png
    :width: 450
 
-   Eight glucose spikes (dashed lines) hold glucose in the 100–140 g/L band
-   until feeding tapers off past ~34 h; ethanol and biomass climb while the
-   isobutanol branch stays at 0 (its rate constants are 0 in the shipped
-   baseline).
+   Eight glucose spikes hold glucose in the 100–140 g/L band until feeding
+   tapers off past ~34 h; ethanol and biomass climb while the isobutanol
+   branch stays at 0 (its rate constants are 0 in the shipped baseline).
 
 Reading the final state
 -------------------------
