@@ -18,7 +18,7 @@ example models:
 
 .. code-block:: python
 
-   import os, numpy as np, tellurium as te, nskinetics as nsk
+   import os, tellurium as te, nskinetics as nsk
 
    p = os.path.join(os.path.dirname(nsk.__file__),
                      'examples', 's_cerevisiae_ferm_fb_inhib_mod_ibo_sbml.xml')
@@ -158,7 +158,7 @@ the ``threshold_conc_glu_spike`` trigger (10 g/L) back up toward
 — with this model's compartment volume not diluted by any outflow —
 ``[s_glu]`` can only decrease as it is consumed, never exceeding the 100 g/L
 target it was just set to. Tracing the four spikes confirms this pattern:
-they land at roughly ``t=7.4``, ``11.9``, ``21.0``, and ``94.0`` h, each
+they land at roughly ``t=7.5``, ``11.9``, ``21.0``, and ``94.0`` h, each
 jumping ``[s_glu]`` from just above the 10 g/L threshold up to
 essentially the 100 g/L target; after the fourth spike, ``[s_glu]`` simply
 decays for the remaining ~106 h, reaching the final ``98.63`` g/L — just

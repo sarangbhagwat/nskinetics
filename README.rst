@@ -54,11 +54,10 @@ NSKinetic's `full documentation <https://nskinetics.readthedocs.io/en/latest/>`_
 
 **Example 1: Build and simulate a minimal model**
 
-Kinetic models are declared as SBML; the easiest way to author one by hand is Antimony, a compact text syntax that Tellurium compiles to SBML. Here, species ``S`` decays into ``P`` inside a compartment ``env``, with mass-action rate constant ``k``. Wrapping the resulting RoadRunner object in a ``TelluriumReactionSystem`` adds unit-aware value access; simulation itself always runs through the underlying RoadRunner object:
+Kinetic models are declared as SBML; the easiest way to author one by hand is Antimony, a compact text syntax that Tellurium compiles to SBML. Here, species ``S`` decays into ``P`` inside a compartment ``env``, with mass-action rate constant ``k``. Wrapping the resulting RoadRunner object in a ``TelluriumReactionSystem`` adds unit-aware value access and a ``simulate`` / ``plot_simulation_results`` API on top of the RoadRunner engine:
 
 .. code-block:: python
 
-    import numpy as np
     import tellurium as te
     import nskinetics as nsk
 
@@ -101,7 +100,7 @@ Real kinetic models often need to change mid-run — a parameter switches at a f
 
 .. code-block:: python
 
-    import numpy as np, tellurium as te, nskinetics as nsk
+    import tellurium as te, nskinetics as nsk
 
     model = """
     model decay()
@@ -150,7 +149,7 @@ This prints, in the ``HP_2024`` environment:
 
 .. code-block:: python
 
-    import numpy as np, tellurium as te, nskinetics as nsk
+    import tellurium as te, nskinetics as nsk
 
     model = """
     model spiker()

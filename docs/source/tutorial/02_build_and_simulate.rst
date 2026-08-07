@@ -16,7 +16,6 @@ compartment ``env``, with mass-action rate constant ``k``.
 
 .. code-block:: python
 
-   import numpy as np
    import tellurium as te
    import nskinetics as nsk
 
