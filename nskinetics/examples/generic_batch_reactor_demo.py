@@ -83,11 +83,5 @@ if __name__ == '__main__':
             category=RuntimeWarning)
         reactor.simulate()
 
-    d = reactor.nsk_results_specific_tau_dict
-    effluent = reactor.outs[1]
-    print('Built and simulated NSKBatchReactor:', reactor.ID)
-    print(f'  selected tau     : {reactor.tau:.3g} h')
-    print(f'  substrate [S]    : {d["[S]"]:.3g} g/L  ->  product [P]: {d["[P]"]:.3g} g/L')
-    print(f'  fed-batch spikes : {int(round(te_r.get_value("n_spk")))}')
-    print(f'  effluent Ethanol : {effluent.imass["Ethanol"]:.3g} kg/hr')
-    print(f'  installed cost   : ${reactor.installed_cost:,.0f}')
+    reactor.show(N=100)
+    print(reactor.results())

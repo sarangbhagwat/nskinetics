@@ -208,9 +208,11 @@ class NSKBatchReactor(BatchBioreactor):
 
     The core kinetic integration is delegated to the reaction system's
     :meth:`~nskinetics.TelluriumReactionSystem.simulate`, which is the source of
-    truth for full-trajectory results; the historical ``nsk_results``,
-    ``nsk_results_dict``, ``nsk_results_col_names``, and ``results`` attributes
-    are read-only properties delegating to it. The ``tau``-selected results
+    truth for full-trajectory results; the ``nsk_results``,
+    ``nsk_results_dict``, ``nsk_results_col_names``, and ``nsk_results_df``
+    attributes are read-only properties delegating to it (the full-trajectory
+    DataFrame is exposed as ``nsk_results_df`` so it does not shadow biosteam's
+    ``Unit.results()`` design/cost method). The ``tau``-selected results
     (``nsk_results_specific_tau`` / ``nsk_results_specific_tau_dict``) remain
     owned by the reactor. :meth:`plot_simulation_results` (aliases
     :meth:`plot_time_course`, :meth:`plot_trajectory`) plots the run with the
@@ -334,13 +336,13 @@ class NSKBatchReactor(BatchBioreactor):
 
     # --- full-trajectory results (delegated to the reaction system) ---------
     # The kinetic reaction system is the source of truth for full-trajectory
-    # results; these read-only properties keep the reactor's historical
-    # attribute names working for downstream consumers. They return None until
-    # `kinetic_reaction_system` is assigned during `_init` (this also shadows
-    # biosteam's `Unit.results` method, matching the pre-existing behavior of
-    # storing results on the instance).
+    # results; these read-only properties expose it under the reactor's
+    # `nsk_results*` names. They return None until `kinetic_reaction_system`
+    # is assigned during `_init`. The full-trajectory DataFrame is exposed as
+    # `nsk_results_df` (not `results`) so it does not shadow biosteam's
+    # `Unit.results()` design/cost method.
     @property
-    def results(self):
+    def nsk_results_df(self):
         krs = getattr(self, 'kinetic_reaction_system', None)
         return krs.results if krs is not None else None
 

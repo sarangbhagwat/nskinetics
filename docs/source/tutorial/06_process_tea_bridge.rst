@@ -126,38 +126,82 @@ adds no costs itself, so the only effect is a benign, expected
            category=RuntimeWarning)
        reactor.simulate()
 
-   d = reactor.nsk_results_specific_tau_dict
-   effluent = reactor.outs[1]
-   print('Built and simulated NSKBatchReactor:', reactor.ID)
-   print(f'  selected tau     : {reactor.tau:.3g} h')
-   print(f'  substrate [S]    : {d["[S]"]:.3g} g/L  ->  product [P]: {d["[P]"]:.3g} g/L')
-   print(f'  fed-batch spikes : {int(round(te_r.get_value("n_spk")))}')
-   print(f'  effluent Ethanol : {effluent.imass["Ethanol"]:.3g} kg/hr')
-   print(f'  installed cost   : ${reactor.installed_cost:,.0f}')
+   reactor.show(N=100)
+   print(reactor.results())
 
 Running the full snippet above end-to-end in the ``HP_2024`` environment
 prints:
 
 .. code-block:: text
 
-   Built and simulated NSKBatchReactor: R_demo
-     selected tau     : 48 h
-     substrate [S]    : 1.82e-06 g/L  ->  product [P]: 161 g/L
-     fed-batch spikes : 3
-     effluent Ethanol : 290 kg/hr
-     installed cost   : $598,662
+   NSKBatchReactor: R_demo
+   ins...
+   [0] feed
+       phase: 'l', T: 298.15 K, P: 101325 Pa
+       flow (kmol/hr): Water    55.5
+                       Glucose  0.278
+   [1] seed
+       phase: 'l', T: 298.15 K, P: 101325 Pa
+       flow (kmol/hr): Water  0.555
+   [2] spike_feed
+       phase: 'l', T: 298.15 K, P: 101325 Pa
+       flow (kmol/hr): Glucose  2.78
+   outs...
+   [0] vent
+       phase: 'g', T: 305.15 K, P: 101325 Pa
+       flow: 0
+   [1] effluent
+       phase: 'l', T: 305.15 K, P: 101325 Pa
+       flow (kmol/hr): Water    74.6
+                       Glucose  1.81e-08
+                       Ethanol  6.29
+   NSKBatchReactor                                    Units    R_demo
+   Electricity         Power                             kW      5.47
+                       Cost                          USD/hr     0.428
+   Chilled water       Duty                           kJ/hr -9.48e+06
+                       Flow                         kmol/hr  6.35e+03
+                       Cost                          USD/hr      47.4
+   Design              Reactor volume                    m3      97.7
+                       Batch time                        hr       102
+                       Loading time                      hr        51
+                       Number of reactors                           2
+                       Recirculation flow rate        m3/hr     0.861
+                       Reactor duty                   kJ/hr -3.16e+06
+                       Cleaning and unloading time       hr         3
+                       Working volume fraction                    0.9
+   Purchase cost       Heat exchangers (x2)             USD  1.38e+04
+                       Reactors (x2)                    USD  2.95e+05
+                       Agitators (x2)                   USD  1.83e+04
+                       Cleaning in place                USD   5.1e+04
+                       Recirculation pumps (x2)         USD  2.81e+03
+   Total purchase cost                                  USD  3.81e+05
+   Utility cost                                      USD/hr      47.8
 
-``reactor.tau`` (``48`` h) is the reaction time read back off the reactor —
-matching the ``tau=48.`` requested since no ``tau_update_policy`` overrode
-it. ``reactor.nsk_results_specific_tau_dict`` holds the kinetic model's state
-*at that tau*: substrate ``S`` essentially fully consumed (``1.82e-06`` g/L)
-and product ``P`` accumulated to ``161`` g/L. ``fed-batch spikes: 3`` shows
-the ``FeedSpike`` hit its ``n_max=3`` cap over the 48 h window — the same
-threshold/target/feed_conc mechanics from :doc:`04_fed_batch_feeding`,
-just driving a real biosteam effluent this time. ``reactor.installed_cost``
-(inherited from biosteam's costing machinery) turns the sized equipment into
-a dollar figure — ``$598,662`` here — the number a downstream TEA would
-carry forward into capital cost and minimum product selling price.
+``reactor.show(N=100)`` prints the unit with its inlet and outlet streams —
+the three feeds (initial ``feed``, ``seed``, and fed-batch ``spike_feed``)
+and the two outlets (``vent`` and ``effluent``). The ``effluent`` carries the
+kinetic result mapped back to chemicals: ~6.29 kmol/hr of ``Ethanol`` (product
+``P``) and essentially no ``Glucose`` (substrate ``S`` fully consumed).
+``N=100`` raises the per-stream cap on how many chemicals are listed, so every
+flow is shown.
+
+``reactor.results()`` is biosteam's standard ``Unit.results()`` design-and-cost
+table: reactor volume, batch/loading/cleaning times, number of reactors, the
+purchase-cost breakdown (total ~$381,000), and utility duties and costs.
+``NSKBatchReactor`` exposes its own full kinetic trajectory as ``nsk_results_df``
+precisely so it does not shadow this method. biosteam's
+``reactor.installed_cost`` applies installation factors on top of the purchase
+cost shown here — the figure a downstream TEA carries forward into capital cost
+and minimum product selling price.
+
+The kinetic detail the earlier pages focused on is still one attribute away:
+``reactor.tau`` (48 h) for the selected reaction time,
+``reactor.nsk_results_specific_tau_dict`` for the model state at ``tau``
+(substrate ``[S]`` ~1.82e-06 g/L, product ``[P]`` ~161 g/L), and
+``te_r.get_value('n_spk')`` for the fed-batch spike count (3, its ``n_max``
+cap over the 48 h window). ``FeedSpike`` uses the same
+threshold/target/feed_conc mechanics from :doc:`04_fed_batch_feeding`, just
+driving a real biosteam effluent this time.
 
 The same run can be visualized straight off the reactor, which marks the
 fermentation-end (``tau``) time on the kinetic trajectory:
