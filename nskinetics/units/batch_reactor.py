@@ -7,7 +7,6 @@
 # for license details.
 
 import numpy as np
-import pandas as pd
 
 from biosteam.units import BatchBioreactor
 
@@ -301,10 +300,8 @@ class NSKBatchReactor(BatchBioreactor):
         self.spike_feed_index = spike_feed_index
 
         self.run_type = 'simulate kinetics'
-        self.results = None
-        self.nsk_results = None
-        self.nsk_results_dict = None
-        self.nsk_results_col_names = None
+        # Full-trajectory results live on the kinetic reaction system; the
+        # reactor exposes them via delegating properties (see below).
 
         self.simulate_kinetics = self._nsk_te_simulate_kinetics
         self._validate_model_selections()
@@ -328,6 +325,33 @@ class NSKBatchReactor(BatchBioreactor):
     @map_chemicals_nsk_to_bst.setter
     def map_chemicals_nsk_to_bst(self, value):
         self.map_species_to_chemicals = dict(value)
+
+    # --- full-trajectory results (delegated to the reaction system) ---------
+    # The kinetic reaction system is the source of truth for full-trajectory
+    # results; these read-only properties keep the reactor's historical
+    # attribute names working for downstream consumers. They return None until
+    # `kinetic_reaction_system` is assigned during `_init` (this also shadows
+    # biosteam's `Unit.results` method, matching the pre-existing behavior of
+    # storing results on the instance).
+    @property
+    def results(self):
+        krs = getattr(self, 'kinetic_reaction_system', None)
+        return krs.results if krs is not None else None
+
+    @property
+    def nsk_results(self):
+        krs = getattr(self, 'kinetic_reaction_system', None)
+        return krs.results_array if krs is not None else None
+
+    @property
+    def nsk_results_dict(self):
+        krs = getattr(self, 'kinetic_reaction_system', None)
+        return krs.results_dict if krs is not None else None
+
+    @property
+    def nsk_results_col_names(self):
+        krs = getattr(self, 'kinetic_reaction_system', None)
+        return krs.results_col_names if krs is not None else None
 
     # --- kinetic simulation -------------------------------------------------
     def _result_columns(self):
@@ -367,16 +391,11 @@ class NSKBatchReactor(BatchBioreactor):
         for c_nsk, c_bst in self.map_species_to_chemicals.items():
             krs.set_concentration_from_stream(c_nsk, indexer[c_bst], volume)
         cols = self._result_columns()
-        self.nsk_results_col_names = cols
-        try:
-            raw = np.array(krs._te.simulate(
-                0, self.tau_max * krs.time_factor, self.n_simulation_steps, cols))
-        except Exception as e:
-            raise KineticSimulationError(
-                f'Kinetic simulation failed: {e}') from e
-        self.results = pd.DataFrame(raw, columns=cols)
-        self.nsk_results = raw
-        self.nsk_results_dict = {cols[i]: raw[:, i] for i in range(len(cols))}
+        # Delegate the core kinetic integration to the reaction system, which
+        # stores the full-trajectory results; the reactor reads them back via
+        # its nsk_results* / results properties.
+        krs.simulate(0, self.tau_max * krs.time_factor,
+                     self.n_simulation_steps, cols)
 
     def _nsk_te_simulate_kinetics(self, feed, tau):
         """Bound implementation of ``simulate_kinetics``: run the kinetic model

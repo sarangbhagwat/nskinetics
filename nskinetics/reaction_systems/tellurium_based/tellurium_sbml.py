@@ -6,7 +6,12 @@
 # https://github.com/sarangbhagwat/nskinetics/blob/main/LICENSE
 # for license details.
 
+import numpy as np
+import pandas as pd
 import tellurium as te
+
+from matplotlib import pyplot as plt
+from matplotlib.ticker import AutoMinorLocator
 
 from ...exceptions import KineticSimulationError, EventCompilationError
 from .events import _regenerate_and_resync
@@ -19,6 +24,16 @@ _TIME_FACTORS = {'h': 1.0, 'hr': 1.0, 'min': 60.0, 'm': 60.0, 's': 3600.0, 'sec'
 # in both would mis-resolve a mass unit to 'imol'.
 _MOLAR_CONC_UNITS = ('M', 'mol/L')
 _MASS_CONC_UNITS = ('g/L', 'kg/m3', 'kg/m^3')
+
+# Pretty LaTeX renderings for known concentration units, used for the y-axis
+# label of plot_kinetic_results. Unknown units fall back to the raw string.
+_CONC_UNIT_LABELS = {
+    'g/L': r'\mathrm{g} \cdot \mathrm{L}^{-1}',
+    'kg/m3': r'\mathrm{kg} \cdot \mathrm{m}^{-3}',
+    'kg/m^3': r'\mathrm{kg} \cdot \mathrm{m}^{-3}',
+    'M': r'\mathrm{mol} \cdot \mathrm{L}^{-1}',
+    'mol/L': r'\mathrm{mol} \cdot \mathrm{L}^{-1}',
+}
 
 
 class TelluriumReactionSystem():
@@ -48,6 +63,12 @@ class TelluriumReactionSystem():
             self._units = {'time': 'min', 'conc': 'M'}
         self.events = []
         self._events_compiled = False
+        # Most-recent simulation results (set by simulate); the TRS is the
+        # source of truth for full-trajectory kinetic results.
+        self.results = None
+        self.results_array = None
+        self.results_dict = None
+        self.results_col_names = None
 
     @classmethod
     def from_sbml(cls, filepath):
@@ -167,3 +188,163 @@ class TelluriumReactionSystem():
         """Reset model state (not structure); extra kwargs are ignored so
         callers may pass bookkeeping flags."""
         self._te.reset()
+
+    # --- simulation ---------------------------------------------------------
+    def simulate(self, t0=0.0, t_end=None, n_steps=1000, selections=None,
+                 reset=False):
+        """Integrate the model and store the results on this object.
+
+        Runs the underlying RoadRunner engine over ``[t0, t_end]`` and records
+        the trajectory as :attr:`results` (DataFrame), :attr:`results_array`
+        (2-D ``numpy.ndarray``), :attr:`results_dict` (``{column: values}``),
+        and :attr:`results_col_names` (list of column names). This object is
+        the source of truth for full-trajectory kinetic results; drivers such
+        as :class:`nskinetics.units.NSKBatchReactor` call this and read the
+        results back off the reaction system.
+
+        Parameters
+        ----------
+        t0 : float
+            Start time, in the model's own time units. Defaults to ``0.0``.
+        t_end : float
+            End time, in the model's own time units. Required.
+        n_steps : int
+            Number of output time points. Defaults to ``1000``.
+        selections : sequence of str, optional
+            RoadRunner selections to record (e.g. ``'time'`` and concentration
+            selections like ``'[S]'``). If ``None``, defaults to ``'time'``
+            followed by the concentration selection of every floating species.
+        reset : bool
+            If ``True``, reset model state to its origin before simulating.
+            Defaults to ``False`` so callers that set initial conditions or
+            parameter overrides just before simulating are not clobbered.
+
+        Returns
+        -------
+        numpy.ndarray
+            The 2-D results array (also stored as :attr:`results_array`).
+
+        Raises
+        ------
+        KineticSimulationError
+            If ``t_end`` is not provided, or the underlying integration fails.
+        """
+        if t_end is None:
+            raise KineticSimulationError(
+                'simulate() requires t_end (in the model time units).')
+        if reset:
+            self.reset()
+        if selections is None:
+            selections = ['time'] + [f'[{s}]'
+                                     for s in self._te.getFloatingSpeciesIds()]
+        cols = list(selections)
+        try:
+            raw = np.array(self._te.simulate(t0, t_end, n_steps, cols))
+        except Exception as e:
+            raise KineticSimulationError(f'Kinetic simulation failed: {e}') from e
+        self.results_col_names = cols
+        self.results_array = raw
+        self.results_dict = {cols[i]: raw[:, i] for i in range(len(cols))}
+        self.results = pd.DataFrame(raw, columns=cols)
+        return raw
+
+    # --- plotting -----------------------------------------------------------
+    def plot_kinetic_results(self, variables=None, labels=None,
+                             xlim=None, ylim=None, markers=None,
+                             save_fig=False, filename=None, figwidth=3.9):
+        """Plot concentration vs. time for the most recent simulation.
+
+        Parameters
+        ----------
+        variables : sequence of str, optional
+            Result columns (selections) to plot. If ``None``, every result
+            column whose name contains ``'['`` and ``']'`` (the concentration
+            selections) is plotted.
+        labels : sequence of str, optional
+            Legend labels matching ``variables`` in order. Defaults to the raw
+            selection names.
+        xlim, ylim : tuple, optional
+            Axis limits. Default x is ``(0, t_max)``; default y is
+            ``(0, 1.1 * max)`` over the plotted concentrations.
+        markers : sequence, optional
+            Vertical reference lines. Each item is an x-position, or a
+            ``(x, label)`` pair; drawn as dashed gray lines. Defaults to none.
+        save_fig : bool
+            If ``True``, save the figure to ``filename`` (600 dpi, tight,
+            white background). Defaults to ``False``.
+        filename : str, optional
+            Output path used when ``save_fig`` is ``True``.
+        figwidth : float
+            Figure width in inches. Defaults to ``3.9``.
+
+        Returns
+        -------
+        (matplotlib.figure.Figure, matplotlib.axes.Axes)
+
+        Raises
+        ------
+        KineticSimulationError
+            If no simulation results are stored yet.
+        """
+        d = self.results_dict
+        if d is None:
+            raise KineticSimulationError(
+                'No simulation results; call simulate() first.')
+        if variables is None:
+            variables = [k for k in self.results_col_names
+                         if '[' in k and ']' in k]
+        if not variables:
+            raise KineticSimulationError(
+                'No concentration variables to plot; pass `variables` '
+                'explicitly.')
+        if labels is None:
+            labels = list(variables)
+
+        plt.rcParams['font.sans-serif'] = ['Arial', 'DejaVu Sans']
+        plt.rcParams['font.size'] = '12'
+        n_minor_ticks = 4
+
+        fig = plt.figure()
+        fig.set_figwidth(figwidth)
+        ax = plt.subplot(111)
+
+        time = d['time']
+        for var, label in zip(variables, labels):
+            ax.plot(time, d[var], label=label)
+        ax.legend(bbox_to_anchor=(1.05, 1.0), loc='upper left',
+                  edgecolor='white')
+
+        time_u = self._units.get('time', '')
+        conc_u = self._units.get('conc', '')
+        conc_label = _CONC_UNIT_LABELS.get(conc_u, conc_u)
+        ax.set_xlabel(r"$\bfTime$" + f' [{time_u}]')
+        ax.set_ylabel(r"$\bfConcentration$" + ' [' + f'${conc_label}$' + ']')
+
+        ax.xaxis.set_minor_locator(AutoMinorLocator(n_minor_ticks + 1))
+        ax.yaxis.set_minor_locator(AutoMinorLocator(n_minor_ticks + 1))
+        ax.tick_params(axis='x', which='both', direction='inout', top=True,
+                       width=0.65)
+        ax.tick_params(axis='y', which='both', direction='inout', right=True,
+                       width=0.65)
+
+        if xlim is not None:
+            ax.set_xlim(xlim)
+        else:
+            ax.set_xlim((0.0, float(time.max())))
+        if ylim is not None:
+            ax.set_ylim(ylim)
+        else:
+            ymax = max(float(np.max(d[var])) for var in variables)
+            ax.set_ylim((0.0, 1.1 * ymax))
+
+        if markers:
+            y0, y1 = ax.get_ylim()
+            for m in markers:
+                x = m[0] if isinstance(m, (tuple, list)) else m
+                ax.vlines(x=[x], ymin=[y0], ymax=[y1], linestyles='dashed',
+                          linewidth=1.0, color='gray')
+
+        if save_fig:
+            plt.savefig(filename, transparent=False, facecolor='white',
+                        bbox_inches='tight', dpi=600)
+        return fig, ax
