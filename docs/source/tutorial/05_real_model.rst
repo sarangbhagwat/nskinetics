@@ -112,7 +112,9 @@ internally, re-seeds the fed-batch bookkeeping consistently:
 
    trs.reset_func = reset_model
    trs.reset()
-   r.s_glu = 100; r.x = 1
+   r.s_glu = 140; r.x = 1
+   r.threshold_conc_glu_spike = 100   # refill trigger (SBML default: 10 g/L)
+   r.target_conc_glu_spike = 140      # refill target  (SBML default: 100 g/L)
 
 A custom ``reset_func`` **fully replaces** the default reset behavior rather
 than layering on top of it, so ``reset_model`` must call ``trs._te.reset()``
@@ -122,6 +124,17 @@ run left it. The initial concentrations ``s_glu`` and ``x`` are set *after*
 ``trs.reset()`` returns, not inside ``reset_model`` and not before it:
 ``reset()`` restores every floating species to its SBML-defined origin value,
 so setting them any earlier would simply be overwritten.
+
+The two feed parameters are overridden the same way, immediately after
+``trs.reset()``: this run widens the glucose band from the shipped SBML's
+defaults (refill at ``threshold_conc_glu_spike`` = 10 g/L, top up to
+``target_conc_glu_spike`` = 100 g/L) to **refill at 100 g/L, top up to
+140 g/L**. Note that ``s_glu`` also *starts* at the 140 g/L target rather
+than at the 100 g/L threshold — this matters because the ``FeedSpike``
+trigger fires only on a *downward* crossing of the threshold. Starting glucose
+exactly at (or below) the threshold means the trigger is already satisfied at
+``t=0`` and never transitions false-to-true, so no spike would ever fire;
+starting above it lets glucose fall through 100 g/L and engage the feed.
 
 The tightened tolerances (``1e-10``/``1e-9`` versus RoadRunner's looser
 defaults) matter here because the model's rate laws are numerically stiff
@@ -154,43 +167,45 @@ prints:
 
 .. code-block:: text
 
-   final: {'time': 200.0, '[s_glu]': 98.63213916292953, '[s_EtOH]': 105.91411061058339,
-           '[s_IBO]': 0.0, '[x]': 10.553862807704611, 'n_glu_spikes': 4.0}
+   final: {'time': 200.0, '[s_glu]': 100.60863088929011, '[s_EtOH]': 120.09229434175234,
+           '[s_IBO]': 0.0, '[x]': 11.199896074114044, 'n_glu_spikes': 8.0}
 
 .. code-block:: python
 
    trs.plot_simulation_results(
        variables=['[s_glu]', '[s_EtOH]', '[s_IBO]', '[x]'],
        labels=['glucose', 'ethanol', 'isobutanol', 'biomass'],
-       markers=[7.5, 11.9, 21.0, 94.0])
+       markers=[5.5, 7.1, 8.8, 10.8, 13.5, 17.2, 23.0, 34.1])
 
 .. figure:: /_static/images/examples/tutorial_05_real_model.png
    :width: 450
 
-   Four glucose spikes (dashed lines) over 200 h; ethanol and biomass climb
-   while the isobutanol branch stays at 0 (its rate constants are 0 in the
-   shipped baseline).
+   Eight glucose spikes (dashed lines) hold glucose in the 100–140 g/L band
+   until feeding tapers off past ~34 h; ethanol and biomass climb while the
+   isobutanol branch stays at 0 (its rate constants are 0 in the shipped
+   baseline).
 
 Reading the final state
 -------------------------
 
-``n_glu_spikes: 4.0`` confirms the ``FeedSpike`` fired four times over the
+``n_glu_spikes: 8.0`` confirms the ``FeedSpike`` fired eight times over the
 200 h run. Each spike is a discrete, exact jump: it snaps ``[s_glu]`` from
-the ``threshold_conc_glu_spike`` trigger (10 g/L) back up toward
-``target_conc_glu_spike`` (100 g/L) the instant it fires, and between spikes
+the ``threshold_conc_glu_spike`` trigger (100 g/L) back up toward
+``target_conc_glu_spike`` (140 g/L) the instant it fires, and between spikes
 — with this model's compartment volume not diluted by any outflow —
-``[s_glu]`` can only decrease as it is consumed, never exceeding the 100 g/L
-target it was just set to. Tracing the four spikes confirms this pattern:
-they land at roughly ``t=7.5``, ``11.9``, ``21.0``, and ``94.0`` h, each
-jumping ``[s_glu]`` from just above the 10 g/L threshold up to
-essentially the 100 g/L target; after the fourth spike, ``[s_glu]`` simply
-decays for the remaining ~106 h, reaching the final ``98.63`` g/L — just
-below the 100 g/L target, consistent with slow consumption rather than any
-further feeding. ``[s_EtOH]`` climbs to ``105.9`` g/L and biomass ``[x]``
-grows tenfold (``1 → 10.6``), both driven by the aerobic growth/fermentation
-rate laws active throughout this run (recall from the previous section that
-``stage_1_max_time``/``stage_1_max_x`` default to infinity, so the run never
-switches to the anaerobic stage).
+``[s_glu]`` can only decrease as it is consumed, never exceeding the 140 g/L
+target it was just set to. Tracing the eight spikes confirms this pattern:
+they land at roughly ``t=5.5``, ``7.1``, ``8.8``, ``10.8``, ``13.5``,
+``17.2``, ``23.0``, and ``34.1`` h, each jumping ``[s_glu]`` from the 100 g/L
+threshold back up to essentially the 140 g/L target. The spikes cluster early
+and spread further apart later, as the volumetric glucose draw-down between
+spikes slows; after the eighth spike, ``[s_glu]`` simply decays for the
+remaining ~166 h, reaching the final ``100.6`` g/L — settling just above the
+100 g/L threshold, so no ninth spike fires. ``[s_EtOH]`` climbs to ``120.1``
+g/L and biomass ``[x]`` grows elevenfold (``1 → 11.2``), both driven by the
+aerobic growth/fermentation rate laws active throughout this run (recall from
+the previous section that ``stage_1_max_time``/``stage_1_max_x`` default to
+infinity, so the run never switches to the anaerobic stage).
 
 ``[s_IBO]`` stays at exactly ``0.0``. This is not a bug — it is the shipped
 model's own default: the four isobutanol-pathway rate constants
