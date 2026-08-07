@@ -81,12 +81,12 @@ directly into the same ``add_event``/``compile_events`` workflow from
 
    model = """
    model spiker()
-     compartment env; species s_glu in env;
-     s_glu = 100; env = 1; k = 1;
+     compartment env; species s_glu in env, p_eth in env;
+     s_glu = 100; p_eth = 0; env = 1; k = 1;
      threshold = 10; target = 100; feed_conc = 600;
      n_spk = 0; n_max = 2; last_vol = 0; tot_vol = 0; dly = 0;
      n_spk has dimensionless; n_max has dimensionless;
-     s_glu' = -k*s_glu;
+     J: s_glu => p_eth; k*s_glu*env;
    end
    """
    r = te.loadAntimonyModel(model)
@@ -100,48 +100,70 @@ directly into the same ``add_event``/``compile_events`` workflow from
        trs.add_event(e)
    trs.compile_events()
    trs.reset()
-   res = trs.simulate(0, 40, 401, ['time', '[s_glu]', 'n_spk'])
-   print('max spikes:', res[:, 2].max(), 'final s_glu:', res[-1, 1])
-   trs.plot_simulation_results(labels=['s_glu'],
+   res = trs.simulate(0, 40, 401, ['time', '[s_glu]', '[p_eth]', 'n_spk'])
+   print('max spikes:', res[:, 3].max(), 'final s_glu:', res[-1, 1],
+         'final p_eth:', res[-1, 2])
+   trs.plot_simulation_results(variables=['[s_glu]', '[p_eth]'],
+                               labels=['s_glu', 'p_eth'],
                                markers=[(2.3, 'spike'), (4.6, 'spike')])
 
-The model starts ``s_glu`` at 100 g/L, decaying at ``k=1``; it will cross
-the ``threshold`` of 10 g/L repeatedly over 40 h, but ``max_count=2``
-(``n_max``) caps it at two spikes. Note that ``max_count``/``count_var``
-are passed as the *model-parameter names* ``'n_max'``/``'n_spk'`` here, not
-Python numbers — ``FeedSpike`` folds them into the trigger expression as
-text, so a plain float works equally well.
+The model starts ``s_glu`` at 100 g/L and converts it to product ``p_eth``
+through the mass-action reaction ``J: s_glu => p_eth`` at ``k=1``. Writing
+it as a *reaction* rather than a rate rule is what makes the 1:1
+stoichiometry explicit: every gram of substrate consumed appears as a gram
+of product, so ``p_eth`` is a running record of everything the spikes have
+fed in. ``s_glu`` will cross the ``threshold`` of 10 g/L repeatedly over
+40 h, but ``max_count=2`` (``n_max``) caps it at two spikes. Note that
+``max_count``/``count_var`` are passed as the *model-parameter names*
+``'n_max'``/``'n_spk'`` here, not Python numbers — ``FeedSpike`` folds them
+into the trigger expression as text, so a plain float works equally well.
 
 Running this in the ``HP_2024`` environment prints:
 
 .. code-block:: text
 
-   max spikes: 2.0 final s_glu: -6.19487843009339e-12
+   max spikes: 2.0 final s_glu: -5.060339805135531e-11 final p_eth: 240.90778511926948
 
 .. figure:: /_static/images/examples/tutorial_04_fed_batch_i.png
    :width: 400
 
-   Two feed spikes (dashed lines) refill ``s_glu`` to ~100 g/L; after the
-   ``n_max=2`` cap it decays to ~0.
+   Two feed spikes (dashed lines) refill ``s_glu`` to ~100 g/L, each one
+   feeding another batch of substrate into ``p_eth``; after the ``n_max=2``
+   cap the remaining ``s_glu`` is converted and ``p_eth`` levels off at
+   ~241 g/L. The small drop in ``p_eth`` at each spike is dilution by the
+   feed volume, not product disappearing.
 
 ``max spikes: 2.0`` confirms the cap was reached — exactly two spikes
 fired, matching ``n_max=2``. After the second spike, no further trigger
-fires (the ``count_var < max_count`` guard is false), so ``s_glu`` decays
-freely under ``s_glu' = -k*s_glu`` for the rest of the 40 h window; by
-``t=40`` it has decayed to ``-6.19e-12`` g/L — zero within floating-point
-noise, and well below the 10 g/L ``threshold`` it would otherwise have
-re-triggered a spike at, had the cap not been reached.
+fires (the ``count_var < max_count`` guard is false), so the remaining
+``s_glu`` is simply converted to ``p_eth`` over the rest of the 40 h
+window; by ``t=40`` the substrate is down to ``-5.06e-11`` g/L — zero
+within floating-point noise, and well below the 10 g/L ``threshold`` it
+would otherwise have re-triggered a spike at, had the cap not been reached.
+
+The final ``p_eth`` of ``~240.9`` g/L is the whole fed-batch mass balance
+in one number. Three charges of substrate enter the reactor: the initial
+100 g in 1 L, then ``0.18 L × 600 g/L = 108 g`` at the first spike and
+``0.212 L × 600 g/L = 127.4 g`` at the second — 335.4 g of substrate
+total, ending in a working volume of 1.392 L. With 1:1 stoichiometry and
+essentially complete conversion, that is
+``335.4 / 1.392 ≈ 240.9`` g/L of product, exactly what the simulation
+reports. Note that this is *higher* than the 100 g/L ``target``
+concentration ever reached: product accumulates across spikes while
+substrate is held near a fixed setpoint, which is the entire reason
+fed-batch operation is used.
 
 Seeing ``a``/``b``/``c`` fire
 --------------------------------
 
-Requesting the bracketed (concentration) selector ``'[s_glu]'`` alongside
-the working volume ``'env'`` at a finer time resolution shows the
-mechanism directly — each spike snaps the concentration back up near
-``target`` while ``env`` grows by the volume ``a`` computed. This rebuilds
-the same setup from scratch and simulates it **once**, rather than
-re-simulating the ``r``/``trs`` from the block above (see the note below
-for why):
+Requesting the bracketed (concentration) selectors ``'[s_glu]'`` and
+``'[p_eth]'`` alongside the working volume ``'env'`` at a finer time
+resolution shows the mechanism directly — each spike snaps the substrate
+concentration back up near ``target`` while ``env`` grows by the volume
+``a`` computed, and ``[p_eth]`` dips by exactly the corresponding dilution
+factor. This rebuilds the same setup from scratch and simulates it
+**once**, rather than re-simulating the ``r``/``trs`` from the block above
+(see the note below for why):
 
 .. code-block:: python
 
@@ -149,12 +171,12 @@ for why):
 
    model = """
    model spiker()
-     compartment env; species s_glu in env;
-     s_glu = 100; env = 1; k = 1;
+     compartment env; species s_glu in env, p_eth in env;
+     s_glu = 100; p_eth = 0; env = 1; k = 1;
      threshold = 10; target = 100; feed_conc = 600;
      n_spk = 0; n_max = 2; last_vol = 0; tot_vol = 0; dly = 0;
      n_spk has dimensionless; n_max has dimensionless;
-     s_glu' = -k*s_glu;
+     J: s_glu => p_eth; k*s_glu*env;
    end
    """
    r = te.loadAntimonyModel(model)
@@ -168,8 +190,8 @@ for why):
        trs.add_event(e)
    trs.compile_events()
    trs.reset()
-   res = trs.simulate(0, 40, 4001, ['time', '[s_glu]', 'env', 'n_spk'])
-   changes = np.where(np.diff(res[:, 3]) > 0)[0]
+   res = trs.simulate(0, 40, 4001, ['time', '[s_glu]', '[p_eth]', 'env', 'n_spk'])
+   changes = np.where(np.diff(res[:, 4]) > 0)[0]
    for i in changes:
        print(res[i], '->', res[i + 1])
 
@@ -177,20 +199,42 @@ prints:
 
 .. code-block:: text
 
-   [2.3   10.026  1.     0.   ] -> [2.31 99.26  1.18  1.  ]
-   [4.6   10.052  1.18   1.   ] -> [4.61  99.515  1.392  2.   ]
+   [ 2.3   10.026 89.974  1.     0.   ] -> [ 2.31  99.262 77.01   1.18   1.   ]
+   [  4.6    10.052 166.219   1.18    1.   ] -> [  4.61   99.519 141.389   1.392   2.   ]
+
+The two concentrations go on one plot, since they share a y-axis:
 
 .. code-block:: python
 
-   trs.plot_simulation_results(variables=['[s_glu]', 'env'],
-                               labels=['[s_glu]', 'env'],
+   trs.plot_simulation_results(variables=['[s_glu]', '[p_eth]'],
+                               labels=['[s_glu]', '[p_eth]'],
                                markers=[(2.3, 'spike'), (4.6, 'spike')])
 
 .. figure:: /_static/images/examples/tutorial_04_fed_batch_ii.png
    :width: 400
 
-   Each spike snaps ``[s_glu]`` back up while the working volume ``env`` steps
-   up by the feed added (1.0 → 1.18 → 1.39).
+   Each spike snaps ``[s_glu]`` back up to ~100 g/L and knocks ``[p_eth]``
+   down by the dilution factor; ``[p_eth]`` then climbs to ~241 g/L as the
+   last charge of substrate is converted.
+
+``env`` needs its own plot. It is a *volume*, not a concentration, so it
+does not belong on the axis above — and on a 0–250 g/L scale its 1.0 → 1.39
+range would be flattened into an unreadable line at the axis floor.
+``ylabel``/``ylabel_unit`` relabel the y-axis for exactly this case:
+
+.. code-block:: python
+
+   trs.plot_simulation_results(variables=['env'], labels=['env'],
+                               ylabel='Working volume', ylabel_unit='L',
+                               markers=[(2.3, 'spike'), (4.6, 'spike')])
+
+.. figure:: /_static/images/examples/tutorial_04_fed_batch_iii.png
+   :width: 400
+
+   On its own axis the working volume is a clean staircase: ``env`` holds at
+   1.0 L, then steps to 1.18 L and 1.392 L as each spike's event **b** adds
+   the feed volume that event **a** computed. It is flat everywhere else —
+   volume changes only at a spike.
 
 .. warning::
 
@@ -215,13 +259,26 @@ prints:
 At the first spike (between ``t=2.3`` and ``t=2.31`` h), ``[s_glu]`` jumps
 from just under the 10 g/L threshold back up to about ``99.26`` g/L —
 close to ``target=100`` (the small gap is because the trigger actually
-fires a moment before ``t=2.31``, and ``s_glu`` had already decayed a
+fires a moment before ``t=2.31``, and ``s_glu`` had already been consumed a
 little further by the time this row was recorded) — while ``env`` grows
 from ``1.0`` to ``1.18``, matching ``a``'s formula:
 ``1*(100 - 10.026)/(600 - 100) ≈ 0.18``. The second spike repeats the same
 pattern from a slightly different starting concentration, growing ``env``
 from ``1.18`` to about ``1.392``. No third spike occurs, consistent with
 ``max_count=2``.
+
+``[p_eth]`` makes the volume update visible from the other side. Event
+**c** assigns only ``s_glu``; ``p_eth`` is never touched by any of the
+three events, so its *amount* carries straight through the spike and only
+its *concentration* changes — ``89.974`` g/L drops to ``77.01`` g/L across
+the first spike as the same product mass is spread over the now-larger
+working volume. This is the clearest confirmation that **b** really did
+grow ``volume_var`` before **c** ran: had the events fired in the other
+order, ``s_glu`` would have been set to ``target`` in the *old* volume and
+then diluted along with ``p_eth``, landing well short of 100 g/L. Checking
+total mass at ``t=2.31`` confirms the bookkeeping —
+``(99.262 + 77.01) g/L × 1.18 L ≈ 208 g``, exactly the 100 g charged
+initially plus the ``0.18 L × 600 g/L = 108 g`` the spike added.
 
 Next: :doc:`05_real_model` puts this together in a real, shipped fed-batch
 *S. cerevisiae* fermentation model.
