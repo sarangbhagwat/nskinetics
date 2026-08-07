@@ -74,16 +74,26 @@ Kinetic models are declared as SBML; the easiest way to author one by hand is An
     trs.validate_units()
     trs.reset()
 
-    result = np.array(r.simulate(0, 10, 101, ['time', 'S', 'P']))
+    result = trs.simulate(0, 10, 101, ['time', '[S]', '[P]'])
     print('t=10:', result[-1])
 
-This prints, in the ``HP_2024`` environment:
+    fig, ax = trs.plot_simulation_results(labels=['S', 'P'])
+
+``trs.simulate`` integrates the model and stores the trajectory on the
+reaction system (``trs.results``); ``plot_simulation_results`` draws the
+most recent run. This prints, in the ``HP_2024`` environment:
 
 .. code-block:: text
 
     t=10: [10.     0.498  9.502]
 
-``S`` has decayed from its initial concentration of 10 g/L to about 0.498 g/L by ``t=10`` h, while ``P`` has risen to about 9.502 g/L — the stoichiometric (1:1) conversion of ``S`` into ``P`` under first-order decay with ``k=0.3``.
+and produces:
+
+.. figure:: docs/source/_static/images/examples/readme_example_1.png
+   :width: 400
+
+   ``S`` decays from 10 g/L to ~0.498 g/L by ``t=10`` h as ``P`` rises to
+   ~9.502 g/L — the 1:1 conversion under first-order decay (``k=0.3``).
 
 **Example 2: Add an event**
 
@@ -105,8 +115,10 @@ Real kinetic models often need to change mid-run — a parameter switches at a f
     trs.compile_events()   # regenerates the model; set ICs AFTER this
     trs.reset()
 
-    res = np.array(r.simulate(0, 10, 11, ['time', 's', 'flag']))
+    res = trs.simulate(0, 10, 11, ['time', '[s]', 'flag'])
     print(res)
+
+    trs.plot_simulation_results(labels=['s'], flag_off=5)
 
 This prints, in the ``HP_2024`` environment:
 
@@ -124,7 +136,13 @@ This prints, in the ``HP_2024`` environment:
      [  9.      0.674   0.   ]
      [ 10.      0.674   0.   ]]
 
-``flag`` is ``1`` for every row before ``t=5`` and ``0`` from ``t=5`` onward, exactly matching the event's trigger; ``s`` decays exponentially while ``flag=1`` drives the rate law, then freezes at ``0.674`` for the rest of the run once the event zeroes ``flag``.
+``flag`` is ``1`` for every row before ``t=5`` and ``0`` from ``t=5`` onward, exactly matching the event's trigger; ``s`` decays exponentially while ``flag=1`` drives the rate law, then freezes at ``0.674`` for the rest of the run once the event zeroes ``flag``. ``trs.results`` holds this same trajectory as an array.
+
+.. figure:: docs/source/_static/images/examples/readme_example_2.png
+   :width: 400
+
+   ``s`` decays while ``flag=1``; the ``stop_decay`` event zeroes ``flag`` at
+   ``t=5`` h (dashed line), freezing ``s`` at ~0.674 g/L thereafter.
 
 **Example 3: Fed-batch feeding with FeedSpike**
 
@@ -155,8 +173,11 @@ This prints, in the ``HP_2024`` environment:
         trs.add_event(e)
     trs.compile_events()
     trs.reset()
-    res = np.array(r.simulate(0, 40, 401, ['time', 's_glu', 'n_spk']))
+    res = trs.simulate(0, 40, 401, ['time', '[s_glu]', 'n_spk'])
     print('max spikes:', res[:, 2].max(), 'final s_glu:', res[-1, 1])
+
+    trs.plot_simulation_results(labels=['s_glu'],
+                                markers=[(2.3, 'spike'), (4.6, 'spike')])
 
 This prints, in the ``HP_2024`` environment:
 
@@ -165,6 +186,12 @@ This prints, in the ``HP_2024`` environment:
     max spikes: 2.0 final s_glu: -6.19487843009339e-12
 
 ``max spikes: 2.0`` confirms the cap was reached — exactly two spikes fired. After the second spike, no further trigger fires, so ``s_glu`` decays freely for the rest of the 40 h window, reaching essentially zero (``-6.19e-12`` g/L is floating-point noise).
+
+.. figure:: docs/source/_static/images/examples/readme_example_3.png
+   :width: 400
+
+   Two feed spikes (dashed lines) snap ``s_glu`` back toward 100 g/L; after
+   the ``n_max=2`` cap it decays freely to ~0.
 
 See the `full tutorial <https://nskinetics.readthedocs.io/en/latest/tutorial/index.html>`__ for the rest of the workflow, including loading real, shipped SBML models and coupling a reaction system to a BioSTEAM process unit for TEA.
 
