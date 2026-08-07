@@ -22,7 +22,7 @@ with an event that flips ``flag`` off at ``time >= 5``:
 
 .. code-block:: python
 
-   import numpy as np, tellurium as te, nskinetics as nsk
+   import tellurium as te, nskinetics as nsk
 
    model = """
    model decay()
@@ -77,13 +77,13 @@ before ``compile_events()``.
 Running it
 ----------
 
-Simulating through the underlying RoadRunner object and recording ``time``,
-``s``, and ``flag``:
+Simulating through ``trs`` and recording ``time``, ``s``, and ``flag``:
 
 .. code-block:: python
 
-   res = np.array(r.simulate(0, 10, 11, ['time', 's', 'flag']))
+   res = trs.simulate(0, 10, 11, ['time', '[s]', 'flag'])
    print(res)
+   trs.plot_simulation_results(labels=['s'], flag_off=5)
 
 prints, in the ``HP_2024`` environment:
 
@@ -107,6 +107,12 @@ onward, exactly matching the event's trigger; ``s`` decays exponentially
 law, then **freezes at 0.674** for every row from ``t=5`` on, since the
 event assignment zeroed ``flag`` and ``s' = -k*flag*s`` becomes ``0`` for
 the rest of the run.
+
+.. figure:: /_static/images/examples/tutorial_03_events.png
+   :width: 400
+
+   ``s`` decays while ``flag=1``; the event zeroes ``flag`` at ``t=5`` h
+   (dashed line), after which ``s`` holds at ~0.674 g/L.
 
 Managing pending events
 -------------------------
