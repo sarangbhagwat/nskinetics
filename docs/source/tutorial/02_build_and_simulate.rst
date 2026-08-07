@@ -92,17 +92,38 @@ start, even on a freshly-constructed model:
 
    trs.reset()
 
-``TelluriumReactionSystem`` has no ``solve``/``simulate`` method of its
-own — simulation always runs through the underlying RoadRunner object
-directly, via ``r.simulate(t0, t1, n_points, columns)``. Request ``'time'``
-plus whichever plain names or bracketed concentrations you want recorded;
-the result is a NumPy-like structured array, so wrap it with
-``np.array(...)`` for normal indexing:
+:meth:`~nskinetics.TelluriumReactionSystem.simulate` integrates the model over
+``[t0, t_end]`` and stores the trajectory on the reaction system itself —
+``trs.results`` (DataFrame), ``trs.results_array`` (2-D array),
+``trs.results_dict``, and ``trs.results_col_names``. Request ``'time'`` plus
+whichever bracketed concentration selections you want recorded (bracketed so the
+values are concentrations, and so plotting works with no extra arguments); the
+returned array is the same one stored on ``trs``:
 
 .. code-block:: python
 
-   result = np.array(r.simulate(0, 10, 101, ['time', 'S', 'P']))
+   result = trs.simulate(0, 10, 101, ['time', '[S]', '[P]'])
    print('t=10:', result[-1])
+
+The underlying RoadRunner object is still reachable as ``trs._te`` for
+lower-level calls, but ``trs.simulate`` is the recommended entry point.
+
+Plotting the run
+-----------------
+
+:meth:`~nskinetics.TelluriumReactionSystem.plot_simulation_results` (aliases
+:meth:`~nskinetics.TelluriumReactionSystem.plot_time_course`,
+:meth:`~nskinetics.TelluriumReactionSystem.plot_trajectory`) plots the most
+recent simulation. Pass ``labels`` for a readable legend:
+
+.. code-block:: python
+
+   fig, ax = trs.plot_simulation_results(labels=['S', 'P'])
+
+.. figure:: /_static/images/examples/tutorial_02_build_and_simulate.png
+   :width: 400
+
+   ``S`` → ``P`` under first-order decay (``k=0.3``).
 
 Running it
 ----------
