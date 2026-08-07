@@ -206,6 +206,16 @@ class NSKBatchReactor(BatchBioreactor):
     post-simulation validators. Chemistry-agnostic: subclasses configure the
     features and may override :meth:`_finalize_effluent`.
 
+    The core kinetic integration is delegated to the reaction system's
+    :meth:`~nskinetics.TelluriumReactionSystem.simulate`, which is the source of
+    truth for full-trajectory results; the historical ``nsk_results``,
+    ``nsk_results_dict``, ``nsk_results_col_names``, and ``results`` attributes
+    are read-only properties delegating to it. The ``tau``-selected results
+    (``nsk_results_specific_tau`` / ``nsk_results_specific_tau_dict``) remain
+    owned by the reactor. :meth:`plot_simulation_results` (aliases
+    :meth:`plot_time_course`, :meth:`plot_trajectory`) plots the run with the
+    fermentation- and aeration-end times marked.
+
     Parameters
     ----------
     ins :

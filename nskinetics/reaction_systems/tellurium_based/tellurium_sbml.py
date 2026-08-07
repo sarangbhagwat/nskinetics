@@ -38,8 +38,9 @@ _CONC_UNIT_LABELS = {
 
 class TelluriumReactionSystem():
     """
-    Thin wrapper around a Tellurium extended RoadRunner model, adding a Python
-    event API and unit-aware value access.
+    Wrapper around a Tellurium extended RoadRunner model, adding a Python event
+    API, unit-aware value access, and convenience methods to simulate the model
+    and plot the results.
 
     Parameters
     ----------
@@ -51,9 +52,15 @@ class TelluriumReactionSystem():
 
     Notes
     -----
-    This wrapper has no ``solve``/``simulate`` method. Run the model through the
-    underlying RoadRunner object (``self._te.simulate(t0, t1, n, columns)``), or
-    drive it inside a process model with :class:`nskinetics.units.NSKBatchReactor`.
+    :meth:`simulate` integrates the model and stores the full trajectory on
+    this object (:attr:`results`, :attr:`results_array`, :attr:`results_dict`,
+    :attr:`results_col_names`); :meth:`plot_simulation_results` (aliases
+    :meth:`plot_time_course`, :meth:`plot_trajectory`) plots the most recent
+    run. The reaction system is the source of truth for these full-trajectory
+    results: drivers such as :class:`nskinetics.units.NSKBatchReactor` call
+    :meth:`simulate` and read the results back off this object rather than
+    storing their own copy. The underlying RoadRunner object remains directly
+    accessible as :attr:`_te` for lower-level use.
     """
     def __init__(self, te, units=None):
         self._te = te
