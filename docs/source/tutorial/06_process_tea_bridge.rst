@@ -150,6 +150,22 @@ just driving a real biosteam effluent this time. ``reactor.installed_cost``
 a dollar figure — ``$598,662`` here — the number a downstream TEA would
 carry forward into capital cost and minimum product selling price.
 
+The same run can be visualized straight off the reactor, which marks the
+fermentation-end (``tau``) time on the kinetic trajectory:
+
+.. code-block:: python
+
+   reactor.plot_simulation_results(variables=['S', 'P'], labels=['S', 'P'])
+
+.. figure:: /_static/images/examples/tutorial_06_process_tea_bridge.png
+   :width: 400
+
+   Substrate ``S`` is consumed to product ``P``; the dashed line marks the
+   selected fermentation-end time ``tau`` (48 h). When an
+   :class:`~nskinetics.units.AerationSpec` is configured (as in
+   :class:`~nskinetics.units.NSKFermentation`), the aeration-end time is
+   marked too.
+
 From here to a real biorefinery: ``NSKFermentation``
 --------------------------------------------------------
 
