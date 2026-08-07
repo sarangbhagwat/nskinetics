@@ -249,10 +249,13 @@ class TelluriumReactionSystem():
         return raw
 
     # --- plotting -----------------------------------------------------------
-    def plot_kinetic_results(self, variables=None, labels=None,
-                             xlim=None, ylim=None, markers=None,
-                             save_fig=False, filename=None, figwidth=3.9):
+    def plot_simulation_results(self, variables=None, labels=None,
+                                xlim=None, ylim=None, markers=None,
+                                save_fig=False, filename=None, figwidth=3.9):
         """Plot concentration vs. time for the most recent simulation.
+
+        Also available under the aliases :meth:`plot_time_course` and
+        :meth:`plot_trajectory`.
 
         Parameters
         ----------
@@ -348,3 +351,8 @@ class TelluriumReactionSystem():
             plt.savefig(filename, transparent=False, facecolor='white',
                         bbox_inches='tight', dpi=600)
         return fig, ax
+
+    # Aliases so both kinetic modelers and TEA practitioners find the plot
+    # under a familiar name.
+    plot_time_course = plot_simulation_results
+    plot_trajectory = plot_simulation_results
