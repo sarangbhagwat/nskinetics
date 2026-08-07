@@ -60,7 +60,7 @@ class TelluriumReactionSystem():
     Notes
     -----
     :meth:`simulate` integrates the model and stores the full trajectory on
-    this object (:attr:`results`, :attr:`results_array`, :attr:`results_dict`,
+    this object (:attr:`results_df`, :attr:`results_array`, :attr:`results_dict`,
     :attr:`results_col_names`); :meth:`plot_simulation_results` (aliases
     :meth:`plot_time_course`, :meth:`plot_trajectory`) plots the most recent
     run. The reaction system is the source of truth for these full-trajectory
@@ -80,7 +80,7 @@ class TelluriumReactionSystem():
         self._events_compiled = False
         # Most-recent simulation results (set by simulate); the TRS is the
         # source of truth for full-trajectory kinetic results.
-        self.results = None
+        self.results_df = None
         self.results_array = None
         self.results_dict = None
         self.results_col_names = None
@@ -235,7 +235,7 @@ class TelluriumReactionSystem():
         """Integrate the model and store the results on this object.
 
         Runs the underlying RoadRunner engine over ``[t0, t_end]`` and records
-        the trajectory as :attr:`results` (DataFrame), :attr:`results_array`
+        the trajectory as :attr:`results_df` (DataFrame), :attr:`results_array`
         (2-D ``numpy.ndarray``), :attr:`results_dict` (``{column: values}``),
         and :attr:`results_col_names` (list of column names). This object is
         the source of truth for full-trajectory kinetic results; drivers such
@@ -285,7 +285,7 @@ class TelluriumReactionSystem():
         self.results_col_names = cols
         self.results_array = raw
         self.results_dict = {cols[i]: raw[:, i] for i in range(len(cols))}
-        self.results = pd.DataFrame(raw, columns=cols)
+        self.results_df = pd.DataFrame(raw, columns=cols)
         return raw
 
     # --- plotting -----------------------------------------------------------

@@ -26,7 +26,7 @@ Simulating and the RoadRunner engine
 
 :class:`TelluriumReactionSystem` provides :meth:`~TelluriumReactionSystem.simulate`,
 which integrates the model over ``[t0, t_end]`` and stores the trajectory on
-the reaction system (``trs.results`` / ``.results_array`` / ``.results_dict``) —
+the reaction system (``trs.results_df`` / ``.results_array`` / ``.results_dict``) —
 the object is the source of truth for full-trajectory results. The underlying
 RoadRunner engine remains directly accessible as ``trs._te`` for lower-level use.
 :meth:`~TelluriumReactionSystem.plot_simulation_results` (aliases

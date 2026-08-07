@@ -344,7 +344,7 @@ class NSKBatchReactor(BatchBioreactor):
     @property
     def nsk_results_df(self):
         krs = getattr(self, 'kinetic_reaction_system', None)
-        return krs.results if krs is not None else None
+        return krs.results_df if krs is not None else None
 
     @property
     def nsk_results(self):

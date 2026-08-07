@@ -93,7 +93,7 @@ start, even on a freshly-constructed model:
 
 :meth:`~nskinetics.TelluriumReactionSystem.simulate` integrates the model over
 ``[t0, t_end]`` and stores the trajectory on the reaction system itself —
-``trs.results`` (DataFrame), ``trs.results_array`` (2-D array),
+``trs.results_df`` (DataFrame), ``trs.results_array`` (2-D array),
 ``trs.results_dict``, and ``trs.results_col_names``. Request ``'time'`` plus
 whichever bracketed concentration selections you want recorded (bracketed so the
 values are concentrations, and so plotting works with no extra arguments); the

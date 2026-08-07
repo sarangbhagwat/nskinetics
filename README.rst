@@ -79,7 +79,7 @@ Kinetic models are declared as SBML; the easiest way to author one by hand is An
     fig, ax = trs.plot_simulation_results(labels=['S', 'P'])
 
 ``trs.simulate`` integrates the model and stores the trajectory on the
-reaction system (``trs.results``); ``plot_simulation_results`` draws the
+reaction system (``trs.results_df``); ``plot_simulation_results`` draws the
 most recent run. This prints, in the ``HP_2024`` environment:
 
 .. code-block:: text
@@ -135,7 +135,7 @@ This prints, in the ``HP_2024`` environment:
      [  9.      0.674   0.   ]
      [ 10.      0.674   0.   ]]
 
-``flag`` is ``1`` for every row before ``t=5`` and ``0`` from ``t=5`` onward, exactly matching the event's trigger; ``s`` decays exponentially while ``flag=1`` drives the rate law, then freezes at ``0.674`` for the rest of the run once the event zeroes ``flag``. ``trs.results`` holds this same trajectory as an array.
+``flag`` is ``1`` for every row before ``t=5`` and ``0`` from ``t=5`` onward, exactly matching the event's trigger; ``s`` decays exponentially while ``flag=1`` drives the rate law, then freezes at ``0.674`` for the rest of the run once the event zeroes ``flag``. ``trs.results_df`` holds this same trajectory as a DataFrame.
 
 .. figure:: docs/source/_static/images/examples/readme_example_2.png
    :width: 400
