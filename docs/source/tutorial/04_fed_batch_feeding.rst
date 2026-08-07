@@ -77,7 +77,7 @@ directly into the same ``add_event``/``compile_events`` workflow from
 
 .. code-block:: python
 
-   import numpy as np, tellurium as te, nskinetics as nsk
+   import tellurium as te, nskinetics as nsk
 
    model = """
    model spiker()
@@ -100,8 +100,10 @@ directly into the same ``add_event``/``compile_events`` workflow from
        trs.add_event(e)
    trs.compile_events()
    trs.reset()
-   res = np.array(r.simulate(0, 40, 401, ['time', 's_glu', 'n_spk']))
+   res = trs.simulate(0, 40, 401, ['time', '[s_glu]', 'n_spk'])
    print('max spikes:', res[:, 2].max(), 'final s_glu:', res[-1, 1])
+   trs.plot_simulation_results(labels=['s_glu'],
+                               markers=[(2.3, 'spike'), (4.6, 'spike')])
 
 The model starts ``s_glu`` at 100 g/L, decaying at ``k=1``; it will cross
 the ``threshold`` of 10 g/L repeatedly over 40 h, but ``max_count=2``
@@ -115,6 +117,12 @@ Running this in the ``HP_2024`` environment prints:
 .. code-block:: text
 
    max spikes: 2.0 final s_glu: -6.19487843009339e-12
+
+.. figure:: /_static/images/examples/tutorial_04_fed_batch_i.png
+   :width: 400
+
+   Two feed spikes (dashed lines) refill ``s_glu`` to ~100 g/L; after the
+   ``n_max=2`` cap it decays to ~0.
 
 ``max spikes: 2.0`` confirms the cap was reached — exactly two spikes
 fired, matching ``n_max=2``. After the second spike, no further trigger
@@ -160,7 +168,7 @@ for why):
        trs.add_event(e)
    trs.compile_events()
    trs.reset()
-   res = np.array(r.simulate(0, 40, 4001, ['time', '[s_glu]', 'env', 'n_spk']))
+   res = trs.simulate(0, 40, 4001, ['time', '[s_glu]', 'env', 'n_spk'])
    changes = np.where(np.diff(res[:, 3]) > 0)[0]
    for i in changes:
        print(res[i], '->', res[i + 1])
@@ -171,6 +179,18 @@ prints:
 
    [2.3   10.026  1.     0.   ] -> [2.31 99.26  1.18  1.  ]
    [4.6   10.052  1.18   1.   ] -> [4.61  99.515  1.392  2.   ]
+
+.. code-block:: python
+
+   trs.plot_simulation_results(variables=['[s_glu]', 'env'],
+                               labels=['[s_glu]', 'env'],
+                               markers=[(2.3, 'spike'), (4.6, 'spike')])
+
+.. figure:: /_static/images/examples/tutorial_04_fed_batch_ii.png
+   :width: 400
+
+   Each spike snaps ``[s_glu]`` back up while the working volume ``env`` steps
+   up by the feed added (1.0 → 1.18 → 1.39).
 
 .. warning::
 
