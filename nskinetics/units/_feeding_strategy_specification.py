@@ -28,7 +28,7 @@ class FedBatchStrategySpecification:
     xylose).
     
     The specification logic includes:
-    - Setting desired sugar concentrations for continuous feed and spike feed
+    - Setting desired sugar concentrations for initial feed and spike feed
       via evaporator volume and mixer dilution adjustments.
     - Defining a threshold sugar concentration that triggers spike feeding.
     - Updating maximum reactor residence time (tau_max) and propagating its effects
@@ -39,7 +39,7 @@ class FedBatchStrategySpecification:
     Parameters
     ----------
     target_conc_sugars : float
-        Desired target concentration of total sugars in the continuous feed
+        Desired target concentration of total sugars in the initial feed
         to the fermentation reactor.
     threshold_conc_sugars : float
         Sugar concentration threshold in the reactor environment that triggers
@@ -56,9 +56,9 @@ class FedBatchStrategySpecification:
         Splitter unit used to divide flow between base feed and spike feed
         pathways.
     feed_evaporator : object
-        Evaporator used to concentrate sugars in the continuous feed stream.
+        Evaporator used to concentrate sugars in the initial feed stream.
     feed_mixer : object
-        Mixer used to dilute or adjust the continuous feed stream composition.
+        Mixer used to dilute or adjust the initial feed stream composition.
     spike_evaporator : object
         Evaporator used to concentrate sugars in the spike feed stream.
     spike_mixer : object
