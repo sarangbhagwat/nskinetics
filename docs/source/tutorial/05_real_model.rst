@@ -120,7 +120,7 @@ concentration — bracket every species selector to stay in g/L:
 .. code-block:: python
 
    cols = ['time', '[s_glu]', '[s_EtOH]', '[s_IBO]', '[x]', 'n_glu_spikes']
-   res = np.array(r.simulate(0, 200, 2001, cols))
+   res = trs.simulate(0, 200, 2001, cols)
    print('final:', dict(zip(cols, res[-1])))
 
 (``n_glu_spikes`` stays unbracketed — it is a bookkeeping counter, not a
@@ -133,6 +133,20 @@ prints:
 
    final: {'time': 200.0, '[s_glu]': 98.63213916292953, '[s_EtOH]': 105.91411061058339,
            '[s_IBO]': 0.0, '[x]': 10.553862807704611, 'n_glu_spikes': 4.0}
+
+.. code-block:: python
+
+   trs.plot_simulation_results(
+       variables=['[s_glu]', '[s_EtOH]', '[s_IBO]', '[x]'],
+       labels=['glucose', 'ethanol', 'isobutanol', 'biomass'],
+       markers=[7.5, 11.9, 21.0, 94.0])
+
+.. figure:: /_static/images/examples/tutorial_05_real_model.png
+   :width: 450
+
+   Four glucose spikes (dashed lines) over 200 h; ethanol and biomass climb
+   while the isobutanol branch stays at 0 (its rate constants are 0 in the
+   shipped baseline).
 
 Reading the final state
 -------------------------
