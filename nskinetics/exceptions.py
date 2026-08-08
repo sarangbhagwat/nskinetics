@@ -7,7 +7,7 @@
 # for license details.
 
 __all__ = ('NSKError', 'KineticSimulationError', 'MassBalanceError',
-           'EventCompilationError')
+           'EventCompilationError', 'FeedingStrategyError')
 
 
 class NSKError(Exception):
@@ -24,3 +24,8 @@ class MassBalanceError(NSKError):
 
 class EventCompilationError(NSKError):
     """Raised when compiling a Python Event into a native SBML event fails."""
+
+
+class FeedingStrategyError(NSKError):
+    """Raised when a fed-batch feeding-strategy specification cannot be met
+    (e.g. a target concentration is unreachable within an actuator's bounds)."""
