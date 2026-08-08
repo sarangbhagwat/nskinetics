@@ -18,7 +18,7 @@ __all__ = ('te_r', 'reset_kinetic_reaction_system',)
 #%%
 
 nsk_filepath = nsk.__file__.replace('\\__init__.py', '')
-nsk_examples_filepath = nsk_filepath + '\\examples\\'
+nsk_examples_filepath = nsk_filepath + '\\models\\'
 
 #%%
 antimony_filename = 's_cerevisiae_ferm_fb_inhib_mod_ibo_antimony.txt'

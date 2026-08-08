@@ -7,12 +7,12 @@
 # for license details.
 
 # This file intentionally imports nothing. Its sole purpose is to make
-# ``nskinetics.examples`` a real (non-namespace) subpackage so that
+# ``nskinetics.models`` a real (non-namespace) subpackage so that
 # ``setuptools.find_packages()`` includes it in the built distribution and
-# ``from . import examples`` (in nskinetics/__init__.py) resolves on an
+# ``from . import models`` (in nskinetics/__init__.py) resolves on an
 # installed copy of NSKinetics — not just on an editable clone.
 #
-# The individual example scripts are NOT imported here on purpose: each runs a
+# The individual model scripts are NOT imported here on purpose: each runs a
 # full simulation and imports heavy optional dependencies (biosteam, tellurium,
 # simplesbml) at module level, and importing them during package initialization
 # would be slow and would create a circular import back into nskinetics.

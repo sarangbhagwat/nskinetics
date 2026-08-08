@@ -31,7 +31,7 @@ from . import tests
 
 from . import units
 
-from . import examples 
+from . import models
 
 __all__ = (
      *exceptions.__all__,
@@ -42,5 +42,5 @@ __all__ = (
      'doe',
      'tests',
      'units',
-     'examples'
+     'models'
      )
