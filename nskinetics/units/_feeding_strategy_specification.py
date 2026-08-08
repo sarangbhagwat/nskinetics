@@ -28,9 +28,9 @@ class ConcentrationActuator:
         Name of the attribute to set (e.g. ``'V'`` on an evaporator,
         ``'water_to_sugar_mol_ratio'`` on a mixer).
     lb : float
-        Lower bound of the attribute's allowed range.
+        Lower bound of the solve bracket used when tuning this actuator.
     ub : float
-        Upper bound of the attribute's allowed range.
+        Upper bound of the solve bracket used when tuning this actuator.
     """
     def __init__(self, unit, attr, lb, ub):
         self.unit = unit
@@ -262,12 +262,12 @@ class FedBatchStrategySpecification:
         if tau_max is None:
             tau_max = self.tau_max
 
+        if not (threshold_conc < target_conc and target_conc < spike_conc):
+            raise ValueError(f'Specifications do not meet required condition: threshold_conc ({threshold_conc}) < target_conc ({target_conc}) < spike_conc ({spike_conc}).\n')
+
         self.threshold_conc = threshold_conc
         self.target_conc = target_conc
         self.spike_conc = spike_conc
-
-        if not (threshold_conc < target_conc and target_conc < spike_conc):
-            raise ValueError(f'Specifications do not meet required condition: threshold_conc ({threshold_conc}) < target_conc ({target_conc}) < spike_conc ({spike_conc}).\n')
 
         self.load_desired_concs(target_conc=target_conc,
                                 spike_conc=spike_conc)
