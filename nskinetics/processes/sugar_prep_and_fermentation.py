@@ -115,7 +115,11 @@ def create_sugar_prep_and_fermentation_system(
     fermentor specification ends by re-simulating the aeration loop
     (``V406.simulate(); K330.simulate(); V330.simulate()``); a caller re-adding
     feed-flow corrections must re-simulate ``K330`` and ``V330`` likewise, or
-    the compressed-air streams go stale with respect to the fermentor.
+    the compressed-air streams go stale with respect to the fermentor. The
+    inline system further attaches ``fbs_spec.product_stream`` and
+    ``fbs_spec.n_tea_solves`` to the spec after construction (plain
+    attributes read at MPSP-evaluation time), so a caller replacing that
+    inline construction with this factory must re-add them caller-side.
 
     Three internal feed streams are created unconnected and therefore surface
     as system inlets beyond the declared ``ins``: ``atmospheric_air`` (feeding
@@ -385,7 +389,7 @@ def create_sugar_prep_and_fermentation_system(
             M302, 'water_to_sugar_mol_ratio', 0.0, 100_000),
         feed_units_sequential=[F301, F301_P0, F301_P1, M301, H301],
         spike_units_sequential=[F302, F302_P0, F302_P1, M302, H302],
-        species_IDs=['Glucose'],
+        species_IDs=list(sugar_IDs),
         solvent_ID='Water',
         baseline_specifications=baseline_specifications,
         )
