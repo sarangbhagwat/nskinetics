@@ -60,7 +60,7 @@ is fully runnable on its own:
 
    reactor = nsk.units.NSKBatchReactor(
        'R_demo', ins=(feed, seed, spike_feed), outs=('vent', 'effluent'),
-       kinetic_reaction_system=te_r,
+       nsk_kinetic_model=te_r,
        map_species_to_chemicals={'S': 'Glucose', 'P': 'Ethanol'},
        track_vars=['[S]', '[P]'],
        tau=48., tau_max=120., volume_var='curr_env',

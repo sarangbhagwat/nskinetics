@@ -225,7 +225,7 @@ class NSKBatchReactor(BatchBioreactor):
     outs :
         * [0] Vent
         * [1] Effluent
-    kinetic_reaction_system : KineticModel
+    nsk_kinetic_model : KineticModel
         Kinetic model driving the reactor.
     map_species_to_chemicals : dict
         ``{model var (or '[conc]' selection): biosteam chemical ID}``.
@@ -268,7 +268,7 @@ class NSKBatchReactor(BatchBioreactor):
     # the bound `_nsk_te_simulate_kinetics` method.
     simulate_kinetics = None
 
-    def _init(self, *, kinetic_reaction_system,
+    def _init(self, *, nsk_kinetic_model,
               tau, tau_max,
               map_species_to_chemicals={},
               track_vars=(),
@@ -284,13 +284,13 @@ class NSKBatchReactor(BatchBioreactor):
         BatchBioreactor._init(self, tau=tau, N=N, V=V, T=T, P=P, Nmin=Nmin, Nmax=Nmax)
         self._load_components()
 
-        krs = kinetic_reaction_system
-        if not isinstance(krs, KineticModel):
+        nkm = nsk_kinetic_model
+        if not isinstance(nkm, KineticModel):
             raise NotImplementedError(
                 'NSKBatchReactor currently supports only KineticModel '
-                f'instances; got {type(krs).__name__}.')
-        self.kinetic_reaction_system = krs
-        krs.validate_units()
+                f'instances; got {type(nkm).__name__}.')
+        self.nsk_kinetic_model = nkm
+        nkm.validate_units()
 
         self.map_species_to_chemicals = dict(map_species_to_chemicals)
         self.track_vars = list(track_vars)
@@ -315,10 +315,10 @@ class NSKBatchReactor(BatchBioreactor):
 
     # --- guard rails --------------------------------------------------------
     def _validate_model_selections(self):
-        krs = self.kinetic_reaction_system
+        nkm = self.nsk_kinetic_model
         for selection in list(self.map_species_to_chemicals) + list(self.track_vars):
             try:
-                krs.get_value(selection)
+                nkm.get_value(selection)
             except Exception as e:
                 raise KineticSimulationError(
                     f'Model selection {selection!r} is not a valid model '
@@ -336,29 +336,29 @@ class NSKBatchReactor(BatchBioreactor):
     # --- full-trajectory results (delegated to the kinetic model) ---------
     # The kinetic model is the source of truth for full-trajectory
     # results; these read-only properties expose it under the reactor's
-    # `nsk_results*` names. They return None until `kinetic_reaction_system`
+    # `nsk_results*` names. They return None until `nsk_kinetic_model`
     # is assigned during `_init`. The full-trajectory DataFrame is exposed as
     # `nsk_results_df` (not `results`) so it does not shadow biosteam's
     # `Unit.results()` design/cost method.
     @property
     def nsk_results_df(self):
-        krs = getattr(self, 'kinetic_reaction_system', None)
-        return krs.results_df if krs is not None else None
+        nkm = getattr(self, 'nsk_kinetic_model', None)
+        return nkm.results_df if nkm is not None else None
 
     @property
     def nsk_results(self):
-        krs = getattr(self, 'kinetic_reaction_system', None)
-        return krs.results_array if krs is not None else None
+        nkm = getattr(self, 'nsk_kinetic_model', None)
+        return nkm.results_array if nkm is not None else None
 
     @property
     def nsk_results_dict(self):
-        krs = getattr(self, 'kinetic_reaction_system', None)
-        return krs.results_dict if krs is not None else None
+        nkm = getattr(self, 'nsk_kinetic_model', None)
+        return nkm.results_dict if nkm is not None else None
 
     @property
     def nsk_results_col_names(self):
-        krs = getattr(self, 'kinetic_reaction_system', None)
-        return krs.results_col_names if krs is not None else None
+        nkm = getattr(self, 'nsk_kinetic_model', None)
+        return nkm.results_col_names if nkm is not None else None
 
     # --- plotting -----------------------------------------------------------
     def plot_simulation_results(self, *args, show_fermentation_end=True,
@@ -394,7 +394,7 @@ class NSKBatchReactor(BatchBioreactor):
             events['aeration_end'] = getattr(self, 'tau_stop_aeration', None)
         # User kwargs win on name collisions and may add further event lines.
         events.update(kwargs)
-        return self.kinetic_reaction_system.plot_simulation_results(
+        return self.nsk_kinetic_model.plot_simulation_results(
             *args, **events)
 
     plot_time_course = plot_simulation_results
@@ -430,29 +430,29 @@ class NSKBatchReactor(BatchBioreactor):
         return cols
 
     def _reset_and_simulate(self, feed, reset_spike_cap=False):
-        krs = self.kinetic_reaction_system
-        krs.reset(reset_spike_cap=reset_spike_cap)
-        volume = getattr(feed, krs.material_indexer.replace('imol', 'ivol')
+        nkm = self.nsk_kinetic_model
+        nkm.reset(reset_spike_cap=reset_spike_cap)
+        volume = getattr(feed, nkm.material_indexer.replace('imol', 'ivol')
                          .replace('imass', 'ivol'))['Water']
-        indexer = getattr(feed, krs.material_indexer)
+        indexer = getattr(feed, nkm.material_indexer)
         for c_nsk, c_bst in self.map_species_to_chemicals.items():
-            krs.set_concentration_from_stream(c_nsk, indexer[c_bst], volume)
+            nkm.set_concentration_from_stream(c_nsk, indexer[c_bst], volume)
         cols = self._result_columns()
         # Delegate the core kinetic integration to the kinetic model, which
         # stores the full-trajectory results; the reactor reads them back via
         # its nsk_results* / results properties.
-        krs.simulate(0, self.tau_max * krs.time_factor,
+        nkm.simulate(0, self.tau_max * nkm.time_factor,
                      self.n_simulation_steps, cols)
 
     def _nsk_te_simulate_kinetics(self, feed, tau):
         """Bound implementation of ``simulate_kinetics``: run the kinetic model
         on ``feed`` for reaction time ``tau`` and return the effluent stream."""
-        krs = self.kinetic_reaction_system
+        nkm = self.nsk_kinetic_model
         # initial full simulation
         self._reset_and_simulate(feed, reset_spike_cap=True)
         # optional spike-count retry
         if self.spike_retry is not None:
-            model = krs._te
+            model = nkm._te
             sr = self.spike_retry
             # Seed the cap from the count reached by the full run, then let the
             # retry loop honor the SAME cap attribute it decrements.
@@ -462,7 +462,7 @@ class NSKBatchReactor(BatchBioreactor):
                 model, lambda: self._reset_and_simulate(feed, reset_spike_cap=False))
         # validators
         for validate in self.validators:
-            validate(krs._te)
+            validate(nkm._te)
         # tau selection
         tau_index, ok = select_tau_index(
             self.nsk_results, self.nsk_results_col_names, tau,
@@ -491,10 +491,10 @@ class NSKBatchReactor(BatchBioreactor):
 
     def _build_effluent(self, minimal_feed):
         effluent = minimal_feed.copy()
-        krs = self.kinetic_reaction_system
+        nkm = self.nsk_kinetic_model
         cols = self.nsk_results_col_names
         row = self.nsk_results_specific_tau
-        indexer = getattr(effluent, krs.material_indexer)
+        indexer = getattr(effluent, nkm.material_indexer)
         volume = effluent.ivol['Water']
         for c_nsk, c_bst in self.map_species_to_chemicals.items():
             indexer[c_bst] = row[cols.index(c_nsk)] * volume
@@ -570,7 +570,7 @@ class NSKBatchReactor(BatchBioreactor):
             Absolute and relative tolerances applied to the underlying
             RoadRunner integrator before simulation.
         """
-        krs = self.kinetic_reaction_system
-        integrator = krs._te.getIntegrator()
+        nkm = self.nsk_kinetic_model
+        integrator = nkm._te.getIntegrator()
         integrator.absolute_tolerance = atol
         integrator.relative_tolerance = rtol

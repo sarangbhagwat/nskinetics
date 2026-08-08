@@ -13,7 +13,7 @@ import biosteam as bst
 import tellurium as te
 import simplesbml
 
-__all__ = ('te_r', 'reset_kinetic_reaction_system',)
+__all__ = ('te_r', 'reset_nsk_kinetic_model',)
 
 #%%
 antimony_filename = 's_cerevisiae_ferm_fb_inhib_mod_ibo_antimony.txt'
@@ -53,7 +53,7 @@ te_r.add_event(nsk.Event(when='x >= stage_1_max_x',
 
 te_r.compile_events()
 
-def reset_kinetic_reaction_system(km, reset_spike_cap=True, **kwargs):
+def reset_nsk_kinetic_model(km, reset_spike_cap=True, **kwargs):
     km._te.reset()
     r_te = km._te
     r_te.n_glu_spikes = 0
@@ -63,7 +63,7 @@ def reset_kinetic_reaction_system(km, reset_spike_cap=True, **kwargs):
     r_te.is_aerobic = 1
     if reset_spike_cap: r_te.max_n_glu_spikes = km.default_max_n_glu_spikes
 
-te_r.reset_func = reset_kinetic_reaction_system
+te_r.reset_func = reset_nsk_kinetic_model
 
 #%% Set tolerances
 integrator = r.integrator
@@ -79,7 +79,7 @@ integrator.relative_tolerance = 1e-9
 #%%
 simulate = False
 if simulate:
-    reset_kinetic_reaction_system(te_r)
+    reset_nsk_kinetic_model(te_r)
     r.s_glu = 100 # initial glucose conc
     r.x = 1 # initial biomass conc
     print(r.s_glu, r.x, r.X_a, r.s_EtOH, r.s_acetate, r.s_acetald, r.s_AL, r.s_DHI, r.s_KIV, r.s_IBO)

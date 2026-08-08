@@ -58,7 +58,7 @@ class FermentationSaccharomycesEthanolIsobutanol(NSKBatchReactor):
         * [1] Effluent
     tau : float
         Reaction time [h].
-    kinetic_reaction_system : KineticModel
+    nsk_kinetic_model : KineticModel
         Kinetic model driving the fermentation.
     map_chemicals_nsk_to_bst : dict
         ``{model var: biosteam chemical ID}``. Preferred alias:
@@ -78,7 +78,7 @@ class FermentationSaccharomycesEthanolIsobutanol(NSKBatchReactor):
     """
     line = 'FermentationSaccharomycesEthanolIsobutanol'
 
-    def _init(self, tau, kinetic_reaction_system,
+    def _init(self, tau, nsk_kinetic_model,
               map_chemicals_nsk_to_bst=None,
               map_species_to_chemicals=None,
               track_vars=None,
@@ -115,7 +115,7 @@ class FermentationSaccharomycesEthanolIsobutanol(NSKBatchReactor):
             stop_when=try_fewer_n_spikes_until)
 
         NSKBatchReactor._init(
-            self, kinetic_reaction_system=kinetic_reaction_system,
+            self, nsk_kinetic_model=nsk_kinetic_model,
             tau=tau, tau_max=tau_max,
             map_species_to_chemicals=map_species_to_chemicals,
             track_vars=track_vars, n_simulation_steps=n_simulation_steps,
@@ -188,7 +188,7 @@ class FermentationSaccharomycesEthanolIsobutanol(NSKBatchReactor):
     @stage_1_max_time.setter
     def stage_1_max_time(self, val):
         self._stage_1_max_time = val
-        self.kinetic_reaction_system._te.stage_1_max_time = val
+        self.nsk_kinetic_model._te.stage_1_max_time = val
         if self.aeration is not None:
             self.aeration.stage_1_max_time = val
 
@@ -199,7 +199,7 @@ class FermentationSaccharomycesEthanolIsobutanol(NSKBatchReactor):
     @stage_1_max_x.setter
     def stage_1_max_x(self, val):
         self._stage_1_max_x = val
-        self.kinetic_reaction_system._te.stage_1_max_x = val
+        self.nsk_kinetic_model._te.stage_1_max_x = val
         if self.aeration is not None:
             self.aeration.stage_1_max_x = val
 

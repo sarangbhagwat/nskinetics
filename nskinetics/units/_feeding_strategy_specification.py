@@ -142,7 +142,7 @@ class FedBatchStrategySpecification:
         Maximum residence time of the fermentation reactor.
     fermentation_reactor : NSKBatchReactor
         Fermentation reactor unit; must expose a kinetic model via its
-        ``kinetic_reaction_system`` attribute and support simulation with
+        ``nsk_kinetic_model`` attribute and support simulation with
         spike feeding logic.
     splitter : biosteam.Unit
         Splitter dividing flow between the base-feed and spike-feed trains.
@@ -276,7 +276,7 @@ class FedBatchStrategySpecification:
                                              tau_max=tau_max)
 
     def load_desired_concs(self, target_conc, spike_conc):
-        km = self.fermentation_reactor.kinetic_reaction_system
+        km = self.fermentation_reactor.nsk_kinetic_model
         cv = self.control_variables
         km.set_value(cv.spike_conc_var, spike_conc)
         km.set_value(cv.target_conc_var, target_conc)
@@ -300,7 +300,7 @@ class FedBatchStrategySpecification:
 
     def load_threshold_conc_and_tau_max(self, threshold_conc, tau_max):
         fermentation_reactor = self.fermentation_reactor
-        km = fermentation_reactor.kinetic_reaction_system
+        km = fermentation_reactor.nsk_kinetic_model
         cv = self.control_variables
 
         self.tau_max = tau_max
