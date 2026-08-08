@@ -357,7 +357,4 @@ def test_nskbatchreactor_importable_and_rejects_non_tellurium():
     # Parent must be a BatchBioreactor subclass
     from biosteam.units import BatchBioreactor
     assert issubclass(NSKBatchReactor, BatchBioreactor)
-    # A plain (non-Tellurium) ReactionSystem is explicitly unsupported
-    import pytest
-    from nskinetics.reaction_systems.reaction_system import ReactionSystem
     assert hasattr(NSKBatchReactor, 'simulate_kinetics')

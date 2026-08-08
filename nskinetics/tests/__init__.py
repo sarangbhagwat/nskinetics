@@ -6,10 +6,10 @@
 # https://github.com/sarangbhagwat/nskinetics/blob/main/LICENSE
 # for license details.
 
-from . import test_reaction_system_solve
-from . import test_inverse_modeling_and_doe
+from . import test_events
+from . import test_tellurium_reset
 
 __all__ = (
-     'test_reaction_system_solve',
-     'test_inverse_modeling_and_doe',
+     'test_events',
+     'test_tellurium_reset',
      )
