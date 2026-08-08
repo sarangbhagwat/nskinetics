@@ -16,7 +16,7 @@ from matplotlib.ticker import AutoMinorLocator
 from ..exceptions import KineticSimulationError, EventCompilationError
 from .events import _regenerate_and_resync
 
-__all__ = ('TelluriumReactionSystem',)
+__all__ = ('KineticModel',)
 
 _TIME_FACTORS = {'h': 1.0, 'hr': 1.0, 'min': 60.0, 'm': 60.0, 's': 3600.0, 'sec': 3600.0}
 # 'kg/m3' (== 'g/L') is a *mass* concentration; it must live only in
@@ -57,7 +57,7 @@ def _bf(text):
     return r'$\bf' + str(text).replace(' ', r'\ ') + '$'
 
 
-class TelluriumReactionSystem():
+class KineticModel():
     """
     Wrapper around a Tellurium extended RoadRunner model, adding a Python event
     API, unit-aware value access, and convenience methods to simulate the model
@@ -71,9 +71,9 @@ class TelluriumReactionSystem():
         Mapping with keys ``'time'`` and ``'conc'``. Defaults to
         ``{'time': 'min', 'conc': 'M'}``.
     reset : callable, optional
-        Custom reset function ``reset(trs, **kwargs)`` invoked by
+        Custom reset function ``reset(model, **kwargs)`` invoked by
         :meth:`reset`. When given it fully replaces the default reset (it should
-        call ``trs._te.reset()`` itself if a base reset is wanted). Defaults to
+        call ``model._te.reset()`` itself if a base reset is wanted). Defaults to
         ``None`` (reset the underlying RoadRunner model). Also settable after
         construction via :attr:`reset_func`. Distinct from the boolean ``reset``
         argument of :meth:`simulate`.
@@ -84,7 +84,7 @@ class TelluriumReactionSystem():
     this object (:attr:`results_df`, :attr:`results_array`, :attr:`results_dict`,
     :attr:`results_col_names`); :meth:`plot_simulation_results` (aliases
     :meth:`plot_time_course`, :meth:`plot_trajectory`) plots the most recent
-    run. The reaction system is the source of truth for these full-trajectory
+    run. the kinetic model is the source of truth for these full-trajectory
     results: drivers such as :class:`nskinetics.units.NSKBatchReactor` call
     :meth:`simulate` and read the results back off this object rather than
     storing their own copy. The underlying RoadRunner object remains directly
@@ -117,9 +117,9 @@ class TelluriumReactionSystem():
 
         Returns
         -------
-        TelluriumReactionSystem
+        KineticModel
             Wrapper with default units ``{'time': 'min', 'conc': 'M'}``; set
-            :attr:`_units` or pass ``units`` to :class:`TelluriumReactionSystem`
+            :attr:`_units` or pass ``units`` to :class:`KineticModel`
             directly if the model uses other units.
         """
         return cls(te.loadSBMLModel(filepath))
@@ -222,7 +222,7 @@ class TelluriumReactionSystem():
     # --- reset --------------------------------------------------------------
     @property
     def reset_func(self):
-        """The custom reset callable ``reset(trs, **kwargs)``, or ``None`` for
+        """The custom reset callable ``reset(model, **kwargs)``, or ``None`` for
         the default (plain ``self._te.reset()``)."""
         return self._reset_func
 
@@ -261,7 +261,7 @@ class TelluriumReactionSystem():
         and :attr:`results_col_names` (list of column names). This object is
         the source of truth for full-trajectory kinetic results; drivers such
         as :class:`nskinetics.units.NSKBatchReactor` call this and read the
-        results back off the reaction system.
+        results back off the kinetic model.
 
         Parameters
         ----------

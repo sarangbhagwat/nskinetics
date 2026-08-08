@@ -6,6 +6,8 @@
 # https://github.com/sarangbhagwat/nskinetics/blob/main/LICENSE
 # for license details.
 
+import os
+
 import nskinetics as nsk
 import biosteam as bst
 import tellurium as te
@@ -14,16 +16,12 @@ import simplesbml
 __all__ = ('te_r', 'reset_kinetic_reaction_system',)
 
 #%%
-
-nsk_filepath = nsk.__file__.replace('\\__init__.py', '')
-nsk_examples_filepath = nsk_filepath + '\\models\\'
-
-#%%
 antimony_filename = 's_cerevisiae_ferm_fb_inhib_mod_ibo_antimony.txt'
-r = te.loadAntimonyModel(f'{nsk_examples_filepath}\\{antimony_filename}')
+r = te.loadAntimonyModel(
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), antimony_filename))
 
-#%% Create NSKinetics Reaction System
-te_r = nsk.TelluriumReactionSystem(r)
+#%% Create NSKinetics kinetic model
+te_r = nsk.KineticModel(r)
 te_r._units['time'] = 'h'
 te_r._units['conc'] = 'g/L'
 te_r.default_max_n_glu_spikes = 200
@@ -55,15 +53,15 @@ te_r.add_event(nsk.Event(when='x >= stage_1_max_x',
 
 te_r.compile_events()
 
-def reset_kinetic_reaction_system(trs, reset_spike_cap=True, **kwargs):
-    trs._te.reset()
-    r_te = trs._te
+def reset_kinetic_reaction_system(km, reset_spike_cap=True, **kwargs):
+    km._te.reset()
+    r_te = km._te
     r_te.n_glu_spikes = 0
     r_te.last_vol_glu_feed_added = 0.
     r_te.tot_vol_glu_feed_added = 0.
     r_te.env = 1.
     r_te.is_aerobic = 1
-    if reset_spike_cap: r_te.max_n_glu_spikes = trs.default_max_n_glu_spikes
+    if reset_spike_cap: r_te.max_n_glu_spikes = km.default_max_n_glu_spikes
 
 te_r.reset_func = reset_kinetic_reaction_system
 

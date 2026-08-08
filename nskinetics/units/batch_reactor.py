@@ -11,7 +11,7 @@ import numpy as np
 from biosteam.units import BatchBioreactor
 
 from ..utils import get_index_nearest_element_from_sorted_array
-from ..reaction_systems.tellurium_sbml import TelluriumReactionSystem
+from ..engine.kinetic_model import KineticModel
 from ..exceptions import KineticSimulationError, MassBalanceError
 
 __all__ = ('NSKBatchReactor', 'AerationSpec', 'SpikeReduceRetry',
@@ -206,8 +206,8 @@ class NSKBatchReactor(BatchBioreactor):
     post-simulation validators. Chemistry-agnostic: subclasses configure the
     features and may override :meth:`_finalize_effluent`.
 
-    The core kinetic integration is delegated to the reaction system's
-    :meth:`~nskinetics.TelluriumReactionSystem.simulate`, which is the source of
+    The core kinetic integration is delegated to the kinetic model's
+    :meth:`~nskinetics.KineticModel.simulate`, which is the source of
     truth for full-trajectory results; the ``nsk_results``,
     ``nsk_results_dict``, ``nsk_results_col_names``, and ``nsk_results_df``
     attributes are read-only properties delegating to it (the full-trajectory
@@ -225,7 +225,7 @@ class NSKBatchReactor(BatchBioreactor):
     outs :
         * [0] Vent
         * [1] Effluent
-    kinetic_reaction_system : TelluriumReactionSystem
+    kinetic_reaction_system : KineticModel
         Kinetic model driving the reactor.
     map_species_to_chemicals : dict
         ``{model var (or '[conc]' selection): biosteam chemical ID}``.
@@ -285,10 +285,10 @@ class NSKBatchReactor(BatchBioreactor):
         self._load_components()
 
         krs = kinetic_reaction_system
-        if not isinstance(krs, TelluriumReactionSystem):
+        if not isinstance(krs, KineticModel):
             raise NotImplementedError(
-                'NSKBatchReactor currently supports only TelluriumReactionSystem '
-                f'kinetic models; got {type(krs).__name__}.')
+                'NSKBatchReactor currently supports only KineticModel '
+                f'instances; got {type(krs).__name__}.')
         self.kinetic_reaction_system = krs
         krs.validate_units()
 
@@ -307,7 +307,7 @@ class NSKBatchReactor(BatchBioreactor):
         self.spike_feed_index = spike_feed_index
 
         self.run_type = 'simulate kinetics'
-        # Full-trajectory results live on the kinetic reaction system; the
+        # Full-trajectory results live on the kinetic model; the
         # reactor exposes them via delegating properties (see below).
 
         self.simulate_kinetics = self._nsk_te_simulate_kinetics
@@ -333,8 +333,8 @@ class NSKBatchReactor(BatchBioreactor):
     def map_chemicals_nsk_to_bst(self, value):
         self.map_species_to_chemicals = dict(value)
 
-    # --- full-trajectory results (delegated to the reaction system) ---------
-    # The kinetic reaction system is the source of truth for full-trajectory
+    # --- full-trajectory results (delegated to the kinetic model) ---------
+    # The kinetic model is the source of truth for full-trajectory
     # results; these read-only properties expose it under the reactor's
     # `nsk_results*` names. They return None until `kinetic_reaction_system`
     # is assigned during `_init`. The full-trajectory DataFrame is exposed as
@@ -363,11 +363,11 @@ class NSKBatchReactor(BatchBioreactor):
     # --- plotting -----------------------------------------------------------
     def plot_simulation_results(self, *args, show_fermentation_end=True,
                                 show_aeration_end=True, **kwargs):
-        """Plot the kinetic reaction system's most recent simulation, marking
+        """Plot the kinetic model's most recent simulation, marking
         the fermentation- and aeration-end times.
 
         Delegates to
-        :meth:`nskinetics.TelluriumReactionSystem.plot_simulation_results`,
+        :meth:`nskinetics.KineticModel.plot_simulation_results`,
         injecting dashed vertical event lines at the fermentation-end time
         (``tau``) and, when aeration is configured, the aeration-end time
         (``tau_stop_aeration``). All other positional and keyword arguments are
@@ -382,8 +382,8 @@ class NSKBatchReactor(BatchBioreactor):
             Draw the aeration-end (``tau_stop_aeration``) line when aeration is
             configured. Defaults to ``True``.
         *args, **kwargs
-            Forwarded to the reaction system's
-            :meth:`~nskinetics.TelluriumReactionSystem.plot_simulation_results`.
+            Forwarded to the kinetic model's
+            :meth:`~nskinetics.KineticModel.plot_simulation_results`.
         """
         events = {}
         if show_fermentation_end:
@@ -438,7 +438,7 @@ class NSKBatchReactor(BatchBioreactor):
         for c_nsk, c_bst in self.map_species_to_chemicals.items():
             krs.set_concentration_from_stream(c_nsk, indexer[c_bst], volume)
         cols = self._result_columns()
-        # Delegate the core kinetic integration to the reaction system, which
+        # Delegate the core kinetic integration to the kinetic model, which
         # stores the full-trajectory results; the reactor reads them back via
         # its nsk_results* / results properties.
         krs.simulate(0, self.tau_max * krs.time_factor,

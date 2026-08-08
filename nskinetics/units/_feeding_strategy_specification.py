@@ -50,8 +50,9 @@ class FedBatchStrategySpecification:
     tau_max : float
         Maximum residence time of the fermentation reactor.
     fermentation_reactor : object
-        Fermentation reactor unit, expected to expose a kinetic reaction system
-        and support simulation with spike feeding logic.
+        Fermentation reactor unit, expected to expose a kinetic model (via its
+        ``kinetic_reaction_system`` attribute) and support simulation with
+        spike feeding logic.
     splitter : object
         Splitter unit used to divide flow between base feed and spike feed
         pathways.
@@ -70,7 +71,7 @@ class FedBatchStrategySpecification:
     
     def __init__(
         self,
-        # kinetic_reaction_system: nsk.TelluriumReactionSystem,
+        # kinetic_reaction_system: nsk.KineticModel,
         target_conc_sugars: float,
         threshold_conc_sugars: float,
         conc_sugars_feed_spike: float,

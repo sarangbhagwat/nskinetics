@@ -13,17 +13,18 @@ model as :doc:`04_fed_batch_feeding`'s toy example, just larger.
 Loading the shipped SBML
 -------------------------
 
-The file lives under ``nskinetics/models/``, next to the package's other
-shipped model files:
+The file lives under ``nskinetics/models/s_cerevisiae_ferm_fb_inhib_mod_ibo/``,
+next to the model's Antimony source and builder module:
 
 .. code-block:: python
 
    import os, tellurium as te, nskinetics as nsk
 
    p = os.path.join(os.path.dirname(nsk.__file__),
-                     'models', 's_cerevisiae_ferm_fb_inhib_mod_ibo_sbml.xml')
+                     'models', 's_cerevisiae_ferm_fb_inhib_mod_ibo',
+                     's_cerevisiae_ferm_fb_inhib_mod_ibo_sbml.xml')
    r = te.loadSBMLModel(p)
-   trs = nsk.TelluriumReactionSystem(r, units={'time': 'h', 'conc': 'g/L'})
+   km = nsk.KineticModel(r, units={'time': 'h', 'conc': 'g/L'})
 
 Inspecting the loaded model before doing anything else confirms what it
 exposes:
@@ -63,12 +64,12 @@ the shipped file has zero events:
            last_vol_var='last_vol_glu_feed_added', tot_vol_var='tot_vol_glu_feed_added',
            delay='glucose_feed_spikeDelay', priority=5, name='glucose_feed_spike')
        for e in spike.expand():
-           trs.add_event(e)
-       trs.add_event(nsk.Event(when='time >= stage_1_max_time',
+           km.add_event(e)
+       km.add_event(nsk.Event(when='time >= stage_1_max_time',
                                do={'is_aerobic': '0'}, name='stage_1_complete_max_time'))
-       trs.add_event(nsk.Event(when='x >= stage_1_max_x',
+       km.add_event(nsk.Event(when='x >= stage_1_max_x',
                                do={'is_aerobic': '0'}, name='stage_1_complete_x_target'))
-       trs.compile_events()
+       km.compile_events()
 
 The ``FeedSpike`` watches ``s_glu`` and tops it back up to
 ``target_conc_glu_spike`` (in the growing ``env`` compartment) whenever it
@@ -90,9 +91,9 @@ As :doc:`03_events` warns, ``compile_events()`` regenerates the underlying
 RoadRunner model and resets it to its SBML-defined origin values. Integrator
 tolerances and initial conditions must therefore be set **after** it, never
 before. Rather than poking the raw RoadRunner object directly, this page
-attaches a custom ``reset_func`` to ``trs`` — the same mechanism
-``TelluriumReactionSystem(..., reset=...)`` accepts at construction time — so
-that every ``trs.reset()`` call, including ones a process unit triggers
+attaches a custom ``reset_func`` to ``km`` — the same mechanism
+``KineticModel(..., reset=...)`` accepts at construction time — so
+that every ``km.reset()`` call, including ones a process unit triggers
 internally, re-seeds the fed-batch bookkeeping consistently:
 
 .. code-block:: python
@@ -101,32 +102,32 @@ internally, re-seeds the fed-batch bookkeeping consistently:
    integ.absolute_tolerance = 1e-10
    integ.relative_tolerance = 1e-9
 
-   # Give the reaction system its own reset: it restores the RoadRunner model
-   # and re-seeds the fed-batch bookkeeping. Attaching it to `trs` means every
-   # `trs.reset()` (including the ones a process unit calls internally) runs it.
-   def reset_model(trs):
-       trs._te.reset()
-       m = trs._te
+   # Give the kinetic model its own reset: it restores the RoadRunner model
+   # and re-seeds the fed-batch bookkeeping. Attaching it to `km` means every
+   # `km.reset()` (including the ones a process unit calls internally) runs it.
+   def reset_model(km):
+       km._te.reset()
+       m = km._te
        m.n_glu_spikes = 0; m.last_vol_glu_feed_added = 0.; m.tot_vol_glu_feed_added = 0.
        m.env = 1.; m.is_aerobic = 1; m.max_n_glu_spikes = 20
 
-   trs.reset_func = reset_model
-   trs.reset()
+   km.reset_func = reset_model
+   km.reset()
    r.s_glu = 140; r.x = 1
    r.threshold_conc_glu_spike = 100   # refill trigger (SBML default: 10 g/L)
    r.target_conc_glu_spike = 140      # refill target  (SBML default: 100 g/L)
 
 A custom ``reset_func`` **fully replaces** the default reset behavior rather
-than layering on top of it, so ``reset_model`` must call ``trs._te.reset()``
+than layering on top of it, so ``reset_model`` must call ``km._te.reset()``
 itself to restore the RoadRunner model before re-seeding the bookkeeping
 variables — omitting that call would leave the model wherever the previous
 run left it. The initial concentrations ``s_glu`` and ``x`` are set *after*
-``trs.reset()`` returns, not inside ``reset_model`` and not before it:
+``km.reset()`` returns, not inside ``reset_model`` and not before it:
 ``reset()`` restores every floating species to its SBML-defined origin value,
 so setting them any earlier would simply be overwritten.
 
 The two feed parameters are overridden the same way, immediately after
-``trs.reset()``: this run widens the glucose band from the shipped SBML's
+``km.reset()``: this run widens the glucose band from the shipped SBML's
 defaults (refill at ``threshold_conc_glu_spike`` = 10 g/L, top up to
 ``target_conc_glu_spike`` = 100 g/L) to **refill at 100 g/L, top up to
 140 g/L**. Note that ``s_glu`` also *starts* at the 140 g/L target rather
@@ -156,7 +157,7 @@ concentration — bracket every species selector to stay in g/L:
 .. code-block:: python
 
    cols = ['time', '[s_glu]', '[s_EtOH]', '[s_IBO]', '[x]', 'n_glu_spikes']
-   res = trs.simulate(0, 200, 2001, cols)
+   res = km.simulate(0, 200, 2001, cols)
    print('final:', dict(zip(cols, res[-1])))
 
 (``n_glu_spikes`` stays unbracketed — it is a bookkeeping counter, not a
@@ -172,7 +173,7 @@ prints:
 
 .. code-block:: python
 
-   trs.plot_simulation_results(
+   km.plot_simulation_results(
        variables=['[s_glu]', '[s_EtOH]', '[s_IBO]', '[x]'],
        labels=['glucose', 'ethanol', 'isobutanol', 'biomass'])
 

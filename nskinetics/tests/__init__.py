@@ -7,9 +7,9 @@
 # for license details.
 
 from . import test_events
-from . import test_tellurium_reset
+from . import test_kinetic_model_reset
 
 __all__ = (
      'test_events',
-     'test_tellurium_reset',
+     'test_kinetic_model_reset',
      )

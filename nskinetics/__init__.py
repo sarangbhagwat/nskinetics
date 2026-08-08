@@ -10,8 +10,8 @@ __version__ = '0.4.0'
 
 # %% Initialize NSKinetics 
 
-from . import reaction_systems
-from .reaction_systems import *
+from . import engine
+from .engine import *
 
 from . import exceptions
 from .exceptions import *
@@ -26,7 +26,7 @@ from . import models
 
 __all__ = (
      *exceptions.__all__,
-     *reaction_systems.__all__,
+     *engine.__all__,
      'utils',
      'tests',
      'units',

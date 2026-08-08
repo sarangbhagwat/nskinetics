@@ -5,7 +5,7 @@ Coupling to a process and TEA
 in, species concentrations out, no notion of feed streams, equipment sizing,
 or cost. :class:`~nskinetics.units.NSKBatchReactor` is the bridge: a
 biosteam ``BatchBioreactor`` subclass that owns a
-:class:`~nskinetics.TelluriumReactionSystem`, runs it to pick a reaction
+:class:`~nskinetics.KineticModel`, runs it to pick a reaction
 time, and turns the result into a biosteam effluent stream — so the same
 kinetic model that produced the numbers in the last two pages can also drive
 equipment design, installed cost, and (through biosteam's TEA machinery)
@@ -19,7 +19,7 @@ This section builds and simulates a small, self-contained
 ``S`` consumed to product ``P``) with one :class:`~nskinetics.FeedSpike` —
 deliberately not the isobutanol model from :doc:`05_real_model`, to keep the
 bridge mechanics separate from any one chemistry. It mirrors the package's
-own ``nskinetics.models.generic_batch_reactor_demo`` module inline, so it
+own ``nskinetics.models.toys.generic_batch_reactor_demo`` module inline, so it
 is fully runnable on its own:
 
 .. code-block:: python
@@ -42,7 +42,7 @@ is fully runnable on its own:
    """
 
    r = te.loadAntimonyModel(_MODEL)
-   te_r = nsk.TelluriumReactionSystem(r, units={'time': 'h', 'conc': 'g/L'})
+   te_r = nsk.KineticModel(r, units={'time': 'h', 'conc': 'g/L'})
 
    spike = nsk.FeedSpike(
        species='S', when='S <= threshold', target='target',

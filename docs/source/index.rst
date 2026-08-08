@@ -31,16 +31,16 @@
         reaction kinetics — including microbial fermentation and enzyme kinetics — and connecting them to
         techno-economic analysis (TEA) and life-cycle assessment (LCA) under uncertainty. Kinetic models are
         declared as SBML — most easily authored as `Antimony <https://tellurium.readthedocs.io/en/latest/antimony.html>`__
-        text, or imported from an existing SBML file — and wrapped in a :class:`TelluriumReactionSystem`, which
+        text, or imported from an existing SBML file — and wrapped in a :class:`KineticModel`, which
         adds unit-aware value access and a Python event API (:class:`Event`, and the higher-level
         :class:`FeedSpike` for fed-batch feeding) on top of a Tellurium RoadRunner engine that performs the actual
-        ODE integration. The same reaction system can then drive a biosteam process unit through the
+        ODE integration. The same kinetic model can then drive a biosteam process unit through the
         :class:`~nskinetics.units.NSKFermentation` bridge, coupling kinetics directly to TEA.
 
 Quickstart
 ----------
 
-Write a tiny kinetic model in Antimony, wrap it in a :class:`TelluriumReactionSystem`, and simulate it:
+Write a tiny kinetic model in Antimony, wrap it in a :class:`KineticModel`, and simulate it:
 
 .. code-block:: python
 
@@ -55,13 +55,13 @@ Write a tiny kinetic model in Antimony, wrap it in a :class:`TelluriumReactionSy
    end
    """
    r = te.loadAntimonyModel(model)
-   trs = nsk.TelluriumReactionSystem(r, units={'time': 'h', 'conc': 'g/L'})
-   trs.validate_units()
-   trs.reset()
+   km = nsk.KineticModel(r, units={'time': 'h', 'conc': 'g/L'})
+   km.validate_units()
+   km.reset()
 
-   result = trs.simulate(0, 10, 101, ['time', '[S]', '[P]'])
+   result = km.simulate(0, 10, 101, ['time', '[S]', '[P]'])
    print('t=10:', result[-1])
-   trs.plot_simulation_results(labels=['S', 'P'])
+   km.plot_simulation_results(labels=['S', 'P'])
 
 This prints ``t=10: [10.     0.498  9.502]`` — species ``S`` has decayed from an initial concentration of 10 g/L
 to about 0.498 g/L by ``t=10`` h under first-order decay (``k=0.3``), while ``P`` has risen to about 9.502 g/L.
@@ -69,7 +69,7 @@ to about 0.498 g/L by ``t=10`` h under first-order decay (``k=0.3``), while ``P`
 .. figure:: /_static/images/examples/index_landing.png
    :width: 400
 
-   ``trs.simulate`` records the trajectory; ``plot_simulation_results`` plots it.
+   ``km.simulate`` records the trajectory; ``plot_simulation_results`` plots it.
 
 See :doc:`tutorial/index` for the full walkthrough, including events, fed-batch feeding, and the biosteam/TEA
 bridge.

@@ -90,20 +90,20 @@ directly into the same ``add_event``/``compile_events`` workflow from
    end
    """
    r = te.loadAntimonyModel(model)
-   trs = nsk.TelluriumReactionSystem(r, units={'time': 'h', 'conc': 'g/L'})
+   km = nsk.KineticModel(r, units={'time': 'h', 'conc': 'g/L'})
    fs = nsk.FeedSpike(species='s_glu', when='s_glu <= threshold',
                       target='target', feed_conc='feed_conc', volume_var='env',
                       max_count='n_max', count_var='n_spk',
                       last_vol_var='last_vol', tot_vol_var='tot_vol',
                       delay='dly', priority=5, name='spk')
    for e in fs.expand():
-       trs.add_event(e)
-   trs.compile_events()
-   trs.reset()
-   res = trs.simulate(0, 40, 401, ['time', '[s_glu]', '[p_eth]', 'n_spk'])
+       km.add_event(e)
+   km.compile_events()
+   km.reset()
+   res = km.simulate(0, 40, 401, ['time', '[s_glu]', '[p_eth]', 'n_spk'])
    print('max spikes:', res[:, 3].max(), 'final s_glu:', res[-1, 1],
          'final p_eth:', res[-1, 2])
-   trs.plot_simulation_results(variables=['[s_glu]', '[p_eth]'],
+   km.plot_simulation_results(variables=['[s_glu]', '[p_eth]'],
                                labels=['s_glu', 'p_eth'],
                                markers=[(2.3, 'spike'), (4.6, 'spike')])
 
@@ -162,7 +162,7 @@ resolution shows the mechanism directly — each spike snaps the substrate
 concentration back up near ``target`` while ``env`` grows by the volume
 ``a`` computed, and ``[p_eth]`` dips by exactly the corresponding dilution
 factor. This rebuilds the same setup from scratch and simulates it
-**once**, rather than re-simulating the ``r``/``trs`` from the block above
+**once**, rather than re-simulating the ``r``/``km`` from the block above
 (see the note below for why):
 
 .. code-block:: python
@@ -180,17 +180,17 @@ factor. This rebuilds the same setup from scratch and simulates it
    end
    """
    r = te.loadAntimonyModel(model)
-   trs = nsk.TelluriumReactionSystem(r, units={'time': 'h', 'conc': 'g/L'})
+   km = nsk.KineticModel(r, units={'time': 'h', 'conc': 'g/L'})
    fs = nsk.FeedSpike(species='s_glu', when='s_glu <= threshold',
                       target='target', feed_conc='feed_conc', volume_var='env',
                       max_count='n_max', count_var='n_spk',
                       last_vol_var='last_vol', tot_vol_var='tot_vol',
                       delay='dly', priority=5, name='spk')
    for e in fs.expand():
-       trs.add_event(e)
-   trs.compile_events()
-   trs.reset()
-   res = trs.simulate(0, 40, 4001, ['time', '[s_glu]', '[p_eth]', 'env', 'n_spk'])
+       km.add_event(e)
+   km.compile_events()
+   km.reset()
+   res = km.simulate(0, 40, 4001, ['time', '[s_glu]', '[p_eth]', 'env', 'n_spk'])
    changes = np.where(np.diff(res[:, 4]) > 0)[0]
    for i in changes:
        print(res[i], '->', res[i + 1])
@@ -206,7 +206,7 @@ The two concentrations go on one plot, since they share a y-axis:
 
 .. code-block:: python
 
-   trs.plot_simulation_results(variables=['[s_glu]', '[p_eth]'],
+   km.plot_simulation_results(variables=['[s_glu]', '[p_eth]'],
                                labels=['[s_glu]', '[p_eth]'],
                                markers=[(2.3, 'spike'), (4.6, 'spike')])
 
@@ -224,7 +224,7 @@ range would be flattened into an unreadable line at the axis floor.
 
 .. code-block:: python
 
-   trs.plot_simulation_results(variables=['env'], labels=['env'],
+   km.plot_simulation_results(variables=['env'], labels=['env'],
                                ylabel='Working volume', ylabel_unit='L',
                                markers=[(2.3, 'spike'), (4.6, 'spike')])
 
@@ -238,21 +238,21 @@ range would be flattened into an unreadable line at the axis floor.
 
 .. warning::
 
-   Reusing the *same* compiled ``r``/``trs`` for a second ``simulate()``
+   Reusing the *same* compiled ``r``/``km`` for a second ``simulate()``
    call — even after calling ``reset()`` in between — is not reliable, and
    this is independent of point count.
-   :meth:`~nskinetics.TelluriumReactionSystem.reset` calls a bare
+   :meth:`~nskinetics.KineticModel.reset` calls a bare
    ``self._te.reset()``, which only resets RoadRunner's default selection
    (time, floating species, and rate-rule-governed variables) to their
    origin values. It does **not** restore compartments (like ``env`` here)
    or plain, event-only bookkeeping parameters that carry no rate rule
    (``n_spk``, ``last_vol``, ``tot_vol`` here) — once an event has changed
    them, ``reset()`` leaves them exactly as the event left them. Re-running
-   :meth:`~nskinetics.TelluriumReactionSystem.compile_events` does not help
+   :meth:`~nskinetics.KineticModel.compile_events` does not help
    either: it is guarded (``if self._events_compiled: return``, see
    :doc:`03_events`), so a second call after the first succeeded is a
    no-op. The reliable way to run an independent simulation is to build a
-   fresh model and a fresh ``TelluriumReactionSystem``, as the standalone
+   fresh model and a fresh ``KineticModel``, as the standalone
    script above does, rather than re-simulating an already-fired
    event-bearing model in place.
 

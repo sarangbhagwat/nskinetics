@@ -28,7 +28,7 @@ The (Non-)Steady state Kinetics simulation package (NSKinetics)
 What is NSKinetics?
 -------------------
 
-NSKinetics is a fast, flexible, and convenient package in Python for simulating steady- and non-steady-state reaction kinetics — including microbial fermentation and enzyme kinetics — and connecting them to techno-economic analysis (TEA) and life-cycle assessment (LCA) under uncertainty. Kinetic models are declared as SBML — most easily authored as `Antimony <https://tellurium.readthedocs.io/en/latest/antimony.html>`__ text, or imported from an existing SBML file — and wrapped in a ``TelluriumReactionSystem``, which adds unit-aware value access and a Python event API on top of a Tellurium RoadRunner engine that performs the actual ODE integration. ``Event`` covers a single trigger/assignment pair (a parameter switch, a control action); the higher-level ``FeedSpike`` builds on it for fed-batch feeding, topping a species back up to a target concentration whenever it drops below a threshold. The same reaction system can then drive a `BioSTEAM <https://biosteam.readthedocs.io/en/latest/>`__ process unit through the ``NSKFermentation`` bridge, coupling kinetics directly to TEA.
+NSKinetics is a fast, flexible, and convenient package in Python for simulating steady- and non-steady-state reaction kinetics — including microbial fermentation and enzyme kinetics — and connecting them to techno-economic analysis (TEA) and life-cycle assessment (LCA) under uncertainty. Kinetic models are declared as SBML — most easily authored as `Antimony <https://tellurium.readthedocs.io/en/latest/antimony.html>`__ text, or imported from an existing SBML file — and wrapped in a ``KineticModel``, which adds unit-aware value access and a Python event API on top of a Tellurium RoadRunner engine that performs the actual ODE integration. ``Event`` covers a single trigger/assignment pair (a parameter switch, a control action); the higher-level ``FeedSpike`` builds on it for fed-batch feeding, topping a species back up to a target concentration whenever it drops below a threshold. The same kinetic model can then drive a `BioSTEAM <https://biosteam.readthedocs.io/en/latest/>`__ process unit through the ``NSKFermentation`` bridge, coupling kinetics directly to TEA.
 
 Installation
 ------------
@@ -54,7 +54,7 @@ NSKinetic's `full documentation <https://nskinetics.readthedocs.io/en/latest/>`_
 
 **Example 1: Build and simulate a minimal model**
 
-Kinetic models are declared as SBML; the easiest way to author one by hand is Antimony, a compact text syntax that Tellurium compiles to SBML. Here, species ``S`` decays into ``P`` inside a compartment ``env``, with mass-action rate constant ``k``. Wrapping the resulting RoadRunner object in a ``TelluriumReactionSystem`` adds unit-aware value access and a ``simulate`` / ``plot_simulation_results`` API on top of the RoadRunner engine:
+Kinetic models are declared as SBML; the easiest way to author one by hand is Antimony, a compact text syntax that Tellurium compiles to SBML. Here, species ``S`` decays into ``P`` inside a compartment ``env``, with mass-action rate constant ``k``. Wrapping the resulting RoadRunner object in a ``KineticModel`` adds unit-aware value access and a ``simulate`` / ``plot_simulation_results`` API on top of the RoadRunner engine:
 
 .. code-block:: python
 
@@ -69,17 +69,17 @@ Kinetic models are declared as SBML; the easiest way to author one by hand is An
     end
     """
     r = te.loadAntimonyModel(model)
-    trs = nsk.TelluriumReactionSystem(r, units={'time': 'h', 'conc': 'g/L'})
-    trs.validate_units()
-    trs.reset()
+    km = nsk.KineticModel(r, units={'time': 'h', 'conc': 'g/L'})
+    km.validate_units()
+    km.reset()
 
-    result = trs.simulate(0, 10, 101, ['time', '[S]', '[P]'])
+    result = km.simulate(0, 10, 101, ['time', '[S]', '[P]'])
     print('t=10:', result[-1])
 
-    fig, ax = trs.plot_simulation_results(labels=['S', 'P'])
+    fig, ax = km.plot_simulation_results(labels=['S', 'P'])
 
-``trs.simulate`` integrates the model and stores the trajectory on the
-reaction system (``trs.results_df``); ``plot_simulation_results`` draws the
+``km.simulate`` integrates the model and stores the trajectory on the
+kinetic model (``km.results_df``); ``plot_simulation_results`` draws the
 most recent run. This prints, in the ``HP_2024`` environment:
 
 .. code-block:: text
@@ -109,15 +109,15 @@ Real kinetic models often need to change mid-run — a parameter switches at a f
     end
     """
     r = te.loadAntimonyModel(model)
-    trs = nsk.TelluriumReactionSystem(r, units={'time': 'h', 'conc': 'g/L'})
-    trs.add_event(nsk.Event(when='time >= 5', do={'flag': '0'}, name='stop_decay'))
-    trs.compile_events()   # regenerates the model; set ICs AFTER this
-    trs.reset()
+    km = nsk.KineticModel(r, units={'time': 'h', 'conc': 'g/L'})
+    km.add_event(nsk.Event(when='time >= 5', do={'flag': '0'}, name='stop_decay'))
+    km.compile_events()   # regenerates the model; set ICs AFTER this
+    km.reset()
 
-    res = trs.simulate(0, 10, 11, ['time', '[s]', 'flag'])
+    res = km.simulate(0, 10, 11, ['time', '[s]', 'flag'])
     print(res)
 
-    trs.plot_simulation_results(labels=['s'], flag_off=5)
+    km.plot_simulation_results(labels=['s'], flag_off=5)
 
 This prints, in the ``HP_2024`` environment:
 
@@ -135,7 +135,7 @@ This prints, in the ``HP_2024`` environment:
      [  9.      0.674   0.   ]
      [ 10.      0.674   0.   ]]
 
-``flag`` is ``1`` for every row before ``t=5`` and ``0`` from ``t=5`` onward, exactly matching the event's trigger; ``s`` decays exponentially while ``flag=1`` drives the rate law, then freezes at ``0.674`` for the rest of the run once the event zeroes ``flag``. ``trs.results_df`` holds this same trajectory as a DataFrame.
+``flag`` is ``1`` for every row before ``t=5`` and ``0`` from ``t=5`` onward, exactly matching the event's trigger; ``s`` decays exponentially while ``flag=1`` drives the rate law, then freezes at ``0.674`` for the rest of the run once the event zeroes ``flag``. ``km.results_df`` holds this same trajectory as a DataFrame.
 
 .. figure:: docs/source/_static/images/examples/readme_example_2.png
    :width: 400
@@ -162,20 +162,20 @@ This prints, in the ``HP_2024`` environment:
     end
     """
     r = te.loadAntimonyModel(model)
-    trs = nsk.TelluriumReactionSystem(r, units={'time': 'h', 'conc': 'g/L'})
+    km = nsk.KineticModel(r, units={'time': 'h', 'conc': 'g/L'})
     fs = nsk.FeedSpike(species='s_glu', when='s_glu <= threshold',
                        target='target', feed_conc='feed_conc', volume_var='env',
                        max_count='n_max', count_var='n_spk',
                        last_vol_var='last_vol', tot_vol_var='tot_vol',
                        delay='dly', priority=5, name='spk')
     for e in fs.expand():
-        trs.add_event(e)
-    trs.compile_events()
-    trs.reset()
-    res = trs.simulate(0, 40, 401, ['time', '[s_glu]', 'n_spk'])
+        km.add_event(e)
+    km.compile_events()
+    km.reset()
+    res = km.simulate(0, 40, 401, ['time', '[s_glu]', 'n_spk'])
     print('max spikes:', res[:, 2].max(), 'final s_glu:', res[-1, 1])
 
-    trs.plot_simulation_results(labels=['s_glu'],
+    km.plot_simulation_results(labels=['s_glu'],
                                 markers=[(2.3, 'spike'), (4.6, 'spike')])
 
 This prints, in the ``HP_2024`` environment:
@@ -192,7 +192,7 @@ This prints, in the ``HP_2024`` environment:
    Two feed spikes (dashed lines) snap ``s_glu`` back toward 100 g/L; after
    the ``n_max=2`` cap it decays freely to ~0.
 
-See the `full tutorial <https://nskinetics.readthedocs.io/en/latest/tutorial/index.html>`__ for the rest of the workflow, including loading real, shipped SBML models and coupling a reaction system to a BioSTEAM process unit for TEA.
+See the `full tutorial <https://nskinetics.readthedocs.io/en/latest/tutorial/index.html>`__ for the rest of the workflow, including loading real, shipped SBML models and coupling a kinetic model to a BioSTEAM process unit for TEA.
 
 
 Bug reports

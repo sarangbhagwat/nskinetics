@@ -2,7 +2,7 @@ Build and simulate a model
 ===========================
 
 This page walks through the full minimal workflow: write a tiny kinetic
-model in Antimony, wrap it in a :class:`~nskinetics.TelluriumReactionSystem`,
+model in Antimony, wrap it in a :class:`~nskinetics.KineticModel`,
 set and validate units, read values, and simulate. See
 :doc:`../concepts` for the ideas behind each step.
 
@@ -35,17 +35,17 @@ integrates the ODEs.
 Wrap it and set units
 ----------------------
 
-:class:`~nskinetics.TelluriumReactionSystem` wraps the RoadRunner object,
+:class:`~nskinetics.KineticModel` wraps the RoadRunner object,
 adding unit-aware value access and a Python event API on top. It carries a
 ``units`` dict with ``'time'`` and ``'conc'`` keys (default
 ``{'time': 'min', 'conc': 'M'}``); pass your own to match the model:
 
 .. code-block:: python
 
-   trs = nsk.TelluriumReactionSystem(r, units={'time': 'h', 'conc': 'g/L'})
-   trs.validate_units()
+   km = nsk.KineticModel(r, units={'time': 'h', 'conc': 'g/L'})
+   km.validate_units()
 
-:meth:`~nskinetics.TelluriumReactionSystem.validate_units` raises a
+:meth:`~nskinetics.KineticModel.validate_units` raises a
 ``KineticSimulationError`` if either unit token is unrecognized — call it
 right after construction to catch typos early. Recognized time tokens are
 ``h``, ``hr``, ``min``, ``m``, ``s``, and ``sec``; recognized concentration
@@ -55,11 +55,11 @@ Once units are set, two properties become meaningful:
 
 .. code-block:: python
 
-   print('time_factor:', trs.time_factor, 'indexer:', trs.material_indexer)
+   print('time_factor:', km.time_factor, 'indexer:', km.material_indexer)
 
-:attr:`~nskinetics.TelluriumReactionSystem.time_factor` gives hours per
+:attr:`~nskinetics.KineticModel.time_factor` gives hours per
 model time unit (here ``1.0``, since you declared the model's time unit as
-hours via ``units={'time': 'h'}``); :attr:`~nskinetics.TelluriumReactionSystem.material_indexer`
+hours via ``units={'time': 'h'}``); :attr:`~nskinetics.KineticModel.material_indexer`
 resolves the concentration unit to the matching biosteam stream indexer
 (``'imass'`` for a mass unit like ``g/L``, ``'imol'`` for a molar one) —
 used by the process bridge described in later tutorial pages.
@@ -67,13 +67,13 @@ used by the process bridge described in later tutorial pages.
 Reading values: brackets vs. plain names
 ------------------------------------------
 
-:meth:`~nskinetics.TelluriumReactionSystem.get_value` reads a RoadRunner
+:meth:`~nskinetics.KineticModel.get_value` reads a RoadRunner
 selection. A bracketed name (``'[S]'``) returns a *concentration*; a plain
 name (``'S'``) returns an *amount*:
 
 .. code-block:: python
 
-   print('[S]0 =', trs.get_value('[S]'))
+   print('[S]0 =', km.get_value('[S]'))
 
 Since the compartment volume ``env`` is ``1``, concentration and amount
 coincide here — but they will not in general, so use whichever the
@@ -82,42 +82,42 @@ question calls for.
 Reset, then simulate
 ----------------------
 
-:meth:`~nskinetics.TelluriumReactionSystem.reset` restores model *state*
+:meth:`~nskinetics.KineticModel.reset` restores model *state*
 (species amounts, time) to its SBML-defined origin values, without
 touching model *structure*. Call it before simulating to guarantee a clean
 start, even on a freshly-constructed model:
 
 .. code-block:: python
 
-   trs.reset()
+   km.reset()
 
-:meth:`~nskinetics.TelluriumReactionSystem.simulate` integrates the model over
-``[t0, t_end]`` and stores the trajectory on the reaction system itself —
-``trs.results_df`` (DataFrame), ``trs.results_array`` (2-D array),
-``trs.results_dict``, and ``trs.results_col_names``. Request ``'time'`` plus
+:meth:`~nskinetics.KineticModel.simulate` integrates the model over
+``[t0, t_end]`` and stores the trajectory on the kinetic model itself —
+``km.results_df`` (DataFrame), ``km.results_array`` (2-D array),
+``km.results_dict``, and ``km.results_col_names``. Request ``'time'`` plus
 whichever bracketed concentration selections you want recorded (bracketed so the
 values are concentrations, and so plotting works with no extra arguments); the
-returned array is the same one stored on ``trs``:
+returned array is the same one stored on ``km``:
 
 .. code-block:: python
 
-   result = trs.simulate(0, 10, 101, ['time', '[S]', '[P]'])
+   result = km.simulate(0, 10, 101, ['time', '[S]', '[P]'])
    print('t=10:', result[-1])
 
-The underlying RoadRunner object is still reachable as ``trs._te`` for
-lower-level calls, but ``trs.simulate`` is the recommended entry point.
+The underlying RoadRunner object is still reachable as ``km._te`` for
+lower-level calls, but ``km.simulate`` is the recommended entry point.
 
 Plotting the run
 -----------------
 
-:meth:`~nskinetics.TelluriumReactionSystem.plot_simulation_results` (aliases
-:meth:`~nskinetics.TelluriumReactionSystem.plot_time_course`,
-:meth:`~nskinetics.TelluriumReactionSystem.plot_trajectory`) plots the most
+:meth:`~nskinetics.KineticModel.plot_simulation_results` (aliases
+:meth:`~nskinetics.KineticModel.plot_time_course`,
+:meth:`~nskinetics.KineticModel.plot_trajectory`) plots the most
 recent simulation. Pass ``labels`` for a readable legend:
 
 .. code-block:: python
 
-   fig, ax = trs.plot_simulation_results(labels=['S', 'P'])
+   fig, ax = km.plot_simulation_results(labels=['S', 'P'])
 
 .. figure:: /_static/images/examples/tutorial_02_build_and_simulate.png
    :width: 400

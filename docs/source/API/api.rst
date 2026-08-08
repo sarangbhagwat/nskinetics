@@ -7,7 +7,7 @@ the biosteam process bridge.
 .. toctree::
    :maxdepth: 2
 
-   reaction_system
+   kinetic_model
    events
    units
    exceptions

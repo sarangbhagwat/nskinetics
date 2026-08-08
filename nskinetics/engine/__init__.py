@@ -6,12 +6,12 @@
 # https://github.com/sarangbhagwat/nskinetics/blob/main/LICENSE
 # for license details.
 
-from . import tellurium_sbml
-from .tellurium_sbml import *
+from . import kinetic_model
+from .kinetic_model import *
 from . import events
 from .events import *
 
 __all__ = (
-     *tellurium_sbml.__all__,
+     *kinetic_model.__all__,
      *events.__all__,
      )

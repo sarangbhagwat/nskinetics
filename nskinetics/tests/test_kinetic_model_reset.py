@@ -12,7 +12,7 @@ import nskinetics as nsk
 class _StubTe:
     """Minimal stand-in for a Tellurium RoadRunner: counts reset() calls.
 
-    TelluriumReactionSystem.__init__ only stores the object; nothing else here
+    KineticModel.__init__ only stores the object; nothing else here
     touches it, so a stub suffices to unit-test the reset dispatch without
     loading a real model.
     """
@@ -25,15 +25,15 @@ class _StubTe:
 
 def test_default_reset_calls_underlying_te_reset():
     stub = _StubTe()
-    trs = nsk.TelluriumReactionSystem(stub, units={'time': 'h', 'conc': 'g/L'})
-    trs.reset()
+    km = nsk.KineticModel(stub, units={'time': 'h', 'conc': 'g/L'})
+    km.reset()
     assert stub.reset_calls == 1
 
 
 def test_default_reset_ignores_extra_kwargs():
     stub = _StubTe()
-    trs = nsk.TelluriumReactionSystem(stub)
-    trs.reset(reset_spike_cap=True, anything=123)  # must not raise
+    km = nsk.KineticModel(stub)
+    km.reset(reset_spike_cap=True, anything=123)  # must not raise
     assert stub.reset_calls == 1
 
 
@@ -41,13 +41,13 @@ def test_custom_reset_receives_trs_and_replaces_default():
     stub = _StubTe()
     seen = {}
 
-    def my_reset(trs, **kwargs):
-        seen['trs'] = trs
+    def my_reset(km, **kwargs):
+        seen['km'] = km
         seen['kwargs'] = kwargs
 
-    trs = nsk.TelluriumReactionSystem(stub, reset=my_reset)
-    trs.reset(reset_spike_cap=False)
-    assert seen['trs'] is trs
+    km = nsk.KineticModel(stub, reset=my_reset)
+    km.reset(reset_spike_cap=False)
+    assert seen['km'] is km
     assert seen['kwargs'] == {'reset_spike_cap': False}
     # Full replacement: the default self._te.reset() is NOT auto-called.
     assert stub.reset_calls == 0
@@ -55,10 +55,10 @@ def test_custom_reset_receives_trs_and_replaces_default():
 
 def test_reset_func_settable_after_construction():
     stub = _StubTe()
-    trs = nsk.TelluriumReactionSystem(stub)
+    km = nsk.KineticModel(stub)
     seen = []
-    trs.reset_func = lambda t, **kw: seen.append(t)
-    trs.reset()
-    assert seen == [trs]
+    km.reset_func = lambda t, **kw: seen.append(t)
+    km.reset()
+    assert seen == [km]
     assert stub.reset_calls == 0
-    assert trs.reset_func is not None
+    assert km.reset_func is not None

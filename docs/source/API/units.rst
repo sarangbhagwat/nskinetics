@@ -3,7 +3,7 @@ Process bridge (biosteam)
 
 .. currentmodule:: nskinetics.units
 
-:class:`NSKBatchReactor` drives any :class:`~nskinetics.TelluriumReactionSystem`
+:class:`NSKBatchReactor` drives any :class:`~nskinetics.KineticModel`
 inside a biosteam ``BatchBioreactor``, and :class:`NSKFermentation` is its
 fed-batch fermentation subclass.
 

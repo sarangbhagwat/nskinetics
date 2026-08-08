@@ -58,7 +58,7 @@ class NSKFermentation(NSKBatchReactor):
         * [1] Effluent
     tau : float
         Reaction time [h].
-    kinetic_reaction_system : TelluriumReactionSystem
+    kinetic_reaction_system : KineticModel
         Kinetic model driving the fermentation.
     map_chemicals_nsk_to_bst : dict
         ``{model var: biosteam chemical ID}``. Preferred alias:

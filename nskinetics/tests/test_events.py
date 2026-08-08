@@ -33,34 +33,34 @@ end
 
 def _make_trs(units=None):
     r = te.loadAntimonyModel(_SMALL_MODEL)
-    return nsk.TelluriumReactionSystem(r, units=units)
+    return nsk.KineticModel(r, units=units)
 
 
 def test_get_set_value_and_factors():
-    trs = _make_trs(units={'time': 'h', 'conc': 'g/L'})
-    assert trs.get_value('p') == 3.0
-    trs.set_value('p', 9.0)
-    assert trs.get_value('p') == 9.0
+    km = _make_trs(units={'time': 'h', 'conc': 'g/L'})
+    assert km.get_value('p') == 3.0
+    km.set_value('p', 9.0)
+    assert km.get_value('p') == 9.0
     # concentration selection round-trips through the compartment volume
     # NOTE: Antimony's bare `s = 10` sets the *initial concentration* (confirmed
     # via generated SBML: <species ... initialConcentration="10" .../>), not the
     # amount, so [s] == 10.0 directly and the derived amount is 10 * 2 = 20.
-    assert trs.get_value('[s]') == 10.0            # concentration set directly
-    trs.set_value('[s]', 4.0)
-    assert trs.get_value('[s]') == 4.0
-    assert trs.time_factor == 1.0
-    assert trs.material_indexer == 'imass'
+    assert km.get_value('[s]') == 10.0            # concentration set directly
+    km.set_value('[s]', 4.0)
+    assert km.get_value('[s]') == 4.0
+    assert km.time_factor == 1.0
+    assert km.material_indexer == 'imass'
     # bracket-stripped concentration-from-stream helper
-    val = trs.set_concentration_from_stream('[s]', amount=8.0, volume=2.0)
+    val = km.set_concentration_from_stream('[s]', amount=8.0, volume=2.0)
     assert val == 4.0
-    assert trs.get_value('s') == 4.0              # stripped -> writes amount var 's'
+    assert km.get_value('s') == 4.0              # stripped -> writes amount var 's'
 
 
 def test_validate_units_rejects_unknown():
-    trs = _make_trs(units={'time': 'fortnights', 'conc': 'g/L'})
+    km = _make_trs(units={'time': 'fortnights', 'conc': 'g/L'})
     import pytest
     with pytest.raises(KineticSimulationError):
-        trs.validate_units()
+        km.validate_units()
 
 
 import numpy as np
@@ -92,25 +92,25 @@ def test_event_autogenerates_name():
 
 def test_compile_events_batches_and_fires():
     r = te.loadAntimonyModel(_DECAY_MODEL)
-    trs = nsk.TelluriumReactionSystem(r, units={'time': 'h', 'conc': 'g/L'})
-    trs.add_event(nsk.Event(when='time >= 5', do={'flag': '0'}, name='ev'))
-    trs.compile_events()
-    trs.reset()
+    km = nsk.KineticModel(r, units={'time': 'h', 'conc': 'g/L'})
+    km.add_event(nsk.Event(when='time >= 5', do={'flag': '0'}, name='ev'))
+    km.compile_events()
+    km.reset()
     res = np.array(r.simulate(0, 10, 11, ['time', 's', 'flag']))
     assert res[5, 2] == 0.0
     # double-compile is a guarded no-op (no duplicate-event error)
-    trs.compile_events()
+    km.compile_events()
 
 
 def test_remove_and_clear_events():
     r = te.loadAntimonyModel(_DECAY_MODEL)
-    trs = nsk.TelluriumReactionSystem(r)
-    trs.add_event(nsk.Event(when='time >= 5', do={'flag': '0'}, name='a'))
-    trs.add_event(nsk.Event(when='time >= 6', do={'flag': '0'}, name='b'))
-    trs.remove_event('a')
-    assert [e.name for e in trs.events] == ['b']
-    trs.clear_events()
-    assert trs.events == []
+    km = nsk.KineticModel(r)
+    km.add_event(nsk.Event(when='time >= 5', do={'flag': '0'}, name='a'))
+    km.add_event(nsk.Event(when='time >= 6', do={'flag': '0'}, name='b'))
+    km.remove_event('a')
+    assert [e.name for e in km.events] == ['b']
+    km.clear_events()
+    assert km.events == []
 
 
 def test_feedspike_expansion_shape():
@@ -155,7 +155,7 @@ def test_feedspike_fires_and_caps_at_max_count():
     end
     """
     r = te.loadAntimonyModel(model)
-    trs = nsk.TelluriumReactionSystem(r, units={'time': 'h', 'conc': 'g/L'})
+    km = nsk.KineticModel(r, units={'time': 'h', 'conc': 'g/L'})
     fs = nsk.FeedSpike(
         species='s_glu', when='s_glu <= threshold',
         target='target', feed_conc='feed_conc', volume_var='env',
@@ -164,9 +164,9 @@ def test_feedspike_fires_and_caps_at_max_count():
         delay='dly', priority=5, name='spk',
     )
     for e in fs.expand():
-        trs.add_event(e)
-    trs.compile_events()
-    trs.reset()
+        km.add_event(e)
+    km.compile_events()
+    km.reset()
     res = np.array(r.simulate(0, 40, 401, ['time', 's_glu', 'n_spk']))
     # counter never exceeds the cap
     assert res[:, 2].max() == 2.0
@@ -253,10 +253,10 @@ def test_compile_events_preserves_rate_rule_initial_values():
     # rate-rule-governed variable (w' = 0) with an explicit initial value
     # (w = 0.5), i.e. exactly the kind of variable the bug corrupts.
     r = te.loadAntimonyModel(_RATE_RULE_MODEL)
-    trs = nsk.TelluriumReactionSystem(r, units={'time': 'h', 'conc': 'g/L'})
-    trs.add_event(nsk.Event(when='time >= 5', do={'flag': '0'}, name='ev'))
-    trs.compile_events()
-    trs.reset()
+    km = nsk.KineticModel(r, units={'time': 'h', 'conc': 'g/L'})
+    km.add_event(nsk.Event(when='time >= 5', do={'flag': '0'}, name='ev'))
+    km.compile_events()
+    km.reset()
     assert r['w'] == 0.5
 
 
@@ -271,13 +271,13 @@ def test_migration_equivalence_ibo_events():
 
     # Migrated: base model (events stripped) + events injected via the API.
     r_api = te.loadAntimonyModel(_strip_event_blocks(ref_text))
-    trs = nsk.TelluriumReactionSystem(r_api, units={'time': 'h', 'conc': 'g/L'})
+    km = nsk.KineticModel(r_api, units={'time': 'h', 'conc': 'g/L'})
     spike, stage_time, stage_x = _api_events()
     for e in spike.expand():
-        trs.add_event(e)
-    trs.add_event(stage_time)
-    trs.add_event(stage_x)
-    trs.compile_events()
+        km.add_event(e)
+    km.add_event(stage_time)
+    km.add_event(stage_x)
+    km.compile_events()
     _setup_ibo_run(r_api)
     out_api = np.array(r_api.simulate(0, 200, 2001, _COLS))
 

@@ -39,7 +39,7 @@ setup(
         # isobutanol model module loads its antimony .txt on import, and the
         # tutorial loads the shipped SBML .xml). These must be in the wheel so
         # installed (non-editable) copies can find them.
-        'nskinetics.models': ['*.txt', '*.xml'],
+        'nskinetics.models.s_cerevisiae_ferm_fb_inhib_mod_ibo': ['*.txt', '*.xml'],
         # Reference antimony used by the events tests.
         'nskinetics.tests': ['data/*.txt'],
     },

@@ -14,22 +14,22 @@ SBML and Antimony
 Kinetic models are declared as SBML, either loaded from an existing file or
 authored in the more readable Antimony syntax and compiled to SBML under the
 hood. To load a model from disk, call
-:meth:`TelluriumReactionSystem.from_sbml(path) <TelluriumReactionSystem.from_sbml>`.
+:meth:`KineticModel.from_sbml(path) <KineticModel.from_sbml>`.
 To build one inline, write Antimony text, compile it with
 ``tellurium.loadAntimonyModel(text)``, and wrap the resulting RoadRunner
-object with :class:`nsk.TelluriumReactionSystem(r, units=...) <TelluriumReactionSystem>`.
+object with :class:`nsk.KineticModel(r, units=...) <KineticModel>`.
 Either route produces the same wrapper, so the rest of the workflow (units,
 events, simulation) is identical regardless of how the model was authored.
 
 Simulating and the RoadRunner engine
 -------------------------------------
 
-:class:`TelluriumReactionSystem` provides :meth:`~TelluriumReactionSystem.simulate`,
+:class:`KineticModel` provides :meth:`~KineticModel.simulate`,
 which integrates the model over ``[t0, t_end]`` and stores the trajectory on
-the reaction system (``trs.results_df`` / ``.results_array`` / ``.results_dict``) —
+the kinetic model (``km.results_df`` / ``.results_array`` / ``.results_dict``) —
 the object is the source of truth for full-trajectory results. The underlying
-RoadRunner engine remains directly accessible as ``trs._te`` for lower-level use.
-:meth:`~TelluriumReactionSystem.plot_simulation_results` (aliases
+RoadRunner engine remains directly accessible as ``km._te`` for lower-level use.
+:meth:`~KineticModel.plot_simulation_results` (aliases
 ``plot_time_course`` / ``plot_trajectory``) plots the most recent run. Use
 bracketed ``'[S]'`` selections to record concentrations, and plain variable
 names to record amounts.
@@ -37,18 +37,18 @@ names to record amounts.
 Units
 -----
 
-Every :class:`TelluriumReactionSystem` carries a ``units`` dict with
+Every :class:`KineticModel` carries a ``units`` dict with
 ``'time'`` and ``'conc'`` keys (default ``{'time': 'min', 'conc': 'M'}``).
 Recognized time tokens are ``h``, ``hr``, ``min``, ``m``, ``s``, and ``sec``
 (case-insensitive); recognized concentration tokens are ``M`` and ``mol/L``
 for molar concentrations, and ``g/L``, ``kg/m3``, and ``kg/m^3`` for mass
 concentrations — note that ``kg/m3`` is a *mass* unit, not molar, since it is
-numerically equivalent to g/L. The :attr:`~TelluriumReactionSystem.time_factor`
+numerically equivalent to g/L. The :attr:`~KineticModel.time_factor`
 property converts model time to hours, and
-:attr:`~TelluriumReactionSystem.material_indexer` resolves the configured
+:attr:`~KineticModel.material_indexer` resolves the configured
 concentration unit to the matching biosteam stream indexer (``'imol'`` for
 molar, ``'imass'`` for mass) for use by the process bridge.
-:meth:`~TelluriumReactionSystem.validate_units` raises a
+:meth:`~KineticModel.validate_units` raises a
 ``KineticSimulationError`` if either token is unrecognized.
 
 The event lifecycle (important)
@@ -62,7 +62,7 @@ model state to its SBML-defined origin values. Any custom initial conditions
 or parameter overrides must therefore be applied *after* ``compile_events()``,
 never before — values set beforehand are silently discarded when the model is
 regenerated. This is documented directly on
-:meth:`TelluriumReactionSystem.compile_events`, :meth:`Event.compile`, and
+:meth:`KineticModel.compile_events`, :meth:`Event.compile`, and
 :meth:`FeedSpike.compile`; when in doubt, compile events first and set state
 last.
 
@@ -82,7 +82,7 @@ The process bridge
 -------------------
 
 :class:`~nskinetics.units.NSKBatchReactor` drives any
-:class:`TelluriumReactionSystem` inside a biosteam ``BatchBioreactor``,
+:class:`KineticModel` inside a biosteam ``BatchBioreactor``,
 handling the kinetic simulate loop, reaction-time selection, species-to-
 chemical mapping, and effluent construction so the model can participate in
 design, costing, and TEA. :class:`~nskinetics.units.NSKFermentation` is a

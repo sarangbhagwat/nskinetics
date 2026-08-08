@@ -41,7 +41,7 @@ def build_demo_reactor():
     (reactor, te_r) : tuple
     """
     r = te.loadAntimonyModel(_MODEL)
-    te_r = nsk.TelluriumReactionSystem(r, units={'time': 'h', 'conc': 'g/L'})
+    te_r = nsk.KineticModel(r, units={'time': 'h', 'conc': 'g/L'})
     spike = nsk.FeedSpike(
         species='S', when='S <= threshold', target='target',
         feed_conc='feed_conc', volume_var='env', max_count='n_max',

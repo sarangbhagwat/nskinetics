@@ -11,13 +11,14 @@ concentrations at the start and end:
 
    import os, nskinetics as nsk
    sbml = os.path.join(os.path.dirname(nsk.__file__),
-                       'models', 's_cerevisiae_ferm_fb_inhib_mod_ibo_sbml.xml')
-   trs = nsk.TelluriumReactionSystem.from_sbml(sbml)
-   trs._units = {'time': 'h', 'conc': 'g/L'}
-   trs.reset()
-   res = trs.simulate(0, 15, 16, ['time', '[s_glu]', '[s_EtOH]'])
+                       'models', 's_cerevisiae_ferm_fb_inhib_mod_ibo',
+                       's_cerevisiae_ferm_fb_inhib_mod_ibo_sbml.xml')
+   km = nsk.KineticModel.from_sbml(sbml)
+   km._units = {'time': 'h', 'conc': 'g/L'}
+   km.reset()
+   res = km.simulate(0, 15, 16, ['time', '[s_glu]', '[s_EtOH]'])
    print(res[0], res[-1])
-   trs.plot_simulation_results(labels=['glucose', 'ethanol'])
+   km.plot_simulation_results(labels=['glucose', 'ethanol'])
 
 Running it in the ``HP_2024`` environment prints:
 
