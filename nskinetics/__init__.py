@@ -24,11 +24,14 @@ from . import units
 
 from . import models
 
+from . import processes
+
 __all__ = (
      *exceptions.__all__,
      *engine.__all__,
      'utils',
      'tests',
      'units',
-     'models'
+     'models',
+     'processes'
      )

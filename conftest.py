@@ -20,6 +20,9 @@ def pytest_configure(config):
     os.environ["DISABLE_PREFERENCES"] = "1"
     os.environ["FILTER_WARNINGS"] = "1"
     os.environ["PY_IGNORE_IMPORTMISMATCH"] = "1"
+    config.addinivalue_line(
+        "markers",
+        'slow: marks tests as slow (deselected in CI with -m "not slow")')
 
 # def pytest_collection_modifyitems(session, config, items):
 #     """Modifies test items in place to ensure test modules run in a given order."""
