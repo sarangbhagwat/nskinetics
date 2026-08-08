@@ -89,7 +89,18 @@ def create_sugar_prep_and_fermentation_system(
     Deliberately NOT built here (add caller-side after calling the factory):
     any fermentor specification coupling to upstream flowsheet streams (e.g.
     yeast/enzyme/ammonia feed-flow corrections), and the docking of the vent
-    and effluent outlets to downstream units.
+    and effluent outlets to downstream units. Note that the inline system's
+    fermentor specification ends by re-simulating the aeration loop
+    (``V406.simulate(); K330.simulate(); V330.simulate()``); a caller re-adding
+    feed-flow corrections must re-simulate ``K330`` and ``V330`` likewise, or
+    the compressed-air streams go stale with respect to the fermentor.
+
+    Three internal feed streams are created unconnected and therefore surface
+    as system inlets beyond the declared ``ins``: ``atmospheric_air`` (feeding
+    ``K330``) and one dilution-water stream per mixer. Faithful to the inline
+    system, both mixers' water streams share the ID ``'dilution_water'``, so a
+    flowsheet lookup by that ID resolves only to M302's stream; reach M301's
+    through ``M301.ins[1]`` instead.
 
     Parameters
     ----------
