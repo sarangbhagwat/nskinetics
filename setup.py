@@ -36,7 +36,7 @@ setup(
     include_package_data=True,
     package_data={
         # Shipped model files loaded by name at import/run time (e.g. the
-        # isobutanol example module loads its antimony .txt on import, and the
+        # isobutanol model module loads its antimony .txt on import, and the
         # tutorial loads the shipped SBML .xml). These must be in the wheel so
         # installed (non-editable) copies can find them.
         'nskinetics.models': ['*.txt', '*.xml'],

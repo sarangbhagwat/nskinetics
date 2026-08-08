@@ -28,7 +28,7 @@
     .. grid-item::
 
         NSKinetics is a fast, flexible, and convenient package in Python for simulating steady- and non-steady-state
-        reaction kinetics — especially enzyme kinetics and inhibitory phenomena — and connecting them to
+        reaction kinetics — including microbial fermentation and enzyme kinetics — and connecting them to
         techno-economic analysis (TEA) and life-cycle assessment (LCA) under uncertainty. Kinetic models are
         declared as SBML — most easily authored as `Antimony <https://tellurium.readthedocs.io/en/latest/antimony.html>`__
         text, or imported from an existing SBML file — and wrapped in a :class:`TelluriumReactionSystem`, which

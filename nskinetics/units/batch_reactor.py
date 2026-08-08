@@ -288,8 +288,7 @@ class NSKBatchReactor(BatchBioreactor):
         if not isinstance(krs, TelluriumReactionSystem):
             raise NotImplementedError(
                 'NSKBatchReactor currently supports only TelluriumReactionSystem '
-                f'kinetic models; got {type(krs).__name__}. Use '
-                'nskinetics.ReactionSystem directly for non-Tellurium models.')
+                f'kinetic models; got {type(krs).__name__}.')
         self.kinetic_reaction_system = krs
         krs.validate_units()
 

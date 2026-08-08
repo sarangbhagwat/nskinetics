@@ -11,8 +11,6 @@ import biosteam as bst
 import tellurium as te
 import simplesbml
 
-# te_r_ethanol = nsk.examples.saccharomyces_cerevisiae_fermentation.te_r
-
 __all__ = ('te_r', 'reset_kinetic_reaction_system',)
 
 #%%
