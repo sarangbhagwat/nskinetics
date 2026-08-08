@@ -16,7 +16,10 @@ fermentor, and a compressed-air (compressor + valve) aeration loop.
 
 import biosteam as bst
 
-from ..units import FermentationSaccharomycesEthanolIsobutanol
+from ..units import (FermentationSaccharomycesEthanolIsobutanol,
+                     FedBatchStrategySpecification,
+                     SpikeControlVariables,
+                     ConcentrationActuator)
 
 __all__ = ('create_sugar_prep_and_fermentation_system',)
 
@@ -40,6 +43,15 @@ _DEFAULT_TRACK_VARS = (
     'curr_tot_vol_glu_feed_added',
     'curr_env',
 )
+
+# Inline isobutanol system's baseline_specifications dict (scenario baselines
+# differ from the constructor's initial values on purpose; see system.py).
+_DEFAULT_BASELINE_SPECIFICATIONS = {
+    'target_conc': 221.25,
+    'threshold_conc': 217.125,
+    'spike_conc': 600.0,
+    'tau_max': 120.0,
+}
 
 
 @bst.SystemFactory(
@@ -74,6 +86,12 @@ def create_sugar_prep_and_fermentation_system(
         air_pressure=3e7,
         compressor_eta=0.6,
         fermentor_kwargs=None,
+        target_conc=220.0,
+        threshold_conc=210.0,
+        spike_conc=600.0,
+        spike_control_variables=None,
+        baseline_specifications=None,
+        fbs_spec_kwargs=None,
     ):
     """
     Create the sugar-solution preparation and fermentation system of the
@@ -82,9 +100,13 @@ def create_sugar_prep_and_fermentation_system(
     isobutanol biorefinery's ``system.py`` exactly.
 
     The splitter/evaporator/mixer settings (``split``, ``evaporator_V``,
-    ``water_to_sugar_mol_ratio``) are initial values, intended to be tuned
-    after construction by a
-    :class:`~nskinetics.units.FedBatchStrategySpecification`.
+    ``water_to_sugar_mol_ratio``) are initial values, tuned by the
+    :class:`~nskinetics.units.FedBatchStrategySpecification` this factory
+    builds from its own units and attaches to the fermentor
+    (``V406.fed_batch_strategy_specification``, short alias
+    ``V406.fbs_spec``). Building is side-effect-free; the strategy is
+    imposed only when the caller invokes the spec's
+    ``load_specifications``.
 
     Deliberately NOT built here (add caller-side after calling the factory):
     any fermentor specification coupling to upstream flowsheet streams (e.g.
@@ -156,6 +178,27 @@ def create_sugar_prep_and_fermentation_system(
         Extra keyword arguments forwarded verbatim to
         :class:`~nskinetics.units.FermentationSaccharomycesEthanolIsobutanol`
         (e.g. ``stop_aeration_when_cell_density_plateaus``).
+    target_conc, threshold_conc, spike_conc : float
+        Initial-feed target, spike-trigger threshold, and spike-feed
+        concentrations of the attached
+        :class:`~nskinetics.units.FedBatchStrategySpecification`. Its
+        ``tau_max`` reuses this factory's ``tau_max`` parameter.
+    spike_control_variables : SpikeControlVariables, optional
+        Kinetic-model variable names through which the strategy is imposed.
+        Defaults to the shipped ibo model's names (``conc_glu_feed_spike``,
+        ``target_conc_glu_spike``, ``threshold_conc_glu_spike``).
+    baseline_specifications : dict, optional
+        Baseline values of the four specifications, keyed by
+        ``'target_conc'``, ``'threshold_conc'``, ``'spike_conc'``,
+        ``'tau_max'``. Defaults to a per-call copy of the isobutanol
+        biorefinery's inline baseline dict.
+    fbs_spec_kwargs : dict, optional
+        Overrides merged over the factory-computed
+        :class:`~nskinetics.units.FedBatchStrategySpecification`
+        constructor kwargs (last-write-wins). Overrides that need
+        references to factory-internal units (e.g. actuator bounds) are
+        easier applied after construction on the spec's plain attributes,
+        e.g. ``V406.fbs_spec.feed_concentrator.ub = 0.9``.
     """
     saccharified_slurry, seed = ins
     (fermentation_vent, fermentation_effluent,
@@ -314,3 +357,38 @@ def create_sugar_prep_and_fermentation_system(
         V330._run()
 
     V330-0-3-V406
+
+    ## Fed-batch strategy specification (built, NOT imposed: the caller
+    ## invokes load_specifications, which simulates upstream units)
+    if spike_control_variables is None:
+        spike_control_variables = SpikeControlVariables(
+            spike_conc_var='conc_glu_feed_spike',
+            target_conc_var='target_conc_glu_spike',
+            threshold_conc_var='threshold_conc_glu_spike',
+            )
+    if baseline_specifications is None:
+        baseline_specifications = dict(_DEFAULT_BASELINE_SPECIFICATIONS)
+
+    fbs_kwargs = dict(
+        target_conc=target_conc,
+        threshold_conc=threshold_conc,
+        spike_conc=spike_conc,
+        tau_max=tau_max,
+        fermentation_reactor=V406,
+        splitter=S301,
+        control_variables=spike_control_variables,
+        feed_concentrator=ConcentrationActuator(F301, 'V', 0.0, 0.8),
+        feed_diluter=ConcentrationActuator(
+            M301, 'water_to_sugar_mol_ratio', 0.0, 100_000),
+        spike_concentrator=ConcentrationActuator(F302, 'V', 0.0, 0.8),
+        spike_diluter=ConcentrationActuator(
+            M302, 'water_to_sugar_mol_ratio', 0.0, 100_000),
+        feed_units_sequential=[F301, F301_P0, F301_P1, M301, H301],
+        spike_units_sequential=[F302, F302_P0, F302_P1, M302, H302],
+        species_IDs=['Glucose'],
+        solvent_ID='Water',
+        baseline_specifications=baseline_specifications,
+        )
+    fbs_kwargs.update(fbs_spec_kwargs or {})
+    V406.fed_batch_strategy_specification = V406.fbs_spec = \
+        FedBatchStrategySpecification(**fbs_kwargs)

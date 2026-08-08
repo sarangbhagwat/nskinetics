@@ -19,6 +19,7 @@ and runs in the default ``-m "not slow"`` suite and in CI.
 """
 
 import sys
+import inspect
 
 import biosteam as bst
 
@@ -49,3 +50,28 @@ def test_import_is_lightweight():
     assert not [m for m in sys.modules
                 if 's_cerevisiae_ferm_fb_inhib_mod_ibo' in m]
     assert 'biorefineries' not in sys.modules
+
+
+EXPECTED_FBS_KWARG_DEFAULTS = {
+    'target_conc': 220.0,
+    'threshold_conc': 210.0,
+    'spike_conc': 600.0,
+    'spike_control_variables': None,
+    'baseline_specifications': None,
+    'fbs_spec_kwargs': None,
+}
+
+
+def test_fed_batch_strategy_kwargs_in_signature():
+    """The factory's wrapped function accepts the fed-batch-strategy kwargs
+    with defaults matching the isobutanol biorefinery's inline
+    FedBatchStrategySpecification construction. Signature-only on purpose:
+    introspecting ``.f`` keeps this module free of call-time dependencies
+    (kinetic model, chemical set)."""
+    params = inspect.signature(
+        create_sugar_prep_and_fermentation_system.f).parameters
+    for name, default in EXPECTED_FBS_KWARG_DEFAULTS.items():
+        assert name in params, f'missing factory kwarg {name!r}'
+        assert params[name].default == default, (
+            f'{name!r} default is {params[name].default!r}, '
+            f'expected {default!r}')

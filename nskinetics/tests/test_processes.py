@@ -158,3 +158,51 @@ def test_defaults_match_inline_system(factory_system):
     # Default kinetic model is the shipped te_r singleton.
     from nskinetics.models.s_cerevisiae_ferm_fb_inhib_mod_ibo import te_r
     assert V406.nsk_kinetic_model is te_r
+
+
+def test_fed_batch_strategy_specification(factory_system):
+    """The factory builds a FedBatchStrategySpecification wired to its own
+    units, with the inline isobutanol system's values, and attaches it to the
+    fermentor under both the descriptive name and the short alias."""
+    from nskinetics.units import (FedBatchStrategySpecification,
+                                  ConcentrationActuator)
+    u = _units_by_id(factory_system)
+    V406 = u['V406']
+    spec = V406.fed_batch_strategy_specification
+    assert isinstance(spec, FedBatchStrategySpecification)
+    assert V406.fbs_spec is spec
+    assert spec.fermentation_reactor is V406
+    assert spec.splitter is u['S301']
+    for actuator, unit_ID, attr, lb, ub in (
+            (spec.feed_concentrator, 'F301', 'V', 0.0, 0.8),
+            (spec.feed_diluter, 'M301', 'water_to_sugar_mol_ratio', 0.0, 100_000),
+            (spec.spike_concentrator, 'F302', 'V', 0.0, 0.8),
+            (spec.spike_diluter, 'M302', 'water_to_sugar_mol_ratio', 0.0, 100_000),
+            ):
+        assert isinstance(actuator, ConcentrationActuator)
+        assert actuator.unit is u[unit_ID]
+        assert actuator.attr == attr
+        assert actuator.lb == lb
+        assert actuator.ub == ub
+    assert spec.feed_units_sequential == [
+        u[i] for i in ('F301', 'F301_P0', 'F301_P1', 'M301', 'H301')]
+    assert spec.spike_units_sequential == [
+        u[i] for i in ('F302', 'F302_P0', 'F302_P1', 'M302', 'H302')]
+    assert spec.species_IDs == ['Glucose']
+    assert spec.solvent_ID == 'Water'
+    # Spec concentrations: the factory-kwarg defaults; tau_max: reused from
+    # the factory's own tau_max default (3 * 24 h).
+    assert spec.target_conc == 220.0
+    assert spec.threshold_conc == 210.0
+    assert spec.spike_conc == 600.0
+    assert spec.tau_max == 72.0
+    cv = spec.control_variables
+    assert cv.spike_conc_var == 'conc_glu_feed_spike'
+    assert cv.target_conc_var == 'target_conc_glu_spike'
+    assert cv.threshold_conc_var == 'threshold_conc_glu_spike'
+    assert cv.volume_col is None
+    assert cv.feed_volume_added_col is None
+    assert spec.baseline_specifications == {'target_conc': 221.25,
+                                            'threshold_conc': 217.125,
+                                            'spike_conc': 600.0,
+                                            'tau_max': 120.0}
