@@ -85,7 +85,7 @@ The process bridge
 :class:`KineticModel` inside a biosteam ``BatchBioreactor``,
 handling the kinetic simulate loop, reaction-time selection, species-to-
 chemical mapping, and effluent construction so the model can participate in
-design, costing, and TEA. :class:`~nskinetics.units.NSKFermentation` is a
+design, costing, and TEA. :class:`~nskinetics.units.FermentationSaccharomycesEthanolIsobutanol` is a
 fed-batch fermentation subclass of it that adds aeration, sucrose hydrolysis,
 fed-batch spike-count retry, and yield/mass-balance validators on top of the
 shared machinery.

@@ -22,7 +22,7 @@ from thermosteam import Reaction
 
 from .batch_reactor import NSKBatchReactor, AerationSpec, SpikeReduceRetry
 
-__all__ = ('NSKFermentation',)
+__all__ = ('FermentationSaccharomycesEthanolIsobutanol',)
 
 
 def _negative_concentration_validator(model):
@@ -40,7 +40,7 @@ def _yield_over_theoretical_validator(model):
             'Yield over theoretical maximum in final kinetic simulation.')
 
 
-class NSKFermentation(NSKBatchReactor):
+class FermentationSaccharomycesEthanolIsobutanol(NSKBatchReactor):
     """
     S. cerevisiae fed-batch fermentation for 1st-generation ethanol (and
     isobutanol) production. Thin :class:`NSKBatchReactor` subclass that
@@ -76,7 +76,7 @@ class NSKFermentation(NSKBatchReactor):
     -----
     Either ``N`` or ``V`` must be given.
     """
-    line = 'NSKFermentation'
+    line = 'FermentationSaccharomycesEthanolIsobutanol'
 
     def _init(self, tau, kinetic_reaction_system,
               map_chemicals_nsk_to_bst=None,

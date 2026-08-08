@@ -217,14 +217,14 @@ fermentation-end (``tau``) time on the kinetic trajectory:
    ``[P]``); each ``FeedSpike`` resets ``[S]`` to the same target, and the
    dashed line marks the selected fermentation-end time ``tau`` (48 h). When an
    :class:`~nskinetics.units.AerationSpec` is configured (as in
-   :class:`~nskinetics.units.NSKFermentation`), the aeration-end time is
+   :class:`~nskinetics.units.FermentationSaccharomycesEthanolIsobutanol`), the aeration-end time is
    marked too.
 
-From here to a real biorefinery: ``NSKFermentation``
---------------------------------------------------------
+From here to a real biorefinery: ``FermentationSaccharomycesEthanolIsobutanol``
+-------------------------------------------------------------------------------
 
 The generic reactor above demonstrates the bridge mechanics; a real
-fermentation needs more. :class:`~nskinetics.units.NSKFermentation` is
+fermentation needs more. :class:`~nskinetics.units.FermentationSaccharomycesEthanolIsobutanol` is
 :class:`~nskinetics.units.NSKBatchReactor`'s fed-batch fermentation
 subclass, adding: aeration bookkeeping through
 :class:`~nskinetics.units.AerationSpec` (tracking cumulative oxygen uptake
@@ -235,11 +235,11 @@ spike-feed before kinetics; a fed-batch spike-count retry
 (:class:`~nskinetics.units.SpikeReduceRetry`) that re-simulates with a lower
 spike cap if the requested count cannot be reached; and post-simulation
 validators that raise on negative concentrations or yields exceeding the
-theoretical maximum. ``NSKFermentation`` is what actually drives the
+theoretical maximum. ``FermentationSaccharomycesEthanolIsobutanol`` is what actually drives the
 *S. cerevisiae* fed-batch model from :doc:`05_real_model` inside a process
 flowsheet: the downstream ``isobutanol`` biorefinery (a real biorefinery
 model built on `BioSTEAM <https://biosteam.readthedocs.io/>`_) instantiates
-one ``NSKFermentation`` unit wired to that exact kinetic model to drive its
+one ``FermentationSaccharomycesEthanolIsobutanol`` unit wired to that exact kinetic model to drive its
 corn-to-ethanol(-and-isobutanol) fermentation step, feeding sized equipment
 and installed cost onward into a full techno-economic analysis — the same
 ``reactor.installed_cost`` read above, at biorefinery scale.
