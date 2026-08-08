@@ -11,7 +11,7 @@ concentrations at the start and end:
 
    import os, nskinetics as nsk
    sbml = os.path.join(os.path.dirname(nsk.__file__),
-                       'examples', 's_cerevisiae_ferm_fb_inhib_mod_ibo_sbml.xml')
+                       'models', 's_cerevisiae_ferm_fb_inhib_mod_ibo_sbml.xml')
    trs = nsk.TelluriumReactionSystem.from_sbml(sbml)
    trs._units = {'time': 'h', 'conc': 'g/L'}
    trs.reset()

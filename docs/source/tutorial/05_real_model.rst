@@ -13,15 +13,15 @@ model as :doc:`04_fed_batch_feeding`'s toy example, just larger.
 Loading the shipped SBML
 -------------------------
 
-The file lives under ``nskinetics/examples/``, next to the package's other
-example models:
+The file lives under ``nskinetics/models/``, next to the package's other
+shipped model files:
 
 .. code-block:: python
 
    import os, tellurium as te, nskinetics as nsk
 
    p = os.path.join(os.path.dirname(nsk.__file__),
-                     'examples', 's_cerevisiae_ferm_fb_inhib_mod_ibo_sbml.xml')
+                     'models', 's_cerevisiae_ferm_fb_inhib_mod_ibo_sbml.xml')
    r = te.loadSBMLModel(p)
    trs = nsk.TelluriumReactionSystem(r, units={'time': 'h', 'conc': 'g/L'})
 

@@ -89,8 +89,3 @@ design, costing, and TEA. :class:`~nskinetics.units.NSKFermentation` is a
 fed-batch fermentation subclass of it that adds aeration, sucrose hydrolysis,
 fed-batch spike-count retry, and yield/mass-balance validators on top of the
 shared machinery.
-
-.. note::
-   The string-based ``ReactionSystem`` / ``SpeciesSystem`` / ``Reaction`` API
-   is legacy and intentionally undocumented; new work should use the
-   Tellurium/SBML workflow described here.

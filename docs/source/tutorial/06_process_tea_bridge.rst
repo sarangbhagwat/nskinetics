@@ -19,7 +19,7 @@ This section builds and simulates a small, self-contained
 ``S`` consumed to product ``P``) with one :class:`~nskinetics.FeedSpike` —
 deliberately not the isobutanol model from :doc:`05_real_model`, to keep the
 bridge mechanics separate from any one chemistry. It mirrors the package's
-own ``nskinetics.examples.generic_batch_reactor_demo`` module inline, so it
+own ``nskinetics.models.generic_batch_reactor_demo`` module inline, so it
 is fully runnable on its own:
 
 .. code-block:: python
