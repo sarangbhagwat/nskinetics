@@ -12,7 +12,7 @@ setup(
 
     packages=find_packages(),
     license='MIT',
-    version='0.3.0',
+    version='0.4.0',
     description='Simulation of Non-Steady state enzyme Kinetics and inhibitory phenomena',
     long_description=open('README.rst', encoding='utf-8').read(),
     long_description_content_type="text/markdown",
