@@ -97,13 +97,10 @@ class _SetThermoSystemFactory(bst.SystemFactory):
     effects; any existing thermo is used unchanged).
 
     When the factory returns a real :class:`biosteam.System` (i.e. not
-    ``mockup=True``), two specifications are attached: a system
-    specification that imposes the fed-batch strategy
-    (``fbs_spec.load_specifications()``) before each ``system.simulate()``,
-    and a fermentor specification that converges the compressed-air
-    aeration loop; see
-    :func:`_attach_fed_batch_strategy_system_specification` and
-    :func:`_attach_aeration_loop_convergence_specification`."""
+    ``mockup=True``), a system specification is attached that imposes the
+    fed-batch strategy (``fbs_spec.load_specifications()``) before each
+    ``system.simulate()``; see
+    :func:`_attach_fed_batch_strategy_system_specification`."""
 
     def __call__(self, *args, set_thermo=False, **kwargs):
         if set_thermo:
@@ -116,7 +113,6 @@ class _SetThermoSystemFactory(bst.SystemFactory):
         system = result[0] if isinstance(result, tuple) else result
         if isinstance(system, bst.System):
             _attach_fed_batch_strategy_system_specification(system)
-            _attach_aeration_loop_convergence_specification(system)
         return result
 
 
@@ -141,38 +137,6 @@ def _attach_fed_batch_strategy_system_specification(system):
         fermentor.fbs_spec.load_specifications(**kwargs)
 
     system.add_specification(fed_batch_strategy_specification, simulate=True)
-
-
-def _attach_aeration_loop_convergence_specification(system):
-    """Attach a ``converge_aeration_loop`` specification to the fermentor of
-    ``system`` that runs ``V406.simulate(); V330.simulate(); K330.simulate()``
-    **in that order**: the fermentor's aeration writes the air demand into the
-    valve's outlet, the valve's specification pulls it onto its inlet (the
-    compressor's outlet), and only then can the compressor pull the fresh
-    demand onto its own inlet. Simulating the compressor before the valve
-    would size and cost it at the *previous* simulation's air demand, forcing
-    an extra full-system simulation to converge.
-
-    Attached only to real :class:`biosteam.System` factory returns — NOT with
-    ``mockup=True`` — for the same reason as the fed-batch system
-    specification: mockup callers absorb the units into their own system and
-    manage this coupling themselves (the isobutanol biorefinery's feed-flow
-    correction specification ends with exactly this sequence). Attaching it
-    alongside a second self-simulating fermentor specification would also
-    double the kinetic simulation work per fermentor run (each
-    specification's nested ``simulate`` runs the other) and alter the
-    caller's convergence call pattern.
-    """
-    fermentor, = [u for u in system.units
-                  if isinstance(u, FermentationSaccharomycesEthanolIsobutanol)]
-    air_valve = fermentor.ins[fermentor.aeration.air_index].source
-    compressor = air_valve.ins[0].source
-
-    @fermentor.add_specification(run=False)
-    def converge_aeration_loop():
-        fermentor.simulate()
-        air_valve.simulate()
-        compressor.simulate()
 
 
 _DEFAULT_MAP_CHEMICALS_NSK_TO_BST = {
@@ -269,23 +233,19 @@ def create_sugar_prep_and_fermentation_system(
     Deliberately NOT built here (add caller-side after calling the factory):
     any fermentor specification coupling to upstream flowsheet streams (e.g.
     yeast/enzyme/ammonia feed-flow corrections), and the docking of the vent
-    and effluent outlets to downstream units. For real
-    :class:`biosteam.System` returns (not ``mockup=True``), a
-    ``converge_aeration_loop`` specification is attached to ``V406`` that
-    runs ``V406.simulate(); V330.simulate(); K330.simulate()`` **in that
-    order** (see
-    :func:`_attach_aeration_loop_convergence_specification`), so such
-    callers need not re-simulate the aeration loop themselves. A
-    ``mockup=True`` caller re-adding feed-flow corrections must instead end
-    its own specification by re-simulating the aeration loop **in the
-    order** ``V406.simulate(); V330.simulate(); K330.simulate()``: the
-    fermentor's aeration writes the air demand into ``V330``'s outlet,
-    ``V330``'s specification pulls it onto its inlet (which is ``K330``'s
-    outlet), and only then can ``K330`` pull the fresh demand onto its own
-    inlet. Simulating ``K330`` before ``V330`` sizes and costs the
-    compressor at the *previous* simulation's air demand, forcing an extra
-    full-system simulation to converge. Likewise, any feed set from the
-    fermentor's effluent (e.g. an ammonia-per-yeast correction) must be
+    and effluent outlets to downstream units. Aeration-loop convergence is
+    built into the fermentor itself for ALL builds (including
+    ``mockup=True``): via :class:`~nskinetics.units.NSKBatchReactor`'s
+    ``converge_air_supply`` behavior, every ``V406`` run ends by
+    re-simulating ``V330`` then ``K330`` at the freshly written air demand
+    (the aeration model writes the demand into ``V330``'s outlet, ``V330``'s
+    specification pulls it onto its inlet — which is ``K330``'s outlet — and
+    only then can ``K330`` pull the fresh demand onto its own inlet), so
+    caller-side specifications must NOT re-simulate the aeration loop
+    themselves. Avoid adding more than one self-simulating specification to
+    the fermentor (each specification's nested ``simulate`` runs the other,
+    doubling the kinetic simulation per fermentor run). Any feed set from
+    the fermentor's effluent (e.g. an ammonia-per-yeast correction) must be
     computed *after* ``V406.simulate()``, not before. The
     biorefinery also attaches ``fbs_spec.product_stream`` and
     ``fbs_spec.n_tea_solves`` to the spec after construction (plain

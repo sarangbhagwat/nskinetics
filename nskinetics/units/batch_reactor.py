@@ -250,6 +250,15 @@ class NSKBatchReactor(BatchBioreactor):
         volume added by fed-batch feeding. Chemistry-agnostic; a fermentation
         subclass maps this to its own bookkeeping variable.
     aeration : AerationSpec, optional
+    converge_air_supply : bool
+        If ``True`` (default) and ``aeration`` is given, re-simulate the
+        air-supply chain (the units feeding the compressed-air inlet,
+        nearest-first — e.g. the valve, then the compressor) at the end of
+        every reactor run, immediately after the aeration model writes the
+        fresh air demand into the air inlet. This converges supply units
+        whose specifications pull the demand backward (outlet onto inlet)
+        without any caller-side re-simulation. Ignored when the air inlet
+        has no upstream source.
     spike_retry : SpikeReduceRetry, optional
     pre_reactions : sequence of thermosteam.Reaction
         Applied to feed (and spike-feed) before kinetics.
@@ -277,7 +286,7 @@ class NSKBatchReactor(BatchBioreactor):
               n_decimal_places_for_tau_update_policy=2,
               volume_var=None,
               feed_volume_added_var=None,
-              aeration=None, spike_retry=None,
+              aeration=None, converge_air_supply=True, spike_retry=None,
               pre_reactions=(), validators=(),
               spike_feed_index=None,
               N=None, V=None, T=305.15, P=101325., Nmin=2, Nmax=36):
@@ -301,6 +310,7 @@ class NSKBatchReactor(BatchBioreactor):
         self.volume_var = volume_var
         self.feed_volume_added_var = feed_volume_added_var
         self.aeration = aeration
+        self.converge_air_supply = converge_air_supply
         self.spike_retry = spike_retry
         self.pre_reactions = list(pre_reactions)
         self.validators = list(validators)
@@ -554,6 +564,28 @@ class NSKBatchReactor(BatchBioreactor):
         self._finalize_effluent(effluent, vent, minimal_feed)
         if self.aeration is not None:
             self.aeration.set_air_stream(self, effluent, vent)
+            if self.converge_air_supply:
+                self._converge_air_supply()
+
+    def _converge_air_supply(self):
+        """Re-simulate the air-supply chain at the freshly written air demand.
+
+        Walks upstream from the compressed-air inlet and simulates each
+        source unit nearest-first (e.g. valve, then compressor): the aeration
+        model writes the air demand into the air inlet (the valve's outlet),
+        the valve's specification pulls it onto its own inlet (the
+        compressor's outlet), and only then can the compressor pull the
+        fresh demand onto its inlet — simulating the compressor first would
+        size and cost it at the previous run's air demand. No-op when the
+        air inlet has no upstream source.
+        """
+        chain = []
+        source = self.ins[self.aeration.air_index].source
+        while source is not None and source not in chain:
+            chain.append(source)
+            source = source.ins[0].source if source.ins else None
+        for unit in chain:
+            unit.simulate()
 
     def _finalize_effluent(self, effluent, vent, feed):
         """Subclass hook for chemistry-specific effluent finishing. Default:
