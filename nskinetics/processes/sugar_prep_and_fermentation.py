@@ -94,13 +94,49 @@ class _SetThermoSystemFactory(bst.SystemFactory):
     are created — a plain factory-function keyword would come too late, as
     ``SystemFactory.__call__`` creates the declared streams before the
     wrapped function body runs. Defaults to ``False`` (no thermo side
-    effects; any existing thermo is used unchanged)."""
+    effects; any existing thermo is used unchanged).
+
+    When the factory returns a real :class:`biosteam.System` (i.e. not
+    ``mockup=True``), a system specification is attached that imposes the
+    fed-batch strategy (``fbs_spec.load_specifications()``) before each
+    ``system.simulate()``; see
+    :func:`_attach_fed_batch_strategy_system_specification`."""
 
     def __call__(self, *args, set_thermo=False, **kwargs):
         if set_thermo:
             bst.settings.set_thermo(
                 create_sugar_prep_and_fermentation_chemicals())
-        return super().__call__(*args, **kwargs)
+        result = super().__call__(*args, **kwargs)
+        # With udct=True the factory returns (system, unit_dct); with
+        # mockup=True the "system" is a MockSystem, which cannot carry
+        # specifications (callers absorb its units into their own system).
+        system = result[0] if isinstance(result, tuple) else result
+        if isinstance(system, bst.System):
+            _attach_fed_batch_strategy_system_specification(system)
+        return result
+
+
+def _attach_fed_batch_strategy_system_specification(system):
+    """Attach a system specification to ``system`` that runs
+    ``fbs_spec.load_specifications`` before every ``system.simulate()``,
+    re-imposing the fed-batch strategy (kinetic-model concentrations,
+    evaporator/dilution actuators, and splitter ratio) so the simulated
+    flowsheet always matches the spec's current values.
+
+    The specification function accepts the optional keyword arguments of
+    :meth:`~nskinetics.units.FedBatchStrategySpecification.load_specifications`
+    (``target_conc``, ``threshold_conc``, ``spike_conc``, ``tau_max``) for
+    direct calls — e.g. ``system.specifications[0].f(target_conc=240.)`` —
+    mirroring the isobutanol biorefinery's model specification; when invoked
+    by ``system.simulate()`` it runs with the spec's stored values.
+    """
+    fermentor, = [u for u in system.units
+                  if isinstance(u, FermentationSaccharomycesEthanolIsobutanol)]
+
+    def fed_batch_strategy_specification(**kwargs):
+        fermentor.fbs_spec.load_specifications(**kwargs)
+
+    system.add_specification(fed_batch_strategy_specification, simulate=True)
 
 
 _DEFAULT_MAP_CHEMICALS_NSK_TO_BST = {
@@ -186,8 +222,13 @@ def create_sugar_prep_and_fermentation_system(
     builds from its own units and attaches to the fermentor
     (``V406.fed_batch_strategy_specification``, short alias
     ``V406.fbs_spec``). Building is side-effect-free; the strategy is
-    imposed only when the caller invokes the spec's
-    ``load_specifications``.
+    imposed by the spec's ``load_specifications``. When the factory returns
+    a real :class:`biosteam.System` (not ``mockup=True``), that call is also
+    attached as a system specification, so ``system.simulate()`` first
+    re-imposes the strategy at the spec's current values (see
+    :func:`_attach_fed_batch_strategy_system_specification`); with
+    ``mockup=True`` the caller keeps full control and must invoke
+    ``load_specifications`` itself.
 
     Deliberately NOT built here (add caller-side after calling the factory):
     any fermentor specification coupling to upstream flowsheet streams (e.g.
@@ -458,8 +499,10 @@ def create_sugar_prep_and_fermentation_system(
 
     V330-0-3-V406
 
-    ## Fed-batch strategy specification (built, NOT imposed: the caller
-    ## invokes load_specifications, which simulates upstream units)
+    ## Fed-batch strategy specification (built, NOT imposed here: it is
+    ## imposed by load_specifications, which simulates upstream units —
+    ## called by the system specification attached post-build for real
+    ## System returns, or caller-side for mockup=True)
     if spike_control_variables is None:
         spike_control_variables = SpikeControlVariables(
             spike_conc_var='conc_glu_feed_spike',
