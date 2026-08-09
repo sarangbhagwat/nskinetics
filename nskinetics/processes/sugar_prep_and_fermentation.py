@@ -12,16 +12,78 @@ initial-feed and spike-feed conditioning trains (multi-effect evaporator,
 pumps, dilution-water mixer, heat exchanger), a
 :class:`~nskinetics.units.FermentationSaccharomycesEthanolIsobutanol`
 fermentor, and a compressed-air (compressor + valve) aeration loop.
+
+The factory's dedicated chemical set is built by
+:func:`create_sugar_prep_and_fermentation_chemicals`.
 """
 
 import biosteam as bst
+import thermosteam as tmo
+from thermosteam import functional as fn
 
 from ..units import (FermentationSaccharomycesEthanolIsobutanol,
                      FedBatchStrategySpecification,
                      SpikeControlVariables,
                      ConcentrationActuator)
 
-__all__ = ('create_sugar_prep_and_fermentation_system',)
+__all__ = ('create_sugar_prep_and_fermentation_system',
+           'create_sugar_prep_and_fermentation_chemicals')
+
+
+def create_sugar_prep_and_fermentation_chemicals():
+    """
+    Create the chemical set for
+    :func:`create_sugar_prep_and_fermentation_system` — this factory's own,
+    dedicated set, activated by the factory's ``set_thermo=True`` option or
+    usable directly via ``bst.settings.set_thermo(...)``. It is *not* a
+    package-wide set: future factories in :mod:`nskinetics.processes` ship
+    their own ``create_<factory>_chemicals`` beside them.
+
+    Contains exactly what this factory's units touch: ``Water``, ``Ethanol``,
+    ``Isobutanol``, ``AceticAcid``, ``Glucose``/``Sucrose`` (liquid-phase
+    solutes; ``Sucrose`` covers ``perform_hydrolysis=True``), ``CO2``/``O2``/
+    ``N2`` (aeration and vent), ``NH3`` (zeroed in the fermentor's effluent),
+    and a ``Yeast`` pseudochemical replicating the cane/corn-biorefinery
+    definition this package is validated against (solid, ``CH1.61O0.56``,
+    rho = 1540 kg/m^3, glucose-tied Cp and Hf, synonym ``DryYeast``).
+
+    Returns
+    -------
+    thermosteam.Chemicals
+        Compiled chemical set with synonyms ``H2O`` (Water) and ``DryYeast``
+        (Yeast).
+    """
+    chemicals = tmo.Chemicals([
+        'Water', 'Ethanol', 'Isobutanol', 'AceticAcid',
+        tmo.Chemical('Glucose', phase='l'),
+        tmo.Chemical('Sucrose', phase='l'),
+        tmo.Chemical('CO2', phase='g'),
+        tmo.Chemical('O2', phase='g'),
+        tmo.Chemical('N2', phase='g'),
+        'NH3',
+    ])
+    Glucose = chemicals.Glucose
+    Sucrose = chemicals.Sucrose
+    Glucose.N_solutes = 1
+    Sucrose.N_solutes = 2
+    Yeast = tmo.Chemical('Yeast', phase='s', phase_ref='s', search_db=False,
+                         formula='CH1.61O0.56', rho=1540,
+                         Cp=Glucose.Cp(298.15), default=True)
+    # Hf tied to glucose per unit mass, ignoring heats related to growth
+    # (same convention as the cane/corn biorefinery chemical sets).
+    Yeast.Hf = Glucose.Hf / Glucose.MW * Yeast.MW
+    chemicals.append(Yeast)
+    Yeast.V.add_model(fn.rho_to_V(rho=1540, MW=Yeast.MW), top_priority=True)
+    for sugar in (Glucose, Sucrose):
+        # Dissolved solutes occupy negligible volume.
+        sugar.V.add_model(fn.rho_to_V(rho=1e5, MW=sugar.MW), top_priority=True)
+    chemicals.NH3.at_state('l')
+    for chemical in chemicals:
+        chemical.default()
+    chemicals.compile()
+    chemicals.set_synonym('Water', 'H2O')
+    chemicals.set_synonym('Yeast', 'DryYeast')
+    return chemicals
 
 _DEFAULT_MAP_CHEMICALS_NSK_TO_BST = {
     '[s_glu]': 'Glucose',
