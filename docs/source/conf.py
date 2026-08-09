@@ -51,10 +51,20 @@ autodoc_default_options = {
     'undoc-members': False,
     'show-inheritance': True,
 }
-# RTD may not install the heavy runtime stack; mock it for autodoc imports.
-# numpy/pandas are cheap wheels and are used at import time (e.g. np.inf default
-# args), so they are NOT mocked.
-autodoc_mock_imports = ['tellurium', 'biosteam', 'thermosteam', 'numba']
+# conf.py imports nskinetics above, so any environment that can build these
+# docs already has the full runtime stack importable (locally and on RTD,
+# which installs requirements.txt plus the package itself) — autodoc
+# therefore documents real modules and real docstrings, notably the
+# processes system factory (a biosteam.SystemFactory instance whose full
+# __doc__ exists only with real biosteam). The conditional list below is a
+# fallback that mocks only modules genuinely missing; it is inert when
+# everything is installed. numpy/pandas are cheap wheels used at import
+# time (e.g. np.inf default args), so they are never mocked.
+import importlib.util
+autodoc_mock_imports = [
+    m for m in ('tellurium', 'biosteam', 'thermosteam', 'numba')
+    if importlib.util.find_spec(m) is None
+]
 
 napoleon_numpy_docstring = True
 napoleon_google_docstring = False
