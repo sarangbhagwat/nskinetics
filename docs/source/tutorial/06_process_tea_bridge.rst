@@ -244,7 +244,7 @@ corn-to-ethanol(-and-isobutanol) fermentation step, feeding sized equipment
 and installed cost onward into a full techno-economic analysis — the same
 ``reactor.installed_cost`` read above, at biorefinery scale.
 
-That biorefinery wiring is itself packaged into NSKinetics as a system
+That biorefinery wiring is now built by an NSKinetics system
 factory: ``nsk.processes.create_sugar_prep_and_fermentation_system`` builds
 the whole sugar-preparation + fermentation section (conditioning trains,
 fermentor, aeration loop) in one call, attaches the fed-batch strategy
