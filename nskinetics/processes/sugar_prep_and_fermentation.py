@@ -191,11 +191,17 @@ def create_sugar_prep_and_fermentation_system(
     Deliberately NOT built here (add caller-side after calling the factory):
     any fermentor specification coupling to upstream flowsheet streams (e.g.
     yeast/enzyme/ammonia feed-flow corrections), and the docking of the vent
-    and effluent outlets to downstream units. Note that the inline system's
-    fermentor specification ends by re-simulating the aeration loop
-    (``V406.simulate(); K330.simulate(); V330.simulate()``); a caller re-adding
-    feed-flow corrections must re-simulate ``K330`` and ``V330`` likewise, or
-    the compressed-air streams go stale with respect to the fermentor. The
+    and effluent outlets to downstream units. A caller re-adding feed-flow
+    corrections must end by re-simulating the aeration loop **in the order**
+    ``V406.simulate(); V330.simulate(); K330.simulate()``: the fermentor's
+    aeration writes the air demand into ``V330``'s outlet, ``V330``'s
+    specification pulls it onto its inlet (which is ``K330``'s outlet), and
+    only then can ``K330`` pull the fresh demand onto its own inlet.
+    Simulating ``K330`` before ``V330`` sizes and costs the compressor at the
+    *previous* simulation's air demand, forcing an extra full-system
+    simulation to converge. Likewise, any feed set from the fermentor's
+    effluent (e.g. an ammonia-per-yeast correction) must be computed *after*
+    ``V406.simulate()``, not before. The
     inline system further attaches ``fbs_spec.product_stream`` and
     ``fbs_spec.n_tea_solves`` to the spec after construction (plain
     attributes read at MPSP-evaluation time), so a caller replacing that
