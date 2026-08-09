@@ -1,8 +1,8 @@
 API Reference
 =============
 
-The current public API of NSKinetics centers on the Tellurium/SBML workflow and
-the biosteam process bridge.
+The current public API of NSKinetics centers on the Tellurium/SBML workflow,
+the biosteam process bridge, and ready-made process section factories.
 
 .. toctree::
    :maxdepth: 2
@@ -10,4 +10,5 @@ the biosteam process bridge.
    kinetic_model
    events
    units
+   processes
    exceptions
