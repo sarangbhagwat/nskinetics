@@ -206,3 +206,20 @@ def test_fed_batch_strategy_specification(factory_system):
                                             'threshold_conc': 217.125,
                                             'spike_conc': 600.0,
                                             'tau_max': 120.0}
+
+
+def test_set_thermo_builds_standalone():
+    """set_thermo=True activates the factory's own shipped chemical set and
+    the system builds without any biorefineries-provided thermo. Runs last in
+    this module on purpose: it replaces the global thermo."""
+    import biosteam as bst
+    import thermosteam as tmo
+    from nskinetics.processes import create_sugar_prep_and_fermentation_system
+    bst.main_flowsheet.set_flowsheet('test_processes_set_thermo')
+    system = create_sugar_prep_and_fermentation_system(
+        ID='set_thermo_sys', set_thermo=True)
+    chems = tmo.settings.chemicals
+    for ID in ('Water', 'Glucose', 'Yeast', 'Ethanol', 'Isobutanol',
+               'AceticAcid', 'Sucrose', 'CO2', 'O2', 'N2', 'NH3'):
+        assert ID in chems.IDs
+    assert {u.ID for u in system.units} == EXPECTED_UNIT_IDS

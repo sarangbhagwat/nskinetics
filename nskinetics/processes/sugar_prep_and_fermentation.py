@@ -85,6 +85,24 @@ def create_sugar_prep_and_fermentation_chemicals():
     chemicals.set_synonym('Yeast', 'DryYeast')
     return chemicals
 
+
+class _SetThermoSystemFactory(bst.SystemFactory):
+    """A :class:`biosteam.SystemFactory` accepting an opt-in ``set_thermo``
+    keyword at call time. When ``True``, the factory's own chemical set
+    (:func:`create_sugar_prep_and_fermentation_chemicals`) is activated via
+    ``bst.settings.set_thermo`` *before* the system's inlet/outlet streams
+    are created — a plain factory-function keyword would come too late, as
+    ``SystemFactory.__call__`` creates the declared streams before the
+    wrapped function body runs. Defaults to ``False`` (no thermo side
+    effects; any existing thermo is used unchanged)."""
+
+    def __call__(self, *args, set_thermo=False, **kwargs):
+        if set_thermo:
+            bst.settings.set_thermo(
+                create_sugar_prep_and_fermentation_chemicals())
+        return super().__call__(*args, **kwargs)
+
+
 _DEFAULT_MAP_CHEMICALS_NSK_TO_BST = {
     '[s_glu]': 'Glucose',
     '[x]': 'Yeast',
@@ -116,7 +134,7 @@ _DEFAULT_BASELINE_SPECIFICATIONS = {
 }
 
 
-@bst.SystemFactory(
+@_SetThermoSystemFactory(
     ID='sugar_prep_and_fermentation_sys',
     ins=[dict(ID='saccharified_slurry'),
          dict(ID='seed')],
@@ -265,6 +283,14 @@ def create_sugar_prep_and_fermentation_system(
         references to factory-internal units (e.g. actuator bounds) are
         easier applied after construction on the spec's plain attributes,
         e.g. ``V406.fbs_spec.feed_concentrator.ub = 0.9``.
+    set_thermo : bool
+        Call-time keyword (handled by the factory object itself, before the
+        system's streams are created — it is therefore not part of this
+        function's signature). If ``True``, activate this factory's own
+        chemical set, :func:`create_sugar_prep_and_fermentation_chemicals`,
+        via ``bst.settings.set_thermo`` — overwriting any thermo currently
+        set. Defaults to ``False``: the caller's pre-set thermo (e.g. the
+        isobutanol biorefinery's corn chemicals) is used unchanged.
     """
     saccharified_slurry, seed = ins
     (fermentation_vent, fermentation_effluent,

@@ -75,3 +75,17 @@ def test_fed_batch_strategy_kwargs_in_signature():
         assert params[name].default == default, (
             f'{name!r} default is {params[name].default!r}, '
             f'expected {default!r}')
+
+
+def test_set_thermo_flag_contract():
+    """The factory accepts an opt-in set_thermo keyword, defaulting to False,
+    handled by a SystemFactory subclass BEFORE stream creation (a body-level
+    kwarg would come too late: SystemFactory.__call__ creates the declared
+    ins/outs streams before the wrapped function runs)."""
+    from nskinetics.processes.sugar_prep_and_fermentation import (
+        _SetThermoSystemFactory)
+    f = create_sugar_prep_and_fermentation_system
+    assert isinstance(f, _SetThermoSystemFactory)
+    assert isinstance(f, bst.SystemFactory)  # existing contract preserved
+    params = inspect.signature(_SetThermoSystemFactory.__call__).parameters
+    assert params['set_thermo'].default is False
