@@ -10,9 +10,8 @@ mixer, heat exchanger), a
 :class:`~nskinetics.units.FermentationSaccharomycesEthanolIsobutanol` fermentor
 driven by the shipped *S. cerevisiae* kinetic model, and a compressed-air
 aeration loop. This page runs it with default settings, end to end: build,
-impose the fed-batch strategy, simulate, inspect the reactor, and finish with a
-kinetic parameter sweep that carries a strain property all the way through to
-process economics. Total simulation time is a few seconds once the imports are
+simulate, inspect the reactor, and finish with a kinetic parameter sweep that
+carries a strain property all the way through to process economics. Total simulation time is a few seconds once the imports are
 loaded; every number and figure below is the output of the code shown.
 
 Build the process
@@ -42,51 +41,43 @@ biorefinery's baseline simulation, ready to use as-is or overwrite:
    train (``F302`` → ``M302`` → ``H302``), both feeding the ``V406``
    fermentor; ``K330``/``V330`` supply compressed air for aeration.
 
-Impose the fed-batch strategy
------------------------------
+Simulate
+--------
 
-The factory also builds a
+One call runs everything. The factory builds a fed-batch strategy — a
 :class:`~nskinetics.units.FedBatchStrategySpecification` wired to its own
-units and attaches it to the fermentor as ``V406.fbs_spec`` (alias
-``V406.fed_batch_strategy_specification``) — built but *not* imposed. The
-spec holds three concentrations and a maximum batch time: the initial feed
-is conditioned to ``target_conc``, a fed-batch spike fires whenever the
-reactor's glucose falls to ``threshold_conc``, and each spike draws from a
-concentrated ``spike_conc`` feed. Calling ``load_specifications()`` imposes
-the strategy: it writes the concentrations into the kinetic model, then tunes
-the physical flowsheet to match — solving each train's evaporator vapor
-fraction (``V``) or dilution-water ratio until the streams actually reach the
-specified concentrations, and setting the splitter so the two trains supply
-glucose in the ratio the simulated fermentation consumed it:
+units, attached to the fermentor as ``V406.fbs_spec`` — and
+``sugar_ferm_sys.simulate()`` begins by imposing it: the initial feed is
+conditioned to the spec's ``target_conc`` (220 g/L glucose), a fed-batch
+spike fires whenever the reactor's glucose falls to ``threshold_conc``
+(210 g/L), each spike draws from a concentrated ``spike_conc`` (600 g/L)
+feed, and the evaporators, dilution water, and splitter are solved so the
+physical streams actually deliver those concentrations. Then the flowsheet
+runs: ``V406`` hands its mixed feed to the kinetic model, integrates the
+fed-batch fermentation over the full ``tau_max`` = 72 h window — spikes,
+aeration switching, and a spike-count retry included — picks the harvest
+time ``tau`` where ethanol peaks, converts that one time point into its
+effluent stream, and finishes by re-simulating the aeration loop at the
+freshly computed air demand. Plotting the reactor's kinetic trajectory shows
+the fermentation behind the process result (the ``simulate()`` call emits a
+handful of biosteam ``CostWarning``/``DesignWarning`` messages — transient
+solver states outside cost-correlation validity ranges — that are benign
+here):
 
 .. code-block:: python
 
-   fbs = V406.fbs_spec
-   print(fbs)
-   print(fbs.current_specifications)
+   sugar_ferm_sys.simulate()
+   f.V406.plot_simulation_results()
 
-   fbs.load_specifications()
-   print('feed conc [g/L]:', fbs.get_feed_conc())
-   print('spike conc [g/L]:', fbs.get_spike_conc())
-   print('S301 split to initial feed:', S301.split[0])
-   print('F301.V:', F301.V, ' F302.V:', F302.V)
+.. figure:: /_static/images/examples/tutorial_01_quickstart_kinetics.png
+   :width: 500
 
-.. code-block:: text
-
-   FedBatchStrategySpecification(target_conc=220.0, threshold_conc=210.0, spike_conc=600.0)
-   {'target_conc': 220.0, 'threshold_conc': 210.0, 'spike_conc': 600.0, 'tau_max': 72}
-   feed conc [g/L]: 217.37708020633303
-   spike conc [g/L]: 592.8465856369048
-   S301 split to initial feed: 0.5819806503003419
-   F301.V: 0.2763304965688685  F302.V: 0.7346545168658999
-
-The 160 g/L slurry cannot meet either specification as-is, so the solve put
-real numbers on both trains: the initial-feed evaporator boils off 28% of its
-water to reach ~217 g/L (within ~1% of the 220 g/L target) and the spike
-train boils off 73% to reach ~593 g/L, with 58% of the slurry routed to the
-initial feed. Change a specification (say,
-``fbs.load_specifications(target_conc=240.)``) and the same call re-tunes
-evaporators, dilution water, and splitter to deliver it.
+   The full kinetic trajectory. Early on, 9 spikes hold glucose
+   (``[s_glu]``) in the 210–220 g/L band while aerobic growth builds cells
+   (``[x]``); aeration ends at ~12 h, when the cell density passes its
+   stage-1 cutoff. Glucose is then drawn down to ~0 as ethanol
+   (``[s_EtOH]``) climbs to ~139.5 g/L, and the dashed ``fermentation end``
+   line marks the selected harvest time ``tau`` ≈ 63.7 h.
 
 Simulate and inspect the reactor
 --------------------------------
