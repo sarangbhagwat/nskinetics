@@ -18,44 +18,19 @@ loaded; every number and figure below is the output of the code shown.
 Build the process
 -----------------
 
-The factory needs a flowsheet, a chemical set (``set_thermo=True`` activates
-its own, shipped set), and material for its two inlets: a saccharified sugar
-slurry and a seed culture. The seed's ``Yeast`` mass matters — the fermentor
-maps it onto the kinetic model's initial cell density, so a yeast-free seed
-would mean nothing grows. biosteam's cost correlations warn when a transient
-solver state falls outside their validated ranges; those warnings are benign
-here and silenced up front, as is a known-benign ``RuntimeWarning`` from
-re-running biosteam's design logic:
+The factory needs only a chemical set — ``set_thermo=True`` activates its
+own, shipped set. One call builds the whole section on biosteam's main
+flowsheet, with its two inlets (the saccharified sugar slurry and the seed
+culture) created empty, ready to receive material:
 
 .. code-block:: python
 
-   import warnings
    import biosteam as bst
    import nskinetics as nsk
-   from biosteam.exceptions import CostWarning, DesignWarning
 
-   warnings.filterwarnings('ignore', category=CostWarning)
-   warnings.filterwarnings('ignore', category=DesignWarning)
-   warnings.filterwarnings('ignore', message=r'.*method added unit results.*',
-                           category=RuntimeWarning)
-   warnings.filterwarnings('ignore', message=r'.*has been replaced in registry.*',
-                           category=RuntimeWarning)
-
-   bst.main_flowsheet.set_flowsheet('quickstart')
    sugar_ferm_sys = nsk.processes.create_sugar_prep_and_fermentation_system(
        set_thermo=True)
    f = bst.main_flowsheet
-   S301, F301, F302, V406, K330, V330 = (f.S301, f.F301, f.F302,
-                                         f.V406, f.K330, f.V330)
-
-   slurry = S301.ins[0]              # saccharified_slurry
-   seed = V406.ins[1]
-   slurry.imass['Water'] = 100000.   # kg/hr
-   slurry.imass['Glucose'] = 16000.  # kg/hr — 160 g glucose per L water
-   seed.imass['Water'] = 500.        # kg/hr
-   seed.imass['Yeast'] = 40.         # kg/hr — sets the initial cell density
-   sugar_ferm_sys.operating_hours = 330 * 24
-
    sugar_ferm_sys.diagram()
 
 .. figure:: /_static/images/examples/tutorial_01_quickstart_flowsheet.png
