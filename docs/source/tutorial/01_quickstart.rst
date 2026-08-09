@@ -79,6 +79,36 @@ here):
    (``[s_EtOH]``) climbs to ~139.5 g/L, and the dashed ``fermentation end``
    line marks the selected harvest time ``tau`` ≈ 63.7 h.
 
+Change the fed-batch strategy
+-----------------------------
+
+The strategy imposed above is held by the specification the factory attached
+to the fermentor, ``f.V406.fbs_spec`` (alias
+``fed_batch_strategy_specification``). Calling its ``load_specifications()``
+with new values re-imposes the strategy immediately — writing the
+concentrations into the kinetic model and re-solving the evaporators,
+dilution water, and splitter so the physical streams deliver them — and the
+values persist on the spec, so every later ``simulate()`` keeps the new
+strategy. Dropping the initial-feed target to 200 g/L and letting glucose
+fall to 180 g/L between spikes:
+
+.. code-block:: python
+
+   f.V406.fbs_spec.load_specifications(target_conc=200, threshold_conc=180,
+                                       spike_conc=600)
+   sugar_ferm_sys.simulate()
+   f.V406.plot_simulation_results()
+
+.. figure:: /_static/images/examples/tutorial_01_quickstart_kinetics_retuned.png
+   :width: 500
+
+   The same fermentation under the retuned strategy. The batch now starts at
+   200 g/L glucose (the re-solved initial-feed evaporator delivers
+   ~200.1 g/L), and the wider 180–200 g/L band means fewer, larger spikes —
+   5 instead of 9 — so less total glucose is fed: it is exhausted by ~45 h,
+   ethanol peaks earlier and slightly lower (~133.5 g/L), and the selected
+   harvest time drops to ``tau`` ≈ 47.1 h.
+
 Simulate and inspect the reactor
 --------------------------------
 
