@@ -156,7 +156,6 @@ from the kinetic ``tau``. Both reflect the retuned strategy simulated above:
 .. code-block:: python
 
    f.V406.show(N=100)
-   print(f.V406.results())
 
 .. code-block:: text
 
@@ -195,6 +194,13 @@ from the kinetic ``tau``. Both reflect the retuned strategy simulated above:
                        AceticAcid  2.16
                        Glucose     6.33e-17
                        Yeast       81.4
+
+.. code-block:: python
+
+   f.V406.results()
+
+.. code-block:: text
+
    FermentationSaccharomycesEthanolIsobutanol         Units      V406
    Electricity         Power                             kW       473
                        Cost                          USD/hr        37
