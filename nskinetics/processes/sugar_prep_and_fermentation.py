@@ -172,8 +172,19 @@ _DEFAULT_BASELINE_SPECIFICATIONS = {
 
 @_SetThermoSystemFactory(
     ID='sugar_prep_and_fermentation_sys',
-    ins=[dict(ID='saccharified_slurry'),
-         dict(ID='seed')],
+    # Default compositions: the isobutanol biorefinery's scenario-A baseline
+    # values of these two streams (measured 2026-08-09 at MPSP 0.7451371545),
+    # restricted to the chemicals the factory's shipped chemical set can
+    # represent (the slurry's corn-mash solids — Fiber, proteins, TriOlein,
+    # Ash, H2SO4, CaO — are dropped; they drive neither the sugar trains nor
+    # the kinetics). Applied only when the factory creates the streams itself;
+    # caller-passed streams are used as-is. SystemFactory drops flow keys for
+    # chemicals absent from the active thermo, so these are safe under any
+    # caller thermo.
+    ins=[dict(ID='saccharified_slurry', units='kg/hr', T=305.35,
+              Water=162685.7, Glucose=38624.7, NH3=209.1),
+         dict(ID='seed', units='kg/hr',
+              Water=11.41, Yeast=0.548)],
     outs=[dict(ID='fermentation_vent'),
           dict(ID='fermentation_effluent'),
           dict(ID='initial_feed_condensate'),
@@ -263,8 +274,14 @@ def create_sugar_prep_and_fermentation_system(
     Parameters
     ----------
     ins :
-        * [0] Saccharified sugar slurry.
-        * [1] Seed culture (docked to the fermentor's inlet 1).
+        * [0] Saccharified sugar slurry. When created by the factory,
+          defaults to the isobutanol biorefinery's scenario-A baseline
+          composition (162,685.7 kg/hr Water, 38,624.7 kg/hr Glucose,
+          209.1 kg/hr NH3 at 305.35 K — the corn-mash solids the shipped
+          chemical set cannot represent are dropped).
+        * [1] Seed culture (docked to the fermentor's inlet 1). When created
+          by the factory, defaults to the scenario-A baseline composition
+          (11.41 kg/hr Water, 0.548 kg/hr Yeast).
     outs :
         * [0] Fermentation vent.
         * [1] Fermentation effluent.

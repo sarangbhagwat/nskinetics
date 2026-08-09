@@ -44,6 +44,26 @@ def test_factory_interface():
     assert f.fixed_outs_size is True
 
 
+# The isobutanol biorefinery's scenario-A baseline compositions of the two
+# inlets, restricted to the chemicals the factory's shipped chemical set can
+# represent (SystemFactory drops flow keys for chemicals absent from the
+# active thermo, so these declarations are safe under any thermo).
+EXPECTED_INS_DEFAULTS = [
+    dict(ID='saccharified_slurry', units='kg/hr', T=305.35,
+         Water=162685.7, Glucose=38624.7, NH3=209.1),
+    dict(ID='seed', units='kg/hr',
+         Water=11.41, Yeast=0.548),
+]
+
+
+def test_declared_inlet_defaults():
+    """The declared ins carry the scenario-A baseline default compositions,
+    applied only when the factory creates the streams itself (caller-passed
+    streams, as in the isobutanol biorefinery, are untouched)."""
+    f = create_sugar_prep_and_fermentation_system
+    assert list(f.ins) == EXPECTED_INS_DEFAULTS
+
+
 def test_import_is_lightweight():
     """Importing the factory must not pull in the shipped kinetic model or the
     biorefineries package: both are call-time (and slow-test) dependencies."""

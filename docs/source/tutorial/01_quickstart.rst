@@ -21,7 +21,8 @@ Build the process
 The factory needs only a chemical set — ``set_thermo=True`` activates its
 own, shipped set. One call builds the whole section on biosteam's main
 flowsheet, with its two inlets (the saccharified sugar slurry and the seed
-culture) created empty, ready to receive material:
+culture) created with default compositions matching the isobutanol
+biorefinery's baseline simulation, ready to use as-is or overwrite:
 
 .. code-block:: python
 

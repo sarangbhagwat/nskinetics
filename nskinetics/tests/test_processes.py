@@ -223,3 +223,12 @@ def test_set_thermo_builds_standalone():
                'AceticAcid', 'Sucrose', 'CO2', 'O2', 'N2', 'NH3'):
         assert ID in chems.IDs
     assert {u.ID for u in system.units} == EXPECTED_UNIT_IDS
+    # Factory-created inlets materialize the declared scenario-A baseline
+    # default compositions (caller-passed streams would be left untouched).
+    slurry, seed = system.ins[0], system.ins[1]
+    assert slurry.imass['Water'] == pytest.approx(162685.7)
+    assert slurry.imass['Glucose'] == pytest.approx(38624.7)
+    assert slurry.imass['NH3'] == pytest.approx(209.1)
+    assert slurry.T == pytest.approx(305.35)
+    assert seed.imass['Water'] == pytest.approx(11.41)
+    assert seed.imass['Yeast'] == pytest.approx(0.548)
