@@ -35,7 +35,10 @@
         adds unit-aware value access and a Python event API (:class:`Event`, and the higher-level
         :class:`FeedSpike` for fed-batch feeding) on top of a Tellurium RoadRunner engine that performs the actual
         ODE integration. The same kinetic model can then drive a biosteam process unit through the
-        :class:`~nskinetics.units.FermentationSaccharomycesEthanolIsobutanol` bridge, coupling kinetics directly to TEA.
+        :class:`~nskinetics.units.FermentationSaccharomycesEthanolIsobutanol` bridge, coupling kinetics directly to TEA —
+        and ready-made flowsheet sections built around these units ship as system factories in
+        ``nskinetics.processes`` — see the :doc:`quickstart tutorial <tutorial/01_quickstart>` and the
+        :obj:`~nskinetics.processes.create_sugar_prep_and_fermentation_system` factory.
 
 Quickstart
 ----------

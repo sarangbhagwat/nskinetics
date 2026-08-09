@@ -124,8 +124,8 @@ _DEFAULT_TRACK_VARS = (
     'curr_env',
 )
 
-# Inline isobutanol system's baseline_specifications dict (scenario baselines
-# differ from the constructor's initial values on purpose; see system.py).
+# The isobutanol biorefinery's baseline_specifications dict (scenario baselines
+# differ from the constructor's initial values on purpose; see its system.py).
 _DEFAULT_BASELINE_SPECIFICATIONS = {
     'target_conc': 221.25,
     'threshold_conc': 217.125,
@@ -176,8 +176,9 @@ def create_sugar_prep_and_fermentation_system(
     """
     Create the sugar-solution preparation and fermentation system of the
     isobutanol biorefinery: saccharified sugar slurry in, fermentation
-    effluent out. Defaults reproduce the inline configuration of the
-    isobutanol biorefinery's ``system.py`` exactly.
+    effluent out. Defaults match the configuration the isobutanol
+    biorefinery uses — historically written inline in its ``system.py``,
+    which now builds this section by calling this factory.
 
     The splitter/evaporator/mixer settings (``split``, ``evaporator_V``,
     ``water_to_sugar_mol_ratio``) are initial values, tuned by the
@@ -202,15 +203,16 @@ def create_sugar_prep_and_fermentation_system(
     simulation to converge. Likewise, any feed set from the fermentor's
     effluent (e.g. an ammonia-per-yeast correction) must be computed *after*
     ``V406.simulate()``, not before. The
-    inline system further attaches ``fbs_spec.product_stream`` and
+    biorefinery also attaches ``fbs_spec.product_stream`` and
     ``fbs_spec.n_tea_solves`` to the spec after construction (plain
-    attributes read at MPSP-evaluation time), so a caller replacing that
-    inline construction with this factory must re-add them caller-side.
+    attributes read at MPSP-evaluation time), so a caller driving a TEA
+    from this system must add them caller-side likewise.
 
     Three internal feed streams are created unconnected and therefore surface
     as system inlets beyond the declared ``ins``: ``atmospheric_air`` (feeding
-    ``K330``) and one dilution-water stream per mixer. Faithful to the inline
-    system, both mixers' water streams share the ID ``'dilution_water'``, so a
+    ``K330``) and one dilution-water stream per mixer. Faithful to the
+    biorefinery's original inline construction, both mixers' water streams
+    share the ID ``'dilution_water'``, so a
     flowsheet lookup by that ID resolves only to M302's stream; reach M301's
     through ``M301.ins[1]`` instead.
 
@@ -281,7 +283,7 @@ def create_sugar_prep_and_fermentation_system(
         Baseline values of the four specifications, keyed by
         ``'target_conc'``, ``'threshold_conc'``, ``'spike_conc'``,
         ``'tau_max'``. Defaults to a per-call copy of the isobutanol
-        biorefinery's inline baseline dict.
+        biorefinery's baseline dict.
     fbs_spec_kwargs : dict, optional
         Overrides merged over the factory-computed
         :class:`~nskinetics.units.FedBatchStrategySpecification`

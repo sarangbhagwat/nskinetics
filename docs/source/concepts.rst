@@ -89,3 +89,31 @@ design, costing, and TEA. :class:`~nskinetics.units.FermentationSaccharomycesEth
 fed-batch fermentation subclass of it that adds aeration, sucrose hydrolysis,
 fed-batch spike-count retry, and yield/mass-balance validators on top of the
 shared machinery.
+
+Process section factories
+--------------------------
+
+Beyond single units, ``nskinetics.processes`` ships whole flowsheet sections
+as biosteam system factories.
+:obj:`~nskinetics.processes.create_sugar_prep_and_fermentation_system`
+builds the isobutanol biorefinery's sugar-solution preparation and
+fermentation section — a splitter, two evaporator/dilution/heat-exchange
+conditioning trains (initial feed and spike feed), the
+:class:`~nskinetics.units.FermentationSaccharomycesEthanolIsobutanol`
+fermentor, and its aeration loop — with defaults that match the
+configuration the biorefinery itself uses (its ``system.py`` now builds
+this section by calling this factory). The factory
+constructs a :class:`~nskinetics.units.FedBatchStrategySpecification` from
+its own units and attaches it to the fermentor
+(``V406.fed_batch_strategy_specification``, short alias ``V406.fbs_spec``);
+construction is side-effect-free — the strategy is imposed only when the
+caller invokes ``load_specifications()``. The factory also ships its own
+chemical set,
+:func:`~nskinetics.processes.create_sugar_prep_and_fermentation_chemicals`,
+activated only by calling the factory with ``set_thermo=True``; by default
+the caller's pre-set thermo is used unchanged. A few couplings are
+deliberately left caller-side — fermentor specifications that reach into
+upstream flowsheet streams, and the docking of the vent and effluent outlets
+downstream; the factory's docstring lists them. See the
+:doc:`quickstart tutorial <tutorial/01_quickstart>` for the factory in
+action and :doc:`the API page <API/processes>` for every knob.
