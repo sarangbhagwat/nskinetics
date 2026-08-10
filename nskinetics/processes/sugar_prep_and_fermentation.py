@@ -342,7 +342,10 @@ def create_sugar_prep_and_fermentation_system(
         Cap on the number of fed-batch spikes, held by the same
         specification. ``None`` (default) leaves the kinetic model's own cap
         untouched; the default ``baseline_specifications`` still carry the
-        isobutanol biorefinery's baseline cap of 16.
+        isobutanol biorefinery's baseline cap of 16. Prefer setting it here, or
+        through the attached system specification, over assigning
+        ``fbs_spec.max_n_spikes`` directly — see the precedence hierarchy in
+        :class:`~nskinetics.units.FedBatchStrategySpecification`.
     spike_control_variables : SpikeControlVariables, optional
         Kinetic-model variable names through which the strategy is imposed.
         Defaults to the shipped ibo model's names (``conc_glu_feed_spike``,
