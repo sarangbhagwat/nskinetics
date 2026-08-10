@@ -109,3 +109,14 @@ def test_set_thermo_flag_contract():
     assert isinstance(f, bst.SystemFactory)  # existing contract preserved
     params = inspect.signature(_SetThermoSystemFactory.__call__).parameters
     assert params['set_thermo'].default is False
+
+
+def test_max_n_spikes_in_factory_signature_and_baseline():
+    import inspect
+    from nskinetics.processes import create_sugar_prep_and_fermentation_system
+    from nskinetics.processes.sugar_prep_and_fermentation import (
+        _DEFAULT_BASELINE_SPECIFICATIONS)
+    sig = inspect.signature(create_sugar_prep_and_fermentation_system)
+    assert 'max_n_spikes' in sig.parameters
+    assert sig.parameters['max_n_spikes'].default is None
+    assert _DEFAULT_BASELINE_SPECIFICATIONS['max_n_spikes'] == 16

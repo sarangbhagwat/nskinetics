@@ -202,10 +202,39 @@ def test_fed_batch_strategy_specification(factory_system):
     assert cv.threshold_conc_var == 'threshold_conc_glu_spike'
     assert cv.volume_col is None
     assert cv.feed_volume_added_col is None
+    assert spec.max_n_spikes is None
+    assert cv.max_n_spikes_var is None
+    assert cv.default_max_n_spikes_attr is None
     assert spec.baseline_specifications == {'target_conc': 221.25,
                                             'threshold_conc': 217.125,
                                             'spike_conc': 600.0,
-                                            'tau_max': 120.0}
+                                            'tau_max': 120.0,
+                                            'max_n_spikes': 16}
+
+
+def test_max_n_spikes_forwarded_to_specification(factory_system):
+    """The factory's ``max_n_spikes`` parameter reaches the specification it
+    attaches to the fermentor.
+
+    Pinned with a NON-default value on purpose: the parameter's default
+    ``None`` is also the specification constructor's own default, so
+    ``test_fed_batch_strategy_specification``'s ``spec.max_n_spikes is None``
+    cannot distinguish "forwarded None" from "never forwarded"; only a
+    non-default value makes the forwarding observable.
+
+    Takes ``factory_system`` purely for its module-scoped setup (the
+    biorefineries skip, the shared thermo, and the already-imported ``te_r``
+    kinetic model), then builds its own ``mockup=True`` system: a mockup skips
+    System creation and the attached system specification, which is all this
+    assertion needs. Must stay ahead of ``test_set_thermo_builds_standalone``,
+    which replaces the global thermo."""
+    import biosteam as bst
+    from nskinetics.processes import create_sugar_prep_and_fermentation_system
+    bst.main_flowsheet.set_flowsheet('test_processes_max_n_spikes')
+    mockup = create_sugar_prep_and_fermentation_system(
+        ID='max_n_spikes_sys', mockup=True, max_n_spikes=5)
+    spec = _units_by_id(mockup)['V406'].fbs_spec
+    assert spec.max_n_spikes == 5
 
 
 def test_set_thermo_builds_standalone():

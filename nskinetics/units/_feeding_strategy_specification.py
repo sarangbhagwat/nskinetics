@@ -72,14 +72,24 @@ class SpikeControlVariables:
     feed_volume_added_col : str, optional
         Result column for the cumulative spike-feed volume added. Defaults to
         the fermentation reactor's ``feed_volume_added_var``.
+    max_n_spikes_var : str, optional
+        Model variable capping the number of feed spikes. Defaults to the
+        fermentation reactor's ``spike_retry.max_count_var``.
+    default_max_n_spikes_attr : str, optional
+        Attribute on the kinetic model holding the cap its reset function
+        restores at the start of every reactor run. Defaults to
+        ``f'default_{max_n_spikes_var}'``.
     """
     def __init__(self, *, spike_conc_var, target_conc_var, threshold_conc_var,
-                 volume_col=None, feed_volume_added_col=None):
+                 volume_col=None, feed_volume_added_col=None,
+                 max_n_spikes_var=None, default_max_n_spikes_attr=None):
         self.spike_conc_var = spike_conc_var
         self.target_conc_var = target_conc_var
         self.threshold_conc_var = threshold_conc_var
         self.volume_col = volume_col
         self.feed_volume_added_col = feed_volume_added_col
+        self.max_n_spikes_var = max_n_spikes_var
+        self.default_max_n_spikes_attr = default_max_n_spikes_attr
 
     def _resolve(self, explicit, reactor, reactor_attr, what):
         if explicit is not None:
@@ -101,6 +111,48 @@ class SpikeControlVariables:
         ``reactor.feed_volume_added_var``)."""
         return self._resolve(self.feed_volume_added_col, reactor,
                              'feed_volume_added_var', 'feed-volume-added')
+
+    def resolve_max_n_spikes_var(self, reactor):
+        """Spike-cap model variable.
+
+        Parameters
+        ----------
+        reactor : NSKBatchReactor
+            Reactor supplying the fallback ``spike_retry.max_count_var``.
+
+        Returns
+        -------
+        str
+            The explicit ``max_n_spikes_var`` when given, else the reactor's
+            ``spike_retry.max_count_var``.
+        """
+        if self.max_n_spikes_var is not None:
+            return self.max_n_spikes_var
+        spike_retry = getattr(reactor, 'spike_retry', None)
+        var = getattr(spike_retry, 'max_count_var', None)
+        if var is None:
+            raise ValueError(
+                'No spike-cap model variable: none was given and the '
+                'fermentation reactor declares no spike_retry.max_count_var.')
+        return var
+
+    def resolve_default_max_n_spikes_attr(self, reactor):
+        """Kinetic-model attribute holding the spike cap restored on reset.
+
+        Parameters
+        ----------
+        reactor : NSKBatchReactor
+            Reactor used to resolve the underlying model variable name.
+
+        Returns
+        -------
+        str
+            The explicit ``default_max_n_spikes_attr`` when given, else
+            ``f'default_{resolve_max_n_spikes_var(reactor)}'``.
+        """
+        if self.default_max_n_spikes_attr is not None:
+            return self.default_max_n_spikes_attr
+        return f'default_{self.resolve_max_n_spikes_var(reactor)}'
 
 
 #%%
@@ -140,6 +192,12 @@ class FedBatchStrategySpecification:
         threshold-triggered feeding.
     tau_max : float
         Maximum residence time of the fermentation reactor.
+    max_n_spikes : float, optional
+        Cap on the number of fed-batch spikes. ``None`` (default) leaves the
+        kinetic model's own cap untouched; ``0`` means no spikes. Imposed as an
+        upper bound on the first simulated run — a reactor's
+        :class:`~nskinetics.units.SpikeReduceRetry` may reduce it further
+        within that run.
     fermentation_reactor : NSKBatchReactor
         Fermentation reactor unit; must expose a kinetic model via its
         ``nsk_kinetic_model`` attribute and support simulation with
@@ -165,9 +223,25 @@ class FedBatchStrategySpecification:
     spike_units_sequential : list of biosteam.Unit, optional
         Units simulated in order to propagate spike-feed changes.
     baseline_specifications : dict, optional
-        Baseline values of the four specifications, keyed by
+        Baseline values of the five specifications, keyed by
         ``'target_conc'``, ``'threshold_conc'``, ``'spike_conc'``,
-        ``'tau_max'``.
+        ``'tau_max'``, ``'max_n_spikes'``.
+
+    Notes
+    -----
+    Set fed-batch strategy parameters through this specification rather than by
+    writing kinetic-model variables directly. Three entry points exist, in
+    descending order of precedence:
+
+    1. a model specification — keyword arguments passed to
+       :meth:`load_specifications`;
+    2. the system specification a system factory attaches, which forwards its
+       keyword arguments to :meth:`load_specifications`;
+    3. the values stored on this object (e.g. ``spec.max_n_spikes = 16``).
+
+    An explicit keyword argument at 1 or 2 always wins, because
+    :meth:`load_specifications` falls back to a stored value only when the
+    corresponding argument is ``None``.
     """
 
     def __init__(
@@ -188,16 +262,19 @@ class FedBatchStrategySpecification:
         feed_units_sequential=None,
         spike_units_sequential=None,
         baseline_specifications=None,
+        max_n_spikes=None,
         ):
         self.target_conc = target_conc
         self.threshold_conc = threshold_conc
         self.spike_conc = spike_conc
         self.tau_max = tau_max
+        self.max_n_spikes = max_n_spikes
 
         self._spec_names = ['target_conc',
                             'threshold_conc',
                             'spike_conc',
                             'tau_max',
+                            'max_n_spikes',
                             ]
 
         self._baseline_specifications = baseline_specifications
@@ -230,6 +307,9 @@ class FedBatchStrategySpecification:
         if self.spike_conc <= 0:
             raise ValueError("spike_conc must be positive.")
 
+        if self.max_n_spikes is not None and self.max_n_spikes < 0:
+            raise ValueError("max_n_spikes must be non-negative.")
+
         if self.threshold_conc > self.target_conc:
             raise ValueError("threshold_conc should not exceed target_conc.")
 
@@ -249,6 +329,7 @@ class FedBatchStrategySpecification:
                             spike_conc=None,
                             threshold_conc=None,
                             tau_max=None,
+                            max_n_spikes=None,
                             ):
         if target_conc is None:
             target_conc = self.target_conc
@@ -262,18 +343,52 @@ class FedBatchStrategySpecification:
         if tau_max is None:
             tau_max = self.tau_max
 
+        if max_n_spikes is None:
+            max_n_spikes = self.max_n_spikes
+
         if not (threshold_conc < target_conc and target_conc < spike_conc):
             raise ValueError(f'Specifications do not meet required condition: threshold_conc ({threshold_conc}) < target_conc ({target_conc}) < spike_conc ({spike_conc}).\n')
+
+        if max_n_spikes is not None and max_n_spikes < 0:
+            raise ValueError(f'Specification max_n_spikes ({max_n_spikes}) must be non-negative.\n')
 
         self.threshold_conc = threshold_conc
         self.target_conc = target_conc
         self.spike_conc = spike_conc
+        self.max_n_spikes = max_n_spikes
+
+        # Imposed BEFORE the concentration actuators and
+        # load_threshold_conc_and_tau_max: the latter simulates the reactor and
+        # derives the splitter split from the spike volume that run added, so
+        # that run must already honor the cap.
+        self.load_max_n_spikes(max_n_spikes)
 
         self.load_desired_concs(target_conc=target_conc,
                                 spike_conc=spike_conc)
 
         self.load_threshold_conc_and_tau_max(threshold_conc=threshold_conc,
                                              tau_max=tau_max)
+
+    def load_max_n_spikes(self, max_n_spikes):
+        """Impose the fed-batch spike cap on the kinetic model.
+
+        Writes both places the cap must live: the live model variable the spike
+        events read, and the kinetic model attribute its reset function restores
+        at the start of every reactor run. Writing only the former is silently
+        undone by that reset.
+
+        Parameters
+        ----------
+        max_n_spikes : float or None
+            The cap. ``None`` is a no-op — the model keeps the cap it has.
+        """
+        if max_n_spikes is None:
+            return
+        reactor = self.fermentation_reactor
+        km = reactor.nsk_kinetic_model
+        cv = self.control_variables
+        km.set_value(cv.resolve_max_n_spikes_var(reactor), max_n_spikes)
+        setattr(km, cv.resolve_default_max_n_spikes_attr(reactor), max_n_spikes)
 
     def load_desired_concs(self, target_conc, spike_conc):
         km = self.fermentation_reactor.nsk_kinetic_model

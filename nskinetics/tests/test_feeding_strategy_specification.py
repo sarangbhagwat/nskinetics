@@ -25,10 +25,28 @@ class _StubUnit:
             setattr(self, k, v)
 
 
+class _StubSpikeRetry:
+    """Stands in for nskinetics.units.SpikeReduceRetry."""
+    max_count_var = 'max_n_glu_spikes'
+
+
+class _StubKineticModel:
+    """Records set_value writes the way KineticModel forwards them to _te."""
+    def __init__(self):
+        self.values = {}
+
+    def set_value(self, selection, value):
+        self.values[selection] = value
+
+
 class _StubReactor:
     volume_var = 'curr_env'
     feed_volume_added_var = 'curr_tot_vol_added'
     spike_feed_index = 2
+    spike_retry = _StubSpikeRetry()
+
+    def __init__(self):
+        self.nsk_kinetic_model = _StubKineticModel()
 
 
 def test_concentration_actuator_set_get_repr():
@@ -72,6 +90,44 @@ def test_spike_control_variables_unresolvable_raises():
         cv.resolve_feed_volume_added_col(bare)
 
 
+def test_spike_control_variables_explicit_max_n_spikes_names_win():
+    from nskinetics.units import SpikeControlVariables
+    cv = SpikeControlVariables(
+        spike_conc_var='a', target_conc_var='b', threshold_conc_var='c',
+        max_n_spikes_var='my_cap', default_max_n_spikes_attr='my_default_cap')
+    r = _StubReactor()
+    assert cv.resolve_max_n_spikes_var(r) == 'my_cap'
+    assert cv.resolve_default_max_n_spikes_attr(r) == 'my_default_cap'
+
+
+def test_spike_control_variables_max_n_spikes_defaults_from_reactor():
+    from nskinetics.units import SpikeControlVariables
+    cv = SpikeControlVariables(
+        spike_conc_var='a', target_conc_var='b', threshold_conc_var='c')
+    r = _StubReactor()
+    assert cv.resolve_max_n_spikes_var(r) == 'max_n_glu_spikes'
+    assert cv.resolve_default_max_n_spikes_attr(r) == 'default_max_n_glu_spikes'
+
+
+def test_spike_control_variables_max_n_spikes_default_attr_follows_explicit_var():
+    from nskinetics.units import SpikeControlVariables
+    cv = SpikeControlVariables(
+        spike_conc_var='a', target_conc_var='b', threshold_conc_var='c',
+        max_n_spikes_var='cap_x')
+    assert cv.resolve_default_max_n_spikes_attr(_StubReactor()) == 'default_cap_x'
+
+
+def test_spike_control_variables_max_n_spikes_unresolvable_raises():
+    from nskinetics.units import SpikeControlVariables
+    cv = SpikeControlVariables(
+        spike_conc_var='a', target_conc_var='b', threshold_conc_var='c')
+    bare = _StubUnit()  # no spike_retry
+    with pytest.raises(ValueError, match='spike'):
+        cv.resolve_max_n_spikes_var(bare)
+    with pytest.raises(ValueError, match='spike'):
+        cv.resolve_default_max_n_spikes_attr(bare)
+
+
 class _Indexer:
     def __init__(self, data):
         self._data = data
@@ -113,7 +169,7 @@ def test_spec_constructor_and_current_specifications():
     spec = _make_spec()
     assert spec.current_specifications == {
         'target_conc': 220.0, 'threshold_conc': 210.0,
-        'spike_conc': 600.0, 'tau_max': 72.0}
+        'spike_conc': 600.0, 'tau_max': 72.0, 'max_n_spikes': None}
 
 
 def test_spec_validation_rejects_bad_ordering():
@@ -136,3 +192,87 @@ def test_get_conc_respects_species_and_solvent():
     stream = _StubStream(imass={'Glucose': 30.0, 'Xylose': 10.0},
                          ivol={'Ethanol': 2.0, 'Water': 100.0})
     assert spec.get_conc(stream) == pytest.approx(20.0)
+
+
+def test_spec_stores_max_n_spikes():
+    spec = _make_spec(max_n_spikes=12)
+    assert spec.max_n_spikes == 12
+    assert spec.current_specifications['max_n_spikes'] == 12
+
+
+def test_spec_rejects_negative_max_n_spikes():
+    with pytest.raises(ValueError, match='max_n_spikes'):
+        _make_spec(max_n_spikes=-1)
+
+
+def test_load_specifications_rejects_negative_max_n_spikes():
+    spec = _make_spec()
+    with pytest.raises(ValueError, match='max_n_spikes'):
+        spec.load_specifications(max_n_spikes=-3)
+
+
+def test_load_max_n_spikes_none_writes_nothing():
+    spec = _make_spec()
+    km = spec.fermentation_reactor.nsk_kinetic_model
+    spec.load_max_n_spikes(None)
+    assert km.values == {}
+    assert not hasattr(km, 'default_max_n_glu_spikes')
+
+
+def test_load_max_n_spikes_writes_both_targets():
+    spec = _make_spec()
+    km = spec.fermentation_reactor.nsk_kinetic_model
+    spec.load_max_n_spikes(12)
+    assert km.values['max_n_glu_spikes'] == 12
+    assert km.default_max_n_glu_spikes == 12
+
+
+def test_load_specifications_imposes_cap_before_the_deriving_run():
+    """load_specifications must impose the cap, and impose it BEFORE the run
+    that derives the splitter split.
+
+    load_desired_concs and load_threshold_conc_and_tau_max are replaced on the
+    instance with recorders (they need a simulating reactor the stub cannot
+    provide); load_max_n_spikes is left REAL, so this pins the actual cap
+    writes and their real ordering rather than asserting a mock was called.
+    """
+    spec = _make_spec()
+    km = spec.fermentation_reactor.nsk_kinetic_model
+    seen = {}
+
+    def _snapshot():
+        return (dict(km.values), getattr(km, 'default_max_n_glu_spikes', None))
+
+    def _record_desired_concs(target_conc, spike_conc):
+        seen['at_actuators'] = _snapshot()
+
+    def _record_threshold_and_tau(threshold_conc, tau_max):
+        seen['at_deriving_run'] = _snapshot()
+
+    spec.load_desired_concs = _record_desired_concs
+    spec.load_threshold_conc_and_tau_max = _record_threshold_and_tau
+
+    spec.load_specifications(max_n_spikes=12)
+
+    # The cap was imposed at all, in both places it must live.
+    assert km.values['max_n_glu_spikes'] == 12
+    assert km.default_max_n_glu_spikes == 12
+
+    # ...and was already imposed by the time the deriving run would have gone,
+    # and before the concentration actuators too.
+    values_at_run, default_at_run = seen['at_deriving_run']
+    assert values_at_run.get('max_n_glu_spikes') == 12
+    assert default_at_run == 12
+
+    values_at_actuators, default_at_actuators = seen['at_actuators']
+    assert values_at_actuators.get('max_n_glu_spikes') == 12
+    assert default_at_actuators == 12
+
+
+def test_load_max_n_spikes_accepts_zero_and_floats():
+    spec = _make_spec()
+    km = spec.fermentation_reactor.nsk_kinetic_model
+    spec.load_max_n_spikes(0)
+    assert km.values['max_n_glu_spikes'] == 0
+    spec.load_max_n_spikes(12.0)
+    assert km.values['max_n_glu_spikes'] == 12.0

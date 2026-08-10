@@ -167,6 +167,7 @@ _DEFAULT_BASELINE_SPECIFICATIONS = {
     'threshold_conc': 217.125,
     'spike_conc': 600.0,
     'tau_max': 120.0,
+    'max_n_spikes': 16,
 }
 
 
@@ -216,6 +217,7 @@ def create_sugar_prep_and_fermentation_system(
         target_conc=220.0,
         threshold_conc=210.0,
         spike_conc=600.0,
+        max_n_spikes=None,
         spike_control_variables=None,
         baseline_specifications=None,
         fbs_spec_kwargs=None,
@@ -336,15 +338,20 @@ def create_sugar_prep_and_fermentation_system(
         concentrations of the attached
         :class:`~nskinetics.units.FedBatchStrategySpecification`. Its
         ``tau_max`` reuses this factory's ``tau_max`` parameter.
+    max_n_spikes : float, optional
+        Cap on the number of fed-batch spikes, held by the same
+        specification. ``None`` (default) leaves the kinetic model's own cap
+        untouched; the default ``baseline_specifications`` still carry the
+        isobutanol biorefinery's baseline cap of 16.
     spike_control_variables : SpikeControlVariables, optional
         Kinetic-model variable names through which the strategy is imposed.
         Defaults to the shipped ibo model's names (``conc_glu_feed_spike``,
         ``target_conc_glu_spike``, ``threshold_conc_glu_spike``).
     baseline_specifications : dict, optional
-        Baseline values of the four specifications, keyed by
+        Baseline values of the five specifications, keyed by
         ``'target_conc'``, ``'threshold_conc'``, ``'spike_conc'``,
-        ``'tau_max'``. Defaults to a per-call copy of the isobutanol
-        biorefinery's baseline dict.
+        ``'tau_max'``, ``'max_n_spikes'``. Defaults to a per-call copy of
+        the isobutanol biorefinery's baseline dict.
     fbs_spec_kwargs : dict, optional
         Overrides merged over the factory-computed
         :class:`~nskinetics.units.FedBatchStrategySpecification`
@@ -536,6 +543,7 @@ def create_sugar_prep_and_fermentation_system(
         target_conc=target_conc,
         threshold_conc=threshold_conc,
         spike_conc=spike_conc,
+        max_n_spikes=max_n_spikes,
         tau_max=tau_max,
         fermentation_reactor=V406,
         splitter=S301,
