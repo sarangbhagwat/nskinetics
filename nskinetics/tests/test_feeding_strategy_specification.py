@@ -269,6 +269,26 @@ def test_load_specifications_imposes_cap_before_the_deriving_run():
     assert default_at_actuators == 12
 
 
+def test_load_specifications_falls_back_to_the_stored_cap():
+    """A bare load_specifications() imposes the STORED cap.
+
+    This is the path system.simulate() takes through the attached system
+    specification, which calls load_specifications with no arguments. The
+    complementary direction is covered by
+    test_load_specifications_imposes_cap_before_the_deriving_run, where an
+    explicit argument overrides the stored value.
+    """
+    spec = _make_spec(max_n_spikes=7)
+    km = spec.fermentation_reactor.nsk_kinetic_model
+    spec.load_desired_concs = lambda target_conc, spike_conc: None
+    spec.load_threshold_conc_and_tau_max = lambda threshold_conc, tau_max: None
+
+    spec.load_specifications()
+
+    assert km.values['max_n_glu_spikes'] == 7
+    assert km.default_max_n_glu_spikes == 7
+
+
 def test_load_max_n_spikes_accepts_zero_and_floats():
     spec = _make_spec()
     km = spec.fermentation_reactor.nsk_kinetic_model

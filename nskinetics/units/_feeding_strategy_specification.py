@@ -331,6 +331,19 @@ class FedBatchStrategySpecification:
                             tau_max=None,
                             max_n_spikes=None,
                             ):
+        """Impose the fed-batch strategy on the model and the feed trains.
+
+        This is the top of the precedence hierarchy described in the class
+        docstring: each argument left as ``None`` falls back to the value
+        stored on this specification, so an explicit argument always wins.
+        All five values are stored before being imposed.
+
+        Parameters
+        ----------
+        target_conc, spike_conc, threshold_conc, tau_max, max_n_spikes : float, optional
+            Replacement specification values. ``None`` (default) keeps the
+            stored value.
+        """
         if target_conc is None:
             target_conc = self.target_conc
 
@@ -381,6 +394,13 @@ class FedBatchStrategySpecification:
         ----------
         max_n_spikes : float or None
             The cap. ``None`` is a no-op — the model keeps the cap it has.
+
+        Notes
+        -----
+        The write persists on the kinetic model, and there is no un-set: a
+        later ``None`` will not restore the model's original cap. Kinetic
+        models are often process-wide singletons, so imposing a cap here
+        lowers it for every later consumer of that model in the process.
         """
         if max_n_spikes is None:
             return
