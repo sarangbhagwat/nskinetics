@@ -68,12 +68,17 @@ def create_ethanol_isobutanol_separation_chemicals():
     Yeast.Hf = Glucose.Hf / Glucose.MW * Yeast.MW
     Yeast.V.add_model(fn.rho_to_V(rho=1540, MW=Yeast.MW), top_priority=True)
     chemicals.append(Yeast)
+    # Cp is specific (J/g/K) both as returned by Chemical.Cp and as taken by
+    # the Chemical constructor, so glucose's value is used as-is here (~1.5
+    # J/g/K, the right order for corn solids), matching the Yeast definition
+    # above and the sibling sugar-prep + fermentation chemical set.
     for ID in ('Fiber', 'SolubleProtein', 'InsolubleProtein', 'Ash', 'CaO'):
-        chemicals.append(_solid(ID, MW=100., Cp=Glucose.Cp(298.15) / 100.))
+        chemicals.append(_solid(ID, MW=100., Cp=Glucose.Cp(298.15)))
     # 'TriOlein' is not in the thermo database under any of its searchable
     # names, so the corn oil it stands for is carried as an inert solid
-    # pseudochemical (MW of triolein, 885.4 g/mol).
-    chemicals.append(_solid('TriOlein', MW=885.4))
+    # pseudochemical (MW of triolein, 885.4 g/mol; density of corn oil,
+    # 915 kg/m3, rather than the mineral-solid default).
+    chemicals.append(_solid('TriOlein', MW=885.4, rho=915.))
     chemicals.append(tmo.Chemical('H2SO4', default=True))
     for chemical in chemicals:
         chemical.default()
@@ -85,6 +90,11 @@ def create_ethanol_isobutanol_separation_chemicals():
 def create_beer_feed(ID='beer'):
     """
     Create the scenario-B ``P301-0`` beer stream as a standalone feed.
+
+    Requires the chemical set from
+    :func:`create_ethanol_isobutanol_separation_chemicals` (or any set
+    containing all of its IDs) to already be the active thermo, e.g. via
+    ``bst.settings.set_thermo(...)``; otherwise :class:`bst.Stream` raises.
 
     Parameters
     ----------
