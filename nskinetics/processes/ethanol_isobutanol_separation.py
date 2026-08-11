@@ -16,6 +16,8 @@ from thermosteam import functional as fn
 
 __all__ = ('create_ethanol_isobutanol_separation_chemicals',
            'create_beer_feed',
+           'create_beer_stripper',
+           'LIGHT_IDS',
            'P301_SCENARIO_B_KGHR',
            'P301_SCENARIO_B_T',
            'P301_SCENARIO_B_P')
@@ -112,3 +114,85 @@ def create_beer_feed(ID='beer'):
                       P=P301_SCENARIO_B_P, phase='l',
                       **P301_SCENARIO_B_KGHR)
     return beer
+
+
+LIGHT_IDS = ('Water', 'Ethanol', 'Isobutanol', 'AceticAcid')
+
+
+def create_beer_stripper(ID='C1', ins=None, outs=None, light_IDs=LIGHT_IDS,
+                         ethanol_recovery=0.9995, water_to_stillage=0.60,
+                         k=1.5, P=101325.):
+    """
+    Create the beer stripper: lifts every volatile off the corn solids.
+
+    Modelled as a :class:`biosteam.ShortcutColumn` on the volatile subset
+    only. The solids are zeroed from the column feed, then restored to the
+    bottoms after the column runs -- the same zero-out/restore pattern the
+    isobutanol biorefinery uses for its extractor, and necessary because a
+    stage-by-stage VLE model cannot carry inert solids.
+
+    Ethanol and water are the light and heavy keys. Isobutanol is not
+    specified: although it boils above water (108 vs 100 degC), its activity
+    coefficient in dilute aqueous solution makes it far more volatile than
+    that, and the column's own Hengsteback-Gaddes solution -- which ranks
+    non-keys by mean relative volatility taken from real bubble- and
+    dew-point calculations, not by boiling point -- carries essentially all
+    of it overhead on its own.
+
+    Parameters
+    ----------
+    ID : str
+        Unit ID.
+    ins : stream
+        Whole beer.
+    outs : tuple
+        ``(volatile concentrate, stillage)``.
+    light_IDs : tuple of str
+        Chemicals the column is allowed to resolve. Everything else is
+        routed unchanged to the stillage.
+    ethanol_recovery : float
+        Fraction of the feed ethanol -- the light key -- recovered to the
+        concentrate.
+    water_to_stillage : float
+        Fraction of the feed water -- the heavy key -- leaving in the
+        stillage. The remainder goes overhead and sets how dilute the
+        concentrate is.
+    k : float
+        Reflux ratio over the minimum reflux ratio. This, not a stage count,
+        is what sizes a shortcut column: the Gilliland correlation diverges
+        as ``k`` approaches 1, and because a beer column's minimum reflux is
+        essentially zero (it is a stripper), ``k`` must be kept comfortably
+        above 1. At the default the column comes out near 21 theoretical /
+        67 actual stages; at ``k = 1.05`` it runs away past 300.
+    P : float
+        Column pressure [Pa].
+
+    Returns
+    -------
+    biosteam.Unit
+    """
+    C1 = bst.ShortcutColumn(ID, ins=ins, outs=outs,
+                            LHK=('Ethanol', 'Water'),
+                            Lr=ethanol_recovery, Hr=water_to_stillage,
+                            k=k, P=P, partial_condenser=False)
+    C1.light_IDs = tuple(light_IDs)
+
+    @C1.add_specification(run=False)
+    def C1_volatiles_only():
+        feed = C1.ins[0]
+        held = {}
+        for chem in feed.chemicals:
+            if chem.ID not in C1.light_IDs:
+                held[chem.ID] = feed.imol[chem.ID]
+                feed.imol[chem.ID] = 0.
+        try:
+            C1._run()
+        finally:
+            # Give the feed back whatever the column borrowed, even if it
+            # failed to converge, so a retry sees an intact stream.
+            for ID, mol in held.items():
+                feed.imol[ID] = mol
+        bottoms = C1.outs[1]
+        for ID, mol in held.items():
+            bottoms.imol[ID] = bottoms.imol[ID] + mol
+    return C1
