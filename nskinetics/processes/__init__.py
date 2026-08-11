@@ -10,6 +10,10 @@
 from . import sugar_prep_and_fermentation
 from .sugar_prep_and_fermentation import *
 
+from . import ethanol_isobutanol_separation
+from .ethanol_isobutanol_separation import *
+
 __all__ = (
      *sugar_prep_and_fermentation.__all__,
+     *ethanol_isobutanol_separation.__all__,
      )
