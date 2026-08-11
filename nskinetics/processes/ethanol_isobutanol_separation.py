@@ -76,9 +76,10 @@ def create_ethanol_isobutanol_separation_chemicals():
         chemicals.append(_solid(ID, MW=100., Cp=Glucose.Cp(298.15)))
     # 'TriOlein' is not in the thermo database under any of its searchable
     # names, so the corn oil it stands for is carried as an inert solid
-    # pseudochemical (MW of triolein, 885.4 g/mol; density of corn oil,
-    # 915 kg/m3, rather than the mineral-solid default).
-    chemicals.append(_solid('TriOlein', MW=885.4, rho=915.))
+    # pseudochemical (MW of triolein, 885.4 g/mol; density and specific heat
+    # of corn oil, 915 kg/m3 and 2.0 J/g/K, rather than the generic
+    # mineral-solid defaults).
+    chemicals.append(_solid('TriOlein', MW=885.4, rho=915., Cp=2.0))
     chemicals.append(tmo.Chemical('H2SO4', default=True))
     for chemical in chemicals:
         chemical.default()
