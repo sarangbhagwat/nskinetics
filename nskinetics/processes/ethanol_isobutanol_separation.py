@@ -121,7 +121,7 @@ LIGHT_IDS = ('Water', 'Ethanol', 'Isobutanol', 'AceticAcid')
 
 def create_beer_stripper(ID='C1', ins=None, outs=None, light_IDs=LIGHT_IDS,
                          ethanol_recovery=0.9995, water_to_stillage=0.60,
-                         k=1.5, P=101325.):
+                         Rmin=0.3, k=1.05, P=101325.):
     """
     Create the beer stripper: lifts every volatile off the corn solids.
 
@@ -129,7 +129,8 @@ def create_beer_stripper(ID='C1', ins=None, outs=None, light_IDs=LIGHT_IDS,
     only. The solids are zeroed from the column feed, then restored to the
     bottoms after the column runs -- the same zero-out/restore pattern the
     isobutanol biorefinery uses for its extractor, and necessary because a
-    stage-by-stage VLE model cannot carry inert solids.
+    stage-by-stage VLE model cannot carry inert solids. Only ``ins[0]`` is
+    zeroed and restored, so this unit expects a single feed.
 
     Ethanol and water are the light and heavy keys. Isobutanol is not
     specified: although it boils above water (108 vs 100 degC), its activity
@@ -138,6 +139,14 @@ def create_beer_stripper(ID='C1', ins=None, outs=None, light_IDs=LIGHT_IDS,
     non-keys by mean relative volatility taken from real bubble- and
     dew-point calculations, not by boiling point -- carries essentially all
     of it overhead on its own.
+
+    Sizing: a stage count cannot be imposed on a shortcut column. It is an
+    *output* of :meth:`ShortcutColumn._run_FenskeUnderwoodGilliland`, computed
+    from the key recoveries and the reflux ratio; there is no ``N_stages``
+    input to set (an earlier draft assigned ``C1.N_stages_target``, an
+    attribute that exists nowhere in biosteam and was therefore silently
+    ignored). ``Rmin`` and ``k`` are the levers instead -- see their entries
+    below, and the trap they hide.
 
     Parameters
     ----------
@@ -157,13 +166,30 @@ def create_beer_stripper(ID='C1', ins=None, outs=None, light_IDs=LIGHT_IDS,
         Fraction of the feed water -- the heavy key -- leaving in the
         stillage. The remainder goes overhead and sets how dilute the
         concentrate is.
+    Rmin : float
+        Floor on the minimum reflux ratio [-]. **The trap:** biosteam does
+        not report an Underwood-computed minimum reflux for this column --
+        it reports this floor. A beer column is essentially a stripper, so
+        the Underwood solution comes out below the floor and
+        ``_run_FenskeUnderwoodGilliland`` clamps it
+        (``if Rm < self.Rmin: Rm = self.Rmin``). biosteam's own default is
+        ``0.01``, a purely numerical guard, and with the operating reflux
+        pinned to ``k * 0.01`` the Gilliland correlation diverges: at
+        ``k = 1.05`` the design ran away to 890 actual trays and $379 M.
+        The default here, ``0.3``, is a physical minimum-reflux value for
+        this separation, and it is what makes the design sane at a
+        near-minimum ``k``. Together with ``k`` this is the pair of sizing
+        levers; neither alone is meaningful.
     k : float
-        Reflux ratio over the minimum reflux ratio. This, not a stage count,
-        is what sizes a shortcut column: the Gilliland correlation diverges
-        as ``k`` approaches 1, and because a beer column's minimum reflux is
-        essentially zero (it is a stripper), ``k`` must be kept comfortably
-        above 1. At the default the column comes out near 21 theoretical /
-        67 actual stages; at ``k = 1.05`` it runs away past 300.
+        Reflux ratio over the minimum reflux ratio [-]. This, not a stage
+        count, is what sizes a shortcut column. At the defaults
+        (``Rmin = 0.3``, ``k = 1.05``) the column comes out near 15
+        theoretical / 42 actual stages, $2.61 M installed. Raising ``k``
+        trades stages for duty at almost no net saving (``k = 1.5`` gives
+        31 actual stages and $2.48 M, but 8 % more reboiler duty), so the
+        near-minimum default is preferred. Lowering ``Rmin`` toward
+        biosteam's ``0.01`` default reopens the Gilliland divergence
+        described above.
     P : float
         Column pressure [Pa].
 
@@ -174,7 +200,7 @@ def create_beer_stripper(ID='C1', ins=None, outs=None, light_IDs=LIGHT_IDS,
     C1 = bst.ShortcutColumn(ID, ins=ins, outs=outs,
                             LHK=('Ethanol', 'Water'),
                             Lr=ethanol_recovery, Hr=water_to_stillage,
-                            k=k, P=P, partial_condenser=False)
+                            Rmin=Rmin, k=k, P=P, partial_condenser=False)
     C1.light_IDs = tuple(light_IDs)
 
     @C1.add_specification(run=False)
@@ -194,5 +220,11 @@ def create_beer_stripper(ID='C1', ins=None, outs=None, light_IDs=LIGHT_IDS,
                 feed.imol[ID] = mol
         bottoms = C1.outs[1]
         for ID, mol in held.items():
+            # Accumulating (rather than assigning) is safe only because
+            # ShortcutColumn._run starts with `for i in self.outs: i.empty()`
+            # (biosteam/units/distillation.py), so `bottoms` holds nothing
+            # from a previous pass. If that ever stops being true this
+            # double-counts on re-simulation; test_beer_stripper_is_idempotent
+            # guards it.
             bottoms.imol[ID] = bottoms.imol[ID] + mol
     return C1
