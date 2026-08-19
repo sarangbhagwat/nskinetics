@@ -14,12 +14,15 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.9, 3.11]
+        # Test the python_requires floor (3.12, set by biosteam 2.53 /
+        # thermosteam 0.53) and the validated version (3.14, the IBO_2026
+        # migration stack). Quoted so YAML keeps them as strings.
+        python-version: ["3.12", "3.14"]
 
     steps:
     - uses: actions/checkout@v4
     - name: Set up Python ${{ matrix.python-version }} ${{ matrix.architecture }}
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
         architecture: ${{ matrix.architecture }}
