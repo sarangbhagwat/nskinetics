@@ -18,15 +18,19 @@ setup(
     long_description_content_type="text/markdown",
     author='Sarang S. Bhagwat',
     install_requires=['IPython>=7.9.0',
-                      'numpy>=1.26.4,<2.0.0', 
-                      'numba>=0.60.0,<1.0.0',
-                      'scipy>=1.13.1,<2.0.0',
-                      'matplotlib>=3.5.2,<4.0.0',
+                      # Floors below align with thermosteam 0.53.5 (pulled in
+                      # by biosteam 2.53.11); the stack is validated on
+                      # numpy 2.5.2 / scipy 1.18.0 / pandas 3.0.5 /
+                      # matplotlib 3.11.1 / Python 3.14.7.
+                      'numpy>=2.3.5,<3.0.0',
+                      'numba>=0.62.1,<1.0.0',
+                      'scipy>=1.15.2,<2.0.0',
+                      'matplotlib>=3.10.1,<4.0.0',
                       'xlsxwriter>=3.2.5,<4.0.0',
                       'scikit-learn',
-                      'pandas>=2.2.2,<3.0.0',
+                      'pandas>=2.2.2,<4.0.0',
                       'tellurium',
-                      'biosteam==2.47.0',
+                      'biosteam==2.53.11',
                       # 'python-libsbml>=5.20.5,<6.0.0',
 		     ],
     # extras_require={
@@ -43,7 +47,7 @@ setup(
         # Reference antimony used by the events tests.
         'nskinetics.tests': ['data/*.txt'],
     },
-    python_requires='>=3.9',
+    python_requires='>=3.12',  # floor set by biosteam 2.53.11 / thermosteam 0.53.5
     platforms=['Windows', 'Mac', 'Linux'],
     author_email='sarangbhagwat.developer@gmail.com',
     url='https://github.com/sarangbhagwat/nskinetics',
@@ -66,8 +70,9 @@ setup(
                  'Operating System :: POSIX :: BSD',
                  'Operating System :: POSIX :: Linux',
                  'Operating System :: Unix',
-                 'Programming Language :: Python :: 3.9',
-                 'Programming Language :: Python :: 3.10',
+                 'Programming Language :: Python :: 3.12',
+                 'Programming Language :: Python :: 3.13',
+                 'Programming Language :: Python :: 3.14',
                  'Programming Language :: Python :: Implementation :: CPython',
                  'Topic :: Education'],
     keywords=['reaction kinetics', 'biocatalysis', 'biomanufacturing', 'bioprocess engineering', 'mass and energy balance', 'process simulation', 'biorefinery', 'biofuel', 'bioproducts'],
