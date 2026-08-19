@@ -75,8 +75,9 @@ class FermentationSaccharomycesEthanolIsobutanol(NSKBatchReactor):
     Notes
     -----
     Sizing follows :class:`NSKBatchReactor`: give exactly one of ``N`` or
-    ``V_max``; if neither is given, ``N`` defaults to ``Nmin`` (the
-    minimum-capital-cost reactor count for the NREL cost model).
+    ``V_max``; if neither is given, ``V_max`` defaults to
+    ``NSKBatchReactor.default_V_max`` (3785 m3) and the base class solves for
+    the reactor count.
     """
     line = 'FermentationSaccharomycesEthanolIsobutanol'
 

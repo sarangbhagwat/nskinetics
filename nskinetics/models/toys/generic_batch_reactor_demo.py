@@ -63,7 +63,10 @@ def build_demo_reactor():
         track_vars=['[S]', '[P]'],  # record concentrations for plotting
         tau=48., tau_max=120., volume_var='curr_env',
         feed_volume_added_var='tot_vol',  # exercise the fed-batch volume correction
-        spike_feed_index=2)
+        # This is a small demo reactor, so set the reactor count explicitly
+        # rather than inheriting the industrial-scale `default_V_max` (3785 m3),
+        # which `size_batch` cannot resolve for a lab-scale flow.
+        spike_feed_index=2, N=2)
     return reactor, te_r
 
 

@@ -269,11 +269,16 @@ class NSKBatchReactor(BatchBioreactor):
     N, V_max, T, P, Nmin, Nmax :
         Standard ``BatchBioreactor`` sizing parameters, passed through to
         biosteam's ``NRELAnaerobicBatchBioreactor``. Give exactly one of ``N``
-        or ``V_max``; if neither is given, ``N`` defaults to ``Nmin`` (see the
-        note in :meth:`_init`).
+        or ``V_max``; if neither is given, ``V_max`` defaults to
+        :attr:`default_V_max` (see the note in :meth:`_init`).
     """
     line = 'NSKBatchReactor'
     _ins_size_is_fixed = False
+    #: [float] Default maximum single-reactor volume [m3] used to size the
+    #: reactor when the caller gives neither ``N`` nor ``V_max``. Defaults to
+    #: 3785 m3 (1 MM gal), biosteam's NREL batch-reactor cost-correlation
+    #: reference scale.
+    default_V_max = 3785.
     # Class-level placeholder so `hasattr(NSKBatchReactor, 'simulate_kinetics')`
     # holds even before instantiation; `_init` overrides this per-instance with
     # the bound `_nsk_te_simulate_kinetics` method.
@@ -294,16 +299,14 @@ class NSKBatchReactor(BatchBioreactor):
               N=None, V_max=None, T=305.15, P=101325., Nmin=2, Nmax=36):
         # biosteam's NRELAnaerobicBatchBioreactor (the post-2.53
         # BatchBioreactor) requires exactly one of `N`/`V_max` and no longer
-        # offers the `autoselect_N` sizing this reactor used to rely on. That
-        # search picked the reactor count minimizing capital cost; for the NREL
-        # batch-reactor cost model every cost item scales sublinearly with a
-        # single reactor's volume while the reactor count multiplies it, so the
-        # capital cost is monotonic increasing in N and the minimum always lands
-        # at the fewest reactors. Defaulting `N` to `Nmin` when the caller gives
-        # neither `N` nor `V_max` therefore reproduces the old autoselect result
-        # while letting the base class own `_design`.
+        # offers the `autoselect_N` sizing this reactor used to rely on. When
+        # the caller gives neither, size by capping the single-reactor volume at
+        # `default_V_max` (3785 m3, biosteam's NREL cost-correlation reference
+        # scale) and let the base class' `_design` solve for the reactor count.
+        # This keeps each reactor within the cost correlation's validity range
+        # rather than producing a few oversized vessels.
         if N is None and V_max is None:
-            N = Nmin
+            V_max = self.default_V_max
         BatchBioreactor._init(self, tau=tau, N=N, V_max=V_max, T=T, P=P,
                               Nmin=Nmin, Nmax=Nmax)
         self._load_components()
