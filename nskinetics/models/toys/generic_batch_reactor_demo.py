@@ -63,7 +63,7 @@ def build_demo_reactor():
         track_vars=['[S]', '[P]'],  # record concentrations for plotting
         tau=48., tau_max=120., volume_var='curr_env',
         feed_volume_added_var='tot_vol',  # exercise the fed-batch volume correction
-        spike_feed_index=2, V_max=100.)
+        spike_feed_index=2)
     return reactor, te_r
 
 
