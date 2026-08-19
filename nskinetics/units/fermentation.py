@@ -74,7 +74,9 @@ class FermentationSaccharomycesEthanolIsobutanol(NSKBatchReactor):
 
     Notes
     -----
-    Either ``N`` or ``V`` must be given.
+    Sizing follows :class:`NSKBatchReactor`: with ``autoselect_N`` left at its
+    default, the number of reactors is chosen to minimize capital cost and any
+    ``N`` / ``V_max`` passed here is ignored.
     """
     line = 'FermentationSaccharomycesEthanolIsobutanol'
 
@@ -83,7 +85,7 @@ class FermentationSaccharomycesEthanolIsobutanol(NSKBatchReactor):
               map_species_to_chemicals=None,
               track_vars=None,
               n_simulation_steps=1000,
-              N=None, V=None, T=305.15, P=101325., Nmin=2, Nmax=36,
+              N=None, V_max=None, T=305.15, P=101325., Nmin=2, Nmax=36,
               sugar_IDs=('Sucrose', 'Glucose', 'Xylose'),
               tau_max=24. * 7.,
               tau_update_policy=None,
@@ -128,7 +130,7 @@ class FermentationSaccharomycesEthanolIsobutanol(NSKBatchReactor):
                 _negative_concentration_validator,
                 _yield_over_theoretical_validator),
             spike_feed_index=2,
-            N=N, V=V, T=T, P=P, Nmin=Nmin, Nmax=Nmax)
+            N=N, V_max=V_max, T=T, P=P, Nmin=Nmin, Nmax=Nmax)
 
         chemicals = self.chemicals
         self.perform_hydrolysis = perform_hydrolysis

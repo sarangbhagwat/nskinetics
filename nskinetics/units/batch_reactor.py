@@ -6,9 +6,12 @@
 # https://github.com/sarangbhagwat/nskinetics/blob/main/LICENSE
 # for license details.
 
+from math import ceil
+
 import numpy as np
 
 from biosteam.units import BatchBioreactor
+from biosteam.units.design_tools import size_batch
 
 from ..utils import get_index_nearest_element_from_sorted_array
 from ..engine.kinetic_model import KineticModel
@@ -266,8 +269,11 @@ class NSKBatchReactor(BatchBioreactor):
         ``validator(model) -> None``; each raises on failure.
     spike_feed_index : int, optional
         Index of the spike-feed inlet stream (excluded from the initial mix).
-    N, V, T, P, Nmin, Nmax :
-        Standard ``BatchBioreactor`` sizing parameters.
+    N, V_max, T, P, Nmin, Nmax :
+        Standard ``BatchBioreactor`` sizing parameters. When ``autoselect_N``
+        is ``True`` (the default), both ``N`` and ``V_max`` are ignored and the
+        number of reactors is chosen to minimize capital cost; see
+        :attr:`N_at_minimum_capital_cost`.
     """
     line = 'NSKBatchReactor'
     _ins_size_is_fixed = False
@@ -289,8 +295,9 @@ class NSKBatchReactor(BatchBioreactor):
               aeration=None, converge_air_supply=True, spike_retry=None,
               pre_reactions=(), validators=(),
               spike_feed_index=None,
-              N=None, V=None, T=305.15, P=101325., Nmin=2, Nmax=36):
-        BatchBioreactor._init(self, tau=tau, N=N, V=V, T=T, P=P, Nmin=Nmin, Nmax=Nmax)
+              N=None, V_max=None, T=305.15, P=101325., Nmin=2, Nmax=36):
+        BatchBioreactor._init(self, tau=tau, N=N, V_max=V_max, T=T, P=P,
+                              Nmin=Nmin, Nmax=Nmax)
         self._load_components()
 
         nkm = nsk_kinetic_model
@@ -333,6 +340,53 @@ class NSKBatchReactor(BatchBioreactor):
                 raise KineticSimulationError(
                     f'Model selection {selection!r} is not a valid model '
                     f'variable/selection: {e}') from e
+
+    # --- sizing -------------------------------------------------------------
+    # biosteam's NRELAnaerobicBatchBioreactor (the post-2.53 BatchBioreactor)
+    # dropped the `autoselect_N` machinery and requires exactly one of `N` or
+    # `V_max` to be given, sizing via the reordered, keyword-only `size_batch`
+    # API. This reactor historically left both unset and auto-selected the
+    # number of reactors at minimum capital cost, so that behavior is ported
+    # here verbatim (adapted to the new `size_batch` signature) to preserve the
+    # sizing across the migration.
+    @property
+    def N_at_minimum_capital_cost(self):
+        """Number of reactors minimizing capital cost (search from ``N = 2``)."""
+        cost_old = np.inf
+        self.autoselect_N = False
+        self._N, N = 2, self._N
+        cost_new = self.purchase_cost
+        self._summary()
+        while cost_new < cost_old:
+            self._N += 1
+            self._summary()
+            cost_old = cost_new
+            cost_new = self.purchase_cost
+        self._N, N = N, self._N
+        self.autoselect_N = True
+        return N - 1
+
+    def _design(self):
+        effluent = self.effluent
+        v_0 = effluent.F_vol
+        tau = self._tau
+        tau_0 = self.tau_0
+        V_wf = self.V_wf
+        Design = self.design_results
+        if self.autoselect_N:
+            N = self.N_at_minimum_capital_cost
+        elif self.V_max:
+            N = v_0 / self.V_max / V_wf * (tau + tau_0) + 1
+            N = 2 if N < 2 else ceil(N)
+        else:
+            N = self._N
+        Design.update(size_batch(v_0, tau, tau_0, V_wf, N_reactors=N,
+                                 loading_time=self.loading_time))
+        Design['Number of reactors'] = N
+        Design['Recirculation flow rate'] = v_0 / N
+        duty = self.Hnet
+        Design['Reactor duty'] = duty
+        self.add_heat_utility(duty, self.T)
 
     # --- alias for back-compat ---------------------------------------------
     @property
