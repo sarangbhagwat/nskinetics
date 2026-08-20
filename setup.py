@@ -30,7 +30,7 @@ setup(
                       'scikit-learn',
                       'pandas>=2.2.2,<4.0.0',
                       'tellurium',
-                      'biosteam==2.53.11',
+                      'biosteam>=2.53.11,<2.55.0',
                       # 'python-libsbml>=5.20.5,<6.0.0',
 		     ],
     # extras_require={
