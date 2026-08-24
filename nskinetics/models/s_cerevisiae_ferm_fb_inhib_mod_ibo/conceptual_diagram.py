@@ -308,9 +308,9 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
             fontsize=FS_PANEL - 0.3, fontweight='bold', color='#B04A00',
             ha='center', va='center', linespacing=1.2, zorder=3)
 
-    al = _box(ax, 152, 76, 34, 8, ['AL', 'α-acetolactate'])
-    dhi = _box(ax, 152, 62, 34, 8, ['DHIV', '2,3-dihydroxyisovalerate'])
-    kiv = _box(ax, 152, 48, 34, 8, ['KIV', 'α-ketoisovalerate'])
+    al = _box(ax, 152, 76, 34, 8, ['AL'])
+    dhi = _box(ax, 152, 62, 34, 8, ['DHIV'])
+    kiv = _box(ax, 152, 48, 34, 8, ['KIV'])
     ibo = _box(ax, 152, 32, 34, 8, ['Isobutanol'], fc=TINT_PRODUCT)
 
     # === biomass / physiological-state panel (bottom left) =================
@@ -332,7 +332,7 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
     _rxn_marker(ax, 38.7, 29, 'r9', enzyme=None)
     # decay r10 / r11
     _arrow(ax, [(24, 26), (24, 22)], color='#8A8A8A', lw=0.8, mutation=5)
-    _tag(ax, 27.2, 23.6, 'r10', color=C_MUTED, fs=FS_ENZ)
+    _tag(ax, 21, 23.6, 'r10', color=C_MUTED, fs=FS_ENZ, ha='right')
     _tag(ax, 24, 20.6, '$\\varnothing$', color=C_MUTED, fs=FS_TAG,
          style='normal')
     _arrow(ax, [(54, 26), (54, 22)], color='#8A8A8A', lw=0.8, mutation=5)
@@ -424,8 +424,14 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
     _tag(ax, 46.4, 70.4, 'glc', color=C_REPR, ha='left', fs=FS_TAG)
     _tbar(ax, (45.3, 46.4), (41.2, 46.4), C_REPR)
     _tag(ax, 40.2, 46.4, 'glc', color=C_REPR, ha='right', fs=FS_TAG)
-    _tbar(ax, (38.7, 26.7), (38.7, 24.2), C_REPR)
-    _tag(ax, 42.2, 25.4, 'glc', color=C_REPR, ha='left', fs=FS_TAG)
+    # r9 is glucose-INDUCED (and EtOH-induced) at low glucose and repressed
+    # only at high glucose (the 1/(K_9i*s_glu + 1) factor), so it gets a
+    # dual annotation rather than the plain repression stub of r2/r5/r8
+    _tbar(ax, (40.2, 27.2), (43.2, 23.8), C_REPR)
+    _tag(ax, 43.8, 22.7, 'glc (high)', color=C_REPR, ha='left', fs=FS_TAG)
+    _arrow(ax, [(34.2, 23.8), (37.2, 27.2)], color=C_ACT, lw=0.9,
+           ls=(0, (3.2, 1.8)), mutation=5, zorder=5)
+    _tag(ax, 33.6, 22.7, 'glc · EtOH', color=C_ACT, ha='right', fs=FS_TAG)
 
     # === legend strip ======================================================
     ax.add_patch(FancyBboxPatch((2, 1.5), 176, 12,
@@ -456,10 +462,11 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
     ax.text(62.5, y1, 'product inhibition, $e^{-k_i C}$ (r1, r4, r7)',
             fontsize=FS_LEGEND, va='center', zorder=5)
     _tbar(ax, (60, y2), (53, y2), C_REPR, lw=1.0)
-    ax.text(62.5, y2, 'glucose repression (r2, r5, r8, r9)',
+    ax.text(62.5, y2, 'glucose repression (r2, r5, r8; r9 at high glc)',
             fontsize=FS_LEGEND, va='center', zorder=5)
     _leg_arrow(53, y3, C_ACT, dashed=True)
-    ax.text(62.5, y3, 'acetaldehyde overflow signal (+, r1)',
+    ax.text(62.5, y3, 'activation (acetaldehyde $\\rightarrow$ r1; '
+                      'glc & EtOH $\\rightarrow$ r9)',
             fontsize=FS_LEGEND, va='center', zorder=5)
 
     _badge(ax, 125, y1, 'O$_2$', C_O2)
