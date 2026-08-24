@@ -395,10 +395,13 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
     _tag(ax, 144.7, 40, '–NADH', ha='right', fs=FS_ENZ)
 
     # === control edges =====================================================
-    # acetaldehyde overflow signal activates the high-capacity glycolytic term
-    _curve(ax, (99.2, 55.8), (89.2, 86.6), rad=-0.32, color=C_ACT,
-           lw=1.0, ls=(0, (3.2, 1.8)))
-    _tag(ax, 103.5, 71, 'overflow\nsignal (+)', color=C_ACT, fs=FS_TAG,
+    # acetaldehyde overflow signal activates the high-capacity glycolytic
+    # term of r1; routed through the free corridor right of the pyruvate box
+    # (crossing only the r13 arrow) so the edge visibly runs acetaldehyde->r1
+    _arrow(ax, [(99.2, 55), (105, 61), (105, 79), (88.5, 85.8)],
+           color=C_ACT, lw=1.0, ls=(0, (3.2, 1.8)), corner_r=5,
+           mutation=5.5)
+    _tag(ax, 107, 70, 'overflow\nsignal (+)', color=C_ACT, fs=FS_TAG,
          ha='left')
 
     # product inhibition stubs (EtOH, acetate, isobutanol -| r1, r4, r7)
