@@ -261,7 +261,7 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
     ax.add_patch(FancyBboxPatch((2, 16), 176, 94,
                                 boxstyle='round,pad=0,rounding_size=3',
                                 fc='white', ec='#666666', lw=1.1, zorder=1))
-    ax.text(174, 19.2, 'Fed-batch stirred-tank bioreactor — broth volume env($t$)',
+    ax.text(174, 106.3, 'Fed-batch bioreactor',
             fontsize=FS_PANEL, fontweight='bold', color='#444444',
             ha='right', va='center', zorder=3)
 
@@ -274,10 +274,10 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
     _tag(ax, 89.5, 108.6, 'sense $s_\\mathrm{glu}$', color=C_FEED,
          fs=FS_TAG)
 
-    # O2 supply drop from the aeration panel
-    _arrow(ax, [(133, 113), (133, 103.5)], color=C_O2, lw=1.0,
+    # O2 supply drop from the aeration panel (left of the reactor caption)
+    _arrow(ax, [(120, 113), (120, 103.5)], color=C_O2, lw=1.0,
            ls=(0, (2.4, 1.6)), mutation=5.5)
-    _tag(ax, 135.3, 108, 'O$_2$', color='#2E7FB0', fs=FS_TAG, ha='left')
+    _tag(ax, 122.3, 108, 'O$_2$', color='#2E7FB0', fs=FS_TAG, ha='left')
 
     # === species boxes =====================================================
     glu = _box(ax, 86, 98, 24, 7, ['Glucose'], fc=TINT_SUBSTRATE)
