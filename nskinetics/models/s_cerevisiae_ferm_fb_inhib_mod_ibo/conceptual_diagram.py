@@ -318,12 +318,8 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
                                 boxstyle='round,pad=0,rounding_size=2',
                                 fc=TINT_BM, ec=TINT_BM_EDGE, lw=0.9,
                                 zorder=2))
-    ax.text(38, 38.6, 'Biomass $x$ & physiological state',
+    ax.text(38, 37, 'Biomass $x$ & physiological state',
             fontsize=FS_PANEL - 0.3, fontweight='bold', color='#1F7A5C',
-            ha='center', va='center', zorder=3)
-    ax.text(38, 35.0,
-            'r9: induced by glucose & EtOH; repressed at high glucose',
-            fontsize=FS_ENZ, style='italic', color=C_MUTED,
             ha='center', va='center', zorder=3)
 
     xa = _box(ax, 24, 29, 21, 6, ['$X_a$ (active)'], fs=FS_SPECIES - 0.5)
