@@ -300,7 +300,7 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
     _tag(ax, 27, 90.6, 'CO$_2$', color=C_MUTED, fs=FS_TAG)
 
     # === engineered isobutanol pathway panel (right) =======================
-    ax.add_patch(FancyBboxPatch((128, 24), 48, 66,
+    ax.add_patch(FancyBboxPatch((128, 22), 48, 68,
                                 boxstyle='round,pad=0,rounding_size=2',
                                 fc=TINT_IBO, ec=TINT_IBO_EDGE, lw=0.9,
                                 zorder=2))
@@ -308,10 +308,10 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
             fontsize=FS_PANEL - 0.3, fontweight='bold', color='#B04A00',
             ha='center', va='center', linespacing=1.2, zorder=3)
 
-    al = _box(ax, 152, 76, 34, 8, ['AL'])
-    dhi = _box(ax, 152, 62, 34, 8, ['DHIV'])
-    kiv = _box(ax, 152, 48, 34, 8, ['KIV'])
-    ibo = _box(ax, 152, 32, 34, 8, ['Isobutanol'], fc=TINT_PRODUCT)
+    al = _box(ax, 152, 76, 34, 7, ['AL'])
+    dhi = _box(ax, 152, 60.5, 34, 7, ['DHIV'])
+    kiv = _box(ax, 152, 45, 34, 7, ['KIV'])
+    ibo = _box(ax, 152, 28.5, 34, 7, ['Isobutanol'], fc=TINT_PRODUCT)
 
     # === biomass / physiological-state panel (bottom left) =================
     ax.add_patch(FancyBboxPatch((8, 19), 60, 22.5,
@@ -390,12 +390,12 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
     _arrow(ax, [pyr['right'], (135, 76)], lw=1.1)
     _rxn_marker(ax, 113, 76, 'r13', enzyme='ALS', enz_dxy=(0, 3.9))
     _arrow(ax, [al['bottom'], dhi['top']], lw=1.1)
-    _rxn_marker(ax, 152, 69, 'r14', enzyme='KARI', enz_dxy=(8.6, 0))
+    _rxn_marker(ax, 152, 68.3, 'r14', enzyme='KARI', enz_dxy=(8.6, 0))
     _arrow(ax, [dhi['bottom'], kiv['top']], lw=1.1)
-    _rxn_marker(ax, 152, 55, 'r15', enzyme='DHAD', enz_dxy=(8.7, 0))
+    _rxn_marker(ax, 152, 52.8, 'r15', enzyme='DHAD', enz_dxy=(8.7, 0))
     _arrow(ax, [kiv['bottom'], ibo['top']], lw=1.1, reversible=True)
-    _rxn_marker(ax, 152, 40, 'r16', enzyme='KDC+ADH', enz_dxy=(10.6, 0))
-    _tag(ax, 144.7, 40, '–NADH', ha='right', fs=FS_ENZ)
+    _rxn_marker(ax, 152, 36.8, 'r16', enzyme='KDC+ADH', enz_dxy=(10.6, 0))
+    _tag(ax, 144.7, 36.8, '–NADH', ha='right', fs=FS_ENZ)
 
     # === control edges =====================================================
     # acetaldehyde overflow signal activates the high-capacity glycolytic
