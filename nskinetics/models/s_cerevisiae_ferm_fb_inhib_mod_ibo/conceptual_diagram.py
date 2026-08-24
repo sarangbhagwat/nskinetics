@@ -234,11 +234,11 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
     ax.text(8, 128.2, 'Fed-batch glucose feeding (FeedSpike events)',
             fontsize=FS_PANEL, fontweight='bold', color='#144E7A',
             ha='left', va='center', zorder=3)
-    ax.text(8, 120.2,
+    ax.text(8, 119.8,
             'When $s_\\mathrm{glu}$ < threshold (10 g L$^{-1}$): spike '
-            'concentrated feed (600 g L$^{-1}$)\nto restore the target '
-            '(100 g L$^{-1}$); at most max_n_glu_spikes spikes;\n'
-            'each spike increases broth volume env.',
+            'concentrated\nfeed (600 g L$^{-1}$) to restore the target '
+            '(100 g L$^{-1}$);\nat most max_n_glu_spikes spikes '
+            '(default 5);\neach spike increases broth volume env.',
             fontsize=FS_NOTE, ha='left', va='center', color=C_TEXT,
             linespacing=1.35, zorder=3)
 
@@ -269,10 +269,10 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
     _arrow(ax, [(45, 113), (45, 104), (78, 104), (78, 101.8)],
            color=C_FEED, lw=1.2, corner_r=3)
     _tag(ax, 60, 106.2, 'glucose spike', color=C_FEED, fs=FS_TAG)
-    ax.add_line(Line2D([98.5, 102, 102], [99.5, 99.5, 113], color=C_FEED,
-                       lw=0.8, ls=(0, (1.2, 1.4)), zorder=3))
-    _tag(ax, 104.0, 106.5, 'sense $s_\\mathrm{glu}$', color=C_FEED,
-         fs=FS_TAG, ha='left')
+    ax.add_line(Line2D([95, 95, 82, 82], [101.8, 107, 107, 113],
+                       color=C_FEED, lw=0.8, ls=(0, (1.2, 1.4)), zorder=3))
+    _tag(ax, 89.5, 108.6, 'sense $s_\\mathrm{glu}$', color=C_FEED,
+         fs=FS_TAG)
 
     # O2 supply drop from the aeration panel
     _arrow(ax, [(133, 113), (133, 103.5)], color=C_O2, lw=1.0,
@@ -363,25 +363,28 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
     # r4 acetaldehyde -> acetate (needs AcDH machinery)
     _arrow(ax, [ald['left'], ace['right']], lw=1.1)
     _rxn_marker(ax, 65.5, 54, 'r4', enzyme=None)
-    _badge(ax, 65.5, 49.9, 'AcDH', '#FFFFFF', tc='#1F7A5C',
+    _badge(ax, 65.5, 58.2, 'AcDH', '#FFFFFF', tc='#1F7A5C',
            ec='#1F7A5C', w=8.6)
-    _tag(ax, 65.5, 58.7, '+NADH', fs=FS_ENZ)
+    _tag(ax, 70, 49.3, '+NADH', fs=FS_ENZ, ha='left')
 
     # r5 acetate -> TCA
     _arrow(ax, [(44, 57.6), (33, 71.9)], lw=1.1)
     _rxn_marker(ax, 38.7, 64.6, 'r5', enzyme=None)
     _badge(ax, 31.6, 62.6, 'O$_2$', C_O2)
+    _tag(ax, 44.5, 63.5, '+NADH', fs=FS_ENZ, ha='left')
 
     # r7 glucose -> biomass (left-margin route)
     _arrow(ax, [(74, 98), (8.5, 98), (8.5, 47), (20, 41.7)], lw=1.1,
            corner_r=4)
     _rxn_marker(ax, 8.5, 58, 'r7', enzyme=None)
     _tag(ax, 11.2, 64.5, 'growth', color=C_MUTED, fs=FS_ENZ, ha='left')
+    _tag(ax, 11.2, 53.8, '+NADH, CO$_2$', fs=FS_ENZ, ha='left')
 
     # r8 acetate -> biomass
     _arrow(ax, [ace['bottom'], (48, 41.7)], lw=1.1)
     _rxn_marker(ax, 48, 46.4, 'r8', enzyme=None)
     _badge(ax, 55.3, 46.4, 'O$_2$', C_O2)
+    _tag(ax, 43, 43.5, '+NADH, CO$_2$', fs=FS_ENZ, ha='right')
 
     # === engineered pathway reactions ======================================
     _arrow(ax, [pyr['right'], (135, 76)], lw=1.1)
@@ -409,7 +412,7 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
     _tag(ax, 73.5, 87.6, 'EtOH·Ace·iBuOH', color=C_INHIB, ha='right',
          fs=FS_TAG)
     _tbar(ax, (65.5, 51.9), (65.5, 45.5), C_INHIB)
-    _tag(ax, 65.5, 43.9, 'EtOH·Ace·iBuOH', color=C_INHIB, fs=FS_TAG)
+    _tag(ax, 66.5, 43.7, 'EtOH·Ace·iBuOH', color=C_INHIB, fs=FS_TAG)
     _tbar(ax, (11.3, 58), (17.5, 58), C_INHIB)
     _tag(ax, 18.3, 58, 'EtOH·Ace·iBuOH', color=C_INHIB, ha='left',
          fs=FS_TAG)
@@ -421,7 +424,7 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
     _tag(ax, 46.4, 70.4, 'glc', color=C_REPR, ha='left', fs=FS_TAG)
     _tbar(ax, (45.3, 46.4), (41.2, 46.4), C_REPR)
     _tag(ax, 40.2, 46.4, 'glc', color=C_REPR, ha='right', fs=FS_TAG)
-    _tbar(ax, (38.7, 27.6), (38.7, 24.6), C_REPR)
+    _tbar(ax, (38.7, 28.5), (38.7, 24.6), C_REPR)
     _tag(ax, 42.2, 25.4, 'glc', color=C_REPR, ha='left', fs=FS_TAG)
 
     # === legend strip ======================================================
@@ -435,21 +438,23 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
                reversible=reversible, ls=(0, (3, 1.8)) if dashed else '-',
                mutation=5.5, zorder=5)
 
-    y1, y2, y3 = 11.0, 7.8, 4.6
+    y1, y2, y3 = 11.3, 7.6, 4.3
     _leg_arrow(6, y1, C_FLUX)
     ax.text(15, y1, 'reaction flux (mass basis)', fontsize=FS_LEGEND,
             va='center', zorder=5)
     _leg_arrow(6, y2, C_FLUX, reversible=True)
     ax.text(15, y2, 'reversible (r6, r16)', fontsize=FS_LEGEND, va='center',
             zorder=5)
-    _leg_arrow(6, y3, C_FEED)
-    ax.text(15, y3, 'fed-batch feed / sensing', fontsize=FS_LEGEND,
+    _arrow(ax, [(6, y3), (10.5, y3)], color=C_FEED, lw=1.0, mutation=5.5,
+           zorder=5)
+    ax.add_line(Line2D([11.3, 13.5], [y3, y3], color=C_FEED, lw=0.9,
+                       ls=(0, (1.2, 1.4)), zorder=5))
+    ax.text(15, y3, 'fed-batch feed; dotted = sensing', fontsize=FS_LEGEND,
             va='center', zorder=5)
 
     _tbar(ax, (60, y1), (53, y1), C_INHIB, lw=1.0)
-    ax.text(62.5, y1, 'product inhibition, $e^{-k_i C}$ (EtOH, acetate, '
-                      'isobutanol)', fontsize=FS_LEGEND, va='center',
-            zorder=5)
+    ax.text(62.5, y1, 'product inhibition, $e^{-k_i C}$ (r1, r4, r7)',
+            fontsize=FS_LEGEND, va='center', zorder=5)
     _tbar(ax, (60, y2), (53, y2), C_REPR, lw=1.0)
     ax.text(62.5, y2, 'glucose repression (r2, r5, r8, r9)',
             fontsize=FS_LEGEND, va='center', zorder=5)
