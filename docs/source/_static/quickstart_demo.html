@@ -295,6 +295,14 @@ body{
 }
 .intro .mark{height:52px;width:auto;opacity:0;transform:translateY(8px);transition:.7s ease}
 .intro.on .mark{opacity:1;transform:none}
+/* show only the theme-appropriate intro logo (mirrors the .brand rules) */
+.intro .logo-dark{display:none}
+:root[data-theme="dark"] .intro .logo-light{display:none}
+:root[data-theme="dark"] .intro .logo-dark{display:block}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]) .intro .logo-light{display:none}
+  :root:not([data-theme="light"]) .intro .logo-dark{display:block}
+}
 .intro h1{
   font-family:"Spectral", Georgia, serif;
   font-weight:700;font-size:clamp(1.6rem,3.4vw,2.5rem);
