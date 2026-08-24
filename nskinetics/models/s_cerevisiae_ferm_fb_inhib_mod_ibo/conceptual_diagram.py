@@ -6,7 +6,7 @@
 # https://github.com/sarangbhagwat/nskinetics/blob/main/LICENSE
 # for license details.
 """
-Publication-ready conceptual diagram of the ``s_cerevisiae_ferm_fb_inhib_mod_ibo``
+Conceptual diagram of the ``s_cerevisiae_ferm_fb_inhib_mod_ibo``
 kinetic model (Antimony model ``bhagwat2026``, extending Lei et al. 2001,
 J. Biotechnol. 88:205-21 / BIOMD0000000245 with an engineered isobutanol
 pathway, product inhibition, aeration staging, and fed-batch feeding).
@@ -329,7 +329,7 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
     xa = _box(ax, 24, 29, 21, 6, ['$X_a$ (active)'], fs=FS_SPECIES - 0.5)
     xac = _box(ax, 54, 29, 22, 6, ['$X_\\mathrm{AcDH}$'], fs=FS_SPECIES - 0.5)
     _arrow(ax, [(34.5, 29), (43, 29)], color=C_FLUX, lw=0.9, mutation=5.5)
-    _tag(ax, 38.7, 31.2, 'r9', color=C_TEXT, fs=FS_RXN, style='normal')
+    _rxn_marker(ax, 38.7, 29, 'r9', enzyme=None)
     # decay r10 / r11
     _arrow(ax, [(24, 26), (24, 22)], color='#8A8A8A', lw=0.8, mutation=5)
     _tag(ax, 27.2, 23.6, 'r10', color=C_MUTED, fs=FS_ENZ)
@@ -424,7 +424,7 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
     _tag(ax, 46.4, 70.4, 'glc', color=C_REPR, ha='left', fs=FS_TAG)
     _tbar(ax, (45.3, 46.4), (41.2, 46.4), C_REPR)
     _tag(ax, 40.2, 46.4, 'glc', color=C_REPR, ha='right', fs=FS_TAG)
-    _tbar(ax, (38.7, 28.5), (38.7, 24.6), C_REPR)
+    _tbar(ax, (38.7, 26.7), (38.7, 24.2), C_REPR)
     _tag(ax, 42.2, 25.4, 'glc', color=C_REPR, ha='left', fs=FS_TAG)
 
     # === legend strip ======================================================
