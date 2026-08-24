@@ -314,7 +314,7 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
     ibo = _box(ax, 152, 28.5, 34, 7, ['Isobutanol'], fc=TINT_PRODUCT)
 
     # === biomass / physiological-state panel (bottom left) =================
-    ax.add_patch(FancyBboxPatch((8, 19), 60, 22.5,
+    ax.add_patch(FancyBboxPatch((8, 18), 60, 23.5,
                                 boxstyle='round,pad=0,rounding_size=2',
                                 fc=TINT_BM, ec=TINT_BM_EDGE, lw=0.9,
                                 zorder=2))
@@ -330,14 +330,16 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
     xac = _box(ax, 54, 29, 22, 6, ['$X_\\mathrm{AcDH}$'], fs=FS_SPECIES - 0.5)
     _arrow(ax, [(34.5, 29), (43, 29)], color=C_FLUX, lw=0.9, mutation=5.5)
     _rxn_marker(ax, 38.7, 29, 'r9', enzyme=None)
-    # decay r10 / r11
-    _arrow(ax, [(24, 26), (24, 22)], color='#8A8A8A', lw=0.8, mutation=5)
-    _tag(ax, 21, 23.6, 'r10', color=C_MUTED, fs=FS_ENZ, ha='right')
-    _tag(ax, 24, 20.6, '$\\varnothing$', color=C_MUTED, fs=FS_TAG,
+    # decay r10 / r11 -- angled down-and-outward so the standard marker
+    # circles fit on the runs without hiding the arrowheads (the region
+    # directly below r9 carries its induction/repression annotations)
+    _arrow(ax, [(22, 26), (16.6, 20.2)], color=C_FLUX, lw=1.1)
+    _rxn_marker(ax, 19.3, 23.1, 'r10', enzyme=None)
+    _tag(ax, 15.3, 19.3, '$\\varnothing$', color=C_MUTED, fs=FS_TAG,
          style='normal')
-    _arrow(ax, [(54, 26), (54, 22)], color='#8A8A8A', lw=0.8, mutation=5)
-    _tag(ax, 57.2, 23.6, 'r11', color=C_MUTED, fs=FS_ENZ)
-    _tag(ax, 54, 20.6, '$\\varnothing$', color=C_MUTED, fs=FS_TAG,
+    _arrow(ax, [(56, 26), (61.4, 20.2)], color=C_FLUX, lw=1.1)
+    _rxn_marker(ax, 58.7, 23.1, 'r11', enzyme=None)
+    _tag(ax, 62.7, 19.3, '$\\varnothing$', color=C_MUTED, fs=FS_TAG,
          style='normal')
 
     # === central catabolic backbone ========================================
