@@ -1,0 +1,797 @@
+<title>NSKinetics Quickstart</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,500;0,600;0,700;1,500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+
+<style>
+:root{
+  /* light palette (also the default un-stamped state) */
+  --ground:#EEF3F4;
+  --ground-2:#E4ECEE;
+  --surface:#FFFFFF;
+  --surface-2:#F4F8F9;
+  --ink:#132229;
+  --ink-soft:#37474E;
+  --muted:#5C6E75;
+  --line:#D8E2E4;
+  --line-soft:#E7EEEF;
+  --accent:#459DB9;
+  --accent-ink:#1C6B87;
+  --accent-fill:#459DB9;
+  --callout-bg:rgba(69,157,185,.12);
+  --callout-ink:#166178;
+  --callout-line:rgba(69,157,185,.30);
+  --shadow:0 24px 60px -28px rgba(19,34,41,.45), 0 6px 18px -12px rgba(19,34,41,.30);
+  --canvas:#FFFFFF;
+  --canvas-line:#E1E9EB;
+
+  /* the code/terminal editor &mdash; a committed dark look in every theme */
+  --code-bg:#0B1519;
+  --code-surface:#0E1C22;
+  --code-line:#182b32;
+  --code-ink:#CBD8DB;
+  --code-dim:#7f9299;
+  --code-gutter:#455a61;
+  --c-fn:#5FC1E4;
+  --c-kw:#E6B673;
+  --c-str:#87D0A9;
+  --c-num:#E6B673;
+  --c-com:#5a7178;
+  --c-attr:#B9C7CB;
+  --thl:#F2C879;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#0C1418;
+    --ground-2:#091013;
+    --surface:#111C21;
+    --surface-2:#16242A;
+    --ink:#E8EEF0;
+    --ink-soft:#C4D2D6;
+    --muted:#93A6AD;
+    --line:#22343B;
+    --line-soft:#1a2a30;
+    --accent:#5FB6D3;
+    --accent-ink:#93D3E7;
+    --accent-fill:#4CA6C6;
+    --callout-bg:rgba(95,182,211,.14);
+    --callout-ink:#A6DAEC;
+    --callout-line:rgba(95,182,211,.30);
+    --shadow:0 30px 70px -30px rgba(0,0,0,.7), 0 8px 24px -16px rgba(0,0,0,.6);
+    --canvas:#F3F6F7;
+    --canvas-line:#0a1114;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0C1418;
+  --ground-2:#091013;
+  --surface:#111C21;
+  --surface-2:#16242A;
+  --ink:#E8EEF0;
+  --ink-soft:#C4D2D6;
+  --muted:#93A6AD;
+  --line:#22343B;
+  --line-soft:#1a2a30;
+  --accent:#5FB6D3;
+  --accent-ink:#93D3E7;
+  --accent-fill:#4CA6C6;
+  --callout-bg:rgba(95,182,211,.14);
+  --callout-ink:#A6DAEC;
+  --callout-line:rgba(95,182,211,.30);
+  --shadow:0 30px 70px -30px rgba(0,0,0,.7), 0 8px 24px -16px rgba(0,0,0,.6);
+  --canvas:#F3F6F7;
+  --canvas-line:#0a1114;
+}
+
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  background:
+    radial-gradient(1100px 520px at 82% -8%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 60%),
+    var(--ground);
+  color:var(--ink);
+  font-family:"IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  -webkit-font-smoothing:antialiased;
+  line-height:1.5;
+  min-height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:clamp(14px,3vw,44px);
+}
+
+.wrap{width:100%;max-width:1120px}
+
+.tagline{
+  display:flex;align-items:baseline;gap:.6rem;flex-wrap:wrap;
+  margin:0 4px 14px;
+}
+.tagline .kicker{
+  font-family:"IBM Plex Mono", ui-monospace, monospace;
+  font-size:.72rem;letter-spacing:.22em;text-transform:uppercase;
+  color:var(--accent-ink);font-weight:500;
+}
+.tagline .sep{color:var(--line);}
+.tagline .lead{color:var(--muted);font-size:.86rem;}
+
+/* ---- player shell ---- */
+.player{
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:18px;
+  box-shadow:var(--shadow);
+  overflow:hidden;
+}
+
+.chrome{
+  display:flex;align-items:center;gap:14px;
+  padding:13px 18px;
+  border-bottom:1px solid var(--line-soft);
+  background:linear-gradient(var(--surface), var(--surface-2));
+}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.brand img{height:26px;width:auto;display:block}
+.brand .logo-dark{display:none}
+:root[data-theme="dark"] .brand .logo-light{display:none}
+:root[data-theme="dark"] .brand .logo-dark{display:block}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]) .brand .logo-light{display:none}
+  :root:not([data-theme="light"]) .brand .logo-dark{display:block}
+}
+.brand .name{
+  font-weight:600;letter-spacing:-.01em;font-size:1.02rem;
+}
+.dots{display:flex;gap:6px;margin-left:2px}
+.dots i{width:9px;height:9px;border-radius:50%;background:var(--line);display:block}
+.now{
+  margin-left:auto;display:flex;align-items:center;gap:10px;
+  font-family:"IBM Plex Mono", ui-monospace, monospace;
+  font-size:.78rem;color:var(--muted);min-width:0;
+}
+.now .num{color:var(--accent-ink);font-weight:500}
+.now .lbl{color:var(--ink-soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ---- stage ---- */
+.stage{
+  display:grid;
+  grid-template-columns:minmax(0,0.92fr) minmax(0,1.08fr);
+  min-height:452px;
+  position:relative;
+}
+.pane{padding:22px 24px;min-width:0}
+.code-pane{
+  background:var(--code-bg);
+  border-right:1px solid var(--line-soft);
+  display:flex;flex-direction:column;
+}
+.file-tab{
+  display:flex;align-items:center;gap:8px;
+  font-family:"IBM Plex Mono", ui-monospace, monospace;
+  font-size:.72rem;color:var(--code-dim);
+  padding-bottom:12px;margin-bottom:4px;
+  border-bottom:1px solid var(--code-line);
+  letter-spacing:.02em;
+}
+.file-tab b{color:var(--code-ink);font-weight:500}
+.file-tab .py{color:var(--c-fn)}
+.code{
+  font-family:"IBM Plex Mono", ui-monospace, monospace;
+  font-size:.82rem;line-height:1.72;
+  color:var(--code-ink);
+  margin-top:14px;
+  white-space:pre;
+  overflow-x:auto;
+  flex:1;
+  counter-reset:l;
+}
+.code .ln{
+  display:block;position:relative;
+  padding-left:34px;
+  opacity:0;transform:translateY(5px);
+  transition:opacity .38s ease, transform .38s ease;
+}
+.code .ln::before{
+  counter-increment:l;content:counter(l);
+  position:absolute;left:0;top:0;width:22px;text-align:right;
+  color:var(--code-gutter);font-size:.72rem;
+}
+.code .ln.on{opacity:1;transform:none}
+.code .ln.blank{min-height:.6em}
+.c-fn{color:var(--c-fn)}
+.c-kw{color:var(--c-kw)}
+.c-str{color:var(--c-str)}
+.c-num{color:var(--c-num)}
+.c-com{color:var(--c-com);font-style:italic}
+.caret{
+  display:inline-block;width:7px;height:1.05em;
+  background:var(--c-fn);vertical-align:-2px;margin-left:2px;border-radius:1px;
+  animation:blink 1s steps(2,start) infinite;opacity:.85;
+}
+@keyframes blink{50%{opacity:0}}
+
+/* output pane */
+.out-pane{
+  background:var(--surface);
+  display:flex;flex-direction:column;
+}
+.caption{
+  font-family:"Spectral", Georgia, serif;
+  font-size:1.16rem;line-height:1.34;font-weight:600;
+  color:var(--ink);letter-spacing:-.005em;
+  text-wrap:balance;margin:0 0 4px;
+  opacity:0;transform:translateY(6px);
+  transition:opacity .5s ease, transform .5s ease;
+}
+.caption.on{opacity:1;transform:none}
+.caption em{color:var(--accent-ink);font-style:italic}
+.sub{
+  font-size:.85rem;color:var(--muted);margin:0 0 14px;max-width:46ch;
+  opacity:0;transition:opacity .5s ease .06s;
+}
+.sub.on{opacity:1}
+.output{
+  flex:1;display:flex;flex-direction:column;justify-content:center;
+  min-height:0;
+}
+.canvas{
+  background:var(--canvas);
+  border:1px solid var(--canvas-line);
+  border-radius:12px;
+  padding:12px;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 10px 26px -20px rgba(0,0,0,.55);
+  opacity:0;transform:scale(.985);
+  transition:opacity .55s ease, transform .55s ease;
+}
+.canvas.on{opacity:1;transform:none}
+.canvas img{max-width:100%;max-height:322px;height:auto;display:block;border-radius:4px}
+
+/* terminal output (step 4) */
+.term{
+  background:var(--code-surface);
+  border:1px solid var(--code-line);
+  border-radius:12px;
+  font-family:"IBM Plex Mono", ui-monospace, monospace;
+  font-size:.72rem;line-height:1.62;
+  color:var(--code-ink);
+  padding:14px 16px;
+  overflow:auto;max-height:328px;white-space:pre;
+  opacity:0;transform:translateY(6px);
+  transition:opacity .5s ease, transform .5s ease;
+}
+.term.on{opacity:1;transform:none}
+.term .dim{color:var(--code-dim)}
+.term .thl{color:var(--thl);font-weight:500}
+.term .cmd{color:var(--c-fn)}
+
+.callouts{
+  display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;
+}
+.chip-c{
+  display:inline-flex;align-items:baseline;gap:7px;
+  background:var(--callout-bg);
+  border:1px solid var(--callout-line);
+  color:var(--callout-ink);
+  border-radius:999px;
+  padding:5px 12px;
+  font-size:.78rem;
+  opacity:0;transform:translateY(6px) scale(.96);
+  transition:opacity .34s ease, transform .34s ease;
+}
+.chip-c.on{opacity:1;transform:none}
+.chip-c b{
+  font-family:"IBM Plex Mono", ui-monospace, monospace;
+  font-weight:500;color:var(--accent-ink);font-size:.82rem;
+}
+
+/* intro scene overlay */
+.intro{
+  position:absolute;inset:0;z-index:5;
+  background:
+    radial-gradient(680px 380px at 50% 30%, color-mix(in srgb, var(--accent) 14%, var(--surface)), var(--surface) 72%);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  text-align:center;padding:34px;gap:16px;
+  transition:opacity .6s ease;
+}
+.intro .mark{height:52px;width:auto;opacity:0;transform:translateY(8px);transition:.7s ease}
+.intro.on .mark{opacity:1;transform:none}
+.intro h1{
+  font-family:"Spectral", Georgia, serif;
+  font-weight:700;font-size:clamp(1.6rem,3.4vw,2.5rem);
+  line-height:1.1;letter-spacing:-.02em;margin:0;max-width:16ch;
+  text-wrap:balance;color:var(--ink);
+  opacity:0;transform:translateY(10px);transition:.7s ease .12s;
+}
+.intro.on h1{opacity:1;transform:none}
+.intro h1 em{color:var(--accent-ink);font-style:italic}
+.intro .flow{
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:center;
+  font-family:"IBM Plex Mono", ui-monospace, monospace;
+  font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);
+  opacity:0;transition:.7s ease .26s;
+}
+.intro.on .flow{opacity:1}
+.intro .flow span{color:var(--ink-soft)}
+.intro .flow i{color:var(--accent);font-style:normal}
+
+/* end card */
+.endcard{
+  position:absolute;inset:0;z-index:6;
+  background:color-mix(in srgb, var(--surface) 90%, transparent);
+  backdrop-filter:blur(3px);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:16px;text-align:center;padding:30px;
+  opacity:0;pointer-events:none;transition:opacity .45s ease;
+}
+.endcard.show{opacity:1;pointer-events:auto}
+.endcard p{
+  font-family:"Spectral", Georgia, serif;font-size:1.3rem;font-weight:600;margin:0;
+  color:var(--ink);
+}
+.endcard .row{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+.btn{
+  font-family:"IBM Plex Sans",sans-serif;font-size:.9rem;font-weight:500;
+  border-radius:10px;padding:10px 18px;cursor:pointer;text-decoration:none;
+  border:1px solid var(--line);background:var(--surface-2);color:var(--ink);
+  display:inline-flex;align-items:center;gap:8px;transition:.18s ease;
+}
+.btn:hover{border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary{background:var(--accent-fill);border-color:var(--accent-fill);color:#fff}
+.btn.primary:hover{filter:brightness(1.06);color:#fff}
+
+/* ---- transport ---- */
+.transport{
+  display:flex;align-items:center;gap:14px;
+  padding:13px 18px;
+  border-top:1px solid var(--line-soft);
+  background:var(--surface-2);
+}
+.pp{
+  width:38px;height:38px;flex:none;border-radius:50%;
+  border:1px solid var(--accent-fill);
+  background:var(--accent-fill);color:#fff;cursor:pointer;
+  display:grid;place-items:center;transition:.18s ease;
+}
+.pp:hover{filter:brightness(1.07)}
+.pp svg{width:16px;height:16px;display:block}
+.track{
+  flex:1;display:flex;gap:5px;align-items:center;
+}
+.seg{
+  flex:1;height:6px;border-radius:4px;background:var(--ground-2);
+  overflow:hidden;cursor:pointer;position:relative;
+}
+.seg::after{
+  content:"";position:absolute;inset:0;background:var(--line-soft);opacity:0;
+}
+.seg span{display:block;height:100%;width:0;background:var(--accent-fill);border-radius:4px}
+.time{
+  font-family:"IBM Plex Mono", ui-monospace, monospace;
+  font-size:.76rem;color:var(--muted);flex:none;font-variant-numeric:tabular-nums;
+}
+
+/* ---- step chips ---- */
+.chips{
+  display:flex;gap:8px;flex-wrap:wrap;
+  padding:12px 18px 16px;
+  border-top:1px solid var(--line-soft);
+  background:var(--surface);
+}
+.chip{
+  display:flex;align-items:center;gap:9px;
+  border:1px solid var(--line);border-radius:10px;
+  background:var(--surface);color:var(--muted);
+  padding:7px 12px;cursor:pointer;font-size:.82rem;
+  transition:.18s ease;flex:1 1 auto;min-width:0;
+}
+.chip:hover{border-color:var(--accent);color:var(--ink)}
+.chip .n{
+  font-family:"IBM Plex Mono", ui-monospace, monospace;
+  font-size:.72rem;color:var(--muted);font-weight:500;
+}
+.chip .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500}
+.chip.active{
+  border-color:var(--accent);
+  background:var(--callout-bg);color:var(--ink);
+}
+.chip.active .n{color:var(--accent-ink)}
+.chip.done .n{color:var(--accent)}
+
+.foot{
+  margin:14px 6px 0;text-align:center;color:var(--muted);font-size:.78rem;
+}
+.foot code{
+  font-family:"IBM Plex Mono", ui-monospace, monospace;
+  background:var(--surface-2);border:1px solid var(--line-soft);
+  padding:1px 6px;border-radius:5px;color:var(--accent-ink);font-size:.74rem;
+}
+
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+
+@media (max-width:840px){
+  .stage{grid-template-columns:1fr;min-height:0}
+  .code-pane{border-right:none;border-bottom:1px solid var(--line-soft)}
+  .code{font-size:.78rem}
+  .now .lbl{display:none}
+  .chip{flex:1 1 40%}
+}
+@media (prefers-reduced-motion: reduce){
+  .code .ln,.caption,.sub,.canvas,.term,.chip-c,.intro .mark,.intro h1,.intro .flow{
+    transition:none !important;
+  }
+  .caret{animation:none}
+}
+</style>
+
+<div class="wrap">
+  <div class="tagline">
+    <span class="kicker">NSKinetics</span>
+    <span class="sep">/</span>
+    <span class="lead">Quickstart, end to end &mdash; one factory call to a full fed-batch fermentation and its process economics.</span>
+  </div>
+
+  <div class="player" id="player">
+    <div class="chrome">
+      <div class="brand">
+        <img class="logo-light" src="images/logo/logo_nskinetics_light.png" alt="NSKinetics logo">
+        <img class="logo-dark" src="images/logo/logo_nskinetics_dark.png" alt="NSKinetics logo">
+        <span class="dots"><i></i><i></i><i></i></span>
+      </div>
+      <div class="now"><span class="num" id="nowNum">00</span><span class="lbl" id="nowLbl">Intro</span></div>
+    </div>
+
+    <div class="stage" id="stage">
+      <div class="pane code-pane">
+        <div class="file-tab">
+          <span class="py">&#9679;</span> <b>quickstart</b><span>.py</span>
+        </div>
+        <div class="code" id="code"></div>
+      </div>
+      <div class="pane out-pane">
+        <p class="caption" id="caption"></p>
+        <p class="sub" id="sub"></p>
+        <div class="output" id="output"></div>
+        <div class="callouts" id="callouts"></div>
+      </div>
+
+      <div class="intro" id="intro">
+        <img class="mark logo-light" src="images/logo/logo_nskinetics_light.png" alt="">
+        <img class="mark logo-dark" src="images/logo/logo_nskinetics_dark.png" alt="">
+        <h1>One call builds the <em>whole process.</em></h1>
+        <div class="flow">
+          <span>Build</span><i>&rarr;</i><span>Simulate</span><i>&rarr;</i><span>Re-tune</span><i>&rarr;</i><span>Inspect</span>
+        </div>
+      </div>
+
+      <div class="endcard" id="endcard">
+        <p>That's the quickstart &mdash; in about a minute.</p>
+        <div class="row">
+          <button class="btn primary" id="replay">&#8635; Replay</button>
+          <a class="btn" href="https://nskinetics.readthedocs.io/en/latest/tutorial/index.html" target="_blank" rel="noopener">Read the full tutorial &rarr;</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="transport">
+      <button class="pp" id="pp" aria-label="Pause"></button>
+      <div class="track" id="track"></div>
+      <div class="time"><span id="tCur">0:00</span> / <span id="tTot">0:00</span></div>
+    </div>
+
+    <div class="chips" id="chips"></div>
+  </div>
+
+  <p class="foot">Every figure and number is real output of the code shown &mdash; driven by the shipped <em>S. cerevisiae</em> kinetic model. Press <code>space</code> to play/pause, <code>&larr;/&rarr;</code> to step.</p>
+</div>
+
+<script>
+const FIG = {
+  flowsheet: "images/examples/tutorial_01_quickstart_flowsheet.png",
+  kinetics:  "images/examples/tutorial_01_quickstart_kinetics.png",
+  retuned:   "images/examples/tutorial_01_quickstart_kinetics_retuned.png",
+};
+
+const scenes = [
+  {
+    num:"", label:"Intro", intro:true, dur:3400,
+  },
+  {
+    num:"01", label:"Build the process", dur:11200,
+    lineMs:470,
+    code:[
+      "import biosteam as bst",
+      "import nskinetics as nsk",
+      "",
+      "sugar_ferm_sys = nsk.processes.create_sugar_prep_and_fermentation_system(",
+      "    set_thermo=True)",
+      "f = bst.main_flowsheet",
+      "sugar_ferm_sys.diagram()",
+    ],
+    caption:"One factory call assembles the whole <em>sugar-prep + fed-batch fermentation</em> section.",
+    sub:"A splitter feeds parallel initial- and spike-feed conditioning trains into the V406 fermentor, with a compressed-air aeration loop.",
+    output:{type:"figure", src:"flowsheet", alt:"Process flowsheet: S301 splits the slurry between two conditioning trains feeding the V406 fermentor, with K330/V330 aeration."},
+  },
+  {
+    num:"02", label:"Simulate", dur:12600,
+    lineMs:520,
+    code:[
+      "sugar_ferm_sys.simulate()",
+      "f.V406.plot_simulation_results()",
+    ],
+    caption:"One call runs the fed-batch fermentation and picks the <em>harvest time</em>.",
+    sub:"Spikes hold glucose in-band, aeration switches off as cells build, then glucose draws down while ethanol climbs &mdash; &tau; is chosen where ethanol peaks.",
+    output:{type:"figure", src:"kinetics", alt:"Kinetic trajectory: 9 spikes hold glucose in the 210-220 g/L band, ethanol climbs to ~139.5 g/L, harvest at tau ~63.7 h."},
+    callouts:[
+      {v:"9", l:"spikes"},
+      {v:"139.5 g/L", l:"peak [s_EtOH]"},
+      {v:"&tau; &asymp; 63.7 h", l:"harvest"},
+    ],
+  },
+  {
+    num:"03", label:"Re-tune the strategy", dur:13000,
+    lineMs:470,
+    code:[
+      "f.V406.fbs_spec.load_specifications(target_conc=200,",
+      "                                    threshold_conc=180,",
+      "                                    spike_conc=600)",
+      "sugar_ferm_sys.simulate()",
+      "f.V406.plot_simulation_results()",
+    ],
+    caption:"Change the fed-batch strategy live &mdash; the physical streams re-solve to deliver it.",
+    sub:"A lower target and a wider 180-200 g/L band means fewer, larger spikes; the strategy persists on the spec for every later simulate().",
+    output:{type:"figure", src:"retuned", alt:"Retuned trajectory: starts at 200 g/L, 5 larger spikes, glucose exhausted by ~45 h, ethanol peaks ~133.5 g/L, harvest tau ~47.1 h."},
+    callouts:[
+      {v:"5", l:"spikes (was 9)"},
+      {v:"133.5 g/L", l:"peak [s_EtOH]"},
+      {v:"&tau; &asymp; 47.1 h", l:"harvest"},
+    ],
+  },
+  {
+    num:"04", label:"Inspect the reactor", dur:18500,
+    lineMs:560,
+    code:[
+      "f.V406.show(N=100)",
+      "f.V406.results()",
+    ],
+    caption:"The same simulation drives a <em>real process unit</em> &mdash; streams, sizing, and cost.",
+    sub:"The effluent carries the kinetic result at &tau;, mapped onto biosteam chemicals; results() is the standard design-and-cost table, sized from that &tau;.",
+    output:{type:"terminal", html:
+`<span class="cmd">>>> f.V406.show(N=100)</span>
+FermentationSaccharomycesEthanolIsobutanol: V406
+<span class="dim">ins...</span>
+[0] glucose_initial_feed  from  HXutility-H301
+    <span class="dim">phase: 'l', T: 305.15 K, P: 101325 Pa</span>
+    <span class="dim">flow (kmol/hr):</span> Water    5.83e+03
+                    Glucose  117
+                    NH3      6.71
+[1] seed
+    <span class="dim">phase: 'l', T: 298.15 K, P: 101325 Pa</span>
+    <span class="dim">flow (kmol/hr):</span> Water  0.633
+                    Yeast  0.0243
+[2] glucose_spike_feed  from  HXutility-H302
+    <span class="dim">phase: 'l', T: 305.15 K, P: 101325 Pa</span>
+    <span class="dim">flow (kmol/hr):</span> Water    1.61e+03
+                    Glucose  97.2
+                    NH3      5.56
+[3] s5  from  IsenthalpicValve-V330
+    <span class="dim">phase: 'g', T: 305.15 K, P: 101325 Pa</span>
+    <span class="dim">flow (kmol/hr):</span> O2  11.3
+                    N2  42.4
+<span class="dim">outs...</span>
+[0] fermentation_vent
+    <span class="dim">phase: 'g', T: 305.15 K, P: 101325 Pa</span>
+    <span class="dim">flow (kmol/hr):</span> Water       17.7
+                    AceticAcid  0.0093
+                    CO2         419
+                    O2          5.64
+                    N2          42.4
+[1] fermentation_effluent
+    <span class="dim">phase: 'l', T: 305.15 K, P: 101325 Pa</span>
+    <span class="dim">flow (kmol/hr):</span> Water       7.43e+03
+                    Ethanol     <span class="thl">391</span>
+                    AceticAcid  2.16
+                    Glucose     6.33e-17
+                    Yeast       81.4
+
+<span class="cmd">>>> f.V406.results()</span>
+FermentationSaccharomycesEthanolIsobutanol         Units      V406
+Electricity         Power                             kW       473
+                    Cost                          USD/hr        37
+Chilled water       Duty                           kJ/hr -5.26e+07
+                    Flow                         kmol/hr  3.52e+04
+                    Cost                          USD/hr       263
+Design              Reactor volume                    m3  <span class="thl">8.85e+03</span>
+                    Batch time                        hr       100
+                    Loading time                      hr      50.1
+                    Number of reactors                           <span class="thl">2</span>
+                    Recirculation flow rate        m3/hr      79.4
+                    Reactor duty                   kJ/hr -1.75e+07
+                    Cleaning and unloading time       hr         3
+                    Working volume fraction                    0.9
+Purchase cost       Heat exchangers (x2)             USD  4.59e+04
+                    Reactors (x2)                    USD  2.81e+06
+                    Agitators (x2)                   USD  1.75e+05
+                    Cleaning in place                USD  7.62e+05
+                    Recirculation pumps (x2)         USD  1.05e+05
+Total purchase cost                                  USD  <span class="thl">3.89e+06</span>
+Utility cost                                      USD/hr       300`
+    },
+    callouts:[
+      {v:"391 kmol/hr", l:"ethanol out"},
+      {v:"2 &times; 8.85e&sup3; m&sup3;", l:"reactors"},
+      {v:"$3.89M", l:"purchase cost"},
+    ],
+  },
+];
+
+/* preload figures */
+Object.values(FIG).forEach(src=>{const i=new Image(); i.src=src;});
+
+const RM = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+const KW = new Set(["import","as","True","False","None","and","or","not","in","for","if"]);
+function esc(s){return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+function hl(line){
+  let s = esc(line);
+  s = s.replace(/(#.*)$/,'<span class="c-com">$1</span>');
+  s = s.replace(/(&#39;[^&]*?&#39;|'[^']*')/g,'<span class="c-str">$1</span>');
+  s = s.replace(/\b(\d+\.?\d*(?:e[+-]?\d+)?)\b/gi,'<span class="c-num">$1</span>');
+  s = s.replace(/\b([A-Za-z_][A-Za-z0-9_]*)\b/g,(m)=>KW.has(m)?`<span class="c-kw">${m}</span>`:m);
+  s = s.replace(/\b([A-Za-z_][A-Za-z0-9_]*)(\()/g,'<span class="c-fn">$1</span>$2');
+  return s;
+}
+
+const $ = s=>document.querySelector(s);
+const codeEl=$("#code"), capEl=$("#caption"), subEl=$("#sub"),
+      outEl=$("#output"), calEl=$("#callouts"), introEl=$("#intro"),
+      endEl=$("#endcard"), nowNum=$("#nowNum"), nowLbl=$("#nowLbl"),
+      trackEl=$("#track"), chipsEl=$("#chips"), ppEl=$("#pp"),
+      tCur=$("#tCur"), tTot=$("#tTot");
+
+const total = scenes.reduce((a,s)=>a+s.dur,0);
+const starts = []; let acc=0; scenes.forEach(s=>{starts.push(acc); acc+=s.dur;});
+
+/* build track segments + chips */
+scenes.forEach((s,i)=>{
+  const seg=document.createElement("div");
+  seg.className="seg"; seg.innerHTML="<span></span>";
+  seg.style.flex = Math.max(s.dur,3000);
+  seg.addEventListener("click",()=>jump(i));
+  trackEl.appendChild(seg);
+  if(!s.intro){
+    const c=document.createElement("button");
+    c.className="chip";
+    c.innerHTML=`<span class="n">${s.num}</span><span class="t">${s.label}</span>`;
+    c.addEventListener("click",()=>jump(i));
+    chipsEl.appendChild(c);
+  }
+});
+const segEls=[...trackEl.children];
+const chipEls=[...chipsEl.children];
+
+const PLAY='<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
+const PAUSE='<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>';
+
+let current=0, t=0, playing=true, built=-1, ended=false;
+
+function fmt(ms){const s=Math.round(ms/1000);return `${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}`;}
+tTot.textContent=fmt(total);
+
+function buildScene(i){
+  const s=scenes[i];
+  codeEl.innerHTML="";
+  if(s.code){
+    s.code.forEach(l=>{
+      const d=document.createElement("span");
+      d.className="ln"+(l.trim()===""?" blank":"");
+      d.innerHTML = l.trim()===""? "&nbsp;" : hl(l);
+      codeEl.appendChild(d);
+    });
+  }
+  capEl.innerHTML = s.caption||"";
+  subEl.innerHTML = s.sub||"";
+  outEl.innerHTML="";
+  if(s.output){
+    if(s.output.type==="figure"){
+      const w=document.createElement("div"); w.className="canvas";
+      w.innerHTML=`<img src="${FIG[s.output.src]}" alt="${s.output.alt||""}">`;
+      outEl.appendChild(w);
+    } else {
+      const w=document.createElement("div"); w.className="term";
+      w.innerHTML=s.output.html;
+      outEl.appendChild(w);
+    }
+  }
+  calEl.innerHTML="";
+  (s.callouts||[]).forEach(c=>{
+    const el=document.createElement("span");
+    el.className="chip-c";
+    el.innerHTML=`<b>${c.v}</b><span>${c.l}</span>`;
+    calEl.appendChild(el);
+  });
+  introEl.style.display = s.intro? "flex":"none";
+  introEl.classList.toggle("on", !!s.intro);
+  nowNum.textContent = s.num||"00";
+  nowLbl.textContent = s.label;
+  chipEls.forEach((c,ci)=>{
+    c.classList.toggle("active", ci===i-1);
+    c.classList.toggle("done", ci<i-1);
+  });
+  built=i;
+}
+
+function render(){
+  const s=scenes[current];
+  if(built!==current) buildScene(current);
+
+  if(!s.intro){
+    const lineMs=RM?0:(s.lineMs||500);
+    const lines=[...codeEl.children];
+    const shown = RM? lines.length : Math.min(lines.length, Math.floor(t/Math.max(lineMs,1))+1);
+    lines.forEach((ln,idx)=>ln.classList.toggle("on", idx<shown));
+    const codeDone = RM?0:lines.length*lineMs;
+
+    const outT = codeDone + 350;
+    const on = t>=outT;
+    capEl.classList.toggle("on", t>=Math.max(0,codeDone-400));
+    subEl.classList.toggle("on", t>=Math.max(0,codeDone-200));
+    const canv=outEl.firstElementChild;
+    if(canv) canv.classList.toggle("on", on);
+    if(canv && canv.classList.contains("term") && !RM){
+      const sc=canv.scrollHeight-canv.clientHeight;
+      if(sc>4){
+        const s0=outT+1500, s1=s.dur-2800;
+        const p=Math.min(1,Math.max(0,(t-s0)/(s1-s0)));
+        canv.scrollTop=p*sc;
+      }
+    }
+    const cs=[...calEl.children];
+    cs.forEach((c,ci)=>c.classList.toggle("on", t>=outT+500+ci*430));
+  }
+
+  /* progress */
+  segEls.forEach((seg,si)=>{
+    const bar=seg.firstElementChild;
+    let f = si<current?1 : si>current?0 : Math.min(1,t/s.dur);
+    bar.style.width=(f*100)+"%";
+  });
+  tCur.textContent=fmt(Math.min(total, starts[current]+Math.min(t,s.dur)));
+  ppEl.innerHTML = playing?PAUSE:PLAY;
+  ppEl.setAttribute("aria-label", playing?"Pause":"Play");
+}
+
+function jump(i){
+  ended=false; endEl.classList.remove("show");
+  current=Math.max(0,Math.min(scenes.length-1,i));
+  t=0; built=-1; playing=true; render();
+}
+
+let last=performance.now();
+function frame(now){
+  const dt=Math.min(now-last,60); last=now;
+  if(playing && !ended){
+    t+=dt;
+    if(t>=scenes[current].dur){
+      if(current<scenes.length-1){ current++; t=0; }
+      else { t=scenes[current].dur; playing=false; ended=true; endEl.classList.add("show"); }
+    }
+  }
+  render();
+  requestAnimationFrame(frame);
+}
+
+ppEl.addEventListener("click",()=>{
+  if(ended){ jump(0); return; }
+  playing=!playing;
+});
+$("#replay").addEventListener("click",()=>jump(0));
+
+document.addEventListener("keydown",e=>{
+  if(e.code==="Space"){ e.preventDefault(); if(ended){jump(0);} else {playing=!playing;} }
+  else if(e.code==="ArrowRight"){ e.preventDefault(); jump(current+1); }
+  else if(e.code==="ArrowLeft"){ e.preventDefault(); jump(current-1); }
+});
+
+render();
+requestAnimationFrame(frame);
+</script>

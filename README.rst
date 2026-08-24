@@ -54,6 +54,14 @@ NSKinetic's `full documentation <https://nskinetics.readthedocs.io/en/latest/>`_
 
 One factory call builds a complete, industrially configured process around a real kinetic model: ``nskinetics.processes.create_sugar_prep_and_fermentation_system`` assembles the sugar-solution preparation and fed-batch fermentation section of an actual biorefinery model — a splitter feeding parallel initial-feed and spike-feed conditioning trains (multi-effect evaporator, pumps, dilution-water mixer, heat exchanger), a ``FermentationSaccharomycesEthanolIsobutanol`` fermentor driven by the shipped *S. cerevisiae* kinetic model, and a compressed-air aeration loop. This example runs it end to end: build, simulate, change the fed-batch strategy, and inspect the reactor. Total simulation time is a few seconds once the imports are loaded; every number and figure below is the output of the code shown.
 
+.. figure:: docs/source/_static/images/examples/quickstart_demo_poster.png
+   :width: 700
+   :align: center
+   :target: https://nskinetics.readthedocs.io/en/latest/_static/quickstart_demo.html
+   :alt: Watch the NSKinetics quickstart run — a ~1-minute interactive demo
+
+   ▶ `Watch the quickstart run end to end <https://nskinetics.readthedocs.io/en/latest/_static/quickstart_demo.html>`__ — a ~1-minute interactive demo (build, simulate, re-tune, inspect). The same walkthrough is written out below.
+
 **Step 1: Build the process**
 
 The factory needs only a chemical set — ``set_thermo=True`` activates its

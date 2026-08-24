@@ -57,6 +57,20 @@ fed-batch strategy, and inspect the reactor. Total simulation time is a few
 seconds once the imports are loaded; every number and figure below is the
 output of the code shown.
 
+.. raw:: html
+
+   <div style="margin:1.5rem auto;max-width:1120px;">
+     <iframe src="_static/quickstart_demo.html"
+             title="NSKinetics quickstart — interactive demo"
+             loading="lazy"
+             style="width:100%;height:840px;border:1px solid rgba(128,128,128,0.25);border-radius:14px;display:block;"></iframe>
+     <p style="text-align:center;font-size:0.85rem;margin-top:0.4rem;opacity:0.8;">
+       Interactive quickstart demo &mdash;
+       <a href="_static/quickstart_demo.html" target="_blank" rel="noopener">open in a new tab</a>.
+       The full walkthrough is written out below.
+     </p>
+   </div>
+
 **Step 1: Build the process**
 
 The factory needs only a chemical set — ``set_thermo=True`` activates its
