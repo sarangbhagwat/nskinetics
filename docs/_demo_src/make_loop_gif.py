@@ -17,18 +17,23 @@ The scene is a captioned three-stage pipeline drawn left to right:
   waving surface, a sparger streaming rising bubbles, a two-tier Rushton
   impeller spinning in side view, and an amber product curve that boosts
   when the parameter changes.
-* **Facility-scale economics** — a parapet-capped plant building with vapor
-  wisps drifting off its stack and vent, a cutaway flowsheet panel that
-  lights amber, a skirted tray column with a domed head piped to an
-  overhead condenser drum, and a large semicircular $ gauge above.
+* **Facility-scale economics** — a parapet-capped plant building venting
+  billowing vapor plumes off its stack and roof vent, a cutaway flowsheet
+  panel (pump, exchanger, stirred reactor, column, reflux drum, product
+  tank, and a recycle back to the feed) that lights amber, and a skirted
+  tray column with a domed head, a breathing sump and vapor rising between
+  its trays, piped to an overhead condenser drum. Slugs of material ride
+  every pipe run and every flowsheet stream. A large semicircular $ gauge
+  sits above.
 
 Forward arrows link the stages and a dashed feedback arc curves back
 underneath. Amber comet pulses travel those paths, each stage glowing as a
 pulse reaches it.
 
 One loop is 10 s at 20 fps (200 frames), rendered 2000 x 720 px. Ambient
-motion (impeller, bubbles, surface wave, vapor) runs in every frame with an
-integer number of cycles per loop; on top sit three acts — a pulse down the
+motion (impeller, bubbles, surface wave, vapor plumes, pipe and flowsheet
+slugs, column vapor, sump/drum levels) runs in every frame with an integer
+number of cycles per loop; on top sit three acts — a pulse down the
 pipeline, then a slider move that boosts the curve and swings the gauge,
 then a feedback pulse right-to-left while everything eases home, masking the
 reset. Frame 0 and the last frame differ no more than any adjacent pair, so
@@ -77,9 +82,14 @@ FPS = 20
 # Every value is a color except 'sheen_a', the alpha of the vessel's glass
 # highlight: on the dark theme the same 0.30 that reads as a subtle sheen on
 # white glass reads as an opaque grey rod, so dark dials it down.
+# 'vapor' is 'peri' on light, where a periwinkle plume already separates
+# cleanly from white; on dark, 'peri' sits close enough to 'bg' that the
+# plume dissolves at the 556 px delivery size, so dark takes a lighter
+# periwinkle. It only ever paints small, soft, translucent puffs — no large
+# flat region depends on it quantizing exactly.
 THEMES = {
     'light': dict(bg='#ffffff', stroke='#1f2a63', navy_mid='#3d4d8f',
-                  peri='#8a93b8',
+                  peri='#8a93b8', vapor='#8a93b8',
                   card='#eef0f7', card_edge='#c3c9de', shadow='#1f2a63',
                   steel='#7d8799', steel_dark='#5a6478',
                   accent='#f5a623',
@@ -90,7 +100,7 @@ THEMES = {
                   glass0='#e7eaf4', glass1='#f8f9fc',
                   bldg0='#1f2a63', bldg1='#3d4d8f'),
     'dark':  dict(bg='#14181e', stroke='#d7dce8', navy_mid='#38466e',
-                  peri='#5a6478',
+                  peri='#5a6478', vapor='#98a3bb',
                   card='#202836', card_edge='#3a4459', shadow='#000000',
                   steel='#8a94a8', steel_dark='#67718a',
                   accent='#f5a623',
@@ -142,11 +152,31 @@ STACK_BAND = (7.53, 2.71, 0.34, 0.09)    # collar below the stack rim
 VENT = (7.28, 2.30, 0.13, 0.30)          # second, smaller roof vent
 VENT_BAND = (7.235, 2.495, 0.22, 0.07)
 SEAM_YS = (2.16, 1.17)                   # cladding seams on the exposed face
-PANEL = (7.30, 1.28, 1.06, 0.78)         # flowsheet cutaway card
-FLOW_BOXES = ((7.38, 1.72, 0.24, 0.20), (7.74, 1.84, 0.24, 0.20),
-              (7.74, 1.42, 0.24, 0.20), (8.06, 1.60, 0.24, 0.20))
-FLOW_LINES = (((7.62, 1.84), (7.74, 1.92)), ((7.62, 1.80), (7.74, 1.54)),
-              ((7.98, 1.92), (8.06, 1.76)), ((7.98, 1.52), (8.06, 1.64)))
+PANEL = (7.26, 1.24, 1.20, 0.84)         # flowsheet cutaway card
+# The cutaway flowsheet: six *differentiated* unit silhouettes wired by seven
+# streams, the last of which recycles the column bottoms into the feed — the
+# same feedback idea the scene's own dashed arc carries, one scale down.
+# Differentiation matters more than count at the 556 px delivery size, where
+# the whole panel is ~67 px wide: a triangle, a circle, a box, a domed
+# rectangle, a capsule and a second circle stay tellable apart where six
+# boxes would not. Every unit is *stroked, never filled*, so the amber
+# 'lit' pass can re-draw the entire sheet in one pass over the same geometry.
+FS_PUMP, FS_R_PUMP = (7.40, 1.50), 0.055        # feed pump (triangle)
+FS_HX, FS_R_HX = (7.60, 1.50), 0.070            # exchanger (circle + duty bar)
+FS_REACTOR = (7.68, 1.72, 0.21, 0.20)           # stirred reactor (box)
+FS_COLUMN, FS_DOME = (7.98, 1.45, 0.14, 0.40), 0.055     # domed column
+FS_DRUM = (8.22, 1.78, 0.17, 0.095)             # reflux drum (capsule)
+FS_TANK, FS_R_TANK = (8.305, 1.50), 0.085       # product tank (circle)
+FS_STREAMS = (
+    ((7.31, 1.50), (7.345, 1.50)),                                  # feed in
+    ((7.455, 1.50), (7.53, 1.50)),                                  # pump->HX
+    ((7.67, 1.50), (7.785, 1.50), (7.785, 1.72)),                   # HX->rx
+    ((7.89, 1.80), (7.935, 1.80), (7.935, 1.66), (7.98, 1.66)),     # rx->col
+    ((8.05, 1.905), (8.05, 1.955), (8.305, 1.955), (8.305, 1.875)), # overhead
+    ((8.305, 1.78), (8.305, 1.585)),                                # -> tank
+    ((8.05, 1.45), (8.05, 1.36), (7.49, 1.36), (7.49, 1.50)),       # recycle
+)
+FS_LEVEL_CYCLES = 3       # drum/tank level breathing, integer cycles per loop
 # Distillation column: COLUMN is the straight *shell*; elliptical heads are
 # added above and below it, so the silhouette tops out at 1.30 + 1.36 + 0.17
 # = 2.83 — clear of the gauge, whose face is the semicircle above y 3.03.
@@ -160,7 +190,18 @@ PIPE_Y, PIPE2_Y = 2.02, 1.50             # building -> column runs
 OVERHEAD_Y = 2.925                       # overhead vapor run above the column
 DRUM = (9.04, 2.84, 0.28, 0.17)          # condenser / reflux drum
 RETURN_X, RETURN_Y = 9.38, 1.44          # return leg down to the column base
-VAPOR_CYCLES = 2                          # integer cycles per loop
+# Plant ambient motion. Every constant below is an integer number of cycles
+# per DUR-second loop (or, for the slug trains, a *speed* that
+# ``_flow_marks`` rounds to an integer cycle count), so the wrap stays
+# invisible. Speeds are in data units / s: at 200 dpi one data unit is 200 px
+# rendered and 55.6 px at the 556 px delivery width, so ~0.3-0.45 data/s is
+# 17-25 px/s on the page — plainly moving without strobing at 20 fps.
+VAPOR_CYCLES, VAPOR_PUFFS = 3, 5          # stack/vent plumes
+COL_SUMP_Y = 1.46                         # nominal column sump level
+COL_LEVEL_CYCLES = 4                      # sump/drum level breathing
+COL_VAPOR_CYCLES = 3                      # vapor ticks rising between trays
+FLOW_SLUG_V = 0.30                        # flowsheet stream slug speed
+PIPE_SLUG_V = 0.45                        # plant pipe-run slug speed
 GAUGE_C = (8.28, 3.03)
 GAUGE_R = 0.50                            # ~1.5x the old 0.34
 
@@ -209,6 +250,55 @@ def soft_shadow(ax, xy, rx, ry, th, alpha=0.18, zorder=1):
     for k, a in ((1.30, 0.35), (1.12, 0.65), (1.0, 1.0)):
         ax.add_patch(Ellipse(xy, 2*rx*k, 2*ry*k, fc=th['shadow'], ec='none',
                              alpha=alpha*a*0.4, zorder=zorder))
+
+
+def _path_pts(pts, step=0.004):
+    """Densely resample a polyline; returns (points, cumulative arc length)."""
+    xy = [np.asarray(pts[0], float)]
+    for p0, p1 in zip(pts[:-1], pts[1:]):
+        a, b = np.asarray(p0, float), np.asarray(p1, float)
+        k = max(int(np.hypot(*(b - a))/step), 2)
+        xy.extend(a + (b - a)*i/k for i in range(1, k + 1))
+    xy = np.asarray(xy)
+    d = np.r_[0.0, np.cumsum(np.hypot(*np.diff(xy, axis=0).T))]
+    return xy, d
+
+
+def _flow_marks(ax, th, pts, t, speed, length=0.07, lw=2.0, color=None,
+                alpha=0.95, zorder=2.68, phase=0.0, max_cycles=12):
+    """Slugs of material sliding along a pipe/stream run.
+
+    The plant's counterpart to the reactor's bubbles: a train of short bright
+    capsules that ride ``pts`` (a polyline, given in flow direction) and read
+    as flow rather than as plumbing. Each capsule is a sub-range of the
+    resampled path, so it bends around corners instead of jumping them.
+
+    Rather than fixing a cycle count per run — which would make slugs crawl
+    down the 1.7-long return leg and blur along the 0.21 feed runs — the
+    caller fixes a *speed* and this solves for the nearest integer number of
+    cycles per loop (``max_cycles`` caps the rate on stub-length runs). An
+    integer count is what keeps the loop seamless; capsules also enter and
+    leave past the path ends, so at u = 0 and u = 1 nothing is drawn and the
+    wrap has nothing to show. Mark count follows path length, keeping the
+    spacing between slugs roughly constant across runs.
+    """
+    xy, d = _path_pts(pts)
+    L = float(d[-1])
+    if L <= 1e-9:
+        return
+    span = min(length, 0.5*L)
+    n = max(1, int(round(L/0.30)))
+    cycles = int(min(max(round(speed*DUR/(L + span)), 1), max_cycles))
+    for i in range(n):
+        u = (cycles*t/DUR + phase + i/n) % 1.0
+        s0 = u*(L + span) - span
+        a, b = max(s0, 0.0), min(s0 + span, L)
+        m = (d >= a) & (d <= b)
+        if int(m.sum()) < 2:
+            continue
+        ax.plot(xy[m, 0], xy[m, 1], color=color or th['stroke'], lw=lw,
+                solid_capstyle='round', solid_joinstyle='round', alpha=alpha,
+                zorder=zorder)
 
 
 def draw_caption(ax, th, x, text):
@@ -444,6 +534,71 @@ def _column_poly(fc='none', ec='none', lw=0, zorder=2):
     return Polygon(top + bot, closed=True, fc=fc, ec=ec, lw=lw, zorder=zorder)
 
 
+def _fs_column_poly(ec='none', lw=0, alpha=1.0, zorder=4):
+    """Flowsheet column: straight shell closed by one domed head, as a poly.
+
+    Same single-stroke trick as ``_column_poly`` — inside the panel a seam
+    tick where a cap meets a shell would be a stray pixel, not a weld.
+    """
+    x, y, w, h = FS_COLUMN
+    cx, rx, yt = x + w/2, w/2, y + h
+    dome = [(cx + rx*np.cos(a), yt + FS_DOME*np.sin(a))
+            for a in np.linspace(0.0, np.pi, 16)]
+    return Polygon(dome + [(x, y), (x + w, y)], closed=True, fc='none',
+                   ec=ec, lw=lw, alpha=alpha, zorder=zorder)
+
+
+def _flowsheet_pass(ax, th, levels, color, lw, alpha, zorder=4):
+    """Stroke the whole cutaway flowsheet once, in one color.
+
+    Called twice — a steel base pass, then the amber ``flow_lit`` pass — so
+    every unit, internal and stream lights together when a pulse reaches the
+    plant. Nothing here is filled, which is what lets the second pass simply
+    re-trace the first.
+    """
+    drum_lv, tank_lv = levels
+    kw = dict(fc='none', ec=color, lw=lw, alpha=alpha, zorder=zorder)
+    line = dict(color=color, lw=lw, alpha=alpha, zorder=zorder,
+                solid_capstyle='round', solid_joinstyle='round')
+    # feed pump: triangle, flat face to the feed, apex to the exchanger
+    pxc, pyc = FS_PUMP
+    ax.add_patch(Polygon([(pxc - FS_R_PUMP, pyc - FS_R_PUMP),
+                          (pxc - FS_R_PUMP, pyc + FS_R_PUMP),
+                          (pxc + FS_R_PUMP, pyc)], closed=True, **kw))
+    # exchanger: circle crossed by its duty bar
+    hx, hy = FS_HX
+    ax.add_patch(Circle(FS_HX, FS_R_HX, **kw))
+    dd = FS_R_HX*0.70
+    ax.plot([hx - dd, hx + dd], [hy - dd, hy + dd], **line)
+    # stirred reactor: box with a shaft and one impeller blade
+    rx0, ry0, rw, rh = FS_REACTOR
+    ax.add_patch(Rectangle((rx0, ry0), rw, rh, **kw))
+    rcx = rx0 + rw/2
+    ax.plot([rcx, rcx], [ry0 + rh, ry0 + rh*0.36], **line)
+    ax.plot([rcx - rw*0.24, rcx + rw*0.24], [ry0 + rh*0.36]*2, **line)
+    # column: domed shell with three tray decks
+    ax.add_patch(_fs_column_poly(ec=color, lw=lw, alpha=alpha, zorder=zorder))
+    cx0, cy0, cw, ch = FS_COLUMN
+    for ty in np.linspace(cy0 + 0.22*ch, cy0 + 0.82*ch, 3):
+        ax.plot([cx0 + 0.20*cw, cx0 + 0.80*cw], [ty, ty],
+                color=color, lw=lw*0.75, alpha=alpha, zorder=zorder)
+    # reflux drum and product tank, each holding a breathing liquid level
+    dx0, dy0, dw, dh = FS_DRUM
+    ax.add_patch(FancyBboxPatch((dx0, dy0), dw, dh,
+                                boxstyle='round,pad=0,rounding_size=0.045',
+                                **kw))
+    ax.plot([dx0 + 0.014, dx0 + dw - 0.014], [dy0 + dh*drum_lv]*2,
+            color=color, lw=lw*0.75, alpha=alpha*0.85, zorder=zorder)
+    tcx, tcy = FS_TANK
+    ax.add_patch(Circle(FS_TANK, FS_R_TANK, **kw))
+    ly = tcy + FS_R_TANK*(2.0*tank_lv - 1.0)
+    half = float(np.sqrt(max(FS_R_TANK**2 - (ly - tcy)**2, 0.0)))
+    ax.plot([tcx - half, tcx + half], [ly, ly], color=color, lw=lw*0.75,
+            alpha=alpha*0.85, zorder=zorder)
+    for pts in FS_STREAMS:
+        ax.plot([p[0] for p in pts], [p[1] for p in pts], **line)
+
+
 def draw_plant(ax, th, t, glow, flow_lit):
     _halo(ax, th, (8.30, 1.95), 1.12, 1.05, glow)
     x, y, w, h = PLANT_BLDG
@@ -470,33 +625,51 @@ def draw_plant(ax, th, t, glow, flow_lit):
     for (bx, by, bw, bh) in (PARAPET, STACK_BAND, VENT_BAND):
         ax.add_patch(Rectangle((bx, by), bw, bh, fc=th['bldg0'],
                                ec=th['stroke'], lw=1.8, zorder=3.1))
-    # vapor wisps drifting up-right from the stack (ambient, periodic), with
-    # a smaller plume off the vent on the same VAPOR_CYCLES so both wrap
-    for (bx, by, bw, bh), rise, r0, r1, aa in ((STACK, 0.34, 0.05, 0.08, 0.35),
-                                               (VENT, 0.20, 0.03, 0.05, 0.26)):
+    # vapor plumes off the stack and the vent: five puffs each, billowing as
+    # they rise and drifting *left* — away from the $ gauge (center 8.28,
+    # radius 0.50), which is what buys the room to make them big enough to
+    # read. The widest stack puff clears the gauge face by ~0.09 and tops out
+    # at y 3.51, inside the 3.6 canvas. Alpha follows sin(pi*u), so a puff
+    # fades in at the rim and out at the top: the plume never pops, and the
+    # loop wrap has nothing to show since alpha is 0 at both u = 0 and u = 1.
+    for (bx, by, bw, bh), rise, drift, r0, r1, aa in (
+            (STACK, 0.38, -0.24, 0.060, 0.130, 0.62),
+            (VENT, 0.26, -0.08, 0.038, 0.085, 0.48)):
         sx, sy = bx + bw/2, by + bh
-        for i in range(3):
-            u = (VAPOR_CYCLES*t/DUR + i/3.0) % 1.0
-            ax.add_patch(Circle((sx + 0.10*u + 0.03*np.sin(2*np.pi*u),
-                                 sy + 0.05 + rise*u),
-                                r0 + r1*u, fc=th['peri'], ec='none',
-                                alpha=aa*(1.0 - u), zorder=2.5))
+        for i in range(VAPOR_PUFFS):
+            u = (VAPOR_CYCLES*t/DUR + i/VAPOR_PUFFS) % 1.0
+            wob = 0.035*np.sin(2*np.pi*(u + i/VAPOR_PUFFS))
+            a = aa*np.sin(np.pi*u)**0.7
+            # drift ~ u**0.6: the plume leans away early, where it would
+            # otherwise brush the gauge's baseline corner, and lands in the
+            # same place at u = 1.
+            c = (sx + drift*u**0.6 + wob, sy + 0.04 + rise*u)
+            # three nested discs per puff: same footprint as one flat disc,
+            # but the rim fades instead of ending on a hard circle, which is
+            # what separates vapor from a bubble at this size.
+            for k, ka in ((1.0, 0.34), (0.74, 0.34), (0.48, 0.40)):
+                ax.add_patch(Circle(c, (r0 + r1*u)*k, fc=th['vapor'],
+                                    ec='none', alpha=a*ka, zorder=2.5))
     # flowsheet cutaway panel; base pass in steel, lit pass in amber
     px, py, pw, phh = PANEL
     ax.add_patch(FancyBboxPatch((px, py), pw, phh,
                                 boxstyle='round,pad=0,rounding_size=0.08',
                                 fc=th['card'], ec=th['card_edge'], lw=1.2,
                                 alpha=0.95, zorder=3.5))
+    ph_lv = 2*np.pi*FS_LEVEL_CYCLES*t/DUR
+    levels = (0.45 + 0.16*np.sin(ph_lv), 0.50 + 0.18*np.sin(ph_lv + 2.1))
     for color, alpha, lw in ((th['steel'], 1.0, 1.8),
                              (th['accent'], min(flow_lit, 1.0), 2.4)):
         if alpha <= 0:
             continue
-        for bx, by, bw, bh in FLOW_BOXES:
-            ax.add_patch(Rectangle((bx, by), bw, bh, fc='none', ec=color,
-                                   lw=lw, alpha=alpha, zorder=4))
-        for (x0, y0), (x1, y1) in FLOW_LINES:
-            ax.plot([x0, x1], [y0, y1], color=color, lw=lw, alpha=alpha,
-                    zorder=4)
+        _flowsheet_pass(ax, th, levels, color, lw, alpha)
+    # slugs riding the streams, drawn over both passes so the sheet keeps
+    # moving while it is lit. Navy/pale 'stroke' (never amber — amber is the
+    # attention channel) is the highest-contrast bead available against a
+    # steel line on the panel card, in both themes.
+    for k, pts in enumerate(FS_STREAMS):
+        _flow_marks(ax, th, pts, t, FLOW_SLUG_V, length=0.055, lw=1.7,
+                    zorder=4.35, phase=0.11*k)
     colx, coly, colw, colh = COLUMN
     cx = colx + colw/2
     # two feed runs from the building into the column shell, one gated by a
@@ -514,21 +687,41 @@ def draw_plant(ax, th, t, glow, flow_lit):
                               (mx, PIPE_Y)], closed=True,
                              fc=th['steel_dark'], ec='none', zorder=2.7))
     # overhead vapor line -> condenser drum -> return leg into the column base
-    ax.plot([cx, cx, DRUM[0]], [coly + colh + COL_HEAD_T, OVERHEAD_Y,
-                                OVERHEAD_Y],
-            color=th['steel_dark'], lw=2.2, solid_capstyle='round',
-            solid_joinstyle='round', zorder=2.6)
-    ax.plot([DRUM[0] + DRUM[2], RETURN_X, RETURN_X, colx + colw],
-            [OVERHEAD_Y, OVERHEAD_Y, RETURN_Y, RETURN_Y],
-            color=th['steel_dark'], lw=2.2, solid_capstyle='round',
-            solid_joinstyle='round', zorder=2.6)
+    riser = ((cx, coly + colh + COL_HEAD_T), (cx, OVERHEAD_Y),
+             (DRUM[0], OVERHEAD_Y))
+    ret = ((DRUM[0] + DRUM[2], OVERHEAD_Y), (RETURN_X, OVERHEAD_Y),
+           (RETURN_X, RETURN_Y), (colx + colw, RETURN_Y))
+    for run in (riser, ret):
+        ax.plot([p[0] for p in run], [p[1] for p in run],
+                color=th['steel_dark'], lw=2.2, solid_capstyle='round',
+                solid_joinstyle='round', zorder=2.6)
     for fy in (2.30, 1.82):
         ax.plot([RETURN_X - 0.055, RETURN_X + 0.055], [fy, fy],
                 color=th['steel_dark'], lw=2, zorder=2.6)   # flange ticks
+    # slug trains on all four runs: feed in from the building, vapor up the
+    # riser, condensate back down the long return leg. One shared speed, so
+    # the whole plant appears to move material at one rate.
+    for k, run in enumerate((((x + w, PIPE_Y), (colx, PIPE_Y)),
+                             ((x + w, PIPE2_Y), (colx, PIPE2_Y)),
+                             riser, ret)):
+        _flow_marks(ax, th, run, t, PIPE_SLUG_V, length=0.10, lw=2.0,
+                    alpha=0.9, zorder=2.68, phase=0.17*k)
+    drum = FancyBboxPatch(DRUM[:2], DRUM[2], DRUM[3],
+                          boxstyle='round,pad=0,rounding_size=0.085',
+                          fc=th['glass1'], ec=th['stroke'], lw=2, zorder=3)
+    ax.add_patch(drum)
+    # condensate holdup in the drum, breathing anti-phase to the column sump
+    # below: the two inventories read as trading material back and forth.
+    dlv = DRUM[1] + DRUM[3]*(0.46 - 0.17*np.sin(2*np.pi*COL_LEVEL_CYCLES
+                                                * t/DUR))
+    dliq = Rectangle(DRUM[:2], DRUM[2], dlv - DRUM[1], fc=th['peri'],
+                     ec='none', alpha=0.55, zorder=3.02)
+    ax.add_patch(dliq)
+    dliq.set_clip_path(drum)
     ax.add_patch(FancyBboxPatch(DRUM[:2], DRUM[2], DRUM[3],
                                 boxstyle='round,pad=0,rounding_size=0.085',
-                                fc=th['glass1'], ec=th['stroke'], lw=2,
-                                zorder=3))
+                                fc='none', ec=th['stroke'], lw=2,
+                                zorder=3.05))
     # column: plinth + skirt below, glass-gradient shell with tray decks above
     ax.add_patch(Rectangle(COL_PLINTH[:2], COL_PLINTH[2], COL_PLINTH[3],
                            fc=th['stroke'], ec='none', zorder=3.2))
@@ -537,6 +730,25 @@ def draw_plant(ax, th, t, glow, flow_lit):
     gradient_fill(ax, col, (colx, coly - COL_HEAD_B, colx + colw,
                             coly + colh + COL_HEAD_T),
                   th['glass0'], th['glass1'], direction='h', zorder=2)
+    # column internals, all under the shell outline (3) and the tray decks:
+    # a sump whose level breathes, and vapor ticks rising tray to tray. This
+    # is the plant's answer to the reactor's bubble column — the cue that
+    # something is happening *inside* the equipment, not just around it.
+    lvl = COL_SUMP_Y + 0.030*np.sin(2*np.pi*COL_LEVEL_CYCLES*t/DUR)
+    sump = Rectangle((colx, coly - COL_HEAD_B), colw,
+                     lvl - (coly - COL_HEAD_B), fc=th['peri'], ec='none',
+                     alpha=0.45, zorder=2.45)
+    ax.add_patch(sump)
+    sump.set_clip_path(col)
+    ax.plot([colx + 0.045, colx + colw - 0.045], [lvl, lvl],
+            color=th['steel_dark'], lw=1.8, alpha=0.8, zorder=2.5)
+    for tx, off in ((cx - 0.11, 0.0), (cx, 0.45), (cx + 0.11, 0.75)):
+        for j in (0, 1):
+            u = (COL_VAPOR_CYCLES*t/DUR + off + 0.5*j) % 1.0
+            ty = COL_TRAY_YS[0] + 0.04 + u*(COL_TRAY_YS[1] - COL_TRAY_YS[0])
+            ax.plot([tx - 0.035, tx + 0.035], [ty, ty], color=th['steel_dark'],
+                    lw=1.8, solid_capstyle='round',
+                    alpha=0.55*np.sin(np.pi*u)**0.6, zorder=2.55)
     ax.add_patch(Rectangle(COL_SKIRT[:2], COL_SKIRT[2], COL_SKIRT[3],
                            fc=th['navy_mid'], ec=th['stroke'], lw=1.8,
                            zorder=3.15))
@@ -660,9 +872,9 @@ def render_frame(th, state):
 # %% Animation timeline
 #
 # One 10 s loop. Ambient motion (impeller spin, bubbles, surface wave, vapor
-# wisps) derives from state['t'] and runs in every frame, each with an
-# integer number of cycles per loop so the wrap is seamless. On top, three
-# acts:
+# plumes, pipe/flowsheet slug trains, column vapor and levels) derives from
+# state['t'] and runs in every frame, each with an integer number of cycles
+# per loop so the wrap is seamless. On top, three acts:
 #   Act 1 (~0-3.6 s)   forward comet microbe -> reactor -> plant; each stage
 #                      glows as it passes; the needle settles mid-scale.
 #   Act 2 (~3.9-7.8 s) the amber slider moves; a second comet propagates;
