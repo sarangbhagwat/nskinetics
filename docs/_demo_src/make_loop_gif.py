@@ -8,13 +8,30 @@
 """
 Render the animated "strain-to-TEA" loop GIFs for the docs landing page.
 
-The scene is a three-stage pipeline drawn left to right — an engineered
-microbe with abstract sliders, a stirred-tank reactor, and a minimalistic
-chemical plant with a flowsheet nested inside it plus a $ gauge — connected
-by forward arrows and a feedback arrow curving back underneath. The
-animation sends a pulse down the pipeline, moves a slider, ripples the
-change through to the gauge, and pulses the feedback arrow while easing
-everything back for a seamless loop.
+The scene is a captioned three-stage pipeline drawn left to right:
+
+* **Engineered strain** — a teal ovoid microbe with granules and an amber
+  plasmid loop, above a control card of three tick-marked sliders (the
+  middle, amber one is the parameter the animation turns).
+* **Fermentation kinetics** — a glass stirred tank: gradient broth with a
+  waving surface, a sparger streaming rising bubbles, a two-tier Rushton
+  impeller spinning in side view, and an amber product curve that boosts
+  when the parameter changes.
+* **Process & TEA** — a plant building with vapor wisps drifting off its
+  stack, a cutaway flowsheet panel that lights amber, a trayed
+  distillation column, and a large semicircular $ gauge above.
+
+Forward arrows link the stages and a dashed feedback arc curves back
+underneath. Amber comet pulses travel those paths, each stage glowing as a
+pulse reaches it.
+
+One loop is 10 s at 20 fps (200 frames), rendered 2000 x 720 px. Ambient
+motion (impeller, bubbles, surface wave, vapor) runs in every frame with an
+integer number of cycles per loop; on top sit three acts — a pulse down the
+pipeline, then a slider move that boosts the curve and swings the gauge,
+then a feedback pulse right-to-left while everything eases home, masking the
+reset. Frame 0 and the last frame differ no more than any adjacent pair, so
+the loop wraps seamlessly.
 
 Run with no arguments to (re)build both theme variants:
 
@@ -28,6 +45,8 @@ The ``*_still.png`` files are the frame-0 stills the landing page serves
 instead of the GIF under ``prefers-reduced-motion: reduce``.
 
 Use ``--stills DIR`` to render one PNG per preset state for visual review.
+Every frame is quantized against one shared 256-color palette with dithering
+off; pass ``--dither`` to enable Floyd-Steinberg if the gradients band.
 """
 import argparse
 from pathlib import Path
@@ -574,22 +593,28 @@ def timeline(t):
 def _shared_palette(frames, bg_hex):
     """Build the one palette every frame is quantized against.
 
-    Derived from a probe holding *all* frames, not from frame 0: at t = 0 no
-    pulse, glow or boosted curve is on screen, so a frame-0 palette has no
-    entry for those colors and nearest-match snaps them to wrong hues.
-    MAXCOVERAGE (not MEDIANCUT) because the canvas is ~94% background —
+    Derived from a probe of *many* frames, not frame 0: at t = 0 no comet,
+    glow or boosted curve is on screen, so a frame-0 palette has no entry
+    for those colors and nearest-match snaps them to wrong hues.
+    MAXCOVERAGE (not MEDIANCUT) because the canvas is mostly background —
     median cut spends its budget subdividing that near-uniform mass and
     starves the sparse accent colors that carry the animation.
 
-    The background itself is then pinned to the exact theme color: the GIF is
-    opaque and matted on the docs page, so a near-miss there would show as a
-    visibly bounded off-white (or off-dark) rectangle on the page.
+    At 2000 x 720 x 200 frames a full-resolution probe is ~0.9 GB of RGB,
+    so the probe takes every 2nd frame at half resolution — still covering
+    every act (comets, glows, boosted curve, feedback) and every gradient.
+
+    The background itself is then pinned to the exact theme color: the GIF
+    is opaque and matted on the docs page, so a near-miss there would show
+    as a visibly bounded off-white (or off-dark) rectangle on the page.
     """
-    w, h = frames[0].size
-    probe = Image.new('RGB', (w, h*len(frames)))
-    for k, f in enumerate(frames):
+    sub = [f.resize((f.width//2, f.height//2), Image.Resampling.BILINEAR)
+           for f in frames[::2]]
+    w, h = sub[0].size
+    probe = Image.new('RGB', (w, h*len(sub)))
+    for k, f in enumerate(sub):
         probe.paste(f, (0, k*h))
-    base = probe.quantize(colors=128, method=Image.MAXCOVERAGE)
+    base = probe.quantize(colors=256, method=Image.MAXCOVERAGE)
     bg = tuple(int(bg_hex[i:i + 2], 16) for i in (1, 3, 5))
     idx = Image.new('RGB', (1, 1), bg).quantize(
         palette=base, dither=Image.Dither.NONE).getpixel((0, 0))
@@ -601,21 +626,18 @@ def _shared_palette(frames, bg_hex):
     return out
 
 
-def build_gif(theme_name, out_path):
+def build_gif(theme_name, out_path, dither=Image.Dither.NONE):
     """Render all frames for one theme and write an infinite-loop GIF."""
     th = THEMES[theme_name]
     n = int(round(DUR*FPS))
     frames = [render_frame(th, timeline(i/FPS)) for i in range(n)]
-    # Quantize every frame against one shared palette (flat art, no dither)
-    # for a small file with no inter-frame palette flicker.
+    # Quantize every frame against one shared palette. Dither stays off by
+    # default (flat regions stay clean); pass --dither only if the review
+    # stills show visible banding in the gradients.
     base = _shared_palette(frames, th['bg'])
-    pal_frames = [f.quantize(palette=base, dither=Image.Dither.NONE)
-                  for f in frames]
+    pal_frames = [f.quantize(palette=base, dither=dither) for f in frames]
     pal_frames[0].save(out_path, save_all=True, append_images=pal_frames[1:],
                        duration=int(1000/FPS), loop=0, optimize=True)
-    # {n} is the frame count rendered and handed to Pillow; the written file
-    # can hold one fewer, as Pillow losslessly merges a pixel-identical
-    # adjacent pair.
     print(f'{out_path} ({out_path.stat().st_size/1024:.0f} KiB, '
           f'{n} rendered frames)')
 
@@ -639,6 +661,8 @@ def main(argv=None):
         description='Build the landing-page loop GIFs (or review stills).')
     ap.add_argument('--stills', metavar='DIR',
                     help='render one PNG per preset state into DIR and exit')
+    ap.add_argument('--dither', action='store_true',
+                    help='Floyd-Steinberg dithering (only if gradients band)')
     args = ap.parse_args(argv)
     if args.stills:
         out = Path(args.stills)
@@ -650,8 +674,11 @@ def main(argv=None):
         print(f'wrote {len(THEMES)*len(_PRESETS)} stills to {out}')
         return
     OUT_DIR.mkdir(parents=True, exist_ok=True)
+    dither = (Image.Dither.FLOYDSTEINBERG if args.dither
+              else Image.Dither.NONE)
     for theme_name in THEMES:
-        build_gif(theme_name, OUT_DIR / f'loop_{theme_name}.gif')
+        build_gif(theme_name, OUT_DIR / f'loop_{theme_name}.gif',
+                  dither=dither)
     # Frame-0 stills: what the landing page shows in place of the GIF under
     # prefers-reduced-motion (see the <picture> blocks in docs/source/index.rst).
     for theme_name, th in THEMES.items():
