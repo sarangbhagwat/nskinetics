@@ -107,16 +107,17 @@ WAVE_CYCLES = 4                     # surface-wave cycles per loop (integer)
 BUBBLES = ((4.62, 2, 0.05), (4.78, 3, 0.55), (4.93, 2, 0.35),
            (5.07, 3, 0.80), (5.22, 2, 0.62), (5.38, 3, 0.15))
 
-# --- legacy stage geometry (removed as Task 4 replaces the plant stage) ---
-_PLANT_OUTLINE = [
-    (7.30, 1.05), (7.30, 2.25), (7.70, 2.25), (7.70, 2.90), (7.90, 2.90),
-    (7.90, 2.25), (8.60, 2.25), (8.60, 1.05),
-]
-_FLOWSHEET_BOXES = [(7.48, 1.52, 0.30, 0.24), (7.98, 1.72, 0.30, 0.24),
-                    (8.18, 1.22, 0.30, 0.24)]
-_FLOWSHEET_LINES = [((7.78, 1.64), (7.98, 1.84)), ((8.13, 1.72), (8.33, 1.46))]
-GAUGE_C = (8.25, 3.02)
-GAUGE_R = 0.34
+PLANT_BLDG = (7.18, 1.05, 1.37, 1.25)    # x, y, w, h
+STACK = (7.60, 2.30, 0.20, 0.60)
+PANEL = (7.30, 1.28, 1.06, 0.78)         # flowsheet cutaway card
+FLOW_BOXES = ((7.38, 1.72, 0.24, 0.20), (7.74, 1.84, 0.24, 0.20),
+              (7.74, 1.42, 0.24, 0.20), (8.06, 1.60, 0.24, 0.20))
+FLOW_LINES = (((7.62, 1.84), (7.74, 1.92)), ((7.62, 1.80), (7.74, 1.54)),
+              ((7.98, 1.92), (8.10, 1.76)), ((7.98, 1.52), (8.10, 1.64)))
+COLUMN = (8.76, 1.05, 0.44, 1.85)
+VAPOR_CYCLES = 2                          # integer cycles per loop
+GAUGE_C = (8.28, 3.03)
+GAUGE_R = 0.50                            # ~1.5x the old 0.34
 
 
 def default_state():
@@ -343,48 +344,88 @@ def draw_reactor(ax, th, t, glow, curve_boost):
 
 
 def draw_plant(ax, th, t, glow, flow_lit):
-    # halo kept inside the canvas (rx*1.35 outer ring) so it fades out rather
-    # than clipping against the right edge
     _halo(ax, th, (8.30, 1.95), 1.12, 1.05, glow)
-    xs, ys = zip(*_PLANT_OUTLINE)
-    ax.plot(xs, ys, color=th['stroke'], lw=3, solid_joinstyle='round',
-            solid_capstyle='round', zorder=3)
-    # column + connecting pipe + ground line
-    ax.add_patch(FancyBboxPatch((8.90, 1.05), 0.45, 1.75,
-                                boxstyle='round,pad=0,rounding_size=0.16',
-                                fc='none', ec=th['stroke'], lw=3, zorder=3))
-    ax.plot([8.60, 8.90], [1.90, 1.90], color=th['stroke'], lw=2.5, zorder=3)
-    ax.plot([7.15, 9.55], [1.05, 1.05], color=th['stroke'], lw=3,
-            solid_capstyle='round', zorder=3)
-    # nested flowsheet (cutaway): base pass in 'faint', lit pass in amber
-    for color, alpha, lw in ((th['faint'], 1.0, 2.0),
+    x, y, w, h = PLANT_BLDG
+    soft_shadow(ax, (x + w/2 + 0.5, y - 0.02), 1.15, 0.08, th)
+    # building + stack: filled navy gradient with a stroke outline
+    for (bx, by, bw, bh) in (PLANT_BLDG, STACK):
+        p = FancyBboxPatch((bx, by), bw, bh,
+                           boxstyle='round,pad=0,rounding_size=0.05',
+                           fc='none', ec='none', zorder=2)
+        ax.add_patch(p)
+        gradient_fill(ax, p, (bx, by, bx + bw, by + bh),
+                      th['bldg0'], th['bldg1'], zorder=2)
+        ax.add_patch(FancyBboxPatch((bx, by), bw, bh,
+                                    boxstyle='round,pad=0,rounding_size=0.05',
+                                    fc='none', ec=th['stroke'], lw=2.5,
+                                    zorder=3))
+    # vapor wisps drifting up-right from the stack (ambient, periodic)
+    sx, sy = STACK[0] + STACK[2]/2, STACK[1] + STACK[3]
+    for i in range(3):
+        u = (VAPOR_CYCLES*t/DUR + i/3.0) % 1.0
+        ax.add_patch(Circle((sx + 0.10*u + 0.03*np.sin(2*np.pi*u),
+                             sy + 0.05 + 0.34*u),
+                            0.05 + 0.08*u, fc=th['peri'], ec='none',
+                            alpha=0.35*(1.0 - u), zorder=2.5))
+    # flowsheet cutaway panel; base pass in steel, lit pass in amber
+    px, py, pw, phh = PANEL
+    ax.add_patch(FancyBboxPatch((px, py), pw, phh,
+                                boxstyle='round,pad=0,rounding_size=0.08',
+                                fc=th['card'], ec=th['card_edge'], lw=1.2,
+                                alpha=0.95, zorder=3.5))
+    for color, alpha, lw in ((th['steel'], 1.0, 1.8),
                              (th['accent'], min(flow_lit, 1.0), 2.4)):
         if alpha <= 0:
             continue
-        for x, y, w, h in _FLOWSHEET_BOXES:
-            ax.add_patch(Rectangle((x, y), w, h, fc='none', ec=color,
+        for bx, by, bw, bh in FLOW_BOXES:
+            ax.add_patch(Rectangle((bx, by), bw, bh, fc='none', ec=color,
                                    lw=lw, alpha=alpha, zorder=4))
-        for (x0, y0), (x1, y1) in _FLOWSHEET_LINES:
+        for (x0, y0), (x1, y1) in FLOW_LINES:
             ax.plot([x0, x1], [y0, y1], color=color, lw=lw, alpha=alpha,
                     zorder=4)
+    # distillation column: glass gradient, tray lines, connecting pipe
+    colx, coly, colw, colh = COLUMN
+    col = FancyBboxPatch((colx, coly), colw, colh,
+                         boxstyle='round,pad=0,rounding_size=0.20',
+                         fc='none', ec='none', zorder=2)
+    ax.add_patch(col)
+    gradient_fill(ax, col, (colx, coly, colx + colw, coly + colh),
+                  th['glass0'], th['glass1'], direction='h', zorder=2)
+    ax.add_patch(FancyBboxPatch((colx, coly), colw, colh,
+                                boxstyle='round,pad=0,rounding_size=0.20',
+                                fc='none', ec=th['stroke'], lw=3, zorder=3))
+    for ty in np.linspace(1.45, 2.55, 4):
+        ax.plot([colx + 0.06, colx + colw - 0.06], [ty, ty],
+                color=th['steel'], lw=1.6, alpha=0.8, zorder=3)
+    ax.plot([x + w, colx], [2.02, 2.02], color=th['steel_dark'], lw=2.5,
+            zorder=2.6)
+    ax.plot([(x + w + colx)/2]*2, [1.95, 2.09], color=th['steel_dark'],
+            lw=2, zorder=2.6)   # flange tick
+    # ground line
+    ax.plot([7.05, 9.50], [1.05, 1.05], color=th['stroke'], lw=3,
+            solid_capstyle='round', zorder=3)
 
 
 def draw_gauge(ax, th, needle_frac):
+    """Semicircular $-gauge: filled face, ticks, warm-red needle, amber $."""
     cx, cy = GAUGE_C
+    ax.add_patch(Wedge((cx, cy), GAUGE_R, 0, 180, fc=th['card'], ec='none',
+                       zorder=3))
     ax.add_patch(Arc((cx, cy), 2*GAUGE_R, 2*GAUGE_R, theta1=0, theta2=180,
-                     ec=th['stroke'], lw=3, zorder=3))
-    ax.plot([cx - GAUGE_R, cx + GAUGE_R], [cy, cy], color=th['stroke'], lw=3,
-            solid_capstyle='round', zorder=3)
-    for ang in (150, 90, 30):
+                     ec=th['stroke'], lw=3.5, zorder=4))
+    ax.plot([cx - GAUGE_R, cx + GAUGE_R], [cy, cy], color=th['stroke'],
+            lw=3.5, solid_capstyle='round', zorder=4)
+    for ang in (150, 120, 90, 60, 30):
         a = np.deg2rad(ang)
-        ax.plot([cx + 0.26*np.cos(a), cx + 0.32*np.cos(a)],
-                [cy + 0.26*np.sin(a), cy + 0.32*np.sin(a)],
-                color=th['faint'], lw=2, zorder=3)
+        ax.plot([cx + 0.38*np.cos(a), cx + 0.46*np.cos(a)],
+                [cy + 0.38*np.sin(a), cy + 0.46*np.sin(a)],
+                color=th['steel'], lw=2, zorder=4)
     a = np.deg2rad(160 - 140*needle_frac)
-    ax.plot([cx, cx + 0.24*np.cos(a)], [cy, cy + 0.24*np.sin(a)],
-            color=th['accent2'], lw=2.5, solid_capstyle='round', zorder=4)
-    ax.add_patch(Circle((cx, cy), 0.045, fc=th['stroke'], ec='none', zorder=5))
-    ax.text(cx, cy - 0.28, '$', ha='center', va='center', fontsize=13,
+    ax.plot([cx, cx + 0.36*np.cos(a)], [cy, cy + 0.36*np.sin(a)],
+            color=th['red'], lw=3, solid_capstyle='round', zorder=4.5)
+    ax.add_patch(Circle((cx, cy), 0.06, fc=th['stroke'], ec='none',
+                        zorder=5))
+    ax.text(cx, cy - 0.17, '$', ha='center', va='center', fontsize=15,
             fontweight='bold', color=th['accent'], zorder=4)
 
 
