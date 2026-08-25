@@ -19,8 +19,9 @@ The scene is a captioned three-stage pipeline drawn left to right:
   when the parameter changes.
 * **Facility-scale economics** — a parapet-capped plant building venting
   billowing vapor plumes off its stack and roof vent, a cutaway flowsheet
-  panel (pump, exchanger, stirred reactor, column, reflux drum, product
-  tank, and a recycle back to the feed) that lights amber, and a skirted
+  panel (pump, exchanger, a mini of the reactor stage with its own teal
+  broth and spinning impeller, column, reflux drum, product tank, and a
+  recycle back to the feed) that lights amber, and a skirted
   tray column with a domed head, a breathing sump and vapor rising between
   its trays, piped to an overhead condenser drum. Slugs of material ride
   every pipe run and every flowsheet stream. A large semicircular $ gauge
@@ -153,6 +154,9 @@ VENT = (7.28, 2.30, 0.13, 0.30)          # second, smaller roof vent
 VENT_BAND = (7.235, 2.495, 0.22, 0.07)
 SEAM_YS = (2.16, 1.17)                   # cladding seams on the exposed face
 PANEL = (7.26, 1.24, 1.20, 0.84)         # flowsheet cutaway card
+PANEL_ALPHA = 0.95                       # panel face, over the building
+                                         # gradient (_shared_palette pins the
+                                         # resulting composite -- keep in sync)
 # The cutaway flowsheet: six *differentiated* unit silhouettes wired by seven
 # streams, the last of which recycles the column bottoms into the feed — the
 # same feedback idea the scene's own dashed arc carries, one scale down.
@@ -161,9 +165,15 @@ PANEL = (7.26, 1.24, 1.20, 0.84)         # flowsheet cutaway card
 # rectangle, a capsule and a second circle stay tellable apart where six
 # boxes would not. Every unit is *stroked, never filled*, so the amber
 # 'lit' pass can re-draw the entire sheet in one pass over the same geometry.
+# The one exception is the stirred reactor, drawn as a miniature of the
+# reactor stage: its teal broth and spinning impeller sit *under* the
+# strokes, so the lit pass still re-traces its outline like every other unit.
 FS_PUMP, FS_R_PUMP = (7.40, 1.50), 0.055        # feed pump (triangle)
 FS_HX, FS_R_HX = (7.60, 1.50), 0.070            # exchanger (circle + duty bar)
-FS_REACTOR = (7.68, 1.72, 0.21, 0.20)           # stirred reactor (box)
+FS_REACTOR = (7.68, 1.72, 0.21, 0.20)           # mini stirred reactor
+FS_RX_LIQ = 0.62          # broth surface, as a fraction of the mini's height
+FS_RX_BLADE = 0.045       # mini impeller half-span at full extension
+FS_RX_BUB_CYCLES = 3      # mini bubble rises this many times per loop
 FS_COLUMN, FS_DOME = (7.98, 1.45, 0.14, 0.40), 0.055     # domed column
 FS_DRUM = (8.22, 1.78, 0.17, 0.095)             # reflux drum (capsule)
 FS_TANK, FS_R_TANK = (8.305, 1.50), 0.085       # product tank (circle)
@@ -548,6 +558,62 @@ def _fs_column_poly(ec='none', lw=0, alpha=1.0, zorder=4):
                    ec=ec, lw=lw, alpha=alpha, zorder=zorder)
 
 
+def _fs_reactor_patch(**kw):
+    x, y, w, h = FS_REACTOR
+    return FancyBboxPatch((x, y), w, h,
+                          boxstyle='round,pad=0,rounding_size=0.045', **kw)
+
+
+def _draw_fs_reactor(ax, th, t):
+    """The flowsheet's stirred reactor, as a miniature of the reactor stage.
+
+    Same vocabulary as ``draw_reactor`` two scales down: teal broth under a
+    waving surface, a rising bubble, and a Rushton tier spinning in side view
+    on the same shaft speed (``SPIN_REVS``), so the two reactors visibly turn
+    together. The color link is the point -- the only teal inside the plant
+    is the unit that *is* the reactor stage, one scale down.
+
+    One tier, not two: at 42 x 40 px a second would fuse into the first. The
+    blade half-span and stroke weights are set to the big vessel's
+    *proportions* rather than scaled down from its absolute values, which is
+    what keeps it reading as the same machine rather than a fat smudge.
+
+    Everything here sits at zorder 3.88-3.95 -- above the panel card (3.5),
+    below the flowsheet's stroke passes (4) -- and is drawn once per frame
+    rather than once per pass, so the fill is not double-composited and the
+    amber ``flow_lit`` pass still re-traces the outline like every other unit.
+    """
+    x, y, w, h = FS_REACTOR
+    cx, liq, by = x + w/2, y + FS_RX_LIQ*h, y + 0.055
+    clip = _fs_reactor_patch(fc='none', ec='none', zorder=3.88)
+    ax.add_patch(clip)
+    gradient_fill(ax, clip, (x, y, x + w, liq), th['broth0'], th['broth1'],
+                  zorder=3.9)
+    # broth surface, riding the same WAVE_CYCLES as the big vessel. The
+    # amplitude is ~1 px rendered: a live edge at full size, and below the
+    # noise floor (not a flicker) once downscaled.
+    xs = np.linspace(x + 0.012, x + w - 0.012, 24)
+    ax.plot(xs, liq + 0.005*np.sin(2*np.pi*(xs - x)*14
+                                   - 2*np.pi*WAVE_CYCLES*t/DUR),
+            color=th['teal_edge'], lw=1.4, alpha=0.9, zorder=3.92)
+    u = (FS_RX_BUB_CYCLES*t/DUR) % 1.0
+    ax.add_patch(Circle((cx + 0.062, y + 0.022 + u*(liq - y - 0.05)), 0.010,
+                        fc='none', ec=th['bubble'], lw=1.2,
+                        alpha=0.9*(1.0 - smooth(0.82, 1.0, u)), zorder=3.93))
+    # shaft + one Rushton tier: two blade pairs 90 deg out of phase, front
+    # pair dark, back pair lighter -- draw_reactor's side-view trick verbatim
+    ax.plot([cx, cx], [y + h, by], color=th['stroke'], lw=1.4, zorder=3.95)
+    theta = 2*np.pi*SPIN_REVS*t/DUR
+    for phase, front in ((theta, True), (theta + np.pi/2, False)):
+        half = FS_RX_BLADE*abs(np.cos(phase))
+        if half < 0.006:
+            continue
+        ax.plot([cx - half, cx + half], [by, by],
+                color=th['stroke'] if front else th['navy_mid'], lw=2.2,
+                solid_capstyle='round', alpha=0.95 if front else 0.6,
+                zorder=3.95)
+
+
 def _flowsheet_pass(ax, th, levels, color, lw, alpha, zorder=4):
     """Stroke the whole cutaway flowsheet once, in one color.
 
@@ -570,12 +636,9 @@ def _flowsheet_pass(ax, th, levels, color, lw, alpha, zorder=4):
     ax.add_patch(Circle(FS_HX, FS_R_HX, **kw))
     dd = FS_R_HX*0.70
     ax.plot([hx - dd, hx + dd], [hy - dd, hy + dd], **line)
-    # stirred reactor: box with a shaft and one impeller blade
-    rx0, ry0, rw, rh = FS_REACTOR
-    ax.add_patch(Rectangle((rx0, ry0), rw, rh, **kw))
-    rcx = rx0 + rw/2
-    ax.plot([rcx, rcx], [ry0 + rh, ry0 + rh*0.36], **line)
-    ax.plot([rcx - rw*0.24, rcx + rw*0.24], [ry0 + rh*0.36]*2, **line)
+    # stirred reactor: only its rounded vessel outline -- the broth and the
+    # spinning impeller inside it are drawn once, by _draw_fs_reactor
+    ax.add_patch(_fs_reactor_patch(**kw))
     # column: domed shell with three tray decks
     ax.add_patch(_fs_column_poly(ec=color, lw=lw, alpha=alpha, zorder=zorder))
     cx0, cy0, cw, ch = FS_COLUMN
@@ -655,9 +718,10 @@ def draw_plant(ax, th, t, glow, flow_lit):
     ax.add_patch(FancyBboxPatch((px, py), pw, phh,
                                 boxstyle='round,pad=0,rounding_size=0.08',
                                 fc=th['card'], ec=th['card_edge'], lw=1.2,
-                                alpha=0.95, zorder=3.5))
+                                alpha=PANEL_ALPHA, zorder=3.5))
     ph_lv = 2*np.pi*FS_LEVEL_CYCLES*t/DUR
     levels = (0.45 + 0.16*np.sin(ph_lv), 0.50 + 0.18*np.sin(ph_lv + 2.1))
+    _draw_fs_reactor(ax, th, t)
     for color, alpha, lw in ((th['steel'], 1.0, 1.8),
                              (th['accent'], min(flow_lit, 1.0), 2.4)):
         if alpha <= 0:
@@ -1006,6 +1070,21 @@ def _shared_palette(frames, th):
         if any(np.abs(rgb - p).max() < 8 for p in keyed):
             continue
         taken.add(_pin_exact(pal, tuple(int(v) for v in rgb), taken))
+    # The flowsheet panel's face is 'card' at PANEL_ALPHA over the building
+    # gradient, so it is *not* the pinned 'card' color and owns no slot. It
+    # is also a 240 x 168 px flat region, exactly the case PINNED_KEYS exists
+    # for: adding the mini reactor's teal to the panel was enough to pull the
+    # light theme's panel from pale lavender to a pale mint. Pinning the
+    # composite at the gradient midpoint captures the whole face, which
+    # spreads only ~2 levels from left to right. On dark the composite lands
+    # within a cell of 'card' itself, so the same guard as above skips it
+    # rather than letting it steal that pin.
+    card = np.array([int(th['card'][i:i + 2], 16) for i in (1, 3, 5)], float)
+    bld = [np.array([int(th[k][i:i + 2], 16) for i in (1, 3, 5)], float)
+           for k in ('bldg0', 'bldg1')]
+    face = np.round(PANEL_ALPHA*card + (1.0 - PANEL_ALPHA)*0.5*(bld[0] + bld[1]))
+    if not any(np.abs(face - p).max() < 8 for p in keyed):
+        taken.add(_pin_exact(pal, tuple(int(v) for v in face), taken))
     out = Image.new('P', (1, 1))
     out.putpalette(pal)
     out.load()   # refresh the core palette so quantize() sees the edit
