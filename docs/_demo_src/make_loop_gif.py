@@ -36,64 +36,125 @@ import matplotlib
 matplotlib.use('Agg')
 import numpy as np
 from matplotlib import pyplot as plt
+from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.patches import (Arc, Circle, Ellipse, FancyArrowPatch,
-                                FancyBboxPatch, Rectangle)
+                                FancyBboxPatch, Polygon, Rectangle, Wedge)
 from PIL import Image
 
 HERE = Path(__file__).resolve().parent
 OUT_DIR = HERE.parent / 'source' / '_static' / 'images' / 'demo'
 
-DPI = 100    # figsize (10, 3.6) -> 1000 x 360 px (displayed at 200 px height)
-DUR = 8.0    # seconds per loop
-FPS = 10
+DPI = 200    # figsize (10, 3.6) -> 2000 x 720 px (displayed at 200 px height;
+             # rendered large for hi-DPI screens and reuse at bigger sizes)
+DUR = 10.0   # seconds per loop
+FPS = 20
 
 # 'bg' must match the docs page background (pydata-sphinx-theme): GIFs are
 # opaque, so an off-theme bg shows as a visible rectangle on the page.
+# Palette rule: navy + amber dominate; amber/orange is reserved for
+# attention elements (pulses, animated knob, plasmid, product curve, lit
+# flowsheet, $, glows); teal/red/steel are quieter supporting hues.
 THEMES = {
-    'light': dict(bg='#ffffff', stroke='#1f2a63', faint='#8a93b8',
-                  accent='#f5a623', accent2='#ef7b45'),
-    'dark':  dict(bg='#14181e', stroke='#d7dce8', faint='#5a6478',
-                  accent='#f5a623', accent2='#ef7b45'),
+    'light': dict(bg='#ffffff', stroke='#1f2a63', navy_mid='#3d4d8f',
+                  peri='#8a93b8', faint='#8a93b8',
+                  card='#eef0f7', card_edge='#c3c9de', shadow='#1f2a63',
+                  steel='#7d8799', steel_dark='#5a6478',
+                  accent='#f5a623', accent2='#ef7b45',
+                  mb0='#58b3a4', mb1='#cdeae4', teal_edge='#1f6f64',
+                  broth0='#8ed0c3', broth1='#d3efe9', bubble='#ffffff',
+                  red='#d64545', text='#1f2a63', glass_hi='#ffffff',
+                  glass0='#e7eaf4', glass1='#f8f9fc',
+                  bldg0='#1f2a63', bldg1='#3d4d8f'),
+    'dark':  dict(bg='#14181e', stroke='#d7dce8', navy_mid='#38466e',
+                  peri='#5a6478', faint='#5a6478',
+                  card='#202836', card_edge='#3a4459', shadow='#000000',
+                  steel='#8a94a8', steel_dark='#67718a',
+                  accent='#f5a623', accent2='#ef7b45',
+                  mb0='#1f5b52', mb1='#47a08f', teal_edge='#63c9b8',
+                  broth0='#17453e', broth1='#2a7d70', bubble='#8fd8ca',
+                  red='#e05c5c', text='#d7dce8', glass_hi='#c3cde8',
+                  glass0='#1b222d', glass1='#273043',
+                  bldg0='#232d47', bldg1='#3a4a75'),
 }
 
 # %% Scene geometry
 
+# Stage centers: microbe/card ~x 1.35, reactor x 5.0, plant ~x 8.3.
+# Captions sit at y 0.15; the feedback arc dips to ~y 0.45 mid-canvas,
+# clearing the reactor caption below it and the control card above it.
+ARROW1 = ((2.32, 2.00), (4.24, 2.00))
+ARROW2 = ((5.76, 2.00), (7.00, 2.00))
+
+# Feedback arc: quadratic bezier (right to left) below the pipeline.
+# FB_RAD reproduces the same control point via arc3 (offset/chord = -1.0/7.0).
+FB_P0, FB_P1, FB_P2 = (8.45, 0.95), (4.95, -0.05), (1.45, 0.80)
+FB_RAD = -0.143
+
+CAPTION_Y = 0.15
+
+# --- legacy stage geometry (removed as Tasks 2-4 replace each stage) ---
 SLIDER_X0, SLIDER_X1 = 0.65, 2.05
 SLIDER_YS = (1.62, 1.34, 1.06)
-
-ARROW1 = ((2.25, 1.95), (4.30, 1.95))
-ARROW2 = ((5.70, 1.95), (7.10, 1.95))
-
-# Feedback arrow: quadratic bezier dipping below the pipeline, right to left.
-# FB_RAD reproduces the same control point via arc3 for FancyArrowPatch.
-FB_P0, FB_P1, FB_P2 = (8.45, 0.92), (4.95, 0.12), (1.45, 0.90)
-FB_RAD = -0.113
-
-# Chemical-plant silhouette: building skyline with a stack; a separate
-# column (rounded rect) stands to its right, joined by a pipe.
 _PLANT_OUTLINE = [
     (7.30, 1.05), (7.30, 2.25), (7.70, 2.25), (7.70, 2.90), (7.90, 2.90),
     (7.90, 2.25), (8.60, 2.25), (8.60, 1.05),
 ]
-# Nested flowsheet (cutaway view inside the building): unit boxes (x, y, w, h)
-# and the stream lines connecting their edges.
 _FLOWSHEET_BOXES = [(7.48, 1.52, 0.30, 0.24), (7.98, 1.72, 0.30, 0.24),
                     (8.18, 1.22, 0.30, 0.24)]
 _FLOWSHEET_LINES = [((7.78, 1.64), (7.98, 1.84)), ((8.13, 1.72), (8.33, 1.46))]
-
 GAUGE_C = (8.25, 3.02)
 GAUGE_R = 0.34
 
 
 def default_state():
-    """Scene state for one frame; every animated quantity in one dict."""
-    return dict(slider_frac=0.35,   # animated (middle) slider knob, 0..1
+    """Scene state for one frame; every animated quantity in one dict.
+
+    't' is the absolute loop time in seconds — ambient motion (impeller,
+    bubbles, wave, vapor) derives from it so it runs in every frame.
+    """
+    return dict(t=0.0,
+                slider_frac=0.35,   # animated (middle) slider knob, 0..1
                 needle_frac=0.50,   # gauge needle, 0 (far left) .. 1 (far right)
                 curve_boost=0.0,    # 0 = base product curve, 1 = boosted
-                pulse1_s=None,      # forward pulse path params, None = hidden
+                pulse1_s=None,      # forward comet path params, None = hidden
                 pulse2_s=None,
-                fb_s=None,          # feedback pulse path param, None = hidden
+                fb_s=None,          # feedback comet path param, None = hidden
                 glow_microbe=0.0, glow_reactor=0.0, glow_plant=0.0)
+
+
+# %% Drawing helpers
+
+def gradient_fill(ax, clip_patch, extent, c0, c1, direction='v',
+                  alpha=1.0, zorder=2):
+    """Linear-gradient fill clipped to an already-added patch.
+
+    ``clip_patch`` must already be on ``ax`` (an invisible clip shape or the
+    visible outline itself). ``extent`` = (x0, y0, x1, y1) in data coords;
+    ``c0`` maps to the bottom (or left, for direction='h'), ``c1`` to the
+    top (or right). aspect='auto' is safe: the axes fills the figure and the
+    data aspect already equals the figure aspect (10 : 3.6).
+    """
+    grad = np.linspace(0.0, 1.0, 256)
+    grad = grad[:, None] if direction == 'v' else grad[None, :]
+    cmap = LinearSegmentedColormap.from_list('_grad', [c0, c1])
+    x0, y0, x1, y1 = extent
+    im = ax.imshow(grad, extent=(x0, x1, y0, y1), origin='lower', cmap=cmap,
+                   aspect='auto', alpha=alpha, zorder=zorder,
+                   interpolation='bilinear')
+    im.set_clip_path(clip_patch)
+    return im
+
+
+def soft_shadow(ax, xy, rx, ry, th, alpha=0.18, zorder=1):
+    """Soft elliptical drop shadow (stacked low-alpha ellipses)."""
+    for k, a in ((1.30, 0.35), (1.12, 0.65), (1.0, 1.0)):
+        ax.add_patch(Ellipse(xy, 2*rx*k, 2*ry*k, fc=th['shadow'], ec='none',
+                             alpha=alpha*a*0.4, zorder=zorder))
+
+
+def draw_caption(ax, th, x, text):
+    ax.text(x, CAPTION_Y, text, ha='center', va='center', fontsize=11.5,
+            color=th['text'], alpha=0.85, zorder=3)
 
 
 # %% Drawing
@@ -120,7 +181,7 @@ def draw_microbe(ax, th, glow):
             lw=2, solid_capstyle='round', zorder=3)
 
 
-def draw_sliders(ax, th, frac):
+def draw_control_card(ax, th, frac):
     """Three abstract sliders; the middle (amber) knob is the animated one."""
     knob_fracs = (0.30, frac, 0.72)
     for y, kf, animated in zip(SLIDER_YS, knob_fracs, (False, True, False)):
@@ -132,13 +193,26 @@ def draw_sliders(ax, th, frac):
                             zorder=4))
 
 
-def draw_arrow(ax, th, p0, p1, rad=0.0):
-    ax.add_patch(FancyArrowPatch(p0, p1, connectionstyle=f'arc3,rad={rad}',
-                                 arrowstyle='-|>', mutation_scale=22,
-                                 lw=2.5, color=th['faint'], zorder=2))
+def draw_arrow(ax, th, p0, p1):
+    """Tapered filled forward arrow (steel, quiet under the amber comets)."""
+    ax.add_patch(FancyArrowPatch(
+        p0, p1,
+        arrowstyle='simple,tail_width=0.18,head_width=0.85,head_length=1.2',
+        mutation_scale=16, fc=th['steel'], ec='none', alpha=0.9, zorder=2))
 
 
-def draw_reactor(ax, th, glow, curve_boost):
+def draw_feedback_arrow(ax, th):
+    """Dashed 'iterate' bezier right-to-left with a solid head at the end."""
+    ss = np.linspace(0.0, 0.96, 60)
+    xy = np.array([fb_xy(s) for s in ss])
+    ax.plot(xy[:, 0], xy[:, 1], color=th['steel'], lw=2.2,
+            ls=(0, (5, 4)), alpha=0.9, zorder=2)
+    ax.add_patch(FancyArrowPatch(fb_xy(0.93), fb_xy(1.0), arrowstyle='-|>',
+                                 mutation_scale=20, lw=0, fc=th['steel'],
+                                 ec=th['steel'], zorder=2))
+
+
+def draw_reactor(ax, th, t, glow, curve_boost):
     _halo(ax, th, (5.0, 2.05), 0.75, 0.95, glow)
     ax.add_patch(FancyBboxPatch((4.45, 1.3), 1.1, 1.5,
                                 boxstyle='round,pad=0,rounding_size=0.14',
@@ -155,7 +229,7 @@ def draw_reactor(ax, th, glow, curve_boost):
             zorder=3)
 
 
-def draw_plant(ax, th, glow, flow_lit):
+def draw_plant(ax, th, t, glow, flow_lit):
     # halo kept inside the canvas (rx*1.35 outer ring) so it fades out rather
     # than clipping against the right edge
     _halo(ax, th, (8.30, 1.95), 1.12, 1.05, glow)
@@ -202,13 +276,13 @@ def draw_gauge(ax, th, needle_frac):
 
 
 def pulse_xy(s):
-    """Forward-pulse position at path parameter s in [0, 1].
+    """Forward-comet position at path parameter s in [0, 1].
 
-    Returns None while the pulse is "inside" a stage (the stage glows
-    instead): s 0.35-0.50 crosses the reactor; s > 0.80 is inside the plant.
+    Returns None while the comet is "inside" a stage (the stage glows
+    instead): s 0.34-0.50 crosses the reactor; s > 0.80 is inside the plant.
     """
-    if s < 0.35:
-        u = s/0.35
+    if s < 0.34:
+        u = s/0.34
         (x0, y0), (x1, y1) = ARROW1
     elif s < 0.50:
         return None
@@ -227,32 +301,48 @@ def fb_xy(s):
     return (a*x0 + b*x1 + s*s*x2, a*y0 + b*y1 + s*s*y2)
 
 
-def draw_pulse(ax, th, xy):
-    if xy is None:
-        return
-    ax.add_patch(Circle(xy, 0.14, fc=th['accent'], ec='none', alpha=0.35,
-                        zorder=5))
-    ax.add_patch(Circle(xy, 0.075, fc=th['accent'], ec='none', zorder=5))
+def draw_comet(ax, th, path_fn, s):
+    """Amber comet: glowing head + fading trail of diminishing circles."""
+    for i in range(9):
+        si = s - 0.022*i
+        if si < 0:
+            break
+        xy = path_fn(si)
+        if xy is None:
+            continue
+        if i == 0:
+            ax.add_patch(Circle(xy, 0.16, fc=th['accent'], ec='none',
+                                alpha=0.30, zorder=6))
+            ax.add_patch(Circle(xy, 0.085, fc=th['accent'], ec='none',
+                                zorder=6))
+        else:
+            k = 1.0 - i/9.0
+            ax.add_patch(Circle(xy, 0.075*k, fc=th['accent'], ec='none',
+                                alpha=0.45*k, zorder=6))
 
 
 def draw_scene(ax, th, state):
-    draw_microbe(ax, th, state['glow_microbe'])
-    draw_sliders(ax, th, state['slider_frac'])
+    t = state['t']
+    draw_caption(ax, th, 1.35, 'Engineered strain')
+    draw_caption(ax, th, 5.0, 'Fermentation kinetics')
+    draw_caption(ax, th, 8.35, 'Process & TEA')
+    draw_feedback_arrow(ax, th)
     draw_arrow(ax, th, *ARROW1)
-    draw_reactor(ax, th, state['glow_reactor'], state['curve_boost'])
     draw_arrow(ax, th, *ARROW2)
-    draw_plant(ax, th, state['glow_plant'], min(state['glow_plant'], 1.0))
+    draw_control_card(ax, th, state['slider_frac'])
+    draw_microbe(ax, th, state['glow_microbe'])
+    draw_reactor(ax, th, t, state['glow_reactor'], state['curve_boost'])
+    draw_plant(ax, th, t, state['glow_plant'], min(state['glow_plant'], 1.0))
     draw_gauge(ax, th, state['needle_frac'])
-    draw_arrow(ax, th, FB_P0, FB_P2, rad=FB_RAD)
     for s in (state['pulse1_s'], state['pulse2_s']):
         if s is not None:
-            draw_pulse(ax, th, pulse_xy(s))
+            draw_comet(ax, th, pulse_xy, s)
     if state['fb_s'] is not None:
-        draw_pulse(ax, th, fb_xy(state['fb_s']))
+        draw_comet(ax, th, fb_xy, state['fb_s'])
 
 
 def render_frame(th, state):
-    """Render one frame to an opaque RGB PIL image (1000 x 360)."""
+    """Render one frame to an opaque RGB PIL image (2000 x 720)."""
     fig = plt.figure(figsize=(10, 3.6), dpi=DPI)
     ax = fig.add_axes((0, 0, 1, 1))
     ax.set_xlim(0, 10)
@@ -261,6 +351,9 @@ def render_frame(th, state):
     ax.axis('off')
     fig.patch.set_facecolor(th['bg'])
     draw_scene(ax, th, state)
+    # imshow (gradient fills) can autoscale the data limits; re-assert.
+    ax.set_xlim(0, 10)
+    ax.set_ylim(0, 3.6)
     fig.canvas.draw()
     img = Image.fromarray(np.asarray(fig.canvas.buffer_rgba())[..., :3].copy())
     plt.close(fig)
@@ -269,16 +362,18 @@ def render_frame(th, state):
 
 # %% Animation timeline
 #
-# One 8 s loop, three acts:
-#   Act 1 (0-3 s)    forward pulse microbe -> reactor -> plant; each stage
-#                    glows as the pulse passes; the needle settles at a
-#                    starting position.
-#   Act 2 (3-6.5 s)  a slider knob moves; a second pulse travels the same
-#                    path; the product curve redraws higher; the needle
-#                    swings to a new (lower-cost) position.
-#   Act 3 (6.5-8 s)  the feedback arrow pulses right-to-left while slider,
-#                    curve, and needle ease back to their initial values,
-#                    masking the reset so the loop is seamless.
+# One 10 s loop. Ambient motion (impeller spin, bubbles, surface wave, vapor
+# wisps) derives from state['t'] and runs in every frame, each with an
+# integer number of cycles per loop so the wrap is seamless. On top, three
+# acts:
+#   Act 1 (~0-3.6 s)   forward comet microbe -> reactor -> plant; each stage
+#                      glows as it passes; the needle settles mid-scale.
+#   Act 2 (~3.9-7.8 s) the amber slider moves; a second comet propagates;
+#                      the product curve boosts; the needle swings to a
+#                      lower cost with a small overshoot-and-settle.
+#   Act 3 (~8.0-9.8 s) the feedback comet runs the dashed arc right-to-left
+#                      while slider, curve, and needle ease home, masking
+#                      the reset.
 
 
 def smooth(a, b, t):
@@ -300,22 +395,25 @@ def bump(a, b, t):
 def timeline(t):
     """Scene state at time t (seconds) within the DUR-second loop."""
     s = default_state()
-    if 0.2 <= t < 2.8:
-        s['pulse1_s'] = (t - 0.2)/2.6
-    if 3.8 <= t < 6.0:
-        s['pulse2_s'] = (t - 3.8)/2.2
-    if 6.5 <= t < 7.6:
-        s['fb_s'] = (t - 6.5)/1.1
-    # Glow envelopes are timed to the pulses' stage arrivals (pulse path
-    # params 0.35/0.50 = reactor, 0.80 = plant).
-    s['glow_microbe'] = bump(0.0, 0.9, t) + bump(3.0, 4.0, t)
-    s['glow_reactor'] = bump(0.95, 1.75, t) + bump(4.45, 5.25, t)
-    s['glow_plant'] = bump(2.2, 3.1, t) + bump(5.5, 6.4, t)
-    s['slider_frac'] = 0.35 + 0.40*smooth(3.1, 3.7, t) - 0.40*smooth(7.0, 7.8, t)
-    s['curve_boost'] = smooth(4.5, 5.1, t) - smooth(7.0, 7.8, t)
-    s['needle_frac'] = (0.50 + 0.22*smooth(2.5, 3.0, t)
-                        - 0.40*smooth(5.7, 6.3, t)
-                        + 0.18*smooth(7.1, 7.9, t))
+    s['t'] = t
+    if 0.3 <= t < 3.5:
+        s['pulse1_s'] = (t - 0.3)/3.2
+    if 4.6 <= t < 7.4:
+        s['pulse2_s'] = (t - 4.6)/2.8
+    if 8.0 <= t < 9.6:
+        s['fb_s'] = (t - 8.0)/1.6
+    # Glow envelopes are timed to the comets' stage arrivals (path params
+    # 0.34/0.50 = reactor, 0.80 = plant).
+    s['glow_microbe'] = bump(0.1, 1.2, t) + bump(3.9, 4.9, t)
+    s['glow_reactor'] = bump(1.2, 2.2, t) + bump(5.5, 6.4, t)
+    s['glow_plant'] = bump(2.7, 3.8, t) + bump(6.6, 7.7, t)
+    s['slider_frac'] = (0.35 + 0.40*smooth(3.9, 4.6, t)
+                        - 0.40*smooth(8.6, 9.6, t))
+    s['curve_boost'] = smooth(5.6, 6.3, t) - smooth(8.6, 9.6, t)
+    s['needle_frac'] = (0.50 + 0.20*smooth(3.0, 3.6, t)
+                        - 0.46*smooth(7.0, 7.6, t)
+                        + 0.06*bump(7.5, 8.4, t)      # overshoot-settle
+                        + 0.26*smooth(8.8, 9.8, t))   # ease home
     return s
 
 
@@ -373,11 +471,12 @@ def build_gif(theme_name, out_path):
 # Hand-picked states for reviewing the scene art without the animation.
 _PRESETS = {
     'base': {},
-    'pulse': dict(pulse1_s=0.20, glow_microbe=0.4),
-    'reactor-glow': dict(glow_reactor=1.0),
-    'shifted': dict(slider_frac=0.75, curve_boost=1.0, needle_frac=0.30,
-                    glow_plant=1.0),
-    'feedback': dict(fb_s=0.5),
+    'spin-quarter': dict(t=DUR/32),   # impeller quarter-turn vs 'base'
+    'pulse': dict(t=1.0, pulse1_s=0.22, glow_microbe=0.5),
+    'reactor-glow': dict(t=1.6, glow_reactor=1.0),
+    'shifted': dict(t=6.5, slider_frac=0.75, curve_boost=1.0,
+                    needle_frac=0.24, glow_plant=1.0),
+    'feedback': dict(t=8.8, fb_s=0.5),
 }
 
 
