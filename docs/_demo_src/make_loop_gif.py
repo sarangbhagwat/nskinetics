@@ -10,15 +10,15 @@ Render the animated "strain-to-TEA" loop GIFs for the docs landing page.
 
 The scene is a captioned three-stage pipeline drawn left to right:
 
-* **Engineered strain** — a teal ovoid microbe with granules and an amber
+* **Metabolic engineering** — a teal ovoid microbe with granules and an amber
   plasmid loop, above a control card of three tick-marked sliders (the
   middle, amber one is the parameter the animation turns).
-* **Fermentation kinetics** — a glass stirred tank: gradient broth with a
+* **Kinetics & reactor design** — a glass stirred tank: gradient broth with a
   waving surface, a sparger streaming rising bubbles, a two-tier Rushton
   impeller spinning in side view, and an amber product curve that boosts
   when the parameter changes.
-* **Process & TEA** — a plant building with vapor wisps drifting off its
-  stack, a cutaway flowsheet panel that lights amber, a trayed
+* **Facility-scale economics** — a plant building with vapor wisps drifting
+  off its stack, a cutaway flowsheet panel that lights amber, a trayed
   distillation column, and a large semicircular $ gauge above.
 
 Forward arrows link the stages and a dashed feedback arc curves back
@@ -83,7 +83,7 @@ THEMES = {
                   steel='#7d8799', steel_dark='#5a6478',
                   accent='#f5a623',
                   mb0='#58b3a4', mb1='#cdeae4', teal_edge='#1f6f64',
-                  broth0='#8ed0c3', broth1='#d3efe9', bubble='#5fb3a3',
+                  broth0='#8ed0c3', broth1='#d3efe9', bubble='#479a8b',
                   red='#d64545', text='#1f2a63', glass_hi='#ffffff',
                   sheen_a=0.30,
                   glass0='#e7eaf4', glass1='#f8f9fc',
@@ -103,22 +103,27 @@ THEMES = {
 
 # %% Scene geometry
 
-# Stage centers: microbe/card ~x 1.35, reactor x 5.0, plant ~x 8.3.
+# Stage centers: microbe/card ~x 1.97, reactor x 5.0, plant ~x 8.3.
+# The three stages are evenly spaced: the strain stage spans x 1.12-2.82,
+# the vessel 4.42-5.58 and the plant block 7.18-, so both inter-stage gaps
+# are 1.60 and the two forward arrows are the same length (1.24), each
+# inset 0.18 from the stage edges it links.
 # Captions sit at y 0.15; the feedback arc dips to ~y 0.45 mid-canvas,
 # clearing the reactor caption below it and the control card above it.
-ARROW1 = ((2.32, 2.00), (4.24, 2.00))
+ARROW1 = ((3.00, 2.00), (4.24, 2.00))
 ARROW2 = ((5.76, 2.00), (7.00, 2.00))
 
 # Feedback arc: quadratic bezier (right to left) below the pipeline.
-FB_P0, FB_P1, FB_P2 = (8.45, 0.95), (4.95, -0.05), (1.45, 0.80)
+FB_P0, FB_P1, FB_P2 = (8.45, 0.95), (5.26, -0.05), (2.07, 0.80)
 
 CAPTION_Y = 0.15
 
-MICROBE_C = (1.35, 2.55)
-CARD = (0.50, 0.88, 1.70, 1.06)          # x, y, w, h
-SLIDER_X0, SLIDER_X1 = 0.98, 2.02
+MICROBE_C = (1.97, 2.55)
+CARD = (1.12, 0.88, 1.70, 1.06)          # x, y, w, h
+SLIDER_X0, SLIDER_X1 = 1.60, 2.64
+SLIDER_LABEL_X = 1.34
 SLIDER_YS = (1.68, 1.41, 1.14)
-SLIDER_LABELS = (r'$\mu$', r'$K$', r'$Y$')
+SLIDER_LABELS = (r'$\mu$', r'$k_{\mathrm{cat}}$', r'$K_{\mathrm{M}}$')
 
 VESSEL = (4.42, 1.15, 1.16, 1.70)   # x, y, w, h; rounded corners 0.20
 LIQ_Y = 2.28                        # nominal broth surface
@@ -250,15 +255,17 @@ def draw_microbe(ax, th, glow):
     # membrane highlight along the upper-left rim
     ax.add_patch(Arc(MICROBE_C, 0.84, 0.46, angle=-14, theta1=95, theta2=175,
                      ec=th['glass_hi'], lw=2.5, alpha=0.55, zorder=3))
-    # granules (quiet navy)
-    for gx, gy, r in ((1.10, 2.62, 0.05), (1.24, 2.42, 0.045),
-                      (1.16, 2.52, 0.028)):
-        ax.add_patch(Circle((gx, gy), r, fc=th['stroke'], ec='none',
+    # granules (quiet navy), placed as offsets from the body center so the
+    # whole microbe translates with MICROBE_C
+    for dx, dy, r in ((-0.25, 0.07, 0.05), (-0.11, -0.13, 0.045),
+                      (-0.19, -0.03, 0.028)):
+        ax.add_patch(Circle((cx + dx, cy + dy), r, fc=th['stroke'], ec='none',
                             alpha=0.85, zorder=3))
     # engineering cue: amber plasmid loop (nested loops = supercoil)
-    ax.add_patch(Circle((1.58, 2.52), 0.10, fc='none', ec=th['accent'],
+    plasmid = (cx + 0.23, cy - 0.03)
+    ax.add_patch(Circle(plasmid, 0.10, fc='none', ec=th['accent'],
                         lw=2.5, zorder=3))
-    ax.add_patch(Circle((1.58, 2.52), 0.045, fc='none', ec=th['accent'],
+    ax.add_patch(Circle(plasmid, 0.045, fc='none', ec=th['accent'],
                         lw=1.5, alpha=0.7, zorder=3))
 
 
@@ -277,7 +284,7 @@ def draw_control_card(ax, th, frac):
     knob_fracs = (0.30, frac, 0.72)
     for yy, lab, kf, animated in zip(SLIDER_YS, SLIDER_LABELS, knob_fracs,
                                      (False, True, False)):
-        ax.text(0.76, yy, lab, ha='center', va='center', fontsize=10,
+        ax.text(SLIDER_LABEL_X, yy, lab, ha='center', va='center', fontsize=10,
                 color=th['text'], zorder=3)
         ax.plot([SLIDER_X0, SLIDER_X1], [yy, yy], color=th['peri'], lw=3.5,
                 solid_capstyle='round', alpha=0.75, zorder=3)
@@ -536,9 +543,9 @@ def draw_comet(ax, th, path_fn, s):
 
 def draw_scene(ax, th, state):
     t = state['t']
-    draw_caption(ax, th, 1.35, 'Engineered strain')
-    draw_caption(ax, th, 5.0, 'Fermentation kinetics')
-    draw_caption(ax, th, 8.35, 'Process & TEA')
+    draw_caption(ax, th, MICROBE_C[0], 'Metabolic engineering')
+    draw_caption(ax, th, 5.0, 'Kinetics & reactor design')
+    draw_caption(ax, th, 8.35, 'Facility-scale economics')
     draw_feedback_arrow(ax, th)
     draw_arrow(ax, th, *ARROW1)
     draw_arrow(ax, th, *ARROW2)
