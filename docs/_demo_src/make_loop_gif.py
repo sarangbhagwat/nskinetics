@@ -17,9 +17,10 @@ The scene is a captioned three-stage pipeline drawn left to right:
   waving surface, a sparger streaming rising bubbles, a two-tier Rushton
   impeller spinning in side view, and an amber product curve that boosts
   when the parameter changes.
-* **Facility-scale economics** — a plant building with vapor wisps drifting
-  off its stack, a cutaway flowsheet panel that lights amber, a trayed
-  distillation column, and a large semicircular $ gauge above.
+* **Facility-scale economics** — a parapet-capped plant building with vapor
+  wisps drifting off its stack and vent, a cutaway flowsheet panel that
+  lights amber, a skirted tray column with a domed head piped to an
+  overhead condenser drum, and a large semicircular $ gauge above.
 
 Forward arrows link the stages and a dashed feedback arc curves back
 underneath. Amber comet pulses travel those paths, each stage glowing as a
@@ -135,13 +136,30 @@ BUBBLES = ((4.62, 2, 0.05), (4.78, 3, 0.55), (4.93, 2, 0.35),
            (5.07, 3, 0.80), (5.22, 2, 0.62), (5.38, 3, 0.15))
 
 PLANT_BLDG = (7.18, 1.05, 1.37, 1.25)    # x, y, w, h
+PARAPET = (7.12, 2.26, 1.49, 0.11)       # roof slab capping the building
 STACK = (7.60, 2.30, 0.20, 0.60)
+STACK_BAND = (7.53, 2.71, 0.34, 0.09)    # collar below the stack rim
+VENT = (7.28, 2.30, 0.13, 0.30)          # second, smaller roof vent
+VENT_BAND = (7.235, 2.495, 0.22, 0.07)
+SEAM_YS = (2.16, 1.17)                   # cladding seams on the exposed face
 PANEL = (7.30, 1.28, 1.06, 0.78)         # flowsheet cutaway card
 FLOW_BOXES = ((7.38, 1.72, 0.24, 0.20), (7.74, 1.84, 0.24, 0.20),
               (7.74, 1.42, 0.24, 0.20), (8.06, 1.60, 0.24, 0.20))
 FLOW_LINES = (((7.62, 1.84), (7.74, 1.92)), ((7.62, 1.80), (7.74, 1.54)),
               ((7.98, 1.92), (8.06, 1.76)), ((7.98, 1.52), (8.06, 1.64)))
-COLUMN = (8.76, 1.05, 0.44, 1.85)
+# Distillation column: COLUMN is the straight *shell*; elliptical heads are
+# added above and below it, so the silhouette tops out at 1.30 + 1.36 + 0.17
+# = 2.83 — clear of the gauge, whose face is the semicircle above y 3.03.
+COLUMN = (8.76, 1.30, 0.44, 1.36)        # shell only (x, y, w, h)
+COL_HEAD_T, COL_HEAD_B = 0.17, 0.10      # elliptical head rise, top / bottom
+COL_TRAY_YS = (1.58, 2.48)               # first / last tray line
+COL_N_TRAYS = 5
+COL_SKIRT = (8.84, 1.12, 0.28, 0.12)     # support skirt under the bottom head
+COL_PLINTH = (8.78, 1.05, 0.40, 0.07)    # foundation tick on the ground line
+PIPE_Y, PIPE2_Y = 2.02, 1.50             # building -> column runs
+OVERHEAD_Y = 2.925                       # overhead vapor run above the column
+DRUM = (9.04, 2.84, 0.28, 0.17)          # condenser / reflux drum
+RETURN_X, RETURN_Y = 9.38, 1.44          # return leg down to the column base
 VAPOR_CYCLES = 2                          # integer cycles per loop
 GAUGE_C = (8.28, 3.03)
 GAUGE_R = 0.50                            # ~1.5x the old 0.34
@@ -409,12 +427,29 @@ def draw_reactor(ax, th, t, glow, curve_boost):
             solid_capstyle='round', zorder=4.2)
 
 
+def _column_poly(fc='none', ec='none', lw=0, zorder=2):
+    """Column silhouette: straight shell capped by two elliptical heads.
+
+    Traced as one closed polygon (rather than a rounded box plus separate
+    caps) so the outline is a single continuous stroke — no seam line where a
+    head meets the shell, which at the 200 px delivery size would read as a
+    stray tick rather than a weld.
+    """
+    x, y, w, h = COLUMN
+    cx, rx, yt = x + w/2, w/2, y + h
+    top = [(cx + rx*np.cos(a), yt + COL_HEAD_T*np.sin(a))
+           for a in np.linspace(0.0, np.pi, 28)]
+    bot = [(cx + rx*np.cos(a), y + COL_HEAD_B*np.sin(a))
+           for a in np.linspace(np.pi, 2*np.pi, 28)]
+    return Polygon(top + bot, closed=True, fc=fc, ec=ec, lw=lw, zorder=zorder)
+
+
 def draw_plant(ax, th, t, glow, flow_lit):
     _halo(ax, th, (8.30, 1.95), 1.12, 1.05, glow)
     x, y, w, h = PLANT_BLDG
     soft_shadow(ax, (x + w/2 + 0.5, y - 0.02), 1.15, 0.08, th)
-    # building + stack: filled navy gradient with a stroke outline
-    for (bx, by, bw, bh) in (PLANT_BLDG, STACK):
+    # building, main stack and the smaller roof vent: navy gradient + stroke
+    for (bx, by, bw, bh) in (PLANT_BLDG, STACK, VENT):
         p = FancyBboxPatch((bx, by), bw, bh,
                            boxstyle='round,pad=0,rounding_size=0.05',
                            fc='none', ec='none', zorder=2)
@@ -425,14 +460,27 @@ def draw_plant(ax, th, t, glow, flow_lit):
                                     boxstyle='round,pad=0,rounding_size=0.05',
                                     fc='none', ec=th['stroke'], lw=2.5,
                                     zorder=3))
-    # vapor wisps drifting up-right from the stack (ambient, periodic)
-    sx, sy = STACK[0] + STACK[2]/2, STACK[1] + STACK[3]
-    for i in range(3):
-        u = (VAPOR_CYCLES*t/DUR + i/3.0) % 1.0
-        ax.add_patch(Circle((sx + 0.10*u + 0.03*np.sin(2*np.pi*u),
-                             sy + 0.05 + 0.34*u),
-                            0.05 + 0.08*u, fc=th['peri'], ec='none',
-                            alpha=0.35*(1.0 - u), zorder=2.5))
+    # cladding seams across the exposed building face (quiet, low-alpha steel:
+    # any stronger and they compete with the flowsheet panel in front)
+    for sy_ in SEAM_YS:
+        ax.plot([x + 0.09, x + w - 0.09], [sy_, sy_], color=th['steel'],
+                lw=1.3, alpha=0.30, zorder=3.05)
+    # roof parapet and the two stack collars, in the darkest building navy so
+    # they read against the lighter top of the building gradient
+    for (bx, by, bw, bh) in (PARAPET, STACK_BAND, VENT_BAND):
+        ax.add_patch(Rectangle((bx, by), bw, bh, fc=th['bldg0'],
+                               ec=th['stroke'], lw=1.8, zorder=3.1))
+    # vapor wisps drifting up-right from the stack (ambient, periodic), with
+    # a smaller plume off the vent on the same VAPOR_CYCLES so both wrap
+    for (bx, by, bw, bh), rise, r0, r1, aa in ((STACK, 0.34, 0.05, 0.08, 0.35),
+                                               (VENT, 0.20, 0.03, 0.05, 0.26)):
+        sx, sy = bx + bw/2, by + bh
+        for i in range(3):
+            u = (VAPOR_CYCLES*t/DUR + i/3.0) % 1.0
+            ax.add_patch(Circle((sx + 0.10*u + 0.03*np.sin(2*np.pi*u),
+                                 sy + 0.05 + rise*u),
+                                r0 + r1*u, fc=th['peri'], ec='none',
+                                alpha=aa*(1.0 - u), zorder=2.5))
     # flowsheet cutaway panel; base pass in steel, lit pass in amber
     px, py, pw, phh = PANEL
     ax.add_patch(FancyBboxPatch((px, py), pw, phh,
@@ -449,24 +497,53 @@ def draw_plant(ax, th, t, glow, flow_lit):
         for (x0, y0), (x1, y1) in FLOW_LINES:
             ax.plot([x0, x1], [y0, y1], color=color, lw=lw, alpha=alpha,
                     zorder=4)
-    # distillation column: glass gradient, tray lines, connecting pipe
     colx, coly, colw, colh = COLUMN
-    col = FancyBboxPatch((colx, coly), colw, colh,
-                         boxstyle='round,pad=0,rounding_size=0.20',
-                         fc='none', ec='none', zorder=2)
-    ax.add_patch(col)
-    gradient_fill(ax, col, (colx, coly, colx + colw, coly + colh),
-                  th['glass0'], th['glass1'], direction='h', zorder=2)
-    ax.add_patch(FancyBboxPatch((colx, coly), colw, colh,
-                                boxstyle='round,pad=0,rounding_size=0.20',
-                                fc='none', ec=th['stroke'], lw=3, zorder=3))
-    for ty in np.linspace(1.45, 2.55, 4):
-        ax.plot([colx + 0.06, colx + colw - 0.06], [ty, ty],
-                color=th['steel'], lw=1.6, alpha=0.8, zorder=3)
-    ax.plot([x + w, colx], [2.02, 2.02], color=th['steel_dark'], lw=2.5,
-            zorder=2.6)
-    ax.plot([(x + w + colx)/2]*2, [1.95, 2.09], color=th['steel_dark'],
+    cx = colx + colw/2
+    # two feed runs from the building into the column shell, one gated by a
+    # bowtie valve, the other flanged. Drawn under the column outline (2.6)
+    # so they tuck behind the shell rather than crossing it.
+    for py_ in (PIPE_Y, PIPE2_Y):
+        ax.plot([x + w, colx], [py_, py_], color=th['steel_dark'], lw=2.5,
+                zorder=2.6)
+    mx = (x + w + colx)/2
+    ax.plot([mx, mx], [PIPE2_Y - 0.07, PIPE2_Y + 0.07], color=th['steel_dark'],
             lw=2, zorder=2.6)   # flange tick
+    for sgn in (-1, 1):
+        ax.add_patch(Polygon([(mx + sgn*0.055, PIPE_Y - 0.048),
+                              (mx + sgn*0.055, PIPE_Y + 0.048),
+                              (mx, PIPE_Y)], closed=True,
+                             fc=th['steel_dark'], ec='none', zorder=2.7))
+    # overhead vapor line -> condenser drum -> return leg into the column base
+    ax.plot([cx, cx, DRUM[0]], [coly + colh + COL_HEAD_T, OVERHEAD_Y,
+                                OVERHEAD_Y],
+            color=th['steel_dark'], lw=2.2, solid_capstyle='round',
+            solid_joinstyle='round', zorder=2.6)
+    ax.plot([DRUM[0] + DRUM[2], RETURN_X, RETURN_X, colx + colw],
+            [OVERHEAD_Y, OVERHEAD_Y, RETURN_Y, RETURN_Y],
+            color=th['steel_dark'], lw=2.2, solid_capstyle='round',
+            solid_joinstyle='round', zorder=2.6)
+    for fy in (2.30, 1.82):
+        ax.plot([RETURN_X - 0.055, RETURN_X + 0.055], [fy, fy],
+                color=th['steel_dark'], lw=2, zorder=2.6)   # flange ticks
+    ax.add_patch(FancyBboxPatch(DRUM[:2], DRUM[2], DRUM[3],
+                                boxstyle='round,pad=0,rounding_size=0.085',
+                                fc=th['glass1'], ec=th['stroke'], lw=2,
+                                zorder=3))
+    # column: plinth + skirt below, glass-gradient shell with tray decks above
+    ax.add_patch(Rectangle(COL_PLINTH[:2], COL_PLINTH[2], COL_PLINTH[3],
+                           fc=th['stroke'], ec='none', zorder=3.2))
+    col = _column_poly(zorder=2)
+    ax.add_patch(col)
+    gradient_fill(ax, col, (colx, coly - COL_HEAD_B, colx + colw,
+                            coly + colh + COL_HEAD_T),
+                  th['glass0'], th['glass1'], direction='h', zorder=2)
+    ax.add_patch(Rectangle(COL_SKIRT[:2], COL_SKIRT[2], COL_SKIRT[3],
+                           fc=th['navy_mid'], ec=th['stroke'], lw=1.8,
+                           zorder=3.15))
+    ax.add_patch(_column_poly(ec=th['stroke'], lw=3, zorder=3))
+    for ty in np.linspace(*COL_TRAY_YS, COL_N_TRAYS):
+        ax.plot([colx + 0.055, colx + colw - 0.055], [ty, ty],
+                color=th['steel'], lw=2.2, alpha=0.85, zorder=3)
     # ground line
     ax.plot([7.05, 9.50], [1.05, 1.05], color=th['stroke'], lw=3,
             solid_capstyle='round', zorder=3)
