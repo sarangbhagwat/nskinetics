@@ -16,15 +16,22 @@
 
     .. grid-item::
     
-        .. image:: _static/images/demo/loop_dark.gif
-           :class: only-dark
-           :align: center
-           :height: 200
+        .. raw:: html
 
-        .. image:: _static/images/demo/loop_light.gif
-           :class: only-light
-           :align: center
-           :height: 200
+           <div style="text-align:center;">
+             <picture class="only-dark">
+               <source media="(prefers-reduced-motion: reduce)"
+                       srcset="_static/images/demo/loop_dark_still.png">
+               <img class="only-dark" src="_static/images/demo/loop_dark.gif" height="200"
+                    alt="NSKinetics loop: engineered microbe to reactor simulation to plant-scale TEA, with feedback">
+             </picture>
+             <picture class="only-light">
+               <source media="(prefers-reduced-motion: reduce)"
+                       srcset="_static/images/demo/loop_light_still.png">
+               <img class="only-light" src="_static/images/demo/loop_light.gif" height="200"
+                    alt="NSKinetics loop: engineered microbe to reactor simulation to plant-scale TEA, with feedback">
+             </picture>
+           </div>
 
     .. grid-item::
 

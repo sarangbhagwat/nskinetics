@@ -15,12 +15,12 @@ what gets committed and served.
 | `quickstart_demo_template.html` | The player itself (HTML/CSS/JS) with image **placeholders** (`__LOGO_LIGHT__`, `__FIG_KINETICS__`, …). Edit the demo here. |
 | `build_demo.py` | Fills the placeholders and writes the built HTML (two modes). |
 | `make_poster.py` | Renders the README poster PNG from real repo figures. |
-| `make_loop_gif.py` | Renders the animated landing-page loop GIFs (light + dark). |
+| `make_loop_gif.py` | Renders the animated landing-page loop GIFs (light + dark) and their reduced-motion stills. |
 
 ## Regenerate
 
-Run with the project interpreter (the `IBO_2026` env — matplotlib is only needed
-for the poster):
+Run with the project interpreter (the `IBO_2026` env — matplotlib is needed for
+the poster and the loop GIFs; the loop GIFs also need Pillow):
 
 ```bash
 # docs copy: images referenced by relative path (small; embedded via <iframe>)
@@ -31,11 +31,19 @@ python docs/_demo_src/build_demo.py
 python docs/_demo_src/make_poster.py
 #   -> docs/source/_static/images/examples/quickstart_demo_poster.png
 
-# landing-page loop GIFs (committed normally; *.gif is not gitignored)
+# landing-page loop GIFs + their frame-0 reduced-motion stills
+# (GIFs commit normally; the stills are *.png, so gitignored — `git add -f` them)
 python docs/_demo_src/make_loop_gif.py
 #   -> docs/source/_static/images/demo/loop_light.gif
 #   -> docs/source/_static/images/demo/loop_dark.gif
+#   -> docs/source/_static/images/demo/loop_light_still.png
+#   -> docs/source/_static/images/demo/loop_dark_still.png
 ```
+
+The stills are what the landing page serves under
+`prefers-reduced-motion: reduce` (the `<picture>` blocks in
+`docs/source/index.rst`), so regenerate and re-commit them together with the
+GIFs.
 
 ### Self-contained build (the shareable Artifact)
 

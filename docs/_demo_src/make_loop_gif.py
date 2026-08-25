@@ -21,6 +21,11 @@ Run with no arguments to (re)build both theme variants:
     python docs/_demo_src/make_loop_gif.py
     ->  docs/source/_static/images/demo/loop_light.gif
         docs/source/_static/images/demo/loop_dark.gif
+        docs/source/_static/images/demo/loop_light_still.png
+        docs/source/_static/images/demo/loop_dark_still.png
+
+The ``*_still.png`` files are the frame-0 stills the landing page serves
+instead of the GIF under ``prefers-reduced-motion: reduce``.
 
 Use ``--stills DIR`` to render one PNG per preset state for visual review.
 """
@@ -356,7 +361,11 @@ def build_gif(theme_name, out_path):
                   for f in frames]
     pal_frames[0].save(out_path, save_all=True, append_images=pal_frames[1:],
                        duration=int(1000/FPS), loop=0, optimize=True)
-    print(f'{out_path} ({out_path.stat().st_size/1024:.0f} KiB, {n} frames)')
+    # {n} is the frame count rendered and handed to Pillow; the written file
+    # can hold one fewer, as Pillow losslessly merges a pixel-identical
+    # adjacent pair.
+    print(f'{out_path} ({out_path.stat().st_size/1024:.0f} KiB, '
+          f'{n} rendered frames)')
 
 
 # %% CLI
@@ -390,6 +399,12 @@ def main(argv=None):
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     for theme_name in THEMES:
         build_gif(theme_name, OUT_DIR / f'loop_{theme_name}.gif')
+    # Frame-0 stills: what the landing page shows in place of the GIF under
+    # prefers-reduced-motion (see the <picture> blocks in docs/source/index.rst).
+    for theme_name, th in THEMES.items():
+        still = OUT_DIR / f'loop_{theme_name}_still.png'
+        render_frame(th, timeline(0.0)).save(still)
+        print(f'{still} ({still.stat().st_size/1024:.0f} KiB, frame 0)')
 
 
 if __name__ == '__main__':
