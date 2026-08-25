@@ -73,25 +73,30 @@ FPS = 20
 # Palette rule: navy + amber dominate; amber/orange is reserved for
 # attention elements (pulses, animated knob, plasmid, product curve, lit
 # flowsheet, $, glows); teal/red/steel are quieter supporting hues.
+# Every value is a color except 'sheen_a', the alpha of the vessel's glass
+# highlight: on the dark theme the same 0.30 that reads as a subtle sheen on
+# white glass reads as an opaque grey rod, so dark dials it down.
 THEMES = {
     'light': dict(bg='#ffffff', stroke='#1f2a63', navy_mid='#3d4d8f',
-                  peri='#8a93b8', faint='#8a93b8',
+                  peri='#8a93b8',
                   card='#eef0f7', card_edge='#c3c9de', shadow='#1f2a63',
                   steel='#7d8799', steel_dark='#5a6478',
-                  accent='#f5a623', accent2='#ef7b45',
+                  accent='#f5a623',
                   mb0='#58b3a4', mb1='#cdeae4', teal_edge='#1f6f64',
-                  broth0='#8ed0c3', broth1='#d3efe9', bubble='#ffffff',
+                  broth0='#8ed0c3', broth1='#d3efe9', bubble='#5fb3a3',
                   red='#d64545', text='#1f2a63', glass_hi='#ffffff',
+                  sheen_a=0.30,
                   glass0='#e7eaf4', glass1='#f8f9fc',
                   bldg0='#1f2a63', bldg1='#3d4d8f'),
     'dark':  dict(bg='#14181e', stroke='#d7dce8', navy_mid='#38466e',
-                  peri='#5a6478', faint='#5a6478',
+                  peri='#5a6478',
                   card='#202836', card_edge='#3a4459', shadow='#000000',
                   steel='#8a94a8', steel_dark='#67718a',
-                  accent='#f5a623', accent2='#ef7b45',
+                  accent='#f5a623',
                   mb0='#1f5b52', mb1='#47a08f', teal_edge='#63c9b8',
                   broth0='#17453e', broth1='#2a7d70', bubble='#8fd8ca',
                   red='#e05c5c', text='#d7dce8', glass_hi='#c3cde8',
+                  sheen_a=0.16,
                   glass0='#1b222d', glass1='#273043',
                   bldg0='#232d47', bldg1='#3a4a75'),
 }
@@ -105,9 +110,7 @@ ARROW1 = ((2.32, 2.00), (4.24, 2.00))
 ARROW2 = ((5.76, 2.00), (7.00, 2.00))
 
 # Feedback arc: quadratic bezier (right to left) below the pipeline.
-# FB_RAD reproduces the same control point via arc3 (offset/chord = -1.0/7.0).
 FB_P0, FB_P1, FB_P2 = (8.45, 0.95), (4.95, -0.05), (1.45, 0.80)
-FB_RAD = -0.143
 
 CAPTION_Y = 0.15
 
@@ -132,7 +135,7 @@ PANEL = (7.30, 1.28, 1.06, 0.78)         # flowsheet cutaway card
 FLOW_BOXES = ((7.38, 1.72, 0.24, 0.20), (7.74, 1.84, 0.24, 0.20),
               (7.74, 1.42, 0.24, 0.20), (8.06, 1.60, 0.24, 0.20))
 FLOW_LINES = (((7.62, 1.84), (7.74, 1.92)), ((7.62, 1.80), (7.74, 1.54)),
-              ((7.98, 1.92), (8.10, 1.76)), ((7.98, 1.52), (8.10, 1.64)))
+              ((7.98, 1.92), (8.06, 1.76)), ((7.98, 1.52), (8.06, 1.64)))
 COLUMN = (8.76, 1.05, 0.44, 1.85)
 VAPOR_CYCLES = 2                          # integer cycles per loop
 GAUGE_C = (8.28, 3.03)
@@ -192,13 +195,44 @@ def draw_caption(ax, th, x, text):
 
 # %% Drawing
 
+HALO_PEAK = 0.25     # composite opacity of a stage glow at its core; also
+                     # the top of the ramp _shared_palette pins (see there)
+
+
 def _halo(ax, th, xy, rx, ry, strength):
-    """Soft amber glow behind a stage while a pulse passes it."""
+    """Soft amber glow behind a stage while a pulse passes it.
+
+    A stack of nested rings, not two: with only a couple of them the
+    outermost steps straight from nothing to its own alpha, and at the 200 px
+    delivery size that edge reads as a hard-rimmed brown ellipse on the dark
+    theme.
+
+    Rather than hand-tuning per-ring alphas, aim at the *composite* opacity:
+    ``cum`` is a smoothstep from HALO_PEAK at the core to 0 at ``k_max``, and
+    each ring's alpha is solved so the stack reproduces it exactly
+    (1 - a_i = (1 - cum_i)/(1 - cum_{i+1})). Smoothstep has zero slope at
+    both ends, which is what removes the visible rim; HALO_PEAK keeps
+    roughly the old pair's center weight.
+
+    The widest ring (k_max) sets the footprint, so it also sets the
+    clearance: the plant halo's rx = 1.12 about x = 8.30 keeps the outer ring
+    inside the right canvas edge (8.30 + 1.12*1.45 = 9.92 < 10), and the
+    reactor and microbe halos stay well clear of every edge at the same k.
+    """
     if strength <= 0:
         return
-    for k, a in ((1.35, 0.10), (1.0, 0.16)):
-        ax.add_patch(Ellipse(xy, 2*rx*k, 2*ry*k, fc=th['accent'], ec='none',
-                             alpha=a*min(strength, 1.0), zorder=1))
+    n, k_max = 20, 1.45
+    u = np.linspace(0.0, 1.0, n)
+    ks = 1.0 + u*(k_max - 1.0)
+    cum = HALO_PEAK*(1.0 - u*u*(3.0 - 2.0*u))
+    s = min(strength, 1.0)
+    for i in range(n - 1, -1, -1):          # outermost ring first
+        outside = cum[i + 1] if i + 1 < n else 0.0
+        a = 1.0 - (1.0 - cum[i])/(1.0 - outside)
+        if a <= 0.0:
+            continue
+        ax.add_patch(Ellipse(xy, 2*rx*ks[i], 2*ry*ks[i], fc=th['accent'],
+                             ec='none', alpha=a*s, zorder=1))
 
 
 def draw_microbe(ax, th, glow):
@@ -347,19 +381,25 @@ def draw_reactor(ax, th, t, glow, curve_boost):
             for sx in (cx - half, cx + half):
                 ax.plot([sx, sx], [ty - 0.055, ty + 0.055], color=color,
                         lw=2.2, alpha=a, zorder=3.1)
-    # product curve (attention amber) over the broth, with a soft under-glow
+    # product curve (attention amber) over the broth, with a soft under-glow.
+    # The 1.44 baseline sits below the lower impeller tier (y = 1.55) so the
+    # flat left end does not slice through the blades; boosted, the curve
+    # tops out at 2.02, still under the broth surface.
     cxs = np.linspace(x + 0.18, x + w - 0.18, 40)
     amp = 0.30 + 0.28*curve_boost
-    cys = 1.52 + amp/(1 + np.exp(-(cxs - 4.95)*9))
+    cys = 1.44 + amp/(1 + np.exp(-(cxs - 4.95)*9))
     ax.plot(cxs, cys, color=th['accent'], lw=7, alpha=0.25,
             solid_capstyle='round', zorder=3.4)
     ax.plot(cxs, cys, color=th['accent'], lw=2.8, solid_capstyle='round',
             zorder=3.5)
-    # vessel outline + glass sheen on top of everything inside
+    # vessel outline + glass sheen on top of everything inside. The sheen
+    # stops just under the broth surface: run past it into the headspace and
+    # it stops reading as a reflection on the wetted wall and starts reading
+    # as a rod hanging in mid-air. Its alpha is per-theme ('sheen_a').
     ax.add_patch(_vessel_patch(ec=th['stroke'], lw=3, zorder=4))
-    ax.plot([x + 0.16, x + 0.16], [y + 0.28, y + h - 0.38],
-            color=th['glass_hi'], lw=5, alpha=0.30, solid_capstyle='round',
-            zorder=4.2)
+    ax.plot([x + 0.16, x + 0.16], [y + 0.28, LIQ_Y - 0.05],
+            color=th['glass_hi'], lw=5, alpha=th['sheen_a'],
+            solid_capstyle='round', zorder=4.2)
 
 
 def draw_plant(ax, th, t, glow, flow_lit):
@@ -600,8 +640,9 @@ def _pin_exact(pal, rgb, taken):
     """Overwrite the nearest not-yet-pinned palette slot with ``rgb`` exactly.
 
     Returns the slot index. Editing the *nearest* slot keeps the disturbance
-    minimal — that slot moves by at most its own quantization error — and
-    guarantees the pinned color quantizes to itself afterwards (distance 0).
+    minimal — that slot moves by at most the pinned color's own quantization
+    error — and guarantees the pinned color quantizes to itself afterwards
+    (distance 0).
     """
     entries = np.asarray(pal, int).reshape(-1, 3)
     d = ((entries - np.asarray(rgb, int))**2).sum(axis=1).astype(float)
@@ -629,10 +670,18 @@ def _shared_palette(frames, th):
     exactly, because on a big flat fill a nearest-match miss is not a slight
     tint but a wrong color. The GIF is opaque and matted on the docs page, so
     an off-'bg' shows as a visibly bounded off-white (or off-dark) rectangle;
-    and 'card' (#eef0f7) otherwise lands on a neighbour whose green exceeds
-    its red and blue, flipping the whole control-card face from blue-tinted
-    lavender to mint. Each pin takes its own slot so a later pin cannot
-    overwrite an earlier one.
+    and the light theme's 'card' face otherwise lands on a neighbour whose
+    green exceeds its red and blue, flipping the whole control card from
+    blue-tinted lavender to mint. Each pin takes its own slot so a later pin
+    cannot overwrite an earlier one.
+
+    A ramp of stage-glow stops is pinned the same way. ``_halo`` draws a
+    smooth amber-over-background falloff, but MAXCOVERAGE spends its budget
+    on the scene's distinct hues and leaves that near-background ramp almost
+    nothing: measured on the dark theme, a scan across the plant glow holds
+    23 shades in the render and 3 in the GIF, turning the soft falloff back
+    into the hard-edged ellipse ``_halo`` exists to avoid. Twelve evenly
+    spaced stops up to HALO_PEAK cost ~5% of the palette and restore it.
     """
     sub = [f.resize((f.width//2, f.height//2), Image.Resampling.BILINEAR)
            for f in frames[::2]]
@@ -643,9 +692,24 @@ def _shared_palette(frames, th):
     base = probe.quantize(colors=256, method=Image.MAXCOVERAGE)
     pal = list(base.getpalette())
     taken = set()
+    keyed = []
     for key in PINNED_KEYS:
         rgb = tuple(int(th[key][i:i + 2], 16) for i in (1, 3, 5))
         taken.add(_pin_exact(pal, rgb, taken))
+        keyed.append(np.asarray(rgb, float))
+    bg, acc = (np.array([int(th[k][i:i + 2], 16) for i in (1, 3, 5)], float)
+               for k in ('bg', 'accent'))
+    stops = 12
+    for i in range(1, stops + 1):
+        rgb = np.round(bg + (HALO_PEAK*i/stops)*(acc - bg))
+        # Pillow's undithered lookup is cached per 8-level color cube, so a
+        # stop sharing a cell with a PINNED_KEYS color captures that cell and
+        # silently un-pins it: the faintest light-theme stop lands 5 levels
+        # off pure white and stole 'bg'. Skip any stop within one cell of a
+        # keyed pin — at that distance it is perceptually redundant anyway.
+        if any(np.abs(rgb - p).max() < 8 for p in keyed):
+            continue
+        taken.add(_pin_exact(pal, tuple(int(v) for v in rgb), taken))
     out = Image.new('P', (1, 1))
     out.putpalette(pal)
     out.load()   # refresh the core palette so quantize() sees the edit
@@ -659,7 +723,8 @@ def build_gif(theme_name, out_path, dither=Image.Dither.NONE):
     frames = [render_frame(th, timeline(i/FPS)) for i in range(n)]
     # Quantize every frame against one shared palette. Dither stays off by
     # default (flat regions stay clean); pass --dither only if the review
-    # stills show visible banding in the gradients.
+    # stills show visible banding in the gradients — on this scene it cost
+    # roughly 6x the file size (9.99 / 9.10 MB), over the ~8 MB guardrail.
     base = _shared_palette(frames, th)
     pal_frames = [f.quantize(palette=base, dither=dither) for f in frames]
     pal_frames[0].save(out_path, save_all=True, append_images=pal_frames[1:],
@@ -688,7 +753,9 @@ def main(argv=None):
     ap.add_argument('--stills', metavar='DIR',
                     help='render one PNG per preset state into DIR and exit')
     ap.add_argument('--dither', action='store_true',
-                    help='Floyd-Steinberg dithering (only if gradients band)')
+                    help='Floyd-Steinberg dithering (only if gradients band; '
+                         'roughly 6x file size on this scene — check the '
+                         '~8 MB guardrail)')
     args = ap.parse_args(argv)
     if args.stills:
         out = Path(args.stills)
