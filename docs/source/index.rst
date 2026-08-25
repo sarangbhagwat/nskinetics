@@ -22,13 +22,15 @@
              <picture class="only-dark">
                <source media="(prefers-reduced-motion: reduce)"
                        srcset="_static/images/demo/loop_dark_still.png">
-               <img class="only-dark" src="_static/images/demo/loop_dark.gif" height="200"
+               <img class="only-dark" src="_static/images/demo/loop_dark.gif"
+                    width="556" height="200" style="max-width:100%;height:auto;"
                     alt="NSKinetics loop: engineered microbe to reactor simulation to plant-scale TEA, with feedback">
              </picture>
              <picture class="only-light">
                <source media="(prefers-reduced-motion: reduce)"
                        srcset="_static/images/demo/loop_light_still.png">
-               <img class="only-light" src="_static/images/demo/loop_light.gif" height="200"
+               <img class="only-light" src="_static/images/demo/loop_light.gif"
+                    width="556" height="200" style="max-width:100%;height:auto;"
                     alt="NSKinetics loop: engineered microbe to reactor simulation to plant-scale TEA, with feedback">
              </picture>
            </div>
