@@ -76,7 +76,7 @@ bridge behind ``V406``.
 
 
 .. grid:: 1 2 3 4
-   :class-row: sd-align-major-center
+    :class-row: sd-align-major-center
 
 
     .. grid-item-card:: Getting Started
