@@ -12,44 +12,45 @@
    API/api
    contributing/index
 
-.. grid:: 1 1 2 2
+.. raw:: html
 
-    .. grid-item::
-    
-        .. raw:: html
+   <div style="text-align:center;max-width:760px;margin:0 auto 1.25rem;">
+     <picture class="only-dark">
+       <source media="(prefers-reduced-motion: reduce)"
+               srcset="_static/images/demo/loop_dark_still.png">
+       <img class="only-dark" src="_static/images/demo/loop_dark.gif"
+            width="556" height="200" style="width:100%;height:auto;"
+            alt="NSKinetics loop: metabolic engineering to kinetics and reactor design to facility-scale economics, with feedback">
+     </picture>
+     <picture class="only-light">
+       <source media="(prefers-reduced-motion: reduce)"
+               srcset="_static/images/demo/loop_light_still.png">
+       <img class="only-light" src="_static/images/demo/loop_light.gif"
+            width="556" height="200" style="width:100%;height:auto;"
+            alt="NSKinetics loop: metabolic engineering to kinetics and reactor design to facility-scale economics, with feedback">
+     </picture>
+   </div>
 
-           <div style="text-align:center;">
-             <picture class="only-dark">
-               <source media="(prefers-reduced-motion: reduce)"
-                       srcset="_static/images/demo/loop_dark_still.png">
-               <img class="only-dark" src="_static/images/demo/loop_dark.gif"
-                    width="556" height="200" style="max-width:100%;height:auto;"
-                    alt="NSKinetics loop: metabolic engineering to kinetics and reactor design to facility-scale economics, with feedback">
-             </picture>
-             <picture class="only-light">
-               <source media="(prefers-reduced-motion: reduce)"
-                       srcset="_static/images/demo/loop_light_still.png">
-               <img class="only-light" src="_static/images/demo/loop_light.gif"
-                    width="556" height="200" style="max-width:100%;height:auto;"
-                    alt="NSKinetics loop: metabolic engineering to kinetics and reactor design to facility-scale economics, with feedback">
-             </picture>
-           </div>
+.. rst-class:: landing-lede
 
-    .. grid-item::
-
-        NSKinetics is a fast, flexible Python package for simulating steady- and non-steady-state reaction
-        kinetics — including microbial fermentation and enzyme kinetics — and connecting them to
-        techno-economic analysis (TEA) and life-cycle assessment (LCA) under uncertainty. Kinetic models are
-        declared as SBML (most easily authored as `Antimony <https://tellurium.readthedocs.io/en/latest/antimony.html>`__
-        text) and wrapped in a :class:`KineticModel`, which adds unit-aware value access and a Python event
-        API (:class:`Event`, and the higher-level :class:`FeedSpike` for fed-batch feeding) over a Tellurium
-        RoadRunner ODE engine. The same model can then drive a biosteam process unit through the
-        :class:`~nskinetics.units.NSKBatchReactor` bridge — with ready-made flowsheet sections shipping as
-        factories in ``nskinetics.processes`` — coupling kinetics directly to TEA. Watch it run end to
-        end in the interactive `Quickstart`_ demo below.
+NSKinetics is a fast, flexible Python package for simulating steady- and
+non-steady-state reaction kinetics — including microbial fermentation and
+enzyme kinetics — and connecting them to techno-economic analysis (TEA) and
+life-cycle assessment (LCA) under uncertainty. Watch it run end to end in the
+interactive `Quickstart`_ demo below.
 
 Quickstart
 ----------
+
+Kinetic models are declared as SBML — most easily authored as
+`Antimony <https://tellurium.readthedocs.io/en/latest/antimony.html>`__ text —
+and wrapped in a :class:`KineticModel`, which adds unit-aware value access and
+a Python event API (:class:`Event`, and the higher-level :class:`FeedSpike`
+for fed-batch feeding) over a Tellurium RoadRunner ODE engine. The same model
+can then drive a biosteam process unit through the
+:class:`~nskinetics.units.NSKBatchReactor` bridge — with ready-made flowsheet
+sections shipping as factories in ``nskinetics.processes`` — coupling kinetics
+directly to TEA.
 
 One factory call builds a complete, industrially configured process around a
 real kinetic model:
