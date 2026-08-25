@@ -28,18 +28,16 @@
 
     .. grid-item::
 
-        NSKinetics is a fast, flexible, and convenient package in Python for simulating steady- and non-steady-state
-        reaction kinetics — including microbial fermentation and enzyme kinetics — and connecting them to
+        NSKinetics is a fast, flexible Python package for simulating steady- and non-steady-state reaction
+        kinetics — including microbial fermentation and enzyme kinetics — and connecting them to
         techno-economic analysis (TEA) and life-cycle assessment (LCA) under uncertainty. Kinetic models are
-        declared as SBML — most easily authored as `Antimony <https://tellurium.readthedocs.io/en/latest/antimony.html>`__
-        text, or imported from an existing SBML file — and wrapped in a :class:`KineticModel`, which
-        adds unit-aware value access and a Python event API (:class:`Event`, and the higher-level
-        :class:`FeedSpike` for fed-batch feeding) on top of a Tellurium RoadRunner engine that performs the actual
-        ODE integration. The same kinetic model can then drive a biosteam process unit through the
-        :class:`~nskinetics.units.NSKBatchReactor` bridge, coupling kinetics directly to TEA —
-        and ready-made flowsheet sections built around these units ship as system factories in
-        ``nskinetics.processes`` — see the :doc:`quickstart tutorial <tutorial/01_quickstart>` and the
-        :obj:`~nskinetics.processes.create_sugar_prep_and_fermentation_system` factory.
+        declared as SBML (most easily authored as `Antimony <https://tellurium.readthedocs.io/en/latest/antimony.html>`__
+        text) and wrapped in a :class:`KineticModel`, which adds unit-aware value access and a Python event
+        API (:class:`Event`, and the higher-level :class:`FeedSpike` for fed-batch feeding) over a Tellurium
+        RoadRunner ODE engine. The same model can then drive a biosteam process unit through the
+        :class:`~nskinetics.units.NSKBatchReactor` bridge — with ready-made flowsheet sections shipping as
+        factories in ``nskinetics.processes`` — coupling kinetics directly to TEA. Watch it run end to
+        end in the interactive `Quickstart`_ demo below.
 
 Quickstart
 ----------
