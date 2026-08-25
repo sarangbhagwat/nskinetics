@@ -314,6 +314,36 @@ def timeline(t):
     return s
 
 
+def _shared_palette(frames, bg_hex):
+    """Build the one palette every frame is quantized against.
+
+    Derived from a probe holding *all* frames, not from frame 0: at t = 0 no
+    pulse, glow or boosted curve is on screen, so a frame-0 palette has no
+    entry for those colors and nearest-match snaps them to wrong hues.
+    MAXCOVERAGE (not MEDIANCUT) because the canvas is ~94% background —
+    median cut spends its budget subdividing that near-uniform mass and
+    starves the sparse accent colors that carry the animation.
+
+    The background itself is then pinned to the exact theme color: the GIF is
+    opaque and matted on the docs page, so a near-miss there would show as a
+    visibly bounded off-white (or off-dark) rectangle on the page.
+    """
+    w, h = frames[0].size
+    probe = Image.new('RGB', (w, h*len(frames)))
+    for k, f in enumerate(frames):
+        probe.paste(f, (0, k*h))
+    base = probe.quantize(colors=128, method=Image.MAXCOVERAGE)
+    bg = tuple(int(bg_hex[i:i + 2], 16) for i in (1, 3, 5))
+    idx = Image.new('RGB', (1, 1), bg).quantize(
+        palette=base, dither=Image.Dither.NONE).getpixel((0, 0))
+    pal = list(base.getpalette())
+    pal[3*idx:3*idx + 3] = list(bg)
+    out = Image.new('P', (1, 1))
+    out.putpalette(pal)
+    out.load()   # refresh the core palette so quantize() sees the edit
+    return out
+
+
 def build_gif(theme_name, out_path):
     """Render all frames for one theme and write an infinite-loop GIF."""
     th = THEMES[theme_name]
@@ -321,7 +351,7 @@ def build_gif(theme_name, out_path):
     frames = [render_frame(th, timeline(i/FPS)) for i in range(n)]
     # Quantize every frame against one shared palette (flat art, no dither)
     # for a small file with no inter-frame palette flicker.
-    base = frames[0].quantize(colors=128, method=Image.MEDIANCUT)
+    base = _shared_palette(frames, th['bg'])
     pal_frames = [f.quantize(palette=base, dither=Image.Dither.NONE)
                   for f in frames]
     pal_frames[0].save(out_path, save_all=True, append_images=pal_frames[1:],
