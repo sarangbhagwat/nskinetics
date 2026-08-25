@@ -10,6 +10,7 @@
    tutorial/index
    concepts
    API/api
+   contributing/index
 
 .. grid:: 1 1 2 2
 
