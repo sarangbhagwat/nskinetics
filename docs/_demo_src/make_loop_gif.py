@@ -262,6 +262,73 @@ def render_frame(th, state):
     return img
 
 
+# %% Animation timeline
+#
+# One 8 s loop, three acts:
+#   Act 1 (0-3 s)    forward pulse microbe -> reactor -> plant; each stage
+#                    glows as the pulse passes; the needle settles at a
+#                    starting position.
+#   Act 2 (3-6.5 s)  a slider knob moves; a second pulse travels the same
+#                    path; the product curve redraws higher; the needle
+#                    swings to a new (lower-cost) position.
+#   Act 3 (6.5-8 s)  the feedback arrow pulses right-to-left while slider,
+#                    curve, and needle ease back to their initial values,
+#                    masking the reset so the loop is seamless.
+
+
+def smooth(a, b, t):
+    """Smoothstep from 0 (t <= a) to 1 (t >= b)."""
+    if t <= a:
+        return 0.0
+    if t >= b:
+        return 1.0
+    x = (t - a)/(b - a)
+    return x*x*(3.0 - 2.0*x)
+
+
+def bump(a, b, t):
+    """0 -> 1 -> 0 over [a, b] (glow envelope)."""
+    m = 0.5*(a + b)
+    return smooth(a, m, t)*(1.0 - smooth(m, b, t))
+
+
+def timeline(t):
+    """Scene state at time t (seconds) within the DUR-second loop."""
+    s = default_state()
+    if 0.2 <= t < 2.8:
+        s['pulse1_s'] = (t - 0.2)/2.6
+    if 3.8 <= t < 6.0:
+        s['pulse2_s'] = (t - 3.8)/2.2
+    if 6.5 <= t < 7.6:
+        s['fb_s'] = (t - 6.5)/1.1
+    # Glow envelopes are timed to the pulses' stage arrivals (pulse path
+    # params 0.35/0.50 = reactor, 0.80 = plant).
+    s['glow_microbe'] = bump(0.0, 0.9, t) + bump(3.0, 4.0, t)
+    s['glow_reactor'] = bump(0.95, 1.75, t) + bump(4.45, 5.25, t)
+    s['glow_plant'] = bump(2.2, 3.1, t) + bump(5.5, 6.4, t)
+    s['slider_frac'] = 0.35 + 0.40*smooth(3.1, 3.7, t) - 0.40*smooth(7.0, 7.8, t)
+    s['curve_boost'] = smooth(4.5, 5.1, t) - smooth(7.0, 7.8, t)
+    s['needle_frac'] = (0.50 + 0.22*smooth(2.5, 3.0, t)
+                        - 0.40*smooth(5.7, 6.3, t)
+                        + 0.18*smooth(7.1, 7.9, t))
+    return s
+
+
+def build_gif(theme_name, out_path):
+    """Render all frames for one theme and write an infinite-loop GIF."""
+    th = THEMES[theme_name]
+    n = int(round(DUR*FPS))
+    frames = [render_frame(th, timeline(i/FPS)) for i in range(n)]
+    # Quantize every frame against one shared palette (flat art, no dither)
+    # for a small file with no inter-frame palette flicker.
+    base = frames[0].quantize(colors=128, method=Image.MEDIANCUT)
+    pal_frames = [f.quantize(palette=base, dither=Image.Dither.NONE)
+                  for f in frames]
+    pal_frames[0].save(out_path, save_all=True, append_images=pal_frames[1:],
+                       duration=int(1000/FPS), loop=0, optimize=True)
+    print(f'{out_path} ({out_path.stat().st_size/1024:.0f} KiB, {n} frames)')
+
+
 # %% CLI
 
 # Hand-picked states for reviewing the scene art without the animation.
@@ -290,7 +357,9 @@ def main(argv=None):
                     out / f'{name}_{theme_name}.png')
         print(f'wrote {len(THEMES)*len(_PRESETS)} stills to {out}')
         return
-    raise SystemExit('GIF build not implemented yet; use --stills DIR')
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    for theme_name in THEMES:
+        build_gif(theme_name, OUT_DIR / f'loop_{theme_name}.gif')
 
 
 if __name__ == '__main__':
