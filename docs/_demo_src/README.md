@@ -15,6 +15,7 @@ what gets committed and served.
 | `quickstart_demo_template.html` | The player itself (HTML/CSS/JS) with image **placeholders** (`__LOGO_LIGHT__`, `__FIG_KINETICS__`, …). Edit the demo here. |
 | `build_demo.py` | Fills the placeholders and writes the built HTML (two modes). |
 | `make_poster.py` | Renders the README poster PNG from real repo figures. |
+| `make_loop_gif.py` | Renders the animated landing-page loop GIFs (light + dark). |
 
 ## Regenerate
 
@@ -29,6 +30,11 @@ python docs/_demo_src/build_demo.py
 # README poster (a *.png, so gitignored — commit it with `git add -f`)
 python docs/_demo_src/make_poster.py
 #   -> docs/source/_static/images/examples/quickstart_demo_poster.png
+
+# landing-page loop GIFs (committed normally; *.gif is not gitignored)
+python docs/_demo_src/make_loop_gif.py
+#   -> docs/source/_static/images/demo/loop_light.gif
+#   -> docs/source/_static/images/demo/loop_dark.gif
 ```
 
 ### Self-contained build (the shareable Artifact)

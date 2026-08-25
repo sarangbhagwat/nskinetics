@@ -16,12 +16,12 @@
 
     .. grid-item::
     
-        .. image:: _static/images/demo/loop_dark.png
+        .. image:: _static/images/demo/loop_dark.gif
            :class: only-dark
            :align: center
            :height: 200
 
-        .. image:: _static/images/demo/loop_light.png
+        .. image:: _static/images/demo/loop_light.gif
            :class: only-light
            :align: center
            :height: 200
