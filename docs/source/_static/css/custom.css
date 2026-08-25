@@ -44,3 +44,11 @@ p.landing-lede {
   margin: 0 auto 1.5rem;
   text-align: center;
 }
+
+/* Center the landing-page title over the banner hero below it. The `>` keeps
+   this to the top-level document title only; the nested Quickstart/Installation
+   section headings (h2/h3 inside this same section) are left untouched. The id
+   is derived from the title text, so keep it in sync if that title changes. */
+#non-steady-state-kinetics-simulation > h1 {
+  text-align: center;
+}
