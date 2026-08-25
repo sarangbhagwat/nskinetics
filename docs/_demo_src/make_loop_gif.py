@@ -590,7 +590,28 @@ def timeline(t):
     return s
 
 
-def _shared_palette(frames, bg_hex):
+# Theme colors forced into the palette exactly, in priority order. Both are
+# large, flat, low-saturation fills, which is precisely where a nearest-match
+# miss is most visible: the eye reads a whole uniform panel as the wrong hue.
+PINNED_KEYS = ('bg', 'card')
+
+
+def _pin_exact(pal, rgb, taken):
+    """Overwrite the nearest not-yet-pinned palette slot with ``rgb`` exactly.
+
+    Returns the slot index. Editing the *nearest* slot keeps the disturbance
+    minimal — that slot moves by at most its own quantization error — and
+    guarantees the pinned color quantizes to itself afterwards (distance 0).
+    """
+    entries = np.asarray(pal, int).reshape(-1, 3)
+    d = ((entries - np.asarray(rgb, int))**2).sum(axis=1).astype(float)
+    d[list(taken)] = np.inf
+    idx = int(np.argmin(d))
+    pal[3*idx:3*idx + 3] = list(rgb)
+    return idx
+
+
+def _shared_palette(frames, th):
     """Build the one palette every frame is quantized against.
 
     Derived from a probe of *many* frames, not frame 0: at t = 0 no comet,
@@ -604,9 +625,14 @@ def _shared_palette(frames, bg_hex):
     so the probe takes every 2nd frame at half resolution — still covering
     every act (comets, glows, boosted curve, feedback) and every gradient.
 
-    The background itself is then pinned to the exact theme color: the GIF
-    is opaque and matted on the docs page, so a near-miss there would show
-    as a visibly bounded off-white (or off-dark) rectangle on the page.
+    The theme colors in ``PINNED_KEYS`` are then written into the palette
+    exactly, because on a big flat fill a nearest-match miss is not a slight
+    tint but a wrong color. The GIF is opaque and matted on the docs page, so
+    an off-'bg' shows as a visibly bounded off-white (or off-dark) rectangle;
+    and 'card' (#eef0f7) otherwise lands on a neighbour whose green exceeds
+    its red and blue, flipping the whole control-card face from blue-tinted
+    lavender to mint. Each pin takes its own slot so a later pin cannot
+    overwrite an earlier one.
     """
     sub = [f.resize((f.width//2, f.height//2), Image.Resampling.BILINEAR)
            for f in frames[::2]]
@@ -615,11 +641,11 @@ def _shared_palette(frames, bg_hex):
     for k, f in enumerate(sub):
         probe.paste(f, (0, k*h))
     base = probe.quantize(colors=256, method=Image.MAXCOVERAGE)
-    bg = tuple(int(bg_hex[i:i + 2], 16) for i in (1, 3, 5))
-    idx = Image.new('RGB', (1, 1), bg).quantize(
-        palette=base, dither=Image.Dither.NONE).getpixel((0, 0))
     pal = list(base.getpalette())
-    pal[3*idx:3*idx + 3] = list(bg)
+    taken = set()
+    for key in PINNED_KEYS:
+        rgb = tuple(int(th[key][i:i + 2], 16) for i in (1, 3, 5))
+        taken.add(_pin_exact(pal, rgb, taken))
     out = Image.new('P', (1, 1))
     out.putpalette(pal)
     out.load()   # refresh the core palette so quantize() sees the edit
@@ -634,7 +660,7 @@ def build_gif(theme_name, out_path, dither=Image.Dither.NONE):
     # Quantize every frame against one shared palette. Dither stays off by
     # default (flat regions stay clean); pass --dither only if the review
     # stills show visible banding in the gradients.
-    base = _shared_palette(frames, th['bg'])
+    base = _shared_palette(frames, th)
     pal_frames = [f.quantize(palette=base, dither=dither) for f in frames]
     pal_frames[0].save(out_path, save_all=True, append_images=pal_frames[1:],
                        duration=int(1000/FPS), loop=0, optimize=True)
