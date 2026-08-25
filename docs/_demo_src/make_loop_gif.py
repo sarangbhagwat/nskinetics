@@ -98,7 +98,16 @@ SLIDER_X0, SLIDER_X1 = 0.98, 2.02
 SLIDER_YS = (1.68, 1.41, 1.14)
 SLIDER_LABELS = (r'$\mu$', r'$K$', r'$Y$')
 
-# --- legacy stage geometry (removed as Tasks 3-4 replace each stage) ---
+VESSEL = (4.42, 1.15, 1.16, 1.70)   # x, y, w, h; rounded corners 0.20
+LIQ_Y = 2.28                        # nominal broth surface
+SPIN_REVS = 8                       # impeller revolutions per loop (integer)
+WAVE_CYCLES = 4                     # surface-wave cycles per loop (integer)
+# (x, rise cycles per loop, phase offset) per bubble; integer cycles keep
+# the loop seamless.
+BUBBLES = ((4.62, 2, 0.05), (4.78, 3, 0.55), (4.93, 2, 0.35),
+           (5.07, 3, 0.80), (5.22, 2, 0.62), (5.38, 3, 0.15))
+
+# --- legacy stage geometry (removed as Task 4 replaces the plant stage) ---
 _PLANT_OUTLINE = [
     (7.30, 1.05), (7.30, 2.25), (7.70, 2.25), (7.70, 2.90), (7.90, 2.90),
     (7.90, 2.25), (8.60, 2.25), (8.60, 1.05),
@@ -249,21 +258,88 @@ def draw_feedback_arrow(ax, th):
                                  ec=th['steel'], zorder=2))
 
 
+def _vessel_patch(fc='none', ec='none', lw=0, zorder=2):
+    x, y, w, h = VESSEL
+    return FancyBboxPatch((x, y), w, h,
+                          boxstyle='round,pad=0,rounding_size=0.20',
+                          fc=fc, ec=ec, lw=lw, zorder=zorder)
+
+
+def _liquid_poly(t):
+    """Broth silhouette: chamfered bottom, wavy top (WAVE_CYCLES per loop)."""
+    x, y, w, _ = VESSEL
+    ph = 2*np.pi*WAVE_CYCLES*t/DUR
+    xs = np.linspace(x + 0.04, x + w - 0.04, 40)
+    top = [(xi, LIQ_Y + 0.02*np.sin(2*np.pi*xi*2.5 - ph)) for xi in xs]
+    c = 0.13    # bottom-corner chamfer, approximating the vessel rounding
+    bottom = [(x + w - 0.04, y + 0.04 + c), (x + w - 0.04 - c, y + 0.04),
+              (x + 0.04 + c, y + 0.04), (x + 0.04, y + 0.04 + c)]
+    return Polygon(top + bottom, closed=True, fc='none', ec='none')
+
+
 def draw_reactor(ax, th, t, glow, curve_boost):
-    _halo(ax, th, (5.0, 2.05), 0.75, 0.95, glow)
-    ax.add_patch(FancyBboxPatch((4.45, 1.3), 1.1, 1.5,
-                                boxstyle='round,pad=0,rounding_size=0.14',
-                                fc='none', ec=th['stroke'], lw=3, zorder=3))
-    # impeller: shaft + blade bar
-    ax.plot([5.0, 5.0], [2.8, 2.15], color=th['stroke'], lw=2, zorder=3)
-    ax.plot([4.78, 5.22], [2.15, 2.15], color=th['stroke'], lw=2.5,
-            solid_capstyle='round', zorder=3)
-    # product curve rising inside the vessel wall
-    xs = np.linspace(4.62, 5.38, 40)
+    x, y, w, h = VESSEL
+    cx, top = x + w/2, y + h
+    _halo(ax, th, (cx, y + h/2), 0.82, 1.02, glow)
+    soft_shadow(ax, (cx, y - 0.03), w*0.55, 0.08, th)
+    # glass wall: subtle horizontal gradient clipped to the vessel silhouette
+    wall = _vessel_patch(zorder=2)
+    ax.add_patch(wall)
+    gradient_fill(ax, wall, (x, y, x + w, y + h), th['glass0'], th['glass1'],
+                  direction='h', zorder=2)
+    # broth: teal gradient clipped to the wavy liquid polygon
+    liq = _liquid_poly(t)
+    ax.add_patch(liq)
+    gradient_fill(ax, liq, (x, y, x + w, LIQ_Y + 0.04),
+                  th['broth0'], th['broth1'], zorder=2.4)
+    xs = np.linspace(x + 0.04, x + w - 0.04, 40)
+    ph = 2*np.pi*WAVE_CYCLES*t/DUR
+    ax.plot(xs, LIQ_Y + 0.02*np.sin(2*np.pi*xs*2.5 - ph),
+            color=th['teal_edge'], lw=2, alpha=0.7, zorder=2.9)
+    # sparger + bubbles
+    ax.plot([cx - 0.30, cx + 0.30], [y + 0.10, y + 0.10],
+            color=th['steel_dark'], lw=2, solid_capstyle='round', zorder=2.6)
+    for bx, cycles, phb in BUBBLES:
+        u = (cycles*t/DUR + phb) % 1.0
+        by = y + 0.14 + u*(LIQ_Y - 0.24 - (y + 0.14))
+        wob = 0.028*np.sin(2*np.pi*(3*u + phb))
+        a = 0.55*(1.0 - smooth(0.85, 1.0, u))
+        ax.add_patch(Circle((bx + wob, by), 0.018 + 0.030*u, fc='none',
+                            ec=th['bubble'], lw=1.4, alpha=a, zorder=2.8))
+    # impeller: motor block, shaft, two spinning Rushton tiers. Side-view
+    # rotation: two blade pairs 90 deg out of phase; each pair's apparent
+    # half-span is L|cos(theta)| (front pair dark, back pair lighter).
+    ax.add_patch(FancyBboxPatch((cx - 0.14, top - 0.02), 0.28, 0.24,
+                                boxstyle='round,pad=0,rounding_size=0.05',
+                                fc=th['navy_mid'], ec=th['stroke'], lw=1.5,
+                                zorder=4))
+    ax.plot([cx, cx], [top, 1.50], color=th['stroke'], lw=2.2, zorder=3)
+    theta = 2*np.pi*SPIN_REVS*t/DUR
+    for ty in (1.95, 1.55):
+        for phase, front in ((theta, True), (theta + np.pi/2, False)):
+            half = 0.26*abs(np.cos(phase))
+            if half < 0.02:
+                continue
+            color = th['stroke'] if front else th['navy_mid']
+            a = 0.95 if front else 0.6
+            ax.plot([cx - half, cx + half], [ty, ty], color=color, lw=5,
+                    solid_capstyle='round', alpha=a, zorder=3.1)
+            for sx in (cx - half, cx + half):
+                ax.plot([sx, sx], [ty - 0.055, ty + 0.055], color=color,
+                        lw=2.2, alpha=a, zorder=3.1)
+    # product curve (attention amber) over the broth, with a soft under-glow
+    cxs = np.linspace(x + 0.18, x + w - 0.18, 40)
     amp = 0.30 + 0.28*curve_boost
-    ys = 1.48 + amp/(1 + np.exp(-(xs - 4.95)*9))
-    ax.plot(xs, ys, color=th['accent'], lw=2.5, solid_capstyle='round',
-            zorder=3)
+    cys = 1.52 + amp/(1 + np.exp(-(cxs - 4.95)*9))
+    ax.plot(cxs, cys, color=th['accent'], lw=7, alpha=0.25,
+            solid_capstyle='round', zorder=3.4)
+    ax.plot(cxs, cys, color=th['accent'], lw=2.8, solid_capstyle='round',
+            zorder=3.5)
+    # vessel outline + glass sheen on top of everything inside
+    ax.add_patch(_vessel_patch(ec=th['stroke'], lw=3, zorder=4))
+    ax.plot([x + 0.16, x + 0.16], [y + 0.28, y + h - 0.38],
+            color=th['glass_hi'], lw=5, alpha=0.30, solid_capstyle='round',
+            zorder=4.2)
 
 
 def draw_plant(ax, th, t, glow, flow_lit):
