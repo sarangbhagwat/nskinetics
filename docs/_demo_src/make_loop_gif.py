@@ -92,9 +92,13 @@ FB_RAD = -0.143
 
 CAPTION_Y = 0.15
 
-# --- legacy stage geometry (removed as Tasks 2-4 replace each stage) ---
-SLIDER_X0, SLIDER_X1 = 0.65, 2.05
-SLIDER_YS = (1.62, 1.34, 1.06)
+MICROBE_C = (1.35, 2.55)
+CARD = (0.50, 0.88, 1.70, 1.06)          # x, y, w, h
+SLIDER_X0, SLIDER_X1 = 0.98, 2.02
+SLIDER_YS = (1.68, 1.41, 1.14)
+SLIDER_LABELS = (r'$\mu$', r'$K$', r'$Y$')
+
+# --- legacy stage geometry (removed as Tasks 3-4 replace each stage) ---
 _PLANT_OUTLINE = [
     (7.30, 1.05), (7.30, 2.25), (7.70, 2.25), (7.70, 2.90), (7.90, 2.90),
     (7.90, 2.25), (8.60, 2.25), (8.60, 1.05),
@@ -169,28 +173,61 @@ def _halo(ax, th, xy, rx, ry, strength):
 
 
 def draw_microbe(ax, th, glow):
-    _halo(ax, th, (1.35, 2.45), 0.62, 0.45, glow)
-    ax.add_patch(Ellipse((1.35, 2.45), 1.0, 0.6, angle=-16, fc='none',
-                         ec=th['stroke'], lw=3, zorder=3))
-    for cx, cy, r in ((1.15, 2.52, 0.055), (1.42, 2.33, 0.045),
-                      (1.58, 2.52, 0.05)):
-        ax.add_patch(Circle((cx, cy), r, fc=th['stroke'], ec='none', zorder=3))
-    # flagellum
-    xs = np.linspace(0, 0.45, 30)
-    ax.plot(0.86 - xs, 2.62 + 0.06*np.sin(xs/0.45*2*np.pi), color=th['stroke'],
-            lw=2, solid_capstyle='round', zorder=3)
+    """Engineered ovoid microbe: teal gradient body, granules, amber plasmid."""
+    cx, cy = MICROBE_C
+    _halo(ax, th, MICROBE_C, 0.66, 0.48, glow)
+    soft_shadow(ax, (cx, cy - 0.38), 0.42, 0.07, th, alpha=0.14)
+    body_clip = Ellipse(MICROBE_C, 1.04, 0.66, angle=-14, fc='none',
+                        ec='none', zorder=2)
+    ax.add_patch(body_clip)
+    gradient_fill(ax, body_clip, (cx - 0.6, cy - 0.4, cx + 0.6, cy + 0.4),
+                  th['mb0'], th['mb1'], zorder=2.5)
+    ax.add_patch(Ellipse(MICROBE_C, 1.04, 0.66, angle=-14, fc='none',
+                         ec=th['teal_edge'], lw=3, zorder=3.5))
+    # membrane highlight along the upper-left rim
+    ax.add_patch(Arc(MICROBE_C, 0.84, 0.46, angle=-14, theta1=95, theta2=175,
+                     ec=th['glass_hi'], lw=2.5, alpha=0.55, zorder=3))
+    # granules (quiet navy)
+    for gx, gy, r in ((1.10, 2.62, 0.05), (1.24, 2.42, 0.045),
+                      (1.16, 2.52, 0.028)):
+        ax.add_patch(Circle((gx, gy), r, fc=th['stroke'], ec='none',
+                            alpha=0.85, zorder=3))
+    # engineering cue: amber plasmid loop (nested loops = supercoil)
+    ax.add_patch(Circle((1.58, 2.52), 0.10, fc='none', ec=th['accent'],
+                        lw=2.5, zorder=3))
+    ax.add_patch(Circle((1.58, 2.52), 0.045, fc='none', ec=th['accent'],
+                        lw=1.5, alpha=0.7, zorder=3))
 
 
 def draw_control_card(ax, th, frac):
-    """Three abstract sliders; the middle (amber) knob is the animated one."""
+    """Rounded control card with three tick-marked, labeled sliders.
+
+    The middle (amber) knob is the animated one; its track fills amber up
+    to the knob so the change reads at a glance.
+    """
+    x, y, w, h = CARD
+    soft_shadow(ax, (x + w/2, y + 0.02), w*0.52, 0.09, th)
+    ax.add_patch(FancyBboxPatch((x, y), w, h,
+                                boxstyle='round,pad=0,rounding_size=0.12',
+                                fc=th['card'], ec=th['card_edge'], lw=1.5,
+                                zorder=2))
     knob_fracs = (0.30, frac, 0.72)
-    for y, kf, animated in zip(SLIDER_YS, knob_fracs, (False, True, False)):
-        ax.plot([SLIDER_X0, SLIDER_X1], [y, y], color=th['faint'], lw=4,
-                solid_capstyle='round', zorder=2)
+    for yy, lab, kf, animated in zip(SLIDER_YS, SLIDER_LABELS, knob_fracs,
+                                     (False, True, False)):
+        ax.text(0.76, yy, lab, ha='center', va='center', fontsize=10,
+                color=th['text'], zorder=3)
+        ax.plot([SLIDER_X0, SLIDER_X1], [yy, yy], color=th['peri'], lw=3.5,
+                solid_capstyle='round', alpha=0.75, zorder=3)
+        for tk in np.linspace(SLIDER_X0, SLIDER_X1, 5):
+            ax.plot([tk, tk], [yy - 0.035, yy + 0.035], color=th['peri'],
+                    lw=1.2, alpha=0.6, zorder=3)
         kx = SLIDER_X0 + kf*(SLIDER_X1 - SLIDER_X0)
+        if animated:
+            ax.plot([SLIDER_X0, kx], [yy, yy], color=th['accent'], lw=3.5,
+                    solid_capstyle='round', alpha=0.9, zorder=3.5)
         color = th['accent'] if animated else th['stroke']
-        ax.add_patch(Circle((kx, y), 0.09, fc=color, ec=th['bg'], lw=1.5,
-                            zorder=4))
+        ax.add_patch(Circle((kx, yy), 0.085, fc=color, ec=th['card'],
+                            lw=1.8, zorder=4))
 
 
 def draw_arrow(ax, th, p0, p1):
