@@ -52,9 +52,11 @@ def _bf(text):
     """Render ``text`` as a bold mathtext run, escaping spaces.
 
     Mathtext collapses literal spaces, so a multi-word axis label such as
-    ``'Working volume'`` needs its spaces escaped to survive ``\\bf``.
+    ``'Working volume'`` needs its spaces escaped to survive ``\\mathbf``.
+    (The bare ``\\bf`` switch is not accepted by matplotlib >= 3.11's mathtext
+    parser when letters follow it directly, so the braced form is required.)
     """
-    return r'$\bf' + str(text).replace(' ', r'\ ') + '$'
+    return r'$\mathbf{' + str(text).replace(' ', r'\ ') + '}$'
 
 
 class KineticModel():
