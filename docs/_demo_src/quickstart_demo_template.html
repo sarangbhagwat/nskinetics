@@ -680,7 +680,9 @@ const chipEls=[...chipsEl.children];
 const PLAY='<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
 const PAUSE='<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>';
 
-let current=0, t=0, playing=true, built=-1, ended=false;
+/* Starts paused on the intro poster; autoStart() (below) flips this to true
+   the first time the player scrolls into view. */
+let current=0, t=0, playing=false, built=-1, ended=false;
 
 function fmt(ms){const s=Math.round(ms/1000);return `${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}`;}
 tTot.textContent=fmt(total);
@@ -799,6 +801,27 @@ document.addEventListener("keydown",e=>{
   else if(e.code==="ArrowRight"){ e.preventDefault(); jump(current+1); }
   else if(e.code==="ArrowLeft"){ e.preventDefault(); jump(current-1); }
 });
+
+/* Don't play until the demo is scrolled into view. Embedded in the docs page
+   the player sits below the fold, so an IntersectionObserver created here (and
+   clipped by the parent-page viewport, even across the iframe) holds it on the
+   intro poster until the reader reaches it. Opened standalone it's in view at
+   load, so this fires immediately. Auto-start happens once; manual play/pause
+   afterwards is untouched. */
+let autoStarted=false;
+function autoStart(){
+  if(autoStarted) return;
+  autoStarted=true;
+  if(!ended) playing=true;
+}
+if("IntersectionObserver" in window){
+  const io=new IntersectionObserver((entries,obs)=>{
+    if(entries.some(e=>e.isIntersecting)){ autoStart(); obs.disconnect(); }
+  }, {threshold:0.25});
+  io.observe($("#player"));
+} else {
+  autoStart();  // no IO support -> preserve the original auto-play behavior
+}
 
 render();
 requestAnimationFrame(frame);
