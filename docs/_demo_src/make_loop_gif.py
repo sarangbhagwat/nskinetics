@@ -1032,14 +1032,14 @@ def timeline(t):
         if tt < 1.2:
             s['fb_s'] = tt
     # Stage glows, one per circuit: each stage lights at the instant its
-    # incoming comet lands and stays lit (1.5 s envelope) through its whole
-    # response — the 0.8 s widget move starting with the glow, and the
-    # 0.65-0.70 s beat to the launch. The beat is the slack that stretches
-    # the rigid 3 x 1.0 s of flight to the 5.0 s half-loop, spread evenly
-    # across the three stages.
-    s['glow_microbe'] = bump(0.10, 1.60, t) + bump(5.10, 6.60, t)
-    s['glow_reactor'] = bump(1.75, 3.25, t) + bump(6.75, 8.25, t)
-    s['glow_plant'] = bump(3.40, 4.90, t) + bump(8.40, 9.90, t)
+    # incoming comet lands, and its 1.0 s envelope covers the whole response
+    # — the 0.8 s widget move starting with the glow, and the 0.65-0.70 s
+    # beat to the launch — before fading. The beat is the slack that
+    # stretches the rigid 3 x 1.0 s of flight to the 5.0 s half-loop, spread
+    # evenly across the three stages.
+    s['glow_microbe'] = bump(0.10, 1.10, t) + bump(5.10, 6.10, t)
+    s['glow_reactor'] = bump(1.75, 2.75, t) + bump(6.75, 7.75, t)
+    s['glow_plant'] = bump(3.40, 4.40, t) + bump(8.40, 9.40, t)
     # One widget per stage, moving at the instant its stage lights: circuit
     # A moves it out, circuit B moves it back — equal and opposite, so t = 0
     # and t = DUR coincide and the loop wraps with no separate reset.
