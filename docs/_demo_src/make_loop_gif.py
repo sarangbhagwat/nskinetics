@@ -31,7 +31,7 @@ Forward arrows link the stages and a dashed feedback arc curves back
 underneath. Amber comet pulses travel those paths, each stage glowing as a
 pulse reaches it.
 
-One loop is 6.6 s at 20 fps (132 frames), rendered 2000 x 720 px. Ambient
+One loop is 10 s at 20 fps (200 frames), rendered 2000 x 720 px. Ambient
 motion (impeller, bubbles, surface wave, vapor plumes, pipe and flowsheet
 slugs, column vapor, sump/drum levels) runs in every frame with an integer
 number of cycles per loop; on top, two symmetric circuits play out. In each,
@@ -76,8 +76,7 @@ OUT_DIR = HERE.parent / 'source' / '_static' / 'images' / 'demo'
 
 DPI = 200    # figsize (10, 3.6) -> 2000 x 720 px (displayed at 200 px height;
              # rendered large for hi-DPI screens and reuse at bigger sizes)
-DUR = 6.6    # seconds per loop: two 3.3 s circuits, each three rigid hops of
-             # (glow + widget start) -> 0.1 s beat -> 1.0 s comet flight
+DUR = 10.0   # seconds per loop
 FPS = 20
 
 # 'bg' must match the docs page background (pydata-sphinx-theme): GIFs are
@@ -144,12 +143,12 @@ SLIDER_LABELS = (r'$\mu$', r'$k_{\mathrm{cat}}$', r'$K_{\mathrm{M}}$')
 
 VESSEL = (4.42, 1.15, 1.16, 1.70)   # x, y, w, h; rounded corners 0.20
 LIQ_Y = 2.28                        # nominal broth surface
-SPIN_REVS = 5                       # impeller revolutions per loop (integer)
-WAVE_CYCLES = 3                     # surface-wave cycles per loop (integer)
+SPIN_REVS = 8                       # impeller revolutions per loop (integer)
+WAVE_CYCLES = 4                     # surface-wave cycles per loop (integer)
 # (x, rise cycles per loop, phase offset) per bubble; integer cycles keep
 # the loop seamless.
-BUBBLES = ((4.62, 1, 0.05), (4.78, 2, 0.55), (4.93, 1, 0.35),
-           (5.07, 2, 0.80), (5.22, 1, 0.62), (5.38, 2, 0.15))
+BUBBLES = ((4.62, 2, 0.05), (4.78, 3, 0.55), (4.93, 2, 0.35),
+           (5.07, 3, 0.80), (5.22, 2, 0.62), (5.38, 3, 0.15))
 
 PLANT_BLDG = (7.18, 1.05, 1.37, 1.25)    # x, y, w, h
 PARAPET = (7.12, 2.26, 1.49, 0.11)       # roof slab capping the building
@@ -178,7 +177,7 @@ FS_HX, FS_R_HX = (7.60, 1.50), 0.070            # exchanger (circle + duty bar)
 FS_REACTOR = (7.68, 1.72, 0.21, 0.20)           # mini stirred reactor
 FS_RX_LIQ = 0.62          # broth surface, as a fraction of the mini's height
 FS_RX_BLADE = 0.045       # mini impeller half-span at full extension
-FS_RX_BUB_CYCLES = 2      # mini bubble rises this many times per loop
+FS_RX_BUB_CYCLES = 3      # mini bubble rises this many times per loop
 FS_COLUMN, FS_DOME = (7.98, 1.45, 0.14, 0.40), 0.055     # domed column
 FS_DRUM = (8.22, 1.78, 0.17, 0.095)             # reflux drum (capsule)
 FS_TANK, FS_R_TANK = (8.305, 1.50), 0.085       # product tank (circle)
@@ -191,7 +190,7 @@ FS_STREAMS = (
     ((8.305, 1.78), (8.305, 1.585)),                                # -> tank
     ((8.05, 1.45), (8.05, 1.36), (7.49, 1.36), (7.49, 1.50)),       # recycle
 )
-FS_LEVEL_CYCLES = 2       # drum/tank level breathing, integer cycles per loop
+FS_LEVEL_CYCLES = 3       # drum/tank level breathing, integer cycles per loop
 # Distillation column: COLUMN is the straight *shell*; elliptical heads are
 # added above and below it, so the silhouette tops out at 1.30 + 1.36 + 0.17
 # = 2.83 — clear of the gauge, whose face is the semicircle above y 3.03.
@@ -211,10 +210,10 @@ RETURN_X, RETURN_Y = 9.38, 1.44          # return leg down to the column base
 # invisible. Speeds are in data units / s: at 200 dpi one data unit is 200 px
 # rendered and 55.6 px at the 556 px delivery width, so ~0.3-0.45 data/s is
 # 17-25 px/s on the page — plainly moving without strobing at 20 fps.
-VAPOR_CYCLES, VAPOR_PUFFS = 2, 5          # stack/vent plumes
+VAPOR_CYCLES, VAPOR_PUFFS = 3, 5          # stack/vent plumes
 COL_SUMP_Y = 1.46                         # nominal column sump level
-COL_LEVEL_CYCLES = 3                      # sump/drum level breathing
-COL_VAPOR_CYCLES = 2                      # vapor ticks rising between trays
+COL_LEVEL_CYCLES = 4                      # sump/drum level breathing
+COL_VAPOR_CYCLES = 3                      # vapor ticks rising between trays
 FLOW_SLUG_V = 0.30                        # flowsheet stream slug speed
 PIPE_SLUG_V = 0.45                        # plant pipe-run slug speed
 GAUGE_C = (8.28, 3.03)
@@ -950,26 +949,25 @@ def render_frame(th, state):
 
 # %% Animation timeline
 #
-# One 6.6 s loop. Ambient motion (impeller spin, bubbles,
+# One 10 s loop, one iteration. Ambient motion (impeller spin, bubbles,
 # surface wave, vapor plumes, pipe/flowsheet slug trains, column vapor and
 # levels) derives from state['t'] and runs in every frame, each with an
 # integer number of cycles per loop so the wrap is seamless. On top, two
-# symmetric 3.3 s circuits with one rhythm at every stage: a comet lands,
-# and at that instant the stage lights and its widget moves; after a 0.1 s
-# beat the outgoing comet departs on an exactly 1.0 s flight. That chain is
-# rigid — three 1.1 s hops per circuit — which is what sets the 6.6 s loop.
-# Circuit B repeats circuit A with every widget moving back the other way,
-# so there is no separate "reset". Circuit A (circuit B = the same + 3.3 s):
-#   0.00  feedback comet lands + microbe lights + slider moves right
-#   0.10  comet 1 departs
-#   1.10  comet 1 lands + reactor lights + product curve rises
-#   1.20  comet 2 departs
-#   2.20  comet 2 lands + plant lights + $ needle swings
-#   2.30  feedback comet departs
-#   3.30  feedback comet lands + microbe relights -> circuit B
-# Circuit B's feedback flight (5.60 -> 6.60) lands exactly on the loop wrap,
-# so frame 0 catches it at the microbe as the microbe lights; frame 0 and
-# the last frame differ no more than any adjacent pair.
+# symmetric 5 s circuits with one rhythm at every stage: a comet lands, and
+# at that instant the stage lights and its widget moves; after a 0.65-0.70 s
+# beat the outgoing comet departs on an exactly 1.0 s flight. Circuit B
+# repeats circuit A with every widget moving back the other way, so there is
+# no separate "reset". Circuit A (circuit B = the same + 5 s):
+#   0.10  feedback comet lands + microbe lights + slider moves right
+#   0.75  comet 1 departs
+#   1.75  comet 1 lands + reactor lights + product curve rises
+#   2.40  comet 2 departs
+#   3.40  comet 2 lands + plant lights + $ needle swings
+#   4.10  feedback comet departs
+#   5.10  feedback comet lands + microbe relights -> circuit B
+# Circuit B's feedback flight (9.10 -> 10.10) rides across the loop wrap,
+# landing at 0.10 of the next loop, so frame 0 shows it nearing the microbe;
+# frame 0 and the last frame differ no more than any adjacent pair.
 
 
 def smooth(a, b, t):
@@ -991,26 +989,25 @@ def bump(a, b, t):
 def timeline(t):
     """Scene state at time t (seconds) within the DUR-second loop.
 
-    Two symmetric circuits per loop (3.3 s each), so no widget ever "resets"
-    — every return movement is itself a stage movement, synced to that stage
+    Two symmetric circuits per loop (5 s each), so no widget ever "resets" —
+    every return movement is itself a stage movement, synced to that stage
     lighting. Within each circuit the causal chain is: a comet lands at a
     stage, and at that same instant the stage lights and its one widget
-    starts to move; after a 0.1 s beat the outgoing comet departs. Every
-    comet flies for exactly 1.0 s, making the chain rigid — the 3.3 s
-    circuit and 6.6 s loop follow from it. Circuit A:
+    starts to move; after a 0.65-0.70 s beat the outgoing comet departs.
+    Every comet flies for exactly 1.0 s. Circuit A:
 
     * the feedback comet lands, the microbe lights and the **slider** moves
-      right (0.00); a comet departs for the reactor (0.10);
-    * it lands, the reactor lights and the **product curve** rises (1.10);
-      a comet departs for the plant (1.20);
-    * it lands, the plant lights and the **$ needle** swings (2.20); the
-      right-to-left feedback comet departs (2.30), landing at the microbe
-      (3.30) as it relights.
+      right (0.10); a comet departs for the reactor (0.75);
+    * it lands, the reactor lights and the **product curve** rises (1.75);
+      a comet departs for the plant (2.40);
+    * it lands, the plant lights and the **$ needle** swings (3.40); the
+      right-to-left feedback comet departs (4.10), landing at the microbe
+      (5.10) as it relights.
 
-    Circuit B (t + 3.3) repeats the chain with the slider, curve, and
-    needle each moving back the opposite way; its feedback comet lands
-    exactly on the loop wrap (6.60 = 0.00), so frame 0 catches it at the
-    microbe, and every quantity is periodic.
+    Circuit B (t + 5) repeats the chain with the slider, curve, and needle
+    each moving back the opposite way; its feedback comet rides across the
+    loop wrap, landing at 0.10 of the next loop — frame 0 shows it nearing
+    the microbe, and every quantity is periodic.
     """
     s = default_state()
     s['t'] = t
@@ -1021,36 +1018,36 @@ def timeline(t):
     # then runs on past the head's arrival so the trail keeps sliding into
     # the destination instead of popping off with the head (the head itself
     # is hidden there — by pulse_xy inside a stage, by fb_xy_head past s 1).
-    for t0 in (0.10, 3.40):
+    for t0 in (0.75, 5.75):
         if t0 <= t < t0 + 1.4:
             s['pulse1_s'] = 0.34*(t - t0)
-    for t0 in (1.20, 4.50):
+    for t0 in (2.40, 7.40):
         if t0 <= t < t0 + 1.6:
             s['pulse2_s'] = 0.50 + 0.30*(t - t0)
     # The feedback windows are taken mod DUR because circuit B's flight
-    # (5.60 -> 6.60) lands exactly on the loop wrap: its tail is still
-    # sliding into the microbe as the next loop opens.
-    for t0 in (2.30, 5.60):
+    # (9.10 -> 10.10) rides across the loop wrap, landing at 0.10 of the next
+    # loop at the instant the microbe lights.
+    for t0 in (4.10, 9.10):
         tt = (t - t0) % DUR
         if tt < 1.2:
             s['fb_s'] = tt
     # Stage glows, one per circuit: each stage lights at the instant its
-    # incoming comet lands, holds through its response (the 0.8 s widget
-    # move starting with the glow, and the 0.1 s beat to the launch), and
-    # fades as the next stage lights. Consecutive glow starts are 1.1 s
-    # apart (0.1 beat + 1.0 flight), so the 1.1 s envelopes tile the loop:
-    # the glow relays around the ring with exactly one stage lit at a time.
-    s['glow_microbe'] = bump(0.00, 1.10, t) + bump(3.30, 4.40, t)
-    s['glow_reactor'] = bump(1.10, 2.20, t) + bump(4.40, 5.50, t)
-    s['glow_plant'] = bump(2.20, 3.30, t) + bump(5.50, 6.60, t)
+    # incoming comet lands and stays lit (1.5 s envelope) through its whole
+    # response — the 0.8 s widget move starting with the glow, and the
+    # 0.65-0.70 s beat to the launch. The beat is the slack that stretches
+    # the rigid 3 x 1.0 s of flight to the 5.0 s half-loop, spread evenly
+    # across the three stages.
+    s['glow_microbe'] = bump(0.10, 1.60, t) + bump(5.10, 6.60, t)
+    s['glow_reactor'] = bump(1.75, 3.25, t) + bump(6.75, 8.25, t)
+    s['glow_plant'] = bump(3.40, 4.90, t) + bump(8.40, 9.90, t)
     # One widget per stage, moving at the instant its stage lights: circuit
     # A moves it out, circuit B moves it back — equal and opposite, so t = 0
     # and t = DUR coincide and the loop wraps with no separate reset.
-    s['slider_frac'] = 0.35 + 0.40*(smooth(0.00, 0.80, t)
-                                    - smooth(3.30, 4.10, t))
-    s['curve_boost'] = smooth(1.10, 1.90, t) - smooth(4.40, 5.20, t)
-    s['needle_frac'] = 0.50 - 0.30*(smooth(2.20, 3.00, t)
-                                    - smooth(5.50, 6.30, t))
+    s['slider_frac'] = 0.35 + 0.40*(smooth(0.10, 0.90, t)
+                                    - smooth(5.10, 5.90, t))
+    s['curve_boost'] = smooth(1.75, 2.55, t) - smooth(6.75, 7.55, t)
+    s['needle_frac'] = 0.50 - 0.30*(smooth(3.40, 4.20, t)
+                                    - smooth(8.40, 9.20, t))
     return s
 
 
@@ -1086,7 +1083,7 @@ def _shared_palette(frames, th):
     median cut spends its budget subdividing that near-uniform mass and
     starves the sparse accent colors that carry the animation.
 
-    At 2000 x 720 x 132 frames a full-resolution probe is ~0.6 GB of RGB,
+    At 2000 x 720 x 200 frames a full-resolution probe is ~0.9 GB of RGB,
     so the probe takes every 2nd frame at half resolution — still covering
     every act (comets, glows, boosted curve, feedback) and every gradient.
 
@@ -1182,7 +1179,7 @@ _PRESETS = {
     'reactor-glow': dict(t=1.6, glow_reactor=1.0),
     'shifted': dict(t=6.5, slider_frac=0.75, curve_boost=1.0,
                     needle_frac=0.24, glow_plant=1.0),
-    'feedback': dict(t=2.8, fb_s=0.5),
+    'feedback': dict(t=8.8, fb_s=0.5),
 }
 
 
