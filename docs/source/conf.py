@@ -41,6 +41,14 @@ html_theme_options = {
         'image_dark': '_static/images/logo/logo_nskinetics_dark_white-circle.png',
     },
     'show_toc_level': 2,
+    'icon_links': [
+        {
+            'name': 'GitHub',
+            'url': 'https://github.com/sarangbhagwat/nskinetics',
+            'icon': 'fa-brands fa-github',
+            'type': 'fontawesome',
+        },
+    ],
 }
 
 epub_show_urls = 'footnote'
