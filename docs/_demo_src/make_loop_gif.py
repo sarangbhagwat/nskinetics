@@ -34,11 +34,13 @@ pulse reaches it.
 One loop is 10 s at 20 fps (200 frames), rendered 2000 x 720 px. Ambient
 motion (impeller, bubbles, surface wave, vapor plumes, pipe and flowsheet
 slugs, column vapor, sump/drum levels) runs in every frame with an integer
-number of cycles per loop; on top sit three acts — a pulse down the
-pipeline, then a slider move that boosts the curve and swings the gauge,
-then a feedback pulse right-to-left while everything eases home, masking the
-reset. Frame 0 and the last frame differ no more than any adjacent pair, so
-the loop wraps seamlessly.
+number of cycles per loop; on top, one iteration plays out: a forward pulse
+travels the pipeline and each stage lights as the pulse reaches it, with that
+stage's one widget moving at the same moment — the microbe's slider, then the
+reactor's product curve, then the plant's $ gauge. A right-to-left feedback
+pulse then closes the loop while all three widgets ease home together,
+masking the reset. Frame 0 and the last frame differ no more than any
+adjacent pair, so the loop wraps seamlessly.
 
 Run with no arguments to (re)build both theme variants:
 
@@ -935,18 +937,19 @@ def render_frame(th, state):
 
 # %% Animation timeline
 #
-# One 10 s loop. Ambient motion (impeller spin, bubbles, surface wave, vapor
-# plumes, pipe/flowsheet slug trains, column vapor and levels) derives from
-# state['t'] and runs in every frame, each with an integer number of cycles
-# per loop so the wrap is seamless. On top, three acts:
-#   Act 1 (~0-3.6 s)   forward comet microbe -> reactor -> plant; each stage
-#                      glows as it passes; the needle settles mid-scale.
-#   Act 2 (~3.9-7.8 s) the amber slider moves; a second comet propagates;
-#                      the product curve boosts; the needle swings to a
-#                      lower cost with a small overshoot-and-settle.
-#   Act 3 (~8.0-9.8 s) the feedback comet runs the dashed arc right-to-left
-#                      while slider, curve, and needle ease home, masking
-#                      the reset.
+# One 10 s loop, one iteration. Ambient motion (impeller spin, bubbles,
+# surface wave, vapor plumes, pipe/flowsheet slug trains, column vapor and
+# levels) derives from state['t'] and runs in every frame, each with an
+# integer number of cycles per loop so the wrap is seamless. On top:
+#   Act 1 (~0.1-4.5 s) a single forward comet sweeps microbe -> reactor ->
+#                      plant; each stage lights exactly once as the comet
+#                      reaches it, and that stage's one widget moves at the
+#                      same moment — the slider (microbe), then the product
+#                      curve (reactor), then the $ needle (plant). Each widget
+#                      holds its new value while the downstream stages respond.
+#   Act 2 (~5.4-8.6 s) the feedback comet runs the dashed arc right-to-left,
+#                      plant -> microbe, while slider, curve, and needle ease
+#                      home together, masking the reset for the next loop.
 
 
 def smooth(a, b, t):
@@ -966,27 +969,40 @@ def bump(a, b, t):
 
 
 def timeline(t):
-    """Scene state at time t (seconds) within the DUR-second loop."""
+    """Scene state at time t (seconds) within the DUR-second loop.
+
+    One clean iteration per loop. A single forward comet sweeps
+    microbe -> reactor -> plant; each stage lights exactly once as the comet
+    reaches it, and the one widget on that stage moves at the same moment —
+    the slider (microbe), the product curve (reactor), the $ needle (plant).
+    Each moved widget holds its new value while the downstream stages respond,
+    then all three ease home together (``home``) under the right-to-left
+    feedback comet, masking the loop reset.
+    """
     s = default_state()
     s['t'] = t
-    if 0.3 <= t < 3.5:
-        s['pulse1_s'] = (t - 0.3)/3.2
-    if 4.6 <= t < 7.4:
-        s['pulse2_s'] = (t - 4.6)/2.8
-    if 8.0 <= t < 9.6:
-        s['fb_s'] = (t - 8.0)/1.6
-    # Glow envelopes are timed to the comets' stage arrivals (path params
-    # 0.34/0.50 = reactor, 0.80 = plant).
-    s['glow_microbe'] = bump(0.1, 1.2, t) + bump(3.9, 4.9, t)
-    s['glow_reactor'] = bump(1.2, 2.2, t) + bump(5.5, 6.4, t)
-    s['glow_plant'] = bump(2.7, 3.8, t) + bump(6.6, 7.7, t)
-    s['slider_frac'] = (0.35 + 0.40*smooth(3.9, 4.6, t)
-                        - 0.40*smooth(8.6, 9.6, t))
-    s['curve_boost'] = smooth(5.6, 6.3, t) - smooth(8.6, 9.6, t)
-    s['needle_frac'] = (0.50 + 0.20*smooth(3.0, 3.6, t)
-                        - 0.46*smooth(7.0, 7.6, t)
-                        + 0.06*bump(7.5, 8.4, t)      # overshoot-settle
-                        + 0.26*smooth(8.8, 9.8, t))   # ease home
+    # Forward comet, microbe -> reactor -> plant in one sweep: it crosses
+    # arrow 1, glows in place at the reactor (pulse_xy returns None over
+    # s 0.34-0.50), crosses arrow 2, then arrives at the plant (s > 0.80). So
+    # the single comet reads as two legs with the reactor lighting between.
+    if 0.6 <= t < 4.4:
+        s['pulse1_s'] = (t - 0.6)/3.8
+    # Feedback comet, plant -> microbe (right to left), closing the loop.
+    if 5.4 <= t < 8.6:
+        s['fb_s'] = (t - 5.4)/3.2
+    # Stage glows, timed to the forward comet's arrival at each stage: pulse_xy
+    # puts the reactor at s 0.34-0.50 (t 1.89-2.50) and the plant at s > 0.80
+    # (t 3.64). Each stage lights exactly once per loop.
+    s['glow_microbe'] = bump(0.1, 1.2, t)
+    s['glow_reactor'] = bump(1.7, 2.7, t)
+    s['glow_plant'] = bump(3.5, 4.5, t)
+    # One widget per stage, moving as that stage lights and holding until the
+    # shared ease-home under the feedback comet returns all three to base by
+    # the loop's end (so frame 0 and the last frame coincide).
+    home = smooth(5.6, 8.6, t)
+    s['slider_frac'] = 0.35 + 0.40*(smooth(0.2, 1.0, t) - home)
+    s['curve_boost'] = smooth(1.9, 2.7, t) - home
+    s['needle_frac'] = 0.50 - 0.30*(smooth(3.6, 4.4, t) - home)
     return s
 
 
