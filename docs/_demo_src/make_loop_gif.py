@@ -35,13 +35,14 @@ One loop is 10 s at 20 fps (200 frames), rendered 2000 x 720 px. Ambient
 motion (impeller, bubbles, surface wave, vapor plumes, pipe and flowsheet
 slugs, column vapor, sump/drum levels) runs in every frame with an integer
 number of cycles per loop; on top, two symmetric circuits play out. In each,
-an amber comet arrives at a stage, the stage lights and its one widget moves
-— the microbe's slider, the reactor's product curve, the plant's $ gauge —
-launching the next comet at that same instant, around to the right-to-left
-feedback comet that relights the microbe. The second circuit repeats the
-first with every widget moving back the opposite way, so the loop closes
-with no separate reset. Frame 0 and the last frame differ no more than any
-adjacent pair, so the loop wraps seamlessly.
+an amber comet arrives at a stage, the stage lights after a beat, and 0.2 s
+later its one widget moves — the microbe's slider, the reactor's product
+curve, the plant's $ gauge — as the next comet departs on an exactly-one-
+second flight, around to the right-to-left feedback comet that relights the
+microbe. The second circuit repeats the first with every widget moving back
+the opposite way, so the loop closes with no separate reset. Frame 0 and the
+last frame differ no more than any adjacent pair, so the loop wraps
+seamlessly.
 
 Run with no arguments to (re)build both theme variants:
 
@@ -877,6 +878,16 @@ def fb_xy(s):
     return (a*x0 + b*x1 + s*s*x2, a*y0 + b*y1 + s*s*y2)
 
 
+def fb_xy_head(s):
+    """Feedback path for the comet: None past s = 1, like pulse_xy in a stage.
+
+    The comet's window runs past the head's arrival so the trail keeps
+    sliding into the microbe behind it; clamping here makes the head vanish
+    on arrival instead of extrapolating the bezier beyond its endpoint.
+    """
+    return None if s > 1.0 else fb_xy(s)
+
+
 def draw_comet(ax, th, path_fn, s):
     """Amber comet: glowing head + fading trail of diminishing circles."""
     for i in range(9):
@@ -914,7 +925,7 @@ def draw_scene(ax, th, state):
         if s is not None:
             draw_comet(ax, th, pulse_xy, s)
     if state['fb_s'] is not None:
-        draw_comet(ax, th, fb_xy, state['fb_s'])
+        draw_comet(ax, th, fb_xy_head, state['fb_s'])
 
 
 def render_frame(th, state):
@@ -942,21 +953,21 @@ def render_frame(th, state):
 # surface wave, vapor plumes, pipe/flowsheet slug trains, column vapor and
 # levels) derives from state['t'] and runs in every frame, each with an
 # integer number of cycles per loop so the wrap is seamless. On top, two
-# symmetric 5 s circuits: in each, a comet arrives at a stage, the stage
-# lights, its widget moves, and the outgoing comet departs at that instant —
-# and circuit B repeats circuit A with every widget moving back the other way,
-# so there is no separate "reset". Circuit A (tau = t):
-#   Comet 1 (0.2-1.1 s)  microbe -> reactor, leaving as the slider moves
-#                        right; the reactor lights on arrival (~0.9 s).
-#   Comet 2 (1.2-2.1 s)  reactor -> plant, leaving as the product curve
-#                        rises; the plant lights on arrival (~1.9 s).
-#   Comet 3 (2.1-5.1 s)  plant -> microbe on the dashed feedback arc, leaving
-#                        as the $ needle swings; the microbe relights on
-#                        arrival (5.1 s) and circuit B begins.
-# Circuit B (tau = t - 5) is identical with slider, curve, and needle moving
-# opposite; its feedback comet rides across the loop wrap, landing at 0.1 s
-# of the next loop as the microbe relights. Frame 0 therefore shows that
-# comet nearing the microbe, and frame 0 and the last frame differ no more
+# symmetric 5 s circuits with one rhythm at every stage: a comet lands, the
+# stage lights after a ~0.45-0.5 s dwell, and 0.2 s later its widget moves as
+# the outgoing comet departs on an exactly 1.0 s flight. Circuit B repeats
+# circuit A with every widget moving back the other way, so there is no
+# separate "reset". Circuit A (circuit B = the same + 5 s):
+#   0.10  microbe lights (its comet landed 0.5 s before, at 9.60 of the
+#         previous loop)
+#   0.30  slider moves right; comet 1 departs      1.30  it lands: reactor
+#   1.75  reactor lights
+#   1.95  product curve rises; comet 2 departs     2.95  it lands: plant
+#   3.40  plant lights
+#   3.60  $ needle swings; feedback comet departs  4.60  it lands: microbe
+#   5.10  microbe relights -> circuit B
+# Both feedback flights complete inside the loop (circuit B's lands at 9.60),
+# so frame 0 is comet-free, and frame 0 and the last frame differ no more
 # than any adjacent pair.
 
 
@@ -982,54 +993,56 @@ def timeline(t):
     Two symmetric circuits per loop (5 s each), so no widget ever "resets" —
     every return movement is itself a stage movement, synced to that stage
     lighting. Within each circuit the causal chain is: a comet arrives at a
-    stage, the stage lights, its one widget moves, and the outgoing comet
-    departs at that same instant:
+    stage, the stage lights after a short dwell, and 0.2 s later its one
+    widget moves as the outgoing comet departs. Every comet flies for
+    exactly 1.0 s. Circuit A:
 
-    * the microbe lights (fed by the previous feedback comet), the **slider**
-      moves (t 0.2) and sends a comet to the reactor;
-    * the reactor lights on arrival, the **product curve** moves (t 1.2) and
-      sends one to the plant;
-    * the plant lights on arrival, the **$ needle** swings (t 2.1) and sends
-      the right-to-left feedback comet back to the microbe (arriving 5.1).
+    * the microbe lights (0.10), the **slider** moves right (0.30) and sends
+      a comet to the reactor (landing 1.30);
+    * the reactor lights (1.75), the **product curve** rises (1.95) and
+      sends one to the plant (landing 2.95);
+    * the plant lights (3.40), the **$ needle** swings (3.60) and sends the
+      right-to-left feedback comet back to the microbe (landing 4.60).
 
-    The second circuit (t + 5) repeats the chain with the slider, curve, and
-    needle each moving back the opposite way. Circuit B's feedback comet
-    arrives at t 10.1 = 0.1 of the next loop, so it rides across the wrap —
-    frame 0 shows it nearing the microbe, and every quantity is periodic.
+    Circuit B (t + 5) repeats the chain with the slider, curve, and needle
+    each moving back the opposite way; its feedback comet lands at 9.60 and
+    the microbe relights at 0.10 of the next loop, so frame 0 is comet-free
+    and every quantity is periodic.
     """
     s = default_state()
     s['t'] = t
-    # Comets 1 and 2, once per circuit. Comet 1 departs as the slider starts,
-    # crosses arrow 1 and vanishes into the reactor (pulse_xy returns None
-    # past s 0.34) at ~tau 0.93; comet 2 departs as the curve starts, emerges
-    # from the reactor at arrow 2 (s 0.50) and vanishes into the plant
-    # (s > 0.80) at ~tau 1.88.
-    for t0 in (0.2, 5.2):
-        if t0 <= t < t0 + 0.9:
-            s['pulse1_s'] = 0.42*(t - t0)/0.9
-    for t0 in (1.2, 6.2):
-        if t0 <= t < t0 + 0.9:
-            s['pulse2_s'] = 0.50 + 0.40*(t - t0)/0.9
-    # Feedback comet, once per circuit, departing as the needle starts. The
-    # window is taken mod DUR because circuit B's run (7.1 -> 10.1) wraps:
-    # its comet lands at 0.1 of the next loop, exactly as the microbe relights.
-    for t0 in (2.1, 7.1):
-        tt = (t - t0) % DUR
-        if tt < 3.0:
-            s['fb_s'] = tt/3.0
-    # Stage glows, one per circuit, each timed to its incoming comet's
-    # arrival. Every glow starts a hair before its stage's widget, so the
-    # widget reads as the stage's response — the movement the outgoing comet
-    # departs with.
-    s['glow_microbe'] = bump(0.1, 1.1, t) + bump(5.1, 6.1, t)
-    s['glow_reactor'] = bump(0.9, 1.9, t) + bump(5.9, 6.9, t)
-    s['glow_plant'] = bump(1.85, 2.85, t) + bump(6.85, 7.85, t)
-    # One widget per stage: circuit A moves it out, circuit B moves it back —
-    # equal and opposite, so t = 0 and t = DUR coincide and the loop wraps
-    # with no separate reset.
-    s['slider_frac'] = 0.35 + 0.40*(smooth(0.2, 1.0, t) - smooth(5.2, 6.0, t))
-    s['curve_boost'] = smooth(1.2, 2.0, t) - smooth(6.2, 7.0, t)
-    s['needle_frac'] = 0.50 - 0.30*(smooth(2.1, 2.9, t) - smooth(7.1, 7.9, t))
+    # Comets, once per circuit, each departing 0.2 s after its origin stage
+    # lights and flying for exactly 1.0 s: the path-parameter rate is set so
+    # the *visible* leg (comet 1: s 0-0.34, into the reactor; comet 2:
+    # s 0.50-0.80, into the plant; feedback: s 0-1) spans 1.0 s. Each window
+    # then runs on past the head's arrival so the trail keeps sliding into
+    # the destination instead of popping off with the head (the head itself
+    # is hidden there — by pulse_xy inside a stage, by fb_xy_head past s 1).
+    for t0 in (0.30, 5.30):
+        if t0 <= t < t0 + 1.4:
+            s['pulse1_s'] = 0.34*(t - t0)
+    for t0 in (1.95, 6.95):
+        if t0 <= t < t0 + 1.6:
+            s['pulse2_s'] = 0.50 + 0.30*(t - t0)
+    for t0 in (3.60, 8.60):
+        if t0 <= t < t0 + 1.2:
+            s['fb_s'] = t - t0
+    # Stage glows, one per circuit, each lighting a short dwell (0.45-0.5 s)
+    # after its incoming comet lands — the slack that stretches the rigid
+    # 3 x 1.2 s causal chain to the 5.0 s half-loop, spread evenly so every
+    # stage has the same rhythm: comet lands, beat, stage lights, beat (0.2),
+    # widget moves and the next comet departs.
+    s['glow_microbe'] = bump(0.10, 1.10, t) + bump(5.10, 6.10, t)
+    s['glow_reactor'] = bump(1.75, 2.75, t) + bump(6.75, 7.75, t)
+    s['glow_plant'] = bump(3.40, 4.40, t) + bump(8.40, 9.40, t)
+    # One widget per stage, starting with its stage's outgoing comet: circuit
+    # A moves it out, circuit B moves it back — equal and opposite, so t = 0
+    # and t = DUR coincide and the loop wraps with no separate reset.
+    s['slider_frac'] = 0.35 + 0.40*(smooth(0.30, 1.10, t)
+                                    - smooth(5.30, 6.10, t))
+    s['curve_boost'] = smooth(1.95, 2.75, t) - smooth(6.95, 7.75, t)
+    s['needle_frac'] = 0.50 - 0.30*(smooth(3.60, 4.40, t)
+                                    - smooth(8.60, 9.40, t))
     return s
 
 
