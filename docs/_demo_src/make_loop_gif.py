@@ -40,9 +40,9 @@ stage's one widget begins to move — the microbe's slider sends a comet to
 the reactor, the reactor's product curve sends one to the plant, and the
 plant's $ gauge sends the right-to-left feedback comet back to the microbe.
 Each stage lights as its incoming comet arrives, and all three widgets then
-ease home together under the feedback comet, masking the reset. Frame 0 and
-the last frame differ no more than any adjacent pair, so the loop wraps
-seamlessly.
+glide home together — starting under the feedback comet, finishing as a slow
+drift through the loop's tail — masking the reset. Frame 0 and the last
+frame differ no more than any adjacent pair, so the loop wraps seamlessly.
 
 Run with no arguments to (re)build both theme variants:
 
@@ -945,14 +945,16 @@ def render_frame(th, state):
 # integer number of cycles per loop so the wrap is seamless. On top, three
 # comets circulate, each departing its origin stage as that stage's widget
 # starts to move and lighting the next stage as it arrives:
-#   Comet 1 (0.2-2.0 s)  microbe -> reactor, leaving as the slider starts;
-#                        the reactor lights on arrival (~2.0 s).
-#   Comet 2 (2.0-3.8 s)  reactor -> plant, leaving as the product curve starts;
-#                        the plant lights on arrival (~3.8 s).
-#   Comet 3 (3.8-9.8 s)  plant -> microbe on the dashed feedback arc, leaving
-#                        as the $ needle starts; slider, curve, and needle ease
-#                        home together beneath it, masking the reset, and the
-#                        microbe lights again as the next loop opens.
+#   Comet 1 (0.2-1.1 s)   microbe -> reactor, leaving as the slider starts;
+#                         the reactor lights on arrival (~0.9 s).
+#   Comet 2 (1.2-2.1 s)   reactor -> plant, leaving as the product curve
+#                         starts; the plant lights on arrival (~1.9 s).
+#   Comet 3 (2.25-5.25 s) plant -> microbe on the dashed feedback arc, leaving
+#                         as the $ needle starts. Slider, curve, and needle
+#                         then glide home together (3.6-9.5 s) — starting
+#                         under the comet, finishing as a slow drift that
+#                         keeps the tail of the loop alive — and the microbe
+#                         lights again as the next loop opens.
 
 
 def smooth(a, b, t):
@@ -980,42 +982,46 @@ def timeline(t):
     that comet arrives:
 
     * the microbe's **slider** starts (t 0.2) and sends a comet to the reactor;
-    * the reactor's **product curve** starts (t 2.0) and sends one to the plant;
-    * the plant's **$ needle** starts (t 3.8) and sends the right-to-left
+    * the reactor's **product curve** starts (t 1.2) and sends one to the plant;
+    * the plant's **$ needle** starts (t 2.25) and sends the right-to-left
       feedback comet back to the microbe.
 
     Each moved widget holds its new value while the downstream stages respond,
-    then all three ease home together (``home``) under the feedback comet,
-    masking the loop reset.
+    then all three glide home together (``home``): the glide begins under the
+    feedback comet and continues as a slow drift through the loop's tail, so
+    the reset is both masked and unhurried.
     """
     s = default_state()
     s['t'] = t
     # Comet 1, microbe -> reactor: departs as the slider starts (0.2), crosses
     # arrow 1 and vanishes into the reactor (pulse_xy returns None past s 0.34),
     # where the reactor then lights.
-    if 0.2 <= t < 2.0:
-        s['pulse1_s'] = 0.42*(t - 0.2)/1.8
-    # Comet 2, reactor -> plant: departs as the curve starts (2.0), emerges from
+    if 0.2 <= t < 1.1:
+        s['pulse1_s'] = 0.42*(t - 0.2)/0.9
+    # Comet 2, reactor -> plant: departs as the curve starts (1.2), emerges from
     # the reactor at arrow 2 (s 0.50) and vanishes into the plant (s > 0.80).
-    if 2.0 <= t < 3.8:
-        s['pulse2_s'] = 0.50 + 0.40*(t - 2.0)/1.8
-    # Comet 3, plant -> microbe: departs as the needle starts (3.8), riding the
-    # dashed feedback arc back to the microbe by the loop's end.
-    if 3.8 <= t < 9.8:
-        s['fb_s'] = (t - 3.8)/6.0
-    # Stage glows, each timed to its incoming comet's arrival. Every glow starts
-    # a hair before its stage's widget, so the widget reads as the last movement
-    # of the stage — the movement the outgoing comet departs with.
+    if 1.2 <= t < 2.1:
+        s['pulse2_s'] = 0.50 + 0.40*(t - 1.2)/0.9
+    # Comet 3, plant -> microbe: departs as the needle starts (2.25), riding the
+    # dashed feedback arc back to the microbe.
+    if 2.25 <= t < 5.25:
+        s['fb_s'] = (t - 2.25)/3.0
+    # Stage glows, each timed to its incoming comet's arrival (comet 1 vanishes
+    # into the reactor at ~0.93, comet 2 into the plant at ~1.88). Every glow
+    # starts a hair before its stage's widget, so the widget reads as the last
+    # movement of the stage — the movement the outgoing comet departs with.
     s['glow_microbe'] = bump(0.1, 1.2, t)
-    s['glow_reactor'] = bump(1.7, 2.7, t)
-    s['glow_plant'] = bump(3.4, 4.4, t)
+    s['glow_reactor'] = bump(0.9, 1.9, t)
+    s['glow_plant'] = bump(1.85, 2.85, t)
     # One widget per stage, moving as that stage lights and holding until the
-    # shared ease-home under the feedback comet returns all three to base by
-    # the loop's end (so frame 0 and the last frame coincide).
-    home = smooth(5.2, 9.7, t)
+    # shared glide home returns all three to base before the loop's end (so
+    # frame 0 and the last frame coincide). The glide starts under the feedback
+    # comet and runs long past its landing (~5.25): slow enough to read as a
+    # calm drift, it keeps the back half of the loop from going dead.
+    home = smooth(3.6, 9.5, t)
     s['slider_frac'] = 0.35 + 0.40*(smooth(0.2, 1.0, t) - home)
-    s['curve_boost'] = smooth(2.0, 2.8, t) - home
-    s['needle_frac'] = 0.50 - 0.30*(smooth(3.8, 4.6, t) - home)
+    s['curve_boost'] = smooth(1.2, 2.0, t) - home
+    s['needle_frac'] = 0.50 - 0.30*(smooth(2.25, 3.05, t) - home)
     return s
 
 
