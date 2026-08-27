@@ -35,9 +35,9 @@ One loop is 10 s at 20 fps (200 frames), rendered 2000 x 720 px. Ambient
 motion (impeller, bubbles, surface wave, vapor plumes, pipe and flowsheet
 slugs, column vapor, sump/drum levels) runs in every frame with an integer
 number of cycles per loop; on top, two symmetric circuits play out. In each,
-an amber comet lands at a stage and the stage lights at that instant; after
-a short beat its one widget moves — the microbe's slider, the reactor's
-product curve, the plant's $ gauge — as the next comet departs on an
+an amber comet lands at a stage, and at that instant the stage lights and
+its one widget moves — the microbe's slider, the reactor's product curve,
+the plant's $ gauge; after a short beat the next comet departs on an
 exactly-one-second flight, around to the right-to-left feedback comet that
 relights the microbe. The second circuit repeats the first with every widget
 moving back the opposite way, so the loop closes with no separate reset.
@@ -953,17 +953,17 @@ def render_frame(th, state):
 # surface wave, vapor plumes, pipe/flowsheet slug trains, column vapor and
 # levels) derives from state['t'] and runs in every frame, each with an
 # integer number of cycles per loop so the wrap is seamless. On top, two
-# symmetric 5 s circuits with one rhythm at every stage: a comet lands and
-# the stage lights at that instant, then after a 0.65-0.70 s beat its widget
-# moves as the outgoing comet departs on an exactly 1.0 s flight. Circuit B
+# symmetric 5 s circuits with one rhythm at every stage: a comet lands, and
+# at that instant the stage lights and its widget moves; after a 0.65-0.70 s
+# beat the outgoing comet departs on an exactly 1.0 s flight. Circuit B
 # repeats circuit A with every widget moving back the other way, so there is
 # no separate "reset". Circuit A (circuit B = the same + 5 s):
-#   0.10  feedback comet lands + microbe lights
-#   0.75  slider moves right; comet 1 departs
-#   1.75  comet 1 lands + reactor lights
-#   2.40  product curve rises; comet 2 departs
-#   3.40  comet 2 lands + plant lights
-#   4.10  $ needle swings; feedback comet departs
+#   0.10  feedback comet lands + microbe lights + slider moves right
+#   0.75  comet 1 departs
+#   1.75  comet 1 lands + reactor lights + product curve rises
+#   2.40  comet 2 departs
+#   3.40  comet 2 lands + plant lights + $ needle swings
+#   4.10  feedback comet departs
 #   5.10  feedback comet lands + microbe relights -> circuit B
 # Circuit B's feedback flight (9.10 -> 10.10) rides across the loop wrap,
 # landing at 0.10 of the next loop, so frame 0 shows it nearing the microbe;
@@ -992,17 +992,17 @@ def timeline(t):
     Two symmetric circuits per loop (5 s each), so no widget ever "resets" —
     every return movement is itself a stage movement, synced to that stage
     lighting. Within each circuit the causal chain is: a comet lands at a
-    stage and the stage lights at that same instant; after a 0.65-0.70 s
-    beat its one widget moves as the outgoing comet departs. Every comet
-    flies for exactly 1.0 s. Circuit A:
+    stage, and at that same instant the stage lights and its one widget
+    starts to move; after a 0.65-0.70 s beat the outgoing comet departs.
+    Every comet flies for exactly 1.0 s. Circuit A:
 
-    * the feedback comet lands and the microbe lights (0.10); the **slider**
-      moves right (0.75) and sends a comet to the reactor;
-    * it lands and the reactor lights (1.75); the **product curve** rises
-      (2.40) and sends one to the plant;
-    * it lands and the plant lights (3.40); the **$ needle** swings (4.10)
-      and sends the right-to-left feedback comet back to the microbe,
-      landing (5.10) as the microbe relights.
+    * the feedback comet lands, the microbe lights and the **slider** moves
+      right (0.10); a comet departs for the reactor (0.75);
+    * it lands, the reactor lights and the **product curve** rises (1.75);
+      a comet departs for the plant (2.40);
+    * it lands, the plant lights and the **$ needle** swings (3.40); the
+      right-to-left feedback comet departs (4.10), landing at the microbe
+      (5.10) as it relights.
 
     Circuit B (t + 5) repeats the chain with the slider, curve, and needle
     each moving back the opposite way; its feedback comet rides across the
@@ -1033,20 +1033,21 @@ def timeline(t):
             s['fb_s'] = tt
     # Stage glows, one per circuit: each stage lights at the instant its
     # incoming comet lands and stays lit (1.5 s envelope) through its whole
-    # response — the 0.65-0.70 s beat to the launch, then the 0.8 s widget
-    # move. The beat is the slack that stretches the rigid 3 x 1.0 s of
-    # flight to the 5.0 s half-loop, spread evenly across the three stages.
+    # response — the 0.8 s widget move starting with the glow, and the
+    # 0.65-0.70 s beat to the launch. The beat is the slack that stretches
+    # the rigid 3 x 1.0 s of flight to the 5.0 s half-loop, spread evenly
+    # across the three stages.
     s['glow_microbe'] = bump(0.10, 1.60, t) + bump(5.10, 6.60, t)
     s['glow_reactor'] = bump(1.75, 3.25, t) + bump(6.75, 8.25, t)
     s['glow_plant'] = bump(3.40, 4.90, t) + bump(8.40, 9.90, t)
-    # One widget per stage, starting with its stage's outgoing comet: circuit
+    # One widget per stage, moving at the instant its stage lights: circuit
     # A moves it out, circuit B moves it back — equal and opposite, so t = 0
     # and t = DUR coincide and the loop wraps with no separate reset.
-    s['slider_frac'] = 0.35 + 0.40*(smooth(0.75, 1.55, t)
-                                    - smooth(5.75, 6.55, t))
-    s['curve_boost'] = smooth(2.40, 3.20, t) - smooth(7.40, 8.20, t)
-    s['needle_frac'] = 0.50 - 0.30*(smooth(4.10, 4.90, t)
-                                    - smooth(9.10, 9.90, t))
+    s['slider_frac'] = 0.35 + 0.40*(smooth(0.10, 0.90, t)
+                                    - smooth(5.10, 5.90, t))
+    s['curve_boost'] = smooth(1.75, 2.55, t) - smooth(6.75, 7.55, t)
+    s['needle_frac'] = 0.50 - 0.30*(smooth(3.40, 4.20, t)
+                                    - smooth(8.40, 9.20, t))
     return s
 
 
