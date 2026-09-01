@@ -288,9 +288,9 @@
       <parameter id="k_1e" value="47.1" units="g_per_l_per_h" constant="true"/>
       <parameter id="K_1i" value="14.2" units="l_per_g" constant="true"/>
       <parameter id="K_1e" value="0.12" units="g_per_l" constant="true"/>
-      <parameter id="k_1ie" value="0.04" units="g_per_l_per_h" constant="true"/>
-      <parameter id="k_1ia" value="0.12" units="g_per_l_per_h" constant="true"/>
-      <parameter id="k_1ii" value="0.15" units="g_per_l_per_h" constant="true"/>
+      <parameter id="k_1ie" value="0.02" units="g_per_l_per_h" constant="true"/>
+      <parameter id="k_1ia" value="0.06" units="g_per_l_per_h" constant="true"/>
+      <parameter id="k_1ii" value="0.075" units="g_per_l_per_h" constant="true"/>
       <parameter id="k_2" value="0.501" units="g_per_l_per_h" constant="true"/>
       <parameter id="K_2" value="2e-05" units="g_per_l" constant="true"/>
       <parameter id="K_2i" value="0.101" units="l_per_g" constant="true"/>
@@ -819,7 +819,6 @@
                     <minus/>
                     <ci> k_1ie </ci>
                   </apply>
-                  <cn> 0.4 </cn>
                   <ci> s_EtOH </ci>
                 </apply>
               </apply>
@@ -832,7 +831,6 @@
                     <minus/>
                     <ci> k_1ia </ci>
                   </apply>
-                  <cn> 0.4 </cn>
                   <ci> s_acetate </ci>
                 </apply>
               </apply>
@@ -845,7 +843,6 @@
                     <minus/>
                     <ci> k_1ii </ci>
                   </apply>
-                  <cn> 0.4 </cn>
                   <ci> s_IBO </ci>
                 </apply>
               </apply>

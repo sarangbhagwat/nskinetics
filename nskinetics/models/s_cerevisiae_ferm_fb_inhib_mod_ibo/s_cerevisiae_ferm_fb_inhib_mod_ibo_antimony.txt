@@ -38,7 +38,7 @@ model *bhagwat2026()
   X_AcDH' = (r9 - r11 - (0.732*r7 + 0.619*r8)*X_AcDH)/(x*env);
 
   // Reactions:
-  r1: s_glu => 0.978 s_pyr + 0.178 $Red; (k_1l*s_glu/(s_glu + K_1l) + k_1h*s_glu/(s_glu + K_1h) + k_1e*s_acetald*s_glu/(s_glu*(K_1i*s_acetald + 1) + K_1e))*2.71828^(-k_1ie*0.40*s_EtOH)*2.71828^(-k_1ia*0.40*s_acetate)*2.71828^(-k_1ii*0.40*s_IBO)*a*env;
+  r1: s_glu => 0.978 s_pyr + 0.178 $Red; (k_1l*s_glu/(s_glu + K_1l) + k_1h*s_glu/(s_glu + K_1h) + k_1e*s_acetald*s_glu/(s_glu*(K_1i*s_acetald + 1) + K_1e))*2.71828^(-k_1ie*s_EtOH)*2.71828^(-k_1ia*s_acetate)*2.71828^(-k_1ii*s_IBO)*a*env;
   r2: s_pyr => 1.499 $CO2 + 0.908 $Red; is_aerobic*(k_2*s_pyr/((s_pyr + K_2)*(K_2i*s_glu + 1)))*a*env;
   r3: s_pyr => 0.5 s_acetald + 0.33 $CO2; (k_3*s_pyr^4/(s_pyr^4 + K_3))*a*env;
   r4: s_acetald => 1.363 s_acetate + 0.363 $Red; (k_4*s_acetald*2.71828^(-k_4ie*s_EtOH)*2.71828^(-k_4ia*s_acetate)*2.71828^(-k_4ii*s_IBO)/(s_acetald + K_4))*a*X_AcDH*env;
@@ -196,11 +196,14 @@ model *bhagwat2026()
   k_7ia has g_per_l_per_h;
   k_7ii = 0.15;
   k_7ii has g_per_l_per_h;
-  k_1ie = 0.04;
+  // Glycolysis (r1) product-inhibition coefficients are 0.5x the corresponding
+  // growth (r7) coefficients: fermentation is less product-sensitive than growth.
+  // Eur. J. Appl. Microbiol. Biotechnol. 1981, https://doi.org/10.1007/BF00511253
+  k_1ie = 0.02;
   k_1ie has g_per_l_per_h;
-  k_1ia = 0.12;
+  k_1ia = 0.06;
   k_1ia has g_per_l_per_h;
-  k_1ii = 0.15;
+  k_1ii = 0.075;
   k_1ii has g_per_l_per_h;
   k_4ie = 0.04;
   k_4ie has g_per_l_per_h;
