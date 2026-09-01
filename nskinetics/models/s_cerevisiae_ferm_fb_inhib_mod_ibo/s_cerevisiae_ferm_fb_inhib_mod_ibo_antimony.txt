@@ -43,7 +43,7 @@ model *bhagwat2026()
   r3: s_pyr => 0.5 s_acetald + 0.33 $CO2; (k_3*s_pyr^4/(s_pyr^4 + K_3))*a*env;
   r4: s_acetald => 1.363 s_acetate + 0.363 $Red; (k_4*s_acetald*2.71828^(-k_4ie*s_EtOH)*2.71828^(-k_4ia*s_acetate)*2.71828^(-k_4ii*s_IBO)/(s_acetald + K_4))*a*X_AcDH*env;
   r5: s_acetate => 1.446 $CO2 + 1.066 $Red; is_aerobic*(k_5*s_acetate/(s_acetate + K_5) + k_5e*s_acetate/((s_acetate + K_5e)*(1 + K_5i*s_glu)))*a*env;
-  r6: s_acetald + 0.363 $Red -> 1.045 s_EtOH; (k_6*(s_acetald - k_6r*s_EtOH)/(s_acetald + K_6 + K_6e*s_EtOH))*a*env;
+  r6: s_acetald + 0.363 $Red -> 1.045 s_EtOH; (k_6*(s_acetald - k_6r*s_EtOH)/(s_acetald + K_6 + K_6e*s_EtOH))*2.71828^(-k_6ia*s_acetate)*2.71828^(-k_6ii*s_IBO)*a*env;
   r7: s_glu => 0.732 x + 0.127 $CO2 + 0.063 $Red; (anaerobic_growth_mult + (1.0-anaerobic_growth_mult)*is_aerobic)*(k_7*s_glu*2.71828^(-k_7ie*s_EtOH)*2.71828^(-k_7ia*s_acetate)*2.71828^(-k_7ii*s_IBO)/(s_glu + K_7))*a*env;
   r8: s_acetate => 0.619 x + 0.325 $CO2 + 0.214 $Red; is_aerobic*(k_8*s_acetate/((s_acetate + K_5e)*(1 + K_5i*s_glu)))*a*env;
   r9: $a => $AcDH; ((k_9*s_glu/(s_glu + K_9) + k_9e*s_EtOH/(s_EtOH + K_9e))/(K_9i*s_glu + 1) + k_9c*s_glu/(s_glu + K_9))*a*env;
@@ -63,7 +63,7 @@ model *bhagwat2026()
   r13: s_pyr => 0.750 s_AL; (k_13*s_pyr^4/(K_13 + s_pyr^4))*a*env;
   r14: s_AL => 1.015 s_DHI; (k_14*s_AL/(K_14 + s_AL))*a*env;
   r15: s_DHI => 0.866 s_KIV; (k_15*s_DHI/(K_15 + s_DHI))*a*env;
-  r16: s_KIV + 0.363 $Red -> 0.638 s_IBO; (k_16*(s_KIV - k_16r*s_IBO)/(s_KIV + K_16 + K_16i*s_IBO))*a*env;
+  r16: s_KIV + 0.363 $Red -> 0.638 s_IBO; (k_16*(s_KIV - k_16r*s_IBO)/(s_KIV + K_16 + K_16i*s_IBO))*2.71828^(-k_16ia*s_acetate)*2.71828^(-k_16ie*s_EtOH)*a*env;
 
   // Events:
 
@@ -168,6 +168,20 @@ model *bhagwat2026()
   k_6r has dimensionless;
   K_6e = 0.057;
   K_6e has dimensionless;
+  // Cross-product inhibition of the alcohol-forming steps (r6 ADH, r16
+  // Ehrlich): each terminal step is inhibited by the products it does NOT
+  // itself make. r6 already self-inhibits on ethanol (K_6e/k_6r) and so
+  // takes acetate + isobutanol here; r16 already self-inhibits on isobutanol
+  // (K_16i/k_16r) and so takes acetate + ethanol (below). Coefficients are
+  // 0.5x the growth (r7) set, matching the r1 production-step rationale that
+  // fermentation is less product-sensitive than growth
+  // (Eur. J. Appl. Microbiol. Biotechnol. 1981, doi:10.1007/BF00511253);
+  // within each set the relative potency acetate < isobutanol < ethanol-onset
+  // tracks lipid solubility, as elsewhere in the model.
+  k_6ia = 0.06;
+  k_6ia has l_per_g;
+  k_6ii = 0.075;
+  k_6ii has l_per_g;
   k_7 = 1.203;
   k_7 has g_per_l_per_h;
   K_7 = 0.0101;
@@ -259,6 +273,12 @@ model *bhagwat2026()
   k_16r has dimensionless;
   K_16i = 0.057;
   K_16i has dimensionless;
+  // r16 cross-product inhibition (acetate + ethanol); see the r6 block above.
+  // Dormant while the Ehrlich branch is off (k_16 = 0), kept symmetric with r6.
+  k_16ia = 0.06;
+  k_16ia has l_per_g;
+  k_16ie = 0.02;
+  k_16ie has l_per_g;
 
   // Other declarations:
   var X_a, X_AcDH, qO2, qCO2;
@@ -269,6 +289,7 @@ model *bhagwat2026()
 
   const k_7ie, k_7ia, k_7ii, k_1ie, k_1ia, k_1ii, k_4ie, k_4ia, k_4ii, k_10;
   const k_10ie, k_10ia, k_10ii, P_10e, P_10a, P_10i;
+  const k_6ia, k_6ii, k_16ia, k_16ie;
   const k_1h, K_1h, k_1l, K_1l, k_1e, K_1e, K_1i, k_2, K_2, K_2i;
   const k_3, K_3, k_4, K_4, k_5, K_5, k_5e, K_5e, K_5i, k_6, K_6, k_6r, K_6e;
   const k_7, K_7, k_8, k_9, K_9, k_9e, K_9e, K_9i, k_9c, k_11, D;

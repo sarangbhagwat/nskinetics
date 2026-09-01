@@ -311,6 +311,8 @@
       <parameter id="k_6r" value="0.0125" units="dimensionless" constant="true"/>
       <parameter id="K_6" value="0.034" units="g_per_l" constant="true"/>
       <parameter id="K_6e" value="0.057" units="dimensionless" constant="true"/>
+      <parameter id="k_6ia" value="0.06" units="l_per_g" constant="true"/>
+      <parameter id="k_6ii" value="0.075" units="l_per_g" constant="true"/>
       <parameter id="anaerobic_growth_mult" value="1" units="dimensionless" constant="true"/>
       <parameter id="k_7" value="1.203" units="g_per_l_per_h" constant="true"/>
       <parameter id="k_7ie" value="0.04" units="l_per_g" constant="true"/>
@@ -343,6 +345,8 @@
       <parameter id="k_16r" value="0" units="dimensionless" constant="true"/>
       <parameter id="K_16" value="0.034" units="g_per_l" constant="true"/>
       <parameter id="K_16i" value="0.057" units="dimensionless" constant="true"/>
+      <parameter id="k_16ia" value="0.06" units="l_per_g" constant="true"/>
+      <parameter id="k_16ie" value="0.02" units="l_per_g" constant="true"/>
       <parameter id="max_n_glu_spikes" value="5" units="dimensionless" constant="true"/>
       <parameter id="threshold_conc_glu_spike" value="10" units="g_per_l" constant="false"/>
       <parameter id="last_vol_glu_feed_added" value="0" units="volume" constant="false"/>
@@ -753,10 +757,10 @@
         </listOfProducts>
         <listOfModifiers>
           <modifierSpeciesReference species="s_acetate"/>
-          <modifierSpeciesReference species="s_EtOH"/>
           <modifierSpeciesReference species="s_acetald"/>
-          <modifierSpeciesReference species="a"/>
+          <modifierSpeciesReference species="s_EtOH"/>
           <modifierSpeciesReference species="s_IBO"/>
+          <modifierSpeciesReference species="a"/>
         </listOfModifiers>
         <kineticLaw>
           <math xmlns="http://www.w3.org/1998/Math/MathML">
@@ -928,8 +932,8 @@
         </listOfProducts>
         <listOfModifiers>
           <modifierSpeciesReference species="s_EtOH"/>
-          <modifierSpeciesReference species="a"/>
           <modifierSpeciesReference species="s_IBO"/>
+          <modifierSpeciesReference species="a"/>
         </listOfModifiers>
         <kineticLaw>
           <math xmlns="http://www.w3.org/1998/Math/MathML">
@@ -1092,6 +1096,8 @@
           <speciesReference species="s_EtOH" stoichiometry="1.045" constant="true"/>
         </listOfProducts>
         <listOfModifiers>
+          <modifierSpeciesReference species="s_acetate"/>
+          <modifierSpeciesReference species="s_IBO"/>
           <modifierSpeciesReference species="a"/>
         </listOfModifiers>
         <kineticLaw>
@@ -1124,6 +1130,30 @@
                   </apply>
                 </apply>
               </apply>
+              <apply>
+                <power/>
+                <cn> 2.71828 </cn>
+                <apply>
+                  <times/>
+                  <apply>
+                    <minus/>
+                    <ci> k_6ia </ci>
+                  </apply>
+                  <ci> s_acetate </ci>
+                </apply>
+              </apply>
+              <apply>
+                <power/>
+                <cn> 2.71828 </cn>
+                <apply>
+                  <times/>
+                  <apply>
+                    <minus/>
+                    <ci> k_6ii </ci>
+                  </apply>
+                  <ci> s_IBO </ci>
+                </apply>
+              </apply>
               <ci> a </ci>
               <ci> env </ci>
             </apply>
@@ -1139,6 +1169,8 @@
           <speciesReference species="s_IBO" stoichiometry="0.638" constant="true"/>
         </listOfProducts>
         <listOfModifiers>
+          <modifierSpeciesReference species="s_acetate"/>
+          <modifierSpeciesReference species="s_EtOH"/>
           <modifierSpeciesReference species="a"/>
         </listOfModifiers>
         <kineticLaw>
@@ -1171,6 +1203,30 @@
                   </apply>
                 </apply>
               </apply>
+              <apply>
+                <power/>
+                <cn> 2.71828 </cn>
+                <apply>
+                  <times/>
+                  <apply>
+                    <minus/>
+                    <ci> k_16ia </ci>
+                  </apply>
+                  <ci> s_acetate </ci>
+                </apply>
+              </apply>
+              <apply>
+                <power/>
+                <cn> 2.71828 </cn>
+                <apply>
+                  <times/>
+                  <apply>
+                    <minus/>
+                    <ci> k_16ie </ci>
+                  </apply>
+                  <ci> s_EtOH </ci>
+                </apply>
+              </apply>
               <ci> a </ci>
               <ci> env </ci>
             </apply>
@@ -1189,8 +1245,8 @@
         <listOfModifiers>
           <modifierSpeciesReference species="s_acetate"/>
           <modifierSpeciesReference species="s_EtOH"/>
-          <modifierSpeciesReference species="a"/>
           <modifierSpeciesReference species="s_IBO"/>
+          <modifierSpeciesReference species="a"/>
         </listOfModifiers>
         <kineticLaw>
           <math xmlns="http://www.w3.org/1998/Math/MathML">
