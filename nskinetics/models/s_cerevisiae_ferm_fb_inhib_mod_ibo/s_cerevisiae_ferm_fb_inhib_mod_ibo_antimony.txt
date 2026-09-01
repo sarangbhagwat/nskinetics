@@ -167,7 +167,7 @@ model *bhagwat2026()
   k_6r = 0.0125;
   k_6r has dimensionless;
   K_6e = 0.057;
-  K_6e has g_per_l;
+  K_6e has dimensionless;
   k_7 = 1.203;
   k_7 has g_per_l_per_h;
   K_7 = 0.0101;
@@ -191,26 +191,26 @@ model *bhagwat2026()
   D = 0;
   D has per_h;
   k_7ie = 0.04;
-  k_7ie has g_per_l_per_h;
+  k_7ie has l_per_g;
   k_7ia = 0.12;
-  k_7ia has g_per_l_per_h;
+  k_7ia has l_per_g;
   k_7ii = 0.15;
-  k_7ii has g_per_l_per_h;
+  k_7ii has l_per_g;
   // Glycolysis (r1) product-inhibition coefficients are 0.5x the corresponding
   // growth (r7) coefficients: fermentation is less product-sensitive than growth.
   // Eur. J. Appl. Microbiol. Biotechnol. 1981, https://doi.org/10.1007/BF00511253
   k_1ie = 0.02;
-  k_1ie has g_per_l_per_h;
+  k_1ie has l_per_g;
   k_1ia = 0.06;
-  k_1ia has g_per_l_per_h;
+  k_1ia has l_per_g;
   k_1ii = 0.075;
-  k_1ii has g_per_l_per_h;
+  k_1ii has l_per_g;
   k_4ie = 0.04;
-  k_4ie has g_per_l_per_h;
+  k_4ie has l_per_g;
   k_4ia = 0.12;
-  k_4ia has g_per_l_per_h;
+  k_4ia has l_per_g;
   k_4ii = 0.15;
-  k_4ii has g_per_l_per_h;
+  k_4ii has l_per_g;
   k_10 = 0.06;
   k_10 has g_per_l_per_h;
   // Product enhancement of active-biomass decay (r10): threshold-gated
@@ -228,11 +228,11 @@ model *bhagwat2026()
   // lipid-solubility potency). In the shipped diagnostic only the EtOH factor
   // activates (acetate peaks ~1.2 g/L, IBO is 0 while the Ehrlich branch is off).
   k_10ie = 0.04;
-  k_10ie has g_per_l_per_h;
+  k_10ie has l_per_g;
   k_10ia = 0.12;
-  k_10ia has g_per_l_per_h;
+  k_10ia has l_per_g;
   k_10ii = 0.15;
-  k_10ii has g_per_l_per_h;
+  k_10ii has l_per_g;
   P_10e = 100;
   P_10e has g_per_l;
   P_10a = 5;
@@ -258,7 +258,7 @@ model *bhagwat2026()
   k_16r = 0.0;
   k_16r has dimensionless;
   K_16i = 0.057;
-  K_16i has g_per_l;
+  K_16i has dimensionless;
 
   // Other declarations:
   var X_a, X_AcDH, qO2, qCO2;

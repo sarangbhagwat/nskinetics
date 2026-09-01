@@ -289,18 +289,18 @@
       <parameter id="k_1e" value="47.1" units="g_per_l_per_h" constant="true"/>
       <parameter id="K_1i" value="14.2" units="l_per_g" constant="true"/>
       <parameter id="K_1e" value="0.12" units="g_per_l" constant="true"/>
-      <parameter id="k_1ie" value="0.02" units="g_per_l_per_h" constant="true"/>
-      <parameter id="k_1ia" value="0.06" units="g_per_l_per_h" constant="true"/>
-      <parameter id="k_1ii" value="0.075" units="g_per_l_per_h" constant="true"/>
+      <parameter id="k_1ie" value="0.02" units="l_per_g" constant="true"/>
+      <parameter id="k_1ia" value="0.06" units="l_per_g" constant="true"/>
+      <parameter id="k_1ii" value="0.075" units="l_per_g" constant="true"/>
       <parameter id="k_2" value="0.501" units="g_per_l_per_h" constant="true"/>
       <parameter id="K_2" value="2e-05" units="g_per_l" constant="true"/>
       <parameter id="K_2i" value="0.101" units="l_per_g" constant="true"/>
       <parameter id="k_3" value="5.81" units="g_per_l_per_h" constant="true"/>
       <parameter id="K_3" value="5e-07" units="g_per_l" constant="true"/>
       <parameter id="k_4" value="4.8" units="g_per_l_per_h" constant="true"/>
-      <parameter id="k_4ie" value="0.04" units="g_per_l_per_h" constant="true"/>
-      <parameter id="k_4ia" value="0.12" units="g_per_l_per_h" constant="true"/>
-      <parameter id="k_4ii" value="0.15" units="g_per_l_per_h" constant="true"/>
+      <parameter id="k_4ie" value="0.04" units="l_per_g" constant="true"/>
+      <parameter id="k_4ia" value="0.12" units="l_per_g" constant="true"/>
+      <parameter id="k_4ii" value="0.15" units="l_per_g" constant="true"/>
       <parameter id="K_4" value="0.000264" units="g_per_l" constant="true"/>
       <parameter id="k_5" value="0.0104" units="g_per_l_per_h" constant="true"/>
       <parameter id="K_5" value="0.0102" units="g_per_l" constant="true"/>
@@ -310,12 +310,12 @@
       <parameter id="k_6" value="2.82" units="g_per_l_per_h" constant="true"/>
       <parameter id="k_6r" value="0.0125" units="dimensionless" constant="true"/>
       <parameter id="K_6" value="0.034" units="g_per_l" constant="true"/>
-      <parameter id="K_6e" value="0.057" units="g_per_l" constant="true"/>
+      <parameter id="K_6e" value="0.057" units="dimensionless" constant="true"/>
       <parameter id="anaerobic_growth_mult" value="1" units="dimensionless" constant="true"/>
       <parameter id="k_7" value="1.203" units="g_per_l_per_h" constant="true"/>
-      <parameter id="k_7ie" value="0.04" units="g_per_l_per_h" constant="true"/>
-      <parameter id="k_7ia" value="0.12" units="g_per_l_per_h" constant="true"/>
-      <parameter id="k_7ii" value="0.15" units="g_per_l_per_h" constant="true"/>
+      <parameter id="k_7ie" value="0.04" units="l_per_g" constant="true"/>
+      <parameter id="k_7ia" value="0.12" units="l_per_g" constant="true"/>
+      <parameter id="k_7ii" value="0.15" units="l_per_g" constant="true"/>
       <parameter id="K_7" value="0.0101" units="g_per_l" constant="true"/>
       <parameter id="k_8" value="0.589" units="g_per_l_per_h" constant="true"/>
       <parameter id="k_9" value="0.008" units="g_per_l_per_h" constant="true"/>
@@ -325,11 +325,11 @@
       <parameter id="K_9i" value="25" units="l_per_g" constant="true"/>
       <parameter id="k_9c" value="0.00399" units="g_per_l_per_h" constant="true"/>
       <parameter id="k_10" value="0.06" units="g_per_l_per_h" constant="true"/>
-      <parameter id="k_10ie" value="0.04" units="g_per_l_per_h" constant="true"/>
+      <parameter id="k_10ie" value="0.04" units="l_per_g" constant="true"/>
       <parameter id="P_10e" value="100" units="g_per_l" constant="true"/>
-      <parameter id="k_10ia" value="0.12" units="g_per_l_per_h" constant="true"/>
+      <parameter id="k_10ia" value="0.12" units="l_per_g" constant="true"/>
       <parameter id="P_10a" value="5" units="g_per_l" constant="true"/>
-      <parameter id="k_10ii" value="0.15" units="g_per_l_per_h" constant="true"/>
+      <parameter id="k_10ii" value="0.15" units="l_per_g" constant="true"/>
       <parameter id="P_10i" value="25" units="g_per_l" constant="true"/>
       <parameter id="k_11" value="0.02" units="g_per_l_per_h" constant="true"/>
       <parameter id="D" name="Dilutionrate" value="0" units="per_h" constant="true"/>
@@ -342,7 +342,7 @@
       <parameter id="k_16" value="0" units="g_per_l_per_h" constant="true"/>
       <parameter id="k_16r" value="0" units="dimensionless" constant="true"/>
       <parameter id="K_16" value="0.034" units="g_per_l" constant="true"/>
-      <parameter id="K_16i" value="0.057" units="g_per_l" constant="true"/>
+      <parameter id="K_16i" value="0.057" units="dimensionless" constant="true"/>
       <parameter id="max_n_glu_spikes" value="5" units="dimensionless" constant="true"/>
       <parameter id="threshold_conc_glu_spike" value="10" units="g_per_l" constant="false"/>
       <parameter id="last_vol_glu_feed_added" value="0" units="volume" constant="false"/>
@@ -753,8 +753,8 @@
         </listOfProducts>
         <listOfModifiers>
           <modifierSpeciesReference species="s_acetate"/>
-          <modifierSpeciesReference species="s_acetald"/>
           <modifierSpeciesReference species="s_EtOH"/>
+          <modifierSpeciesReference species="s_acetald"/>
           <modifierSpeciesReference species="a"/>
           <modifierSpeciesReference species="s_IBO"/>
         </listOfModifiers>
