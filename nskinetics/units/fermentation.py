@@ -213,5 +213,3 @@ class FermentationSaccharomycesEthanolIsobutanol(NSKBatchReactor):
                                 - sum(i.get_atomic_flow('C') for i in self.outs))
         effluent.empty_negative_flows()
         vent.receive_vent(effluent, energy_balance=False)
-        effluent.imol['Ethanol'] += max(0.0, vent.imol['Ethanol'])
-        vent.imol['Ethanol'] = 0.0
