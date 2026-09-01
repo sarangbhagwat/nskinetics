@@ -47,7 +47,7 @@ model *bhagwat2026()
   r7: s_glu => 0.732 x + 0.127 $CO2 + 0.063 $Red; (anaerobic_growth_mult + (1.0-anaerobic_growth_mult)*is_aerobic)*(k_7*s_glu*2.71828^(-k_7ie*s_EtOH)*2.71828^(-k_7ia*s_acetate)*2.71828^(-k_7ii*s_IBO)/(s_glu + K_7))*a*env;
   r8: s_acetate => 0.619 x + 0.325 $CO2 + 0.214 $Red; is_aerobic*(k_8*s_acetate/((s_acetate + K_5e)*(1 + K_5i*s_glu)))*a*env;
   r9: $a => $AcDH; ((k_9*s_glu/(s_glu + K_9) + k_9e*s_EtOH/(s_EtOH + K_9e))/(K_9i*s_glu + 1) + k_9c*s_glu/(s_glu + K_9))*a*env;
-  r10: $a => ; k_10*a*env;
+  r10: $a => ; k_10*piecewise(2.71828^(k_10ie*(s_EtOH - P_10e)), s_EtOH > P_10e, 1)*piecewise(2.71828^(k_10ia*(s_acetate - P_10a)), s_acetate > P_10a, 1)*piecewise(2.71828^(k_10ii*(s_IBO - P_10i)), s_IBO > P_10i, 1)*a*env;
   r11: $AcDH => ; k_11*AcDH*env;
 
   s_glu_in: $S_f => s_glu; S_f*D*env;
@@ -213,6 +213,32 @@ model *bhagwat2026()
   k_4ii has g_per_l_per_h;
   k_10 = 0.06;
   k_10 has g_per_l_per_h;
+  // Product enhancement of active-biomass decay (r10): threshold-gated
+  // exponential, one factor per product, multiplied (shared membrane target,
+  // Viegas et al. Int. J. Food Microbiol. 1997, doi:10.1016/S0168-1605(97)00016-9).
+  // Death is unchanged until each product passes its lethal floor P_10*, then
+  // climbs as exp(k_10i*(P - P_10*)) (van Uden 1985; Salgueiro et al. AEM 1988;
+  // Jones et al. Biotechnol. Lett. 1984 — exponential death applies above the
+  // ethanol concentration at which growth ceases). Steepnesses mirror the
+  // sublethal growth (r7) coefficients (same order / lipid-solubility scaling,
+  // per Salgueiro); thresholds are death-onset concentrations from the
+  // literature. EtOH: floor 100 g/L (Sanchez-Gonzalez 2009 lethal-at-100;
+  // Nabais et al. AEM 1988 X_mf ~103 g/L). Acetate: 5 g/L total (Casey et al.
+  // FEMS 2010; Thomas et al. AEM 2002). IBO: 25 g/L (EtOH floor / 3.75
+  // lipid-solubility potency). In the shipped diagnostic only the EtOH factor
+  // activates (acetate peaks ~1.2 g/L, IBO is 0 while the Ehrlich branch is off).
+  k_10ie = 0.04;
+  k_10ie has g_per_l_per_h;
+  k_10ia = 0.12;
+  k_10ia has g_per_l_per_h;
+  k_10ii = 0.15;
+  k_10ii has g_per_l_per_h;
+  P_10e = 100;
+  P_10e has g_per_l;
+  P_10a = 5;
+  P_10a has g_per_l;
+  P_10i = 25;
+  P_10i has g_per_l;
   k_13 = 0.0;
   k_13 has g_per_l_per_h;
   K_13 = 5e-07;
@@ -242,6 +268,7 @@ model *bhagwat2026()
   var curr_n_glu_spikes, curr_env, curr_tot_vol_glu_feed_added;
 
   const k_7ie, k_7ia, k_7ii, k_1ie, k_1ia, k_1ii, k_4ie, k_4ia, k_4ii, k_10;
+  const k_10ie, k_10ia, k_10ii, P_10e, P_10a, P_10i;
   const k_1h, K_1h, k_1l, K_1l, k_1e, K_1e, K_1i, k_2, K_2, K_2i;
   const k_3, K_3, k_4, K_4, k_5, K_5, k_5e, K_5e, K_5i, k_6, K_6, k_6r, K_6e;
   const k_7, K_7, k_8, k_9, K_9, k_9e, K_9e, K_9i, k_9c, k_11, D;

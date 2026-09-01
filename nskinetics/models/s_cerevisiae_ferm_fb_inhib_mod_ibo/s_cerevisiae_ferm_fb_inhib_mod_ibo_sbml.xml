@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!-- Created by libAntimony version v3.1.3 with libSBML version 5.21.1. -->
 <sbml xmlns="http://www.sbml.org/sbml/level3/version2/core" level="3" version="2">
   <model metaid="bhagwat2026" id="bhagwat2026" name="Bhagwat2026_Yeast_Ethanol_Isobutanol" substanceUnits="substance" timeUnits="time_unit" volumeUnits="volume">
     <notes>
@@ -263,7 +264,7 @@
       <parameter id="X_a" value="0.1" units="dimensionless" constant="false"/>
       <parameter id="X_AcDH" value="0.0075" units="dimensionless" constant="false"/>
       <parameter id="qO2" units="mmole_per_g_per_h" constant="false"/>
-      <parameter id="is_aerobic" value="1" units="dimensionless" constant="false"/>
+      <parameter id="is_aerobic" value="1" units="dimensionless" constant="true"/>
       <parameter id="qCO2" units="mmole_per_g_per_h" constant="false"/>
       <parameter id="qO2_TCA_growth_only" constant="false"/>
       <parameter id="tot_mass_glu" constant="false"/>
@@ -324,6 +325,12 @@
       <parameter id="K_9i" value="25" units="l_per_g" constant="true"/>
       <parameter id="k_9c" value="0.00399" units="g_per_l_per_h" constant="true"/>
       <parameter id="k_10" value="0.06" units="g_per_l_per_h" constant="true"/>
+      <parameter id="k_10ie" value="0.04" units="g_per_l_per_h" constant="true"/>
+      <parameter id="P_10e" value="100" units="g_per_l" constant="true"/>
+      <parameter id="k_10ia" value="0.12" units="g_per_l_per_h" constant="true"/>
+      <parameter id="P_10a" value="5" units="g_per_l" constant="true"/>
+      <parameter id="k_10ii" value="0.15" units="g_per_l_per_h" constant="true"/>
+      <parameter id="P_10i" value="25" units="g_per_l" constant="true"/>
       <parameter id="k_11" value="0.02" units="g_per_l_per_h" constant="true"/>
       <parameter id="D" name="Dilutionrate" value="0" units="per_h" constant="true"/>
       <parameter id="k_13" value="0" units="g_per_l_per_h" constant="true"/>
@@ -745,11 +752,11 @@
           <speciesReference species="Red" stoichiometry="0.178" constant="true"/>
         </listOfProducts>
         <listOfModifiers>
-          <modifierSpeciesReference species="s_IBO"/>
           <modifierSpeciesReference species="s_acetate"/>
           <modifierSpeciesReference species="s_acetald"/>
           <modifierSpeciesReference species="s_EtOH"/>
           <modifierSpeciesReference species="a"/>
+          <modifierSpeciesReference species="s_IBO"/>
         </listOfModifiers>
         <kineticLaw>
           <math xmlns="http://www.w3.org/1998/Math/MathML">
@@ -920,9 +927,9 @@
           <speciesReference species="Red" stoichiometry="0.363" constant="true"/>
         </listOfProducts>
         <listOfModifiers>
-          <modifierSpeciesReference species="s_IBO"/>
           <modifierSpeciesReference species="s_EtOH"/>
           <modifierSpeciesReference species="a"/>
+          <modifierSpeciesReference species="s_IBO"/>
         </listOfModifiers>
         <kineticLaw>
           <math xmlns="http://www.w3.org/1998/Math/MathML">
@@ -1180,10 +1187,10 @@
           <speciesReference species="Red" stoichiometry="0.063" constant="true"/>
         </listOfProducts>
         <listOfModifiers>
-          <modifierSpeciesReference species="s_IBO"/>
           <modifierSpeciesReference species="s_acetate"/>
           <modifierSpeciesReference species="s_EtOH"/>
           <modifierSpeciesReference species="a"/>
+          <modifierSpeciesReference species="s_IBO"/>
         </listOfModifiers>
         <kineticLaw>
           <math xmlns="http://www.w3.org/1998/Math/MathML">
@@ -1471,11 +1478,91 @@
         <listOfReactants>
           <speciesReference species="a" stoichiometry="1" constant="true"/>
         </listOfReactants>
+        <listOfModifiers>
+          <modifierSpeciesReference species="s_acetate"/>
+          <modifierSpeciesReference species="s_EtOH"/>
+          <modifierSpeciesReference species="s_IBO"/>
+        </listOfModifiers>
         <kineticLaw>
           <math xmlns="http://www.w3.org/1998/Math/MathML">
             <apply>
               <times/>
               <ci> k_10 </ci>
+              <piecewise>
+                <piece>
+                  <apply>
+                    <power/>
+                    <cn> 2.71828 </cn>
+                    <apply>
+                      <times/>
+                      <ci> k_10ie </ci>
+                      <apply>
+                        <minus/>
+                        <ci> s_EtOH </ci>
+                        <ci> P_10e </ci>
+                      </apply>
+                    </apply>
+                  </apply>
+                  <apply>
+                    <gt/>
+                    <ci> s_EtOH </ci>
+                    <ci> P_10e </ci>
+                  </apply>
+                </piece>
+                <otherwise>
+                  <cn type="integer"> 1 </cn>
+                </otherwise>
+              </piecewise>
+              <piecewise>
+                <piece>
+                  <apply>
+                    <power/>
+                    <cn> 2.71828 </cn>
+                    <apply>
+                      <times/>
+                      <ci> k_10ia </ci>
+                      <apply>
+                        <minus/>
+                        <ci> s_acetate </ci>
+                        <ci> P_10a </ci>
+                      </apply>
+                    </apply>
+                  </apply>
+                  <apply>
+                    <gt/>
+                    <ci> s_acetate </ci>
+                    <ci> P_10a </ci>
+                  </apply>
+                </piece>
+                <otherwise>
+                  <cn type="integer"> 1 </cn>
+                </otherwise>
+              </piecewise>
+              <piecewise>
+                <piece>
+                  <apply>
+                    <power/>
+                    <cn> 2.71828 </cn>
+                    <apply>
+                      <times/>
+                      <ci> k_10ii </ci>
+                      <apply>
+                        <minus/>
+                        <ci> s_IBO </ci>
+                        <ci> P_10i </ci>
+                      </apply>
+                    </apply>
+                  </apply>
+                  <apply>
+                    <gt/>
+                    <ci> s_IBO </ci>
+                    <ci> P_10i </ci>
+                  </apply>
+                </piece>
+                <otherwise>
+                  <cn type="integer"> 1 </cn>
+                </otherwise>
+              </piecewise>
               <ci> a </ci>
               <ci> env </ci>
             </apply>
