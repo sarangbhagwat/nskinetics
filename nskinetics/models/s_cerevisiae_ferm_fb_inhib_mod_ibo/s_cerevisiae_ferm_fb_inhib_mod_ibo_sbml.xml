@@ -290,7 +290,7 @@
       <parameter id="K_1e" value="0.12" units="g_per_l" constant="true"/>
       <parameter id="k_1ie" value="0.04" units="g_per_l_per_h" constant="true"/>
       <parameter id="k_1ia" value="0.12" units="g_per_l_per_h" constant="true"/>
-      <parameter id="k_1ii" value="0.04" units="g_per_l_per_h" constant="true"/>
+      <parameter id="k_1ii" value="0.15" units="g_per_l_per_h" constant="true"/>
       <parameter id="k_2" value="0.501" units="g_per_l_per_h" constant="true"/>
       <parameter id="K_2" value="2e-05" units="g_per_l" constant="true"/>
       <parameter id="K_2i" value="0.101" units="l_per_g" constant="true"/>
@@ -299,7 +299,7 @@
       <parameter id="k_4" value="4.8" units="g_per_l_per_h" constant="true"/>
       <parameter id="k_4ie" value="0.04" units="g_per_l_per_h" constant="true"/>
       <parameter id="k_4ia" value="0.12" units="g_per_l_per_h" constant="true"/>
-      <parameter id="k_4ii" value="0.04" units="g_per_l_per_h" constant="true"/>
+      <parameter id="k_4ii" value="0.15" units="g_per_l_per_h" constant="true"/>
       <parameter id="K_4" value="0.000264" units="g_per_l" constant="true"/>
       <parameter id="k_5" value="0.0104" units="g_per_l_per_h" constant="true"/>
       <parameter id="K_5" value="0.0102" units="g_per_l" constant="true"/>
@@ -314,7 +314,7 @@
       <parameter id="k_7" value="1.203" units="g_per_l_per_h" constant="true"/>
       <parameter id="k_7ie" value="0.04" units="g_per_l_per_h" constant="true"/>
       <parameter id="k_7ia" value="0.12" units="g_per_l_per_h" constant="true"/>
-      <parameter id="k_7ii" value="0.04" units="g_per_l_per_h" constant="true"/>
+      <parameter id="k_7ii" value="0.15" units="g_per_l_per_h" constant="true"/>
       <parameter id="K_7" value="0.0101" units="g_per_l" constant="true"/>
       <parameter id="k_8" value="0.589" units="g_per_l_per_h" constant="true"/>
       <parameter id="k_9" value="0.008" units="g_per_l_per_h" constant="true"/>
