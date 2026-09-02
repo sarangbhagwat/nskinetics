@@ -209,6 +209,43 @@ def _resolve_model(model_or_unit):
         f'(got {type(model_or_unit).__name__}).')
 
 
+def _end_index(df, t_end, unit):
+    """Index of the last trajectory row inside the ``0..t_end`` window.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        Trajectory, with a ``time`` column.
+    t_end : float
+        Inclusive upper bound of the integration window.
+    unit : NSKBatchReactor or None
+        The reactor the trajectory came from, if any. When ``t_end`` is that
+        reactor's own harvest time, its stored ``tau_index`` is used verbatim,
+        so the last included row is exactly the row the reactor reports as
+        ``nsk_results_specific_tau``.
+
+    Returns
+    -------
+    int
+
+    Raises
+    ------
+    ValueError
+        If no row satisfies ``time <= t_end``.
+    """
+    if unit is not None and getattr(unit, 'tau', None) == t_end:
+        idx = getattr(unit, 'tau_index', None)
+        if idx is not None and 0 <= idx < len(df):
+            return int(idx)
+    t = df['time'].to_numpy()
+    keep = np.flatnonzero(t <= t_end)
+    if not len(keep):
+        raise ValueError(
+            f'No trajectory row at or before t_end={t_end} '
+            f'(first recorded time is {float(t[0])}).')
+    return int(keep[-1])
+
+
 def _write_order(selections):
     """Order selections so a write-back lands at the intended values.
 
@@ -268,8 +305,12 @@ def _frac(base, counterfactual):
 
 
 def compute_flux_summary(model_or_unit, inhibition_map, reactions=None,
-                         label=None):
+                         label=None, t_end=None):
     """Compute cumulative flux and inhibition strengths for a simulated run.
+
+    For a reactor the window is 0..harvest time (``unit.tau``); the reactor
+    simulates to ``tau_max`` but harvests at ``tau``, so integrating the whole
+    stored trajectory would count flux the process never sees.
 
     Parameters
     ----------
@@ -286,6 +327,13 @@ def compute_flux_summary(model_or_unit, inhibition_map, reactions=None,
         otherwise ignored.
     label : str, optional
         Scenario label carried on the summary.
+    t_end : float, optional
+        Integrate only rows with ``time <= t_end``, truncating the trajectory
+        before any integration; ``FluxSummary.t_end``, ``final_volume`` and
+        ``final_concentrations`` then come from the last included row.
+        Defaults to the reactor's harvest time ``unit.tau`` when
+        ``model_or_unit`` is a reactor, and to the whole trajectory for a bare
+        :class:`~nskinetics.KineticModel`.
 
     Returns
     -------
@@ -295,12 +343,14 @@ def compute_flux_summary(model_or_unit, inhibition_map, reactions=None,
     ------
     ValueError
         If a mapping/`reactions` entry names a reaction or parameter absent
-        from the model. Raised before any model state is written.
+        from the model, or if no trajectory row satisfies ``time <= t_end``.
+        Raised before any model state is written.
     KineticSimulationError
         If the model has no results, or the trajectory lacks a required state
         column (see :meth:`~KineticModel.state_selections`).
     """
     km = _resolve_model(model_or_unit)
+    unit = model_or_unit if km is not model_or_unit else None
     df = km.results_df
     if df is None:
         raise KineticSimulationError(
@@ -330,6 +380,15 @@ def compute_flux_summary(model_or_unit, inhibition_map, reactions=None,
             'Trajectory is missing state columns required for re-evaluation: '
             f'{missing}. Record KineticModel.state_selections() (an '
             'NSKBatchReactor does this automatically).')
+
+    # Truncate to the integration window BEFORE integrating: a reactor
+    # simulates to tau_max but harvests at tau, so everything downstream
+    # (integrals, final volume, final concentrations, t_end) must see only the
+    # rows up to the harvest row.
+    if t_end is None and unit is not None:
+        t_end = getattr(unit, 'tau', None)
+    if t_end is not None:
+        df = df.iloc[:_end_index(df, t_end, unit) + 1]
 
     # `time` is written back on every row too, so it must be snapshotted and
     # restored along with the rest of the state.

@@ -233,3 +233,46 @@ def test_csv_roundtrip_partial_map(tmp_path):
     assert np.isclose(s2.fraction_lost['r1']['P'], s.fraction_lost['r1']['P'])
     assert np.isclose(s2.fraction_lost_all['r1'], s.fraction_lost_all['r1'])
     assert s2.inhibitors == s.inhibitors == ['P']
+
+
+# --- integration window (t_end) ---------------------------------------------
+
+def test_t_end_truncates_the_integration_window():
+    # Q accumulates from r2 only, so the cumulative r2 mass up to t = 5 must
+    # close against Q*env at the t = 5 row -- not at the end of the run.
+    km = _simulate_toy()
+    s = compute_flux_summary(km, _TOY_MAP, reactions=['r1', 'r2', 'r3'],
+                             t_end=5.0)
+    assert np.isclose(s.t_end, 5.0) and s.t_end <= 5.0
+    df = km.results_df
+    i = int(np.flatnonzero(df['time'].to_numpy() <= 5.0)[-1])
+    q_at_t_end = df['[Q]'].iat[i] * df['env'].iat[i]
+    assert abs(s.cumulative_mass['r2'] - q_at_t_end) / q_at_t_end < 1e-3
+    # the window really is shorter than the run
+    assert s.final_volume == df['env'].iat[i]
+    assert s.final_concentrations['Q'] == df['[Q]'].iat[i]
+
+
+def test_t_end_default_is_the_whole_trajectory():
+    km = _simulate_toy()
+    full = compute_flux_summary(km, _TOY_MAP, reactions=['r1', 'r2', 'r3'])
+    explicit = compute_flux_summary(km, _TOY_MAP, reactions=['r1', 'r2', 'r3'],
+                                    t_end=None)
+    assert full.t_end == explicit.t_end == km.results_df['time'].iat[-1]
+    assert full.cumulative_mass == explicit.cumulative_mass
+    # and a t_end at/after the last row changes nothing
+    late = compute_flux_summary(km, _TOY_MAP, reactions=['r1', 'r2', 'r3'],
+                                t_end=1e6)
+    assert late.cumulative_mass == full.cumulative_mass
+
+
+def test_t_end_before_the_first_row_raises():
+    km = _simulate_toy()
+    r = km._te
+    s_before = r['[S]']
+    try:
+        compute_flux_summary(km, _TOY_MAP, reactions=['r1'], t_end=-1.0)
+        assert False, 'expected ValueError'
+    except ValueError as e:
+        assert 't_end' in str(e)
+    assert r['[S]'] == s_before          # raised before touching state
