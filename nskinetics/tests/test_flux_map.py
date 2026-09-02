@@ -9,10 +9,13 @@
 
 Marked ``slow``: the module-scoped fixture builds and simulates the shipped
 sugar-prep + fermentation system, which imports the shipped ``te_r`` kinetic
-model and the corn-biorefinery chemical set. Every heavy import therefore
-lives inside the fixture/test bodies -- ``nskinetics.tests`` is imported by
-``nskinetics/__init__.py``, so a module-level ``biosteam``/``biorefineries``
-import here would pollute ``sys.modules`` and break the import-guard tests.
+model and the corn-biorefinery chemical set. The module is deliberately not
+registered in ``nskinetics/tests/__init__.py``, so a plain ``import
+nskinetics`` never pulls any of that in. Every heavy import nonetheless lives
+inside the fixture/test bodies: pytest imports this module during collection
+even for a run that deselects it, and a module-level
+``biosteam``/``biorefineries`` import at that point would pollute
+``sys.modules`` and break the import-guard tests collected alongside it.
 """
 
 import os
@@ -62,8 +65,6 @@ def test_scenario_presets_set_exact_values():
         apply_scenario_B(te_r)
         assert r.k_13 == 5.81 and r.k_14 == 4.8 and r.k_15 == 4.8
         assert r.k_16 == 2.82 and r.k_16r == 0.0125
-        # inhibition coefficients already at B in the shipped model
-        assert r.k_7ii == 0.15 and r.k_1ii == 0.075
         apply_scenario_A(te_r)
         assert r.k_13 == 0.0 and r.k_14 == 0.0 and r.k_15 == 0.0
         assert r.k_16 == 0.0 and r.k_16r == 0.0
@@ -90,6 +91,104 @@ def test_shipped_spec_maps_only_model_reactions_and_params():
     assert 'r10' in reactions
     for rid in reactions:
         assert rid in rxn, f'reaction {rid} not in model'
+
+
+def _stoichiometry(r, species, reaction):
+    """Stoichiometric coefficient of ``species`` in ``reaction``, from the model."""
+    import numpy as np
+    m = r.getFullStoichiometryMatrix()
+    rows = list(getattr(m, 'rownames', None) or r.getFloatingSpeciesIds())
+    cols = list(getattr(m, 'colnames', None) or r.getReactionIds())
+    return float(np.asarray(m)[rows.index(species), cols.index(reaction)])
+
+
+def _balance_error(V406, summary, species, reaction):
+    """Relative gap between a product's cumulative flux and its accumulation.
+
+    ``cumulative_mass[reaction] * stoichiometry`` is everything the model made
+    of ``species`` inside the integration window; with no outflow reaction for
+    it, that must equal the change in its total amount (concentration times
+    broth volume) over the same window.
+    """
+    r = V406.nsk_kinetic_model._te
+    df = V406.nsk_results_df.iloc[:V406.tau_index + 1]
+    col = f'[{species}]'
+    made = summary.cumulative_mass[reaction] * _stoichiometry(r, species,
+                                                              reaction)
+    accumulated = (df[col].iat[-1] * df['env'].iat[-1]
+                   - df[col].iat[0] * df['env'].iat[0])
+    return abs(made - accumulated) / abs(accumulated)
+
+
+def test_product_balances_close_in_both_scenarios(simulated_V406):
+    # The strongest available check that the re-evaluated rates really are the
+    # model's own: what r6 (and, in scenario B, r16) made must equal what
+    # accumulated in the broth, since nothing else produces or consumes them.
+    from nskinetics import compute_flux_summary
+    from nskinetics.models.s_cerevisiae_ferm_fb_inhib_mod_ibo import (
+        FLUX_MAP_SPEC, apply_scenario_A, apply_scenario_B)
+    V406 = simulated_V406
+    model = V406.nsk_kinetic_model
+    imap, reactions = FLUX_MAP_SPEC.inhibition_map, FLUX_MAP_SPEC.reactions
+    try:
+        apply_scenario_A(model)
+        V406.system.simulate()
+        sa = compute_flux_summary(V406, imap, reactions=reactions)
+        assert _balance_error(V406, sa, 's_EtOH', 'r6') < 1e-3
+        apply_scenario_B(model)
+        V406.system.simulate()
+        sb = compute_flux_summary(V406, imap, reactions=reactions)
+        assert _balance_error(V406, sb, 's_EtOH', 'r6') < 1e-3
+        assert _balance_error(V406, sb, 's_IBO', 'r16') < 1e-3
+    finally:
+        apply_scenario_A(model)
+        V406.system.simulate()
+
+
+def test_compute_flux_summary_restores_the_shipped_model(simulated_V406):
+    # Every selection that defines integrator state, and every coefficient the
+    # counterfactuals zero, must come back exactly as it was found.
+    from nskinetics import compute_flux_summary
+    from nskinetics.models.s_cerevisiae_ferm_fb_inhib_mod_ibo import (
+        FLUX_MAP_SPEC)
+    V406 = simulated_V406
+    km = V406.nsk_kinetic_model
+    r = km._te
+    before = {c: r[c] for c in km.state_selections()}
+    before_params = {p: r[p] for p in FLUX_MAP_SPEC.inhibition_map}
+    assert 'time' in before and before_params
+    compute_flux_summary(V406, FLUX_MAP_SPEC.inhibition_map,
+                         reactions=FLUX_MAP_SPEC.reactions)
+    for c, v in before.items():
+        assert r[c] == v, f'{c} not restored'
+    for p, v in before_params.items():
+        assert r[p] == v, f'{p} not restored'
+
+
+def test_helper_rejects_a_reactor_carrying_a_foreign_model():
+    # The presets are applied to the reactor's OWN kinetic model, so a reactor
+    # running something else must be refused rather than silently mutating the
+    # shipped te_r and drawing a figure of the wrong model. The stand-in model
+    # is a stub, not a second tellurium model: loading another Antimony model
+    # into this process perturbs the shipped model's own integration (it
+    # harvests several hours earlier afterwards), which would poison every
+    # test that runs after this one.
+    from nskinetics.models.s_cerevisiae_ferm_fb_inhib_mod_ibo import (
+        draw_scenario_flux_map)
+
+    class _ForeignRoadRunner:
+        @staticmethod
+        def getGlobalParameterIds():
+            return ['k1', 'K1']
+
+    class _ForeignModel:
+        _te = _ForeignRoadRunner()
+
+    class _FakeUnit:
+        nsk_kinetic_model = _ForeignModel()
+
+    with pytest.raises(ValueError, match='k_13'):
+        draw_scenario_flux_map(_FakeUnit())
 
 
 def test_end_to_end_both_scenarios(tmp_path, simulated_V406):

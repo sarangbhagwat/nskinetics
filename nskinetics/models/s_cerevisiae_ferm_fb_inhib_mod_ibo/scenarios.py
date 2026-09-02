@@ -9,8 +9,8 @@
 ethanol/isobutanol model.
 
 The two configurations differ only in the engineered Ehrlich pathway (r13-r16):
-scenario A leaves it off (all four rate constants zero, no isobutanol); scenario
-B turns it on. Every product-inhibition coefficient is already at its
+scenario A leaves it off (all five rate constants -- k_13, k_14, k_15, k_16,
+k_16r -- zero, so no isobutanol is made); scenario B turns it on. Every product-inhibition coefficient is already at its
 scenario-B value in the shipped antimony (it has no effect in A because
 isobutanol stays zero), so only the r13-r16 rate constants change here.
 

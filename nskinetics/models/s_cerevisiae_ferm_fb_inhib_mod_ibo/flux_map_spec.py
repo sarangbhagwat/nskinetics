@@ -14,9 +14,13 @@ column runs down x = 44, its two by-product branches leave to the left
 column runs down x = 72. Edges are the kinetic reactions (dilution/outflow
 reactions are omitted -- D = 0 in fed-batch use). The inhibition mapping is
 the canonical set of product-inhibition coefficients: exponential terms
-(k_*ie/ia/ii) and the saturable denominator self-inhibition terms (K_6e on r6,
-K_16i on r16). r10 (active-biomass decay) is product-ENHANCED, listed in
-enhancement_reactions.
+(k_*ie/ia/ii), the saturable denominator self-inhibition terms (K_6e on r6,
+K_16i on r16) and the thermodynamic reverse-reaction (product) terms of the
+two reversible steps (k_6r on r6, k_16r on r16). The strips therefore include
+those reverse terms alongside the inhibition coefficients, so ADH's "fraction
+lost to ethanol" counts both the ethanol inhibition of the forward rate and
+the ethanol-driven reverse flux. r10 (active-biomass decay) is
+product-ENHANCED, listed in enhancement_reactions.
 
 r10 is deliberately absent from ``edges``: biomass decay has no network edge to
 hang a strip on, so no strip is drawn for it. It stays in ``inhibition_map``,
@@ -71,10 +75,12 @@ _INHIBITORS = {
 _INHIBITION_MAP = {
     'k_1ie': ('r1', 'ethanol'),   'k_1ia': ('r1', 'acetate'),   'k_1ii': ('r1', 'isobutanol'),
     'k_4ie': ('r4', 'ethanol'),   'k_4ia': ('r4', 'acetate'),   'k_4ii': ('r4', 'isobutanol'),
-    'K_6e':  ('r6', 'ethanol'),   'k_6ia': ('r6', 'acetate'),   'k_6ii': ('r6', 'isobutanol'),
+    'K_6e':  ('r6', 'ethanol'),   'k_6r':  ('r6', 'ethanol'),
+    'k_6ia': ('r6', 'acetate'),   'k_6ii': ('r6', 'isobutanol'),
     'k_7ie': ('r7', 'ethanol'),   'k_7ia': ('r7', 'acetate'),   'k_7ii': ('r7', 'isobutanol'),
     'k_10ie': ('r10', 'ethanol'), 'k_10ia': ('r10', 'acetate'), 'k_10ii': ('r10', 'isobutanol'),
-    'k_16ie': ('r16', 'ethanol'), 'k_16ia': ('r16', 'acetate'), 'K_16i': ('r16', 'isobutanol'),
+    'k_16ie': ('r16', 'ethanol'), 'k_16ia': ('r16', 'acetate'),
+    'K_16i': ('r16', 'isobutanol'), 'k_16r': ('r16', 'isobutanol'),
 }
 
 #: Shipped :class:`~nskinetics.visualization.FluxMapSpec` for this model; its
@@ -87,8 +93,11 @@ FLUX_MAP_SPEC = FluxMapSpec(
     inhibitors=_INHIBITORS,
     inhibition_map=_INHIBITION_MAP,
     enhancement_reactions={'r10'},
-    products=['s_EtOH', 's_IBO'],
-    product_labels={'s_EtOH': 'ethanol', 's_IBO': 'isobutanol'},
+    # residual glucose is a header titer too: scenario B leaves some of the
+    # fed sugar unconsumed at harvest, which is invisible from the edges alone.
+    products=['s_EtOH', 's_IBO', 's_glu'],
+    product_labels={'s_EtOH': 'ethanol', 's_IBO': 'isobutanol',
+                    's_glu': 'residual glucose'},
     # Strips hang down from their anchor (4 rows, ~5.3 mm tall). Only
     # inhibited reactions get one, so r2/r5/r8/r13-r15 need no entry; the
     # entries below move r1/r4/r6/r7/r16 off the node boxes, edges and value
@@ -108,18 +117,24 @@ def draw_scenario_flux_map(unit, save_dir=None, spec=FLUX_MAP_SPEC,
                            **draw_kwargs):
     """Simulate both scenarios on ``unit`` and draw the two-panel flux map.
 
-    Applies scenario A to the shipped ``te_r``, re-simulates ``unit.system``,
-    summarizes; repeats for scenario B; then restores scenario A and
-    re-simulates in a ``finally`` so the caller's system is left as it was
-    found. Only the kinetic Ehrlich rate constants change between panels: the
-    fed-batch feeding strategy (spike count, thresholds, tau_max) is NOT
-    touched, so the two panels differ solely by the engineered pathway.
+    Only the kinetic Ehrlich rate constants (r13-r16) change between the two
+    panels: the fed-batch feeding strategy (spike count, thresholds, tau_max)
+    is NOT touched. Panel b is therefore *scenario A's process with the
+    Ehrlich branch on*, not the isobutanol biorefinery's full scenario-B
+    configuration, which also changes the feeding strategy.
+
+    Applies scenario A to the reactor's own kinetic model, re-simulates
+    ``unit.system``, summarizes; repeats for scenario B; then restores
+    scenario A and re-simulates in a ``finally`` so the caller's system is
+    left as it was found.
 
     Parameters
     ----------
     unit : NSKBatchReactor
         A reactor in an already-built system (e.g. ``V406``); its
-        ``system.simulate()`` is called three times.
+        ``system.simulate()`` is called three times. The presets are applied
+        to ``unit.nsk_kinetic_model`` (the shipped ``te_r`` is used only if
+        the reactor carries no such model).
     save_dir : str, optional
         Passed to :func:`~nskinetics.visualization.draw_flux_map`; writes
         ``flux_map.png`` / ``flux_map.pdf`` there.
@@ -135,26 +150,55 @@ def draw_scenario_flux_map(unit, save_dir=None, spec=FLUX_MAP_SPEC,
     -------
     (matplotlib.figure.Figure, list of matplotlib.axes.Axes, tuple)
         The figure, the panel axes, and ``(summary_A, summary_B)``.
+
+    Raises
+    ------
+    ValueError
+        If the model the presets would be applied to is not the shipped
+        ethanol/isobutanol model (it has no ``k_13`` rate constant).
     """
     from ...engine import compute_flux_summary
     from ...visualization import draw_flux_map
-    from .s_cerevisiae_ferm_fb_inhib_mod_ibo import te_r
     from .scenarios import apply_scenario_A, apply_scenario_B
+
+    # The presets must land on the model the reactor actually integrates; the
+    # shipped `te_r` is only a fallback for a reactor that carries none.
+    model = getattr(unit, 'nsk_kinetic_model', None)
+    if model is None:
+        from .s_cerevisiae_ferm_fb_inhib_mod_ibo import te_r
+        model = te_r
+    r = getattr(model, '_te', model)
+    if 'k_13' not in set(r.getGlobalParameterIds()):
+        raise ValueError(
+            'draw_scenario_flux_map needs the shipped S. cerevisiae '
+            'ethanol/isobutanol model: the reactor\'s kinetic model has no '
+            '"k_13" rate constant, so the Ehrlich scenario presets do not '
+            'apply to it.')
 
     imap = spec.inhibition_map
     reactions = spec.reactions
-    try:
-        apply_scenario_A(te_r)
+
+    def _restore_scenario_A():
+        apply_scenario_A(model)
         unit.system.simulate()
+
+    try:
+        _restore_scenario_A()
         summary_A = compute_flux_summary(unit, imap, reactions=reactions,
                                          label='Scenario A')
-        apply_scenario_B(te_r)
+        apply_scenario_B(model)
         unit.system.simulate()
         summary_B = compute_flux_summary(unit, imap, reactions=reactions,
                                          label='Scenario B')
-    finally:
-        apply_scenario_A(te_r)
-        unit.system.simulate()
+    except BaseException as exc:
+        # Scenario A is restored even on failure, but a failure in the restore
+        # must chain from the original error rather than mask it.
+        try:
+            _restore_scenario_A()
+        except BaseException as restore_exc:
+            raise restore_exc from exc
+        raise
+    _restore_scenario_A()
     fig, axes = draw_flux_map([summary_A, summary_B], spec,
                               save_dir=save_dir, **draw_kwargs)
     return fig, axes, (summary_A, summary_B)
