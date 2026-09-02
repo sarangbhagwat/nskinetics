@@ -185,7 +185,10 @@ class KineticModel():
         r = self._te
         try:
             assigned = set(r.getAssignmentRuleIds())
-        except Exception:
+        except (AttributeError, RuntimeError):
+            # older roadrunner builds lack the accessor, and it raises on a
+            # model that has not been loaded yet; either way, no assignment
+            # rules are known and nothing needs excluding.
             assigned = set()
         floating = set(r.getFloatingSpeciesIds())
         sels = ['time']

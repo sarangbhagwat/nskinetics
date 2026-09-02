@@ -67,8 +67,11 @@ def test_state_selections_covers_state_and_excludes_assignment_rules():
     assert len(sels) == len(set(sels))
 
 
-from nskinetics import compute_flux_summary, FluxSummary
-from nskinetics.exceptions import KineticSimulationError
+# NOTE: the public API (``compute_flux_summary``, ``FluxSummary``,
+# ``KineticSimulationError``) is imported inside the test bodies, not here:
+# ``nskinetics/__init__.py`` imports ``nskinetics.tests``, which imports this
+# module, so a module-level ``from nskinetics import ...`` would make the
+# package's own initialization order load-bearing.
 
 # Toy inhibition map: r1 is inhibited by P (via ki, "self") and Q (via kq);
 # r2 is inhibited by Q via the denominator term Ke; r3 is ENHANCED by P (kd).
@@ -89,6 +92,7 @@ def _simulate_toy():
 
 
 def test_reeval_matches_recorded_rates():
+    from nskinetics import compute_flux_summary
     km = _simulate_toy()
     s = compute_flux_summary(km, _TOY_MAP, reactions=['r1', 'r2', 'r3'])
     df = km.results_df
@@ -98,7 +102,75 @@ def test_reeval_matches_recorded_rates():
                           np.trapezoid(df[rid].to_numpy(), t), rtol=1e-9)
 
 
+# --- time write-back ---------------------------------------------------------
+
+# A second toy whose rate law DOES read the simulation clock, so `time` must be
+# written back on every row for the re-evaluation to reproduce the recorded
+# rate. No events, so nothing here depends on the time write-back being safe.
+_TOY_TIME = """
+model flux_toy_time()
+  compartment env; species S in env, P in env;
+  r1: S -> P; k1*S*(1 + 0.01*time)*exp(-ki*P)*env;
+  S = 10; P = 0; env = 1; k1 = 0.3; ki = 0.2;
+end
+"""
+
+
+def _simulate_time_toy():
+    km = nsk.KineticModel(te.loadAntimonyModel(_TOY_TIME),
+                          units={'time': 'h', 'conc': 'g/L'})
+    km.reset()
+    km.simulate(0, 10, 2001, km.state_selections() + ['r1'])
+    return km
+
+
+def test_time_is_not_written_back_when_no_rate_law_reads_it():
+    # The toy references `time` only in event triggers, so writing it back per
+    # row would re-arm compiled native events outside an integration step.
+    from nskinetics import compute_flux_summary
+    from nskinetics.engine import flux_analysis as fa
+    km = _simulate_toy()
+    assert 'time' in km.state_selections()      # still recorded and restored
+    assert fa._kinetic_laws_use_time(km._te) is False
+    seen = []
+    original = fa._rates_along
+
+    def _spy(r_, arrs, cols, idx_of, n):
+        seen.append(list(cols))
+        return original(r_, arrs, cols, idx_of, n)
+
+    fa._rates_along = _spy
+    try:
+        s = compute_flux_summary(km, _TOY_MAP, reactions=['r1', 'r2', 'r3'])
+    finally:
+        fa._rates_along = original
+    assert seen, 'the write-back loop never ran'
+    assert all('time' not in cols for cols in seen)
+    assert all('env' in cols and '[S]' in cols for cols in seen)
+    # ... and the numbers are unchanged: still the recorded rate integrals.
+    df = km.results_df
+    t = df['time'].to_numpy()
+    for rid in ('r1', 'r2', 'r3'):
+        assert np.isclose(s.cumulative_mass[rid],
+                          np.trapezoid(df[rid].to_numpy(), t), rtol=1e-9)
+
+
+def test_time_is_written_back_when_a_rate_law_reads_it():
+    from nskinetics import compute_flux_summary
+    from nskinetics.engine import flux_analysis as fa
+    km = _simulate_time_toy()
+    assert fa._kinetic_laws_use_time(km._te) is True
+    s = compute_flux_summary(km, {'ki': ('r1', 'P')}, reactions=['r1'])
+    df = km.results_df
+    # would fail if `time` were held at its restored value during replay
+    assert np.isclose(s.cumulative_mass['r1'],
+                      np.trapezoid(df['r1'].to_numpy(),
+                                   df['time'].to_numpy()), rtol=1e-9)
+    assert 0.0 < s.fraction_lost['r1']['P'] < 1.0
+
+
 def test_mass_balance_closes_on_Q():
+    from nskinetics import compute_flux_summary
     km = _simulate_toy()
     s = compute_flux_summary(km, _TOY_MAP, reactions=['r1', 'r2', 'r3'])
     df = km.results_df
@@ -108,6 +180,7 @@ def test_mass_balance_closes_on_Q():
 
 
 def test_fraction_lost_signs_and_zero():
+    from nskinetics import compute_flux_summary
     km = _simulate_toy()
     s = compute_flux_summary(km, _TOY_MAP, reactions=['r1', 'r2', 'r3'])
     assert 0.0 < s.fraction_lost['r1']['P'] < 1.0     # real inhibition
@@ -118,9 +191,11 @@ def test_fraction_lost_signs_and_zero():
 
 
 def test_state_restored_after_compute():
+    from nskinetics import compute_flux_summary
     km = _simulate_toy()
     r = km._te
-    # every selection, 'time' included: it is written back on every row too.
+    # every selection, 'time' included: it is part of the snapshot/restore
+    # contract whether or not it is written back per row.
     before = {c: r[c] for c in km.state_selections()}
     assert 'time' in before
     before_params = {p: r[p] for p in _TOY_MAP}
@@ -132,6 +207,7 @@ def test_state_restored_after_compute():
 
 
 def test_state_restored_when_computation_raises():
+    from nskinetics import compute_flux_summary
     # The restore lives in a `finally`, so a failure part-way through must not
     # leave the model parked at some arbitrary trajectory row.
     from nskinetics.engine import flux_analysis as fa
@@ -140,8 +216,8 @@ def test_state_restored_when_computation_raises():
     before = {c: r[c] for c in km.state_selections()}
     before_params = {p: r[p] for p in _TOY_MAP}
 
-    def _boom(r_, df, ordered_cols, idx_of, n):
-        fa._apply_row(r_, df, ordered_cols, n // 2)   # move the model off t_end
+    def _boom(r_, arrs, cols, idx_of, n):
+        fa._apply_row(r_, arrs, cols, n // 2)   # move the model off t_end
         raise RuntimeError('boom')
 
     original = fa._rates_along
@@ -161,6 +237,8 @@ def test_state_restored_when_computation_raises():
 
 
 def test_missing_columns_raise():
+    from nskinetics import compute_flux_summary
+    from nskinetics.exceptions import KineticSimulationError
     km = _make_toy()
     km.reset()
     km.simulate(0, 10, 101, ['time', 'r1'])   # no state columns recorded
@@ -172,6 +250,7 @@ def test_missing_columns_raise():
 
 
 def test_bad_mapping_raises_before_touching_state():
+    from nskinetics import compute_flux_summary
     km = _simulate_toy()
     r = km._te
     s_before = r['[S]']
@@ -184,6 +263,7 @@ def test_bad_mapping_raises_before_touching_state():
 
 
 def test_reactions_subset_ignores_unrequested_mapping_entries():
+    from nskinetics import compute_flux_summary
     # A mapping may name reactions outside `reactions`; those entries are
     # validated but not summarized (they must not raise).
     km = _simulate_toy()
@@ -195,6 +275,7 @@ def test_reactions_subset_ignores_unrequested_mapping_entries():
 
 
 def test_csv_roundtrip(tmp_path):
+    from nskinetics import compute_flux_summary, FluxSummary
     km = _simulate_toy()
     s = compute_flux_summary(km, _TOY_MAP, reactions=['r1', 'r2', 'r3'],
                              label='toy')
@@ -212,6 +293,7 @@ def test_csv_roundtrip(tmp_path):
 
 
 def test_csv_roundtrip_partial_map(tmp_path):
+    from nskinetics import compute_flux_summary, FluxSummary
     # A reaction with no entry in the inhibition map is absent from
     # fraction_lost / fraction_lost_all; the CSV must round-trip that absence
     # rather than inventing a nan entry. Also covers label=None, and the two
@@ -238,6 +320,7 @@ def test_csv_roundtrip_partial_map(tmp_path):
 # --- integration window (t_end) ---------------------------------------------
 
 def test_t_end_truncates_the_integration_window():
+    from nskinetics import compute_flux_summary
     # Q accumulates from r2 only, so the cumulative r2 mass up to t = 5 must
     # close against Q*env at the t = 5 row -- not at the end of the run.
     km = _simulate_toy()
@@ -254,6 +337,7 @@ def test_t_end_truncates_the_integration_window():
 
 
 def test_t_end_default_is_the_whole_trajectory():
+    from nskinetics import compute_flux_summary
     km = _simulate_toy()
     full = compute_flux_summary(km, _TOY_MAP, reactions=['r1', 'r2', 'r3'])
     explicit = compute_flux_summary(km, _TOY_MAP, reactions=['r1', 'r2', 'r3'],
@@ -267,6 +351,7 @@ def test_t_end_default_is_the_whole_trajectory():
 
 
 def test_t_end_before_the_first_row_raises():
+    from nskinetics import compute_flux_summary
     km = _simulate_toy()
     r = km._te
     s_before = r['[S]']

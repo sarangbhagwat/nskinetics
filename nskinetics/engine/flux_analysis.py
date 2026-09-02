@@ -14,6 +14,7 @@ at a time. Everything is derived from the model itself; no rate law is
 re-implemented here.
 """
 
+import re
 from collections import defaultdict
 from dataclasses import dataclass, field
 
@@ -26,6 +27,13 @@ __all__ = ('FluxSummary', 'compute_flux_summary')
 
 #: Columns of the long-format CSV written by :meth:`FluxSummary.to_csv`.
 _CSV_COLUMNS = ('reaction', 'quantity', 'key', 'value')
+
+#: The SBML csymbol ``definitionURL`` fragment marking a reference to
+#: simulation time inside a MathML expression.
+_TIME_CSYMBOL = 'symbols/time'
+
+#: Matches one ``<kineticLaw>`` element (and its contents) in an SBML document.
+_KINETIC_LAW_RE = re.compile(r'<kineticLaw\b.*?</kineticLaw>', re.S)
 
 
 def _read_float(val):
@@ -59,7 +67,12 @@ class FluxSummary:
     cumulative_mass : dict
         ``{reaction_id: grams processed}`` over the run (extensive integral).
     cumulative_flux : dict
-        ``{reaction_id: g/L of final broth}`` (``cumulative_mass`` / final volume).
+        ``{reaction_id: g/L of final broth}`` (``cumulative_mass`` / final
+        volume). Each value is grams of *that step's own substrate* consumed,
+        so two reactions are directly comparable where they compete for the
+        same substrate (a branch point), but not along a chain: the
+        stoichiometry, and hence the mass carried per unit of flux, differs
+        from step to step.
     fraction_lost : dict
         ``{reaction_id: {inhibitor: fraction}}``; ``1 - actual/uninhibited``.
         Negative for enhancement (e.g. product-accelerated decay). The
@@ -220,9 +233,11 @@ def _end_index(df, t_end, unit):
         Inclusive upper bound of the integration window.
     unit : NSKBatchReactor or None
         The reactor the trajectory came from, if any. When ``t_end`` is that
-        reactor's own harvest time, its stored ``tau_index`` is used verbatim,
-        so the last included row is exactly the row the reactor reports as
-        ``nsk_results_specific_tau``.
+        reactor's own harvest time *and* the row it points at really is at
+        that time, its stored ``tau_index`` is used verbatim, so the last
+        included row is exactly the row the reactor reports as
+        ``nsk_results_specific_tau``. A ``tau_index`` that is stale with
+        respect to the stored trajectory falls through to the time scan below.
 
     Returns
     -------
@@ -235,7 +250,8 @@ def _end_index(df, t_end, unit):
     """
     if unit is not None and getattr(unit, 'tau', None) == t_end:
         idx = getattr(unit, 'tau_index', None)
-        if idx is not None and 0 <= idx < len(df):
+        if idx is not None and 0 <= idx < len(df) \
+                and df['time'].iat[int(idx)] == t_end:
             return int(idx)
     t = df['time'].to_numpy()
     keep = np.flatnonzero(t <= t_end)
@@ -270,9 +286,49 @@ def _write_order(selections):
             + [c for c in selections if c.startswith('[')])
 
 
-def _apply_row(r, df, ordered_cols, i):
-    for c in ordered_cols:
-        r[c] = df[c].iat[i]
+def _kinetic_laws_use_time(r):
+    """Whether any of the model's rate laws reads the SBML time symbol.
+
+    Only the ``<kineticLaw>`` elements are inspected: a reference to time
+    anywhere else (an assignment rule such as ``prod_EtOH := s_EtOH/time``, an
+    event trigger) does not affect a rate re-evaluation, because
+    :func:`compute_flux_summary` reads the reaction rates directly rather than
+    integrating. A model whose current SBML cannot be retrieved is treated as
+    time-dependent, i.e. the conservative answer.
+
+    Parameters
+    ----------
+    r : roadrunner.RoadRunner
+        The loaded model.
+
+    Returns
+    -------
+    bool
+    """
+    try:
+        sbml = r.getCurrentSBML()
+    except (AttributeError, RuntimeError):
+        return True
+    return any(_TIME_CSYMBOL in law for law in _KINETIC_LAW_RE.findall(sbml))
+
+
+def _apply_row(r, arrs, cols, i):
+    """Write trajectory row ``i`` back into the model, in ``cols`` order.
+
+    Parameters
+    ----------
+    r : roadrunner.RoadRunner
+        The loaded model.
+    arrs : dict
+        ``{selection: numpy array over the trajectory}`` (hoisted out of the
+        caller's loop, so no per-row DataFrame lookup happens here).
+    cols : sequence of str
+        Selections to write, already in :func:`_write_order` order.
+    i : int
+        Trajectory row index.
+    """
+    for c in cols:
+        r[c] = arrs[c][i]
 
 
 def _restore(r, snap, ordered_cols):
@@ -280,22 +336,58 @@ def _restore(r, snap, ordered_cols):
         r[c] = snap[c]
 
 
-def _rates_along(r, df, ordered_cols, idx_of, n):
-    out = {rid: np.empty(n) for rid in idx_of}
+def _rates_along(r, arrs, cols, idx_of, n):
+    """Re-evaluate the requested reactions' rates along a stored trajectory.
+
+    This is the module's single write-back loop: every base and counterfactual
+    integral goes through it, so the state written per row is identical in
+    both.
+
+    Parameters
+    ----------
+    r : roadrunner.RoadRunner
+        The loaded model.
+    arrs : dict
+        ``{selection: numpy array}`` as for :func:`_apply_row`.
+    cols : sequence of str
+        Selections written back on each row.
+    idx_of : dict
+        ``{reaction_id: index into getReactionRates()}``.
+    n : int
+        Number of trajectory rows.
+
+    Returns
+    -------
+    dict
+        ``{reaction_id: numpy array of rates}``.
+    """
+    items = tuple(idx_of.items())
+    out = {rid: np.empty(n) for rid, _j in items}
     for i in range(n):
-        _apply_row(r, df, ordered_cols, i)
+        _apply_row(r, arrs, cols, i)
         rates = r.getReactionRates()
-        for rid, j in idx_of.items():
+        for rid, j in items:
             out[rid][i] = rates[j]
     return out
 
 
-def _cum_one(r, df, ordered_cols, rid_index, n, t):
-    vals = np.empty(n)
-    for i in range(n):
-        _apply_row(r, df, ordered_cols, i)
-        vals[i] = r.getReactionRates()[rid_index]
-    return float(np.trapezoid(vals, t))
+def _cum(r, arrs, cols, idx_of, n, t):
+    """Trapezoidal integral of each requested reaction's re-evaluated rate.
+
+    Parameters
+    ----------
+    r, arrs, cols, idx_of, n
+        As for :func:`_rates_along`.
+    t : numpy.ndarray
+        Trajectory times.
+
+    Returns
+    -------
+    dict
+        ``{reaction_id: cumulative extensive flux}``.
+    """
+    return {rid: float(np.trapezoid(v, t))
+            for rid, v in _rates_along(r, arrs, cols, idx_of, n).items()}
 
 
 def _frac(base, counterfactual):
@@ -346,8 +438,20 @@ def compute_flux_summary(model_or_unit, inhibition_map, reactions=None,
         from the model, or if no trajectory row satisfies ``time <= t_end``.
         Raised before any model state is written.
     KineticSimulationError
-        If the model has no results, or the trajectory lacks a required state
-        column (see :meth:`~KineticModel.state_selections`).
+        If the model has no results, if the trajectory lacks a required state
+        column (see :meth:`~KineticModel.state_selections`), or if the final
+        broth volume is zero or non-finite.
+
+    Notes
+    -----
+    The trajectory is replayed by writing each row's state back into the
+    model and reading its reaction rates. ``'time'`` is written back only when
+    a ``<kineticLaw>`` actually references the SBML time symbol: a model with
+    compiled native events (as the shipped one has) would otherwise have its
+    time-triggered events re-armed by the backwards time jump at the start of
+    every counterfactual pass. ``'time'`` is snapshotted and restored either
+    way, and is always recorded as a column, so the restore contract is
+    unchanged.
     """
     km = _resolve_model(model_or_unit)
     unit = model_or_unit if km is not model_or_unit else None
@@ -390,11 +494,19 @@ def compute_flux_summary(model_or_unit, inhibition_map, reactions=None,
     if t_end is not None:
         df = df.iloc[:_end_index(df, t_end, unit) + 1]
 
-    # `time` is written back on every row too, so it must be snapshotted and
-    # restored along with the rest of the state.
+    # `time` is part of the snapshot/restore contract regardless, but it is
+    # only WRITTEN back per row when a rate law actually reads it: the shipped
+    # model carries compiled native SBML events whose triggers depend on time,
+    # and jumping time backwards outside an integration step re-arms them.
     ordered_cols = _write_order(state_cols)
+    write_cols = ordered_cols
+    if 'time' in write_cols and not _kinetic_laws_use_time(r):
+        write_cols = [c for c in ordered_cols if c != 'time']
     t = df['time'].to_numpy()
     n = len(df)
+    # Hoist the per-column arrays out of the write-back loops: one numpy
+    # lookup per row per column instead of a DataFrame scalar access.
+    arrs = {c: df[c].to_numpy() for c in write_cols}
     idx_of = {rid: rxn_ids.index(rid) for rid in reactions}
 
     # inhibitor order (first-seen)
@@ -411,9 +523,7 @@ def compute_flux_summary(model_or_unit, inhibition_map, reactions=None,
     snap = {c: r[c] for c in ordered_cols}
     snap_par = {p: r[p] for p in inhibition_map}
     try:
-        base = _rates_along(r, df, ordered_cols, idx_of, n)
-        cumulative_mass = {rid: float(np.trapezoid(base[rid], t))
-                           for rid in reactions}
+        cumulative_mass = _cum(r, arrs, write_cols, idx_of, n, t)
         fraction_lost = {}
         fraction_lost_all = {}
         for rid in reactions:
@@ -427,7 +537,7 @@ def compute_flux_summary(model_or_unit, inhibition_map, reactions=None,
                 saved = {p: r[p] for p in plist}
                 for p in plist:
                     r[p] = 0.0
-                cf = _cum_one(r, df, ordered_cols, idx_of[rid], n, t)
+                cf = _cum(r, arrs, write_cols, {rid: idx_of[rid]}, n, t)[rid]
                 for p, v in saved.items():
                     r[p] = v
                 fl[inh] = _frac(cumulative_mass[rid], cf)
@@ -435,7 +545,7 @@ def compute_flux_summary(model_or_unit, inhibition_map, reactions=None,
             saved = {p: r[p] for p in all_params}
             for p in all_params:
                 r[p] = 0.0
-            cf_all = _cum_one(r, df, ordered_cols, idx_of[rid], n, t)
+            cf_all = _cum(r, arrs, write_cols, {rid: idx_of[rid]}, n, t)[rid]
             for p, v in saved.items():
                 r[p] = v
             fraction_lost_all[rid] = _frac(cumulative_mass[rid], cf_all)
@@ -446,6 +556,10 @@ def compute_flux_summary(model_or_unit, inhibition_map, reactions=None,
 
     # env is the model's broth-volume compartment; fall back to 1.0
     final_volume = float(df['env'].iloc[-1]) if 'env' in df.columns else 1.0
+    if not np.isfinite(final_volume) or final_volume == 0.:
+        raise KineticSimulationError(
+            f'Final broth volume is {final_volume}; cumulative flux per litre '
+            'is undefined. Check the trajectory\'s "env" column.')
     cumulative_flux = {rid: cumulative_mass[rid] / final_volume
                        for rid in reactions}
     final_conc = {}
