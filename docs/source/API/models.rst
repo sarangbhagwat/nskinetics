@@ -7,6 +7,10 @@ The shipped *S. cerevisiae* ethanol/isobutanol model (``te_r``) ships with
 kinetic-only scenario presets, a flux-map layout, and a classification of
 its kinetic parameters that names a parameter change in a few words.
 
+Every name documented on this page is re-exported from the subpackage, so
+``from nskinetics.models.s_cerevisiae_ferm_fb_inhib_mod_ibo import
+describe_parameter_change`` works without naming the defining submodule.
+
 Scenarios and flux map
 ----------------------
 
@@ -22,15 +26,20 @@ therefore reports everything the product does to that step: ADH's "fraction
 lost to ethanol" counts both the inhibition of the forward rate and the
 ethanol-driven reverse flux.
 
-:func:`draw_scenario_flux_map` changes only the Ehrlich rate constants between
-its two panels, never the fed-batch feeding strategy, so panel **b** is
-scenario A's process with the Ehrlich branch switched on -- not the isobutanol
-biorefinery's full scenario-B configuration.
+:func:`~nskinetics.models.s_cerevisiae_ferm_fb_inhib_mod_ibo.flux_map_spec.draw_scenario_flux_map`
+changes only the Ehrlich rate constants between its two panels, never the
+fed-batch feeding strategy, so panel **b** is scenario A's process with the
+Ehrlich branch switched on -- not the isobutanol biorefinery's full
+scenario-B configuration.
+
+.. currentmodule:: nskinetics.models.s_cerevisiae_ferm_fb_inhib_mod_ibo.flux_map_spec
 
 .. autodata:: FLUX_MAP_SPEC
    :annotation:
 
 .. autofunction:: draw_scenario_flux_map
+
+.. currentmodule:: nskinetics.models.s_cerevisiae_ferm_fb_inhib_mod_ibo.scenarios
 
 .. autofunction:: apply_scenario_A
 
@@ -38,6 +47,8 @@ biorefinery's full scenario-B configuration.
 
 Parameter categories
 --------------------
+
+.. currentmodule:: nskinetics.models.s_cerevisiae_ferm_fb_inhib_mod_ibo.parameter_categories
 
 Every kinetic parameter of the shipped model has a *role* -- what kind of
 term it is in its rate law -- and belongs to one or more pathway *modules*
