@@ -18,7 +18,11 @@ from .s_cerevisiae_ferm_fb_inhib_mod_ibo import *
 from . import scenarios
 from .scenarios import *
 
+from . import flux_map_spec
+from .flux_map_spec import *
+
 __all__ = (
      *s_cerevisiae_ferm_fb_inhib_mod_ibo.__all__,
      *scenarios.__all__,
+     *flux_map_spec.__all__,
      )

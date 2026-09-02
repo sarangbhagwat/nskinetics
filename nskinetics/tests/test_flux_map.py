@@ -15,6 +15,8 @@ lives inside the fixture/test bodies -- ``nskinetics.tests`` is imported by
 import here would pollute ``sys.modules`` and break the import-guard tests.
 """
 
+import os
+
 import pytest
 
 pytestmark = pytest.mark.slow
@@ -68,3 +70,44 @@ def test_scenario_presets_set_exact_values():
     finally:
         apply_scenario_A(te_r)
         te_r.reset()
+
+
+def test_shipped_spec_maps_only_model_reactions_and_params():
+    from nskinetics.models.s_cerevisiae_ferm_fb_inhib_mod_ibo import (
+        te_r, FLUX_MAP_SPEC)
+    r = te_r._te
+    rxn = set(r.getReactionIds())
+    par = set(r.getGlobalParameterIds())
+    for rid in FLUX_MAP_SPEC.edges:
+        assert rid in rxn, f'edge reaction {rid} not in model'
+    for p, (rid, _inh) in FLUX_MAP_SPEC.inhibition_map.items():
+        assert p in par, f'inhibition param {p} not in model'
+        assert rid in rxn, f'inhibition reaction {rid} not in model'
+
+
+def test_end_to_end_both_scenarios(tmp_path, simulated_V406):
+    import matplotlib.pyplot as plt
+    from nskinetics import compute_flux_summary
+    from nskinetics.visualization import draw_flux_map
+    from nskinetics.models.s_cerevisiae_ferm_fb_inhib_mod_ibo import (
+        te_r, FLUX_MAP_SPEC, apply_scenario_A, apply_scenario_B)
+    V406 = simulated_V406
+    imap = FLUX_MAP_SPEC.inhibition_map
+    rxns = list(FLUX_MAP_SPEC.edges)
+    try:
+        apply_scenario_A(te_r)
+        V406.system.simulate()
+        sa = compute_flux_summary(V406, imap, reactions=rxns, label='Scenario A')
+        apply_scenario_B(te_r)
+        V406.system.simulate()
+        sb = compute_flux_summary(V406, imap, reactions=rxns, label='Scenario B')
+    finally:
+        apply_scenario_A(te_r)
+        V406.system.simulate()
+    fig, axes = draw_flux_map([sa, sb], FLUX_MAP_SPEC, save_dir=str(tmp_path))
+    assert len(axes) == 2
+    assert os.path.exists(os.path.join(tmp_path, 'flux_map.pdf'))
+    assert sa.cumulative_flux['r6'] > 0        # ethanol pathway active in A
+    assert sb.cumulative_flux['r16'] > 0       # isobutanol pathway active in B
+    assert sa.cumulative_flux['r16'] == 0.0    # Ehrlich off in A
+    plt.close(fig)
