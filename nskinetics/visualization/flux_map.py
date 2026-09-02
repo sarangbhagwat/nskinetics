@@ -28,13 +28,24 @@ MM = 1 / 25.4
 C_FLUX = '#3A3A3A'
 C_JOINT = '#666666'
 FS_NODE = 6.0
-FS_RXN = 5.0
 FS_VAL = 4.6
 FS_HEAD = 7.0
 FS_LEG = 5.2
 NODE_HW = 6.0    # node box half-width in mm (see _draw_panel)
 NODE_HH = 2.5    # node box half-height in mm
 NODE_GAP = 0.8   # clear space in mm between a node box and an arrow
+
+#: rcParams applied *only* while a figure is drawn and saved (Nature-family
+#: conventions: Arial, editable vector text). Applied through
+#: :func:`matplotlib.pyplot.rc_context` so a caller's later plots keep their
+#: own styling; ``savefig`` must run inside that context because
+#: ``pdf.fonttype`` is read at save time.
+_RC_PARAMS = {
+    'font.family': 'sans-serif',
+    'font.sans-serif': ['Arial', 'Helvetica', 'DejaVu Sans'],
+    'pdf.fonttype': 42, 'ps.fonttype': 42, 'svg.fonttype': 'none',
+    'text.color': '#1A1A1A',
+}
 
 
 @dataclass
@@ -73,27 +84,32 @@ class FluxMapSpec:
     size_mm: tuple = (88., 120.)
 
 
-def _setup_rcparams():
-    plt.rcParams.update({
-        'font.family': 'sans-serif',
-        'font.sans-serif': ['Arial', 'Helvetica', 'DejaVu Sans'],
-        'pdf.fonttype': 42, 'ps.fonttype': 42, 'svg.fonttype': 'none',
-        'text.color': '#1A1A1A',
-    })
-
-
 def _width_scale(summaries, spec):
+    """Build the flux-to-linewidth mapping shared by every panel.
+
+    Parameters
+    ----------
+    summaries : list of FluxSummary
+        All panels, so that one scale serves the whole figure.
+    spec : FluxMapSpec
+        Supplies the drawn reactions.
+
+    Returns
+    -------
+    callable
+        ``flux -> linewidth in points`` (``0.0`` for non-positive flux).
+    """
     fluxes = [s.cumulative_flux.get(rid, 0.0)
               for s in summaries for rid in spec.edges]
     fmax = max(fluxes) if fluxes else 1.0
     fmax = fmax or 1.0
 
     def scale(flux):
-        # sqrt so area, not width, tracks flux; 0.4-3.0 mm range
+        # sqrt so area, not width, tracks flux; 0.4-3.0 pt linewidth range
         if flux <= 0:
             return 0.0
         return 0.4 + 2.6 * np.sqrt(flux / fmax)
-    return scale, fmax
+    return scale
 
 
 def _trim_to_nodes(p0, p1):
@@ -141,36 +157,53 @@ def _draw_edge(ax, p0, p1, w):
         color=C_FLUX, shrinkA=0, shrinkB=0, zorder=3))
 
 
+def _draw_bar(ax, x, yy, L, h, frac, color, enh):
+    """Draw one strip row: outline, proportional fill, enhancement marker.
+
+    Parameters
+    ----------
+    ax : matplotlib.axes.Axes
+        Panel to draw on.
+    x, yy : float
+        Lower-left corner of the row, in mm.
+    L, h : float
+        Full row length and row height, in mm.
+    frac : float
+        Fraction of potential flux lost; negative means enhancement. The
+        drawn length is clamped to the full row length.
+    color : str
+        Fill color for this row.
+    enh : bool
+        Whether this reaction is drawn as enhancement, so that a negative
+        ``frac`` is hatched and marked ``+`` instead of read as a loss.
+    """
+    ax.add_patch(Rectangle((x, yy), L, h, fill=False,
+                           ec='#CCCCCC', lw=0.3, zorder=5))
+    mag = abs(frac)
+    if mag == 0:
+        return
+    gain = enh and frac < 0
+    ax.add_patch(Rectangle((x, yy), L * min(mag, 1.0), h, fc=color, ec='none',
+                           hatch='///' if gain else None, zorder=6))
+    if gain:
+        ax.text(x + L * min(mag, 1.0) + 0.6, yy + h / 2, '+',
+                fontsize=FS_VAL, va='center', ha='left', color=color,
+                zorder=7)
+
+
 def _draw_strip(ax, x, y, rid, summary, spec):
-    rows = list(spec.inhibitors.items())
     fl = summary.fraction_lost.get(rid, {})
     L = 9.0          # full strip length in mm
     h = 1.1          # row height
     gap = 0.3
     enh = rid in spec.enhancement_reactions
     yy = y
-    for inh, color in rows:
-        frac = fl.get(inh, 0.0)
-        mag = abs(frac)
-        ax.add_patch(Rectangle((x, yy), L, h, fill=False,
-                               ec='#CCCCCC', lw=0.3, zorder=5))
-        if mag > 0:
-            hatch = '///' if (enh and frac < 0) else None
-            ax.add_patch(Rectangle((x, yy), L * min(mag, 1.0), h,
-                                   fc=color, ec='none', hatch=hatch,
-                                   zorder=6))
-            if enh and frac < 0:
-                ax.text(x + L * min(mag, 1.0) + 0.6, yy + h / 2, '+',
-                        fontsize=FS_VAL, va='center', ha='left', color=color,
-                        zorder=7)
+    for inh, color in spec.inhibitors.items():
+        _draw_bar(ax, x, yy, L, h, fl.get(inh, 0.0), color, enh)
         yy -= (h + gap)
-    # joint row (grey)
-    fa = summary.fraction_lost_all.get(rid, 0.0)
-    ax.add_patch(Rectangle((x, yy), L, h, fill=False, ec='#CCCCCC', lw=0.3,
-                           zorder=5))
-    if abs(fa) > 0:
-        ax.add_patch(Rectangle((x, yy), L * min(abs(fa), 1.0), h,
-                               fc=C_JOINT, ec='none', zorder=6))
+    # joint row (grey), drawn on the same conventions as the rows above
+    _draw_bar(ax, x, yy, L, h, summary.fraction_lost_all.get(rid, 0.0),
+              C_JOINT, enh)
 
 
 def _draw_panel(ax, summary, spec, scale, annotate_values):
@@ -204,7 +237,7 @@ def _draw_panel(ax, summary, spec, scale, annotate_values):
             _draw_strip(ax, (xa + xb) / 2 + dx, (ya + yb) / 2 + dy,
                         rid, summary, spec)
     # nodes
-    for nid, (x, y, label) in spec.nodes.items():
+    for x, y, label in spec.nodes.values():
         ax.add_patch(FancyBboxPatch((x - NODE_HW, y - NODE_HH),
                      2 * NODE_HW, 2 * NODE_HH,
                      boxstyle='round,pad=0,rounding_size=1.2',
@@ -243,7 +276,15 @@ def draw_flux_map(summaries, spec, save_dir=None, formats=('png', 'pdf'),
     Raises
     ------
     ValueError
-        If the summaries do not share the same reaction set.
+        If ``summaries`` is empty, or if the summaries do not share the same
+        reaction set.
+
+    Notes
+    -----
+    Figure styling is confined to a :func:`matplotlib.pyplot.rc_context`, so
+    the caller's global ``rcParams`` are unchanged on return. The returned
+    figure is not closed; close it with :func:`matplotlib.pyplot.close` when
+    drawing many.
     """
     summaries = list(summaries)
     if not summaries:
@@ -254,23 +295,22 @@ def draw_flux_map(summaries, spec, save_dir=None, formats=('png', 'pdf'),
             raise ValueError(
                 'All summaries must share the same reaction set; '
                 f'{s.label!r} differs from {summaries[0].label!r}.')
-    _setup_rcparams()
     w_mm, h_mm = spec.size_mm
     n = len(summaries)
-    scale, _fmax = _width_scale(summaries, spec)
-    fig, axes = plt.subplots(1, n, figsize=(w_mm * MM * n, h_mm * MM))
-    if n == 1:
-        axes = [axes]
-    axes = list(np.atleast_1d(axes))
-    for ax, s in zip(axes, summaries):
-        _draw_panel(ax, s, spec, scale, annotate_values)
-    fig.subplots_adjust(left=0.01, right=0.99, bottom=0.01, top=0.99,
-                        wspace=0.04)
-    if save_dir:
-        os.makedirs(save_dir, exist_ok=True)
-        for fmt in formats:
-            fig.savefig(os.path.join(save_dir, f'flux_map.{fmt}'),
-                        dpi=dpi, facecolor='white')
+    scale = _width_scale(summaries, spec)
+    with plt.rc_context(_RC_PARAMS):
+        fig, axes = plt.subplots(1, n, figsize=(w_mm * MM * n, h_mm * MM))
+        axes = [axes] if n == 1 else list(axes)
+        for ax, s in zip(axes, summaries):
+            _draw_panel(ax, s, spec, scale, annotate_values)
+        fig.subplots_adjust(left=0.01, right=0.99, bottom=0.01, top=0.99,
+                            wspace=0.04)
+        if save_dir:
+            os.makedirs(save_dir, exist_ok=True)
+            for fmt in formats:
+                # inside the context: pdf.fonttype is read at save time
+                fig.savefig(os.path.join(save_dir, f'flux_map.{fmt}'),
+                            dpi=dpi, facecolor='white')
     if show:
         plt.show()
     return fig, axes
