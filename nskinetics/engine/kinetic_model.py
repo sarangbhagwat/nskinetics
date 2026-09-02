@@ -198,7 +198,11 @@ class KineticModel():
             if c not in assigned:
                 _add(c)
         for s in r.getFloatingSpeciesIds():
-            _add(f'[{s}]')
+            # roadrunner lists assignment-rule species here too; writing one
+            # back raises RuntimeError ('Could not set value for NON conserved
+            # moiety floating species'), so they must be filtered out as well.
+            if s not in assigned:
+                _add(f'[{s}]')
         for v in r.getRateRuleIds():
             if v not in assigned:
                 _add(v)
