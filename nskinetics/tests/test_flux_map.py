@@ -83,31 +83,35 @@ def test_shipped_spec_maps_only_model_reactions_and_params():
     for p, (rid, _inh) in FLUX_MAP_SPEC.inhibition_map.items():
         assert p in par, f'inhibition param {p} not in model'
         assert rid in rxn, f'inhibition reaction {rid} not in model'
+    # the computed reaction list is the drawn edges plus mapped-but-undrawn
+    # reactions (r10, biomass decay), and every one of them is a real reaction
+    reactions = FLUX_MAP_SPEC.reactions
+    assert reactions[:len(FLUX_MAP_SPEC.edges)] == list(FLUX_MAP_SPEC.edges)
+    assert 'r10' in reactions
+    for rid in reactions:
+        assert rid in rxn, f'reaction {rid} not in model'
 
 
 def test_end_to_end_both_scenarios(tmp_path, simulated_V406):
     import matplotlib.pyplot as plt
-    from nskinetics import compute_flux_summary
-    from nskinetics.visualization import draw_flux_map
     from nskinetics.models.s_cerevisiae_ferm_fb_inhib_mod_ibo import (
-        te_r, FLUX_MAP_SPEC, apply_scenario_A, apply_scenario_B)
+        draw_scenario_flux_map)
     V406 = simulated_V406
-    imap = FLUX_MAP_SPEC.inhibition_map
-    rxns = list(FLUX_MAP_SPEC.edges)
+    fig, axes, (sa, sb) = draw_scenario_flux_map(V406, save_dir=str(tmp_path))
     try:
-        apply_scenario_A(te_r)
-        V406.system.simulate()
-        sa = compute_flux_summary(V406, imap, reactions=rxns, label='Scenario A')
-        apply_scenario_B(te_r)
-        V406.system.simulate()
-        sb = compute_flux_summary(V406, imap, reactions=rxns, label='Scenario B')
+        assert len(axes) == 2
+        assert os.path.exists(os.path.join(tmp_path, 'flux_map.pdf'))
+        assert sa.cumulative_flux['r6'] > 0     # ethanol pathway active in A
+        assert sb.cumulative_flux['r16'] > 0    # isobutanol pathway active in B
+        assert sa.cumulative_flux['r16'] == 0.0  # Ehrlich off in A
+        # the integration window ends at the harvest row, not at tau_max
+        assert sa.t_end == V406.tau
+        assert sa.t_end < V406.nsk_results_df['time'].iat[-1]
+        assert sa.final_concentrations['s_EtOH'] == pytest.approx(
+            V406.nsk_results_specific_tau_dict['[s_EtOH]'], rel=1e-6)
+        # r10 has no edge but is mapped, so the shipped path still computes it;
+        # ethanol exceeds P_10e, so decay is ENHANCED (negative fraction lost)
+        assert 'r10' in sa.fraction_lost
+        assert sa.fraction_lost['r10']['ethanol'] < 0
     finally:
-        apply_scenario_A(te_r)
-        V406.system.simulate()
-    fig, axes = draw_flux_map([sa, sb], FLUX_MAP_SPEC, save_dir=str(tmp_path))
-    assert len(axes) == 2
-    assert os.path.exists(os.path.join(tmp_path, 'flux_map.pdf'))
-    assert sa.cumulative_flux['r6'] > 0        # ethanol pathway active in A
-    assert sb.cumulative_flux['r16'] > 0       # isobutanol pathway active in B
-    assert sa.cumulative_flux['r16'] == 0.0    # Ehrlich off in A
-    plt.close(fig)
+        plt.close(fig)

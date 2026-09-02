@@ -20,3 +20,22 @@ side by side on a :class:`nskinetics.visualization.FluxMapSpec` layout.
    :members:
 
 .. autofunction:: draw_flux_map
+
+Shipped model: scenarios and flux map
+-------------------------------------
+
+.. currentmodule:: nskinetics.models.s_cerevisiae_ferm_fb_inhib_mod_ibo
+
+The shipped *S. cerevisiae* ethanol/isobutanol model carries a ready-made
+layout and a one-call end-to-end helper. ``FLUX_MAP_SPEC.reactions`` is the
+reaction list to hand to :func:`~nskinetics.compute_flux_summary`: the drawn
+edges plus mapped-but-undrawn reactions such as biomass decay (``r10``).
+
+.. autodata:: FLUX_MAP_SPEC
+   :annotation:
+
+.. autofunction:: draw_scenario_flux_map
+
+.. autofunction:: apply_scenario_A
+
+.. autofunction:: apply_scenario_B
