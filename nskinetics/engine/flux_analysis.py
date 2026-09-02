@@ -18,10 +18,32 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 
 import numpy as np
+import pandas as pd
 
 from ..exceptions import KineticSimulationError
 
 __all__ = ('FluxSummary', 'compute_flux_summary')
+
+#: Columns of the long-format CSV written by :meth:`FluxSummary.to_csv`.
+_CSV_COLUMNS = ('reaction', 'quantity', 'key', 'value')
+
+
+def _read_float(val):
+    """Parse one CSV ``value`` cell, or ``None`` if it is blank/unparseable.
+
+    Parameters
+    ----------
+    val : str or float
+        Raw cell contents as read back from the CSV.
+
+    Returns
+    -------
+    float or None
+    """
+    try:
+        return float(val)
+    except (TypeError, ValueError):
+        return None
 
 
 @dataclass
@@ -71,6 +93,102 @@ class FluxSummary:
     final_concentrations: dict
     t_end: float
     inhibitors: list = field(default_factory=list)
+
+    def to_csv(self, path):
+        """Write this summary to a long-format CSV.
+
+        The file has the columns ``reaction, quantity, key, value``, where
+        ``quantity`` is one of ``cumulative_mass``, ``cumulative_flux``,
+        ``fraction_lost``, ``fraction_lost_all``, ``final_concentration`` or
+        ``meta``, and ``key`` is the inhibitor/species name (or the metadata
+        name for ``meta`` rows) and is empty where it does not apply. Rows
+        that are not per-reaction (``final_concentration``, ``meta``) carry an
+        empty ``reaction``. Reactions absent from ``fraction_lost`` /
+        ``fraction_lost_all`` (i.e. with no entry in the inhibition map) get
+        no rows for those quantities, so :meth:`from_csv` reproduces the same
+        omissions rather than inventing entries.
+
+        Parameters
+        ----------
+        path : str or path-like
+            Destination CSV path; an existing file is overwritten.
+
+        Returns
+        -------
+        None
+        """
+        rows = []
+        for rid in self.reaction_ids:
+            rows.append((rid, 'cumulative_mass', '', self.cumulative_mass[rid]))
+            rows.append((rid, 'cumulative_flux', '', self.cumulative_flux[rid]))
+            if rid in self.fraction_lost_all:
+                rows.append((rid, 'fraction_lost_all', '',
+                             self.fraction_lost_all[rid]))
+            for inh, v in self.fraction_lost.get(rid, {}).items():
+                rows.append((rid, 'fraction_lost', inh, v))
+        for sp, v in self.final_concentrations.items():
+            rows.append(('', 'final_concentration', sp, v))
+        rows.append(('', 'meta', 'final_volume', self.final_volume))
+        rows.append(('', 'meta', 't_end', self.t_end))
+        rows.append(('', 'meta', 'label', self.label if self.label else ''))
+        rows.append(('', 'meta', 'inhibitors', '|'.join(self.inhibitors)))
+        pd.DataFrame(rows, columns=list(_CSV_COLUMNS)).to_csv(path, index=False)
+
+    @classmethod
+    def from_csv(cls, path):
+        """Reconstruct a :class:`FluxSummary` written by :meth:`to_csv`.
+
+        Every column is read as text (``dtype=str``, ``keep_default_na=False``)
+        so blanks stay blank and floats are converted from their full
+        ``repr``, i.e. they round-trip exactly. A ``fraction_lost_all`` row
+        whose value is blank or ``nan`` is skipped, so a summary written by an
+        older version (which emitted such a row for unmapped reactions) still
+        reloads with that reaction absent from the dict.
+
+        Parameters
+        ----------
+        path : str or path-like
+            CSV written by :meth:`to_csv`.
+
+        Returns
+        -------
+        FluxSummary
+        """
+        df = pd.read_csv(path, dtype={c: str for c in _CSV_COLUMNS},
+                         keep_default_na=False)
+        reaction_ids, cmass, cflux, floss, fall, fconc = [], {}, {}, {}, {}, {}
+        label, final_volume, t_end, inhibitors = None, 1.0, 0.0, []
+        for _, row in df.iterrows():
+            q, rid, key, val = row['quantity'], row['reaction'], row['key'], \
+                row['value']
+            if q == 'cumulative_mass':
+                if rid not in reaction_ids:
+                    reaction_ids.append(rid)
+                cmass[rid] = float(val)
+            elif q == 'cumulative_flux':
+                cflux[rid] = float(val)
+            elif q == 'fraction_lost_all':
+                v = _read_float(val)
+                if v is not None and not np.isnan(v):
+                    fall[rid] = v
+            elif q == 'fraction_lost':
+                floss.setdefault(rid, {})[key] = float(val)
+            elif q == 'final_concentration':
+                fconc[key] = float(val)
+            elif q == 'meta':
+                if key == 'final_volume':
+                    final_volume = float(val)
+                elif key == 't_end':
+                    t_end = float(val)
+                elif key == 'label':
+                    label = val or None
+                elif key == 'inhibitors':
+                    inhibitors = [x for x in str(val).split('|') if x]
+        return cls(label=label, reaction_ids=reaction_ids,
+                   cumulative_mass=cmass, cumulative_flux=cflux,
+                   fraction_lost=floss, fraction_lost_all=fall,
+                   final_volume=final_volume, final_concentrations=fconc,
+                   t_end=t_end, inhibitors=inhibitors)
 
 
 def _resolve_model(model_or_unit):

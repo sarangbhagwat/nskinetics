@@ -190,3 +190,23 @@ def test_reactions_subset_ignores_unrequested_mapping_entries():
     assert set(s.cumulative_mass) == {'r1'}
     assert set(s.fraction_lost) == {'r1'}
     assert set(s.fraction_lost_all) == {'r1'}
+
+
+import os
+
+
+def test_csv_roundtrip(tmp_path):
+    km = _simulate_toy()
+    s = compute_flux_summary(km, _TOY_MAP, reactions=['r1', 'r2', 'r3'],
+                             label='toy')
+    p = os.path.join(tmp_path, 'summary.csv')
+    s.to_csv(p)
+    s2 = FluxSummary.from_csv(p)
+    assert s2.label == 'toy'
+    assert s2.reaction_ids == s.reaction_ids
+    assert np.isclose(s2.cumulative_flux['r1'], s.cumulative_flux['r1'])
+    assert np.isclose(s2.fraction_lost['r1']['P'], s.fraction_lost['r1']['P'])
+    assert np.isclose(s2.fraction_lost_all['r1'], s.fraction_lost_all['r1'])
+    assert np.isclose(s2.final_volume, s.final_volume)
+    assert np.isclose(s2.t_end, s.t_end)
+    assert s2.inhibitors == s.inhibitors
