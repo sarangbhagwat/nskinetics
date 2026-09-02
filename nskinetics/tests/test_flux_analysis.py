@@ -6,6 +6,8 @@
 # https://github.com/sarangbhagwat/nskinetics/blob/main/LICENSE
 # for license details.
 
+import os
+
 import numpy as np
 import tellurium as te
 import nskinetics as nsk
@@ -192,9 +194,6 @@ def test_reactions_subset_ignores_unrequested_mapping_entries():
     assert set(s.fraction_lost_all) == {'r1'}
 
 
-import os
-
-
 def test_csv_roundtrip(tmp_path):
     km = _simulate_toy()
     s = compute_flux_summary(km, _TOY_MAP, reactions=['r1', 'r2', 'r3'],
@@ -210,3 +209,27 @@ def test_csv_roundtrip(tmp_path):
     assert np.isclose(s2.final_volume, s.final_volume)
     assert np.isclose(s2.t_end, s.t_end)
     assert s2.inhibitors == s.inhibitors
+
+
+def test_csv_roundtrip_partial_map(tmp_path):
+    # A reaction with no entry in the inhibition map is absent from
+    # fraction_lost / fraction_lost_all; the CSV must round-trip that absence
+    # rather than inventing a nan entry. Also covers label=None, and the two
+    # fields the first round-trip test does not assert on.
+    km = _simulate_toy()
+    s = compute_flux_summary(km, {'ki': ('r1', 'P')}, reactions=['r1', 'r2'])
+    assert 'r2' not in s.fraction_lost          # producer-side precondition
+    assert 'r2' not in s.fraction_lost_all
+    p = os.path.join(tmp_path, 'partial.csv')
+    s.to_csv(p)
+    s2 = FluxSummary.from_csv(p)
+    assert 'r2' not in s2.fraction_lost         # absent key, not nan
+    assert 'r2' not in s2.fraction_lost_all
+    assert s2.label is None
+    assert s2.reaction_ids == s.reaction_ids    # order preserved
+    # values are written at full repr, so these compare exactly
+    assert s2.cumulative_mass == s.cumulative_mass
+    assert s2.final_concentrations == s.final_concentrations
+    assert np.isclose(s2.fraction_lost['r1']['P'], s.fraction_lost['r1']['P'])
+    assert np.isclose(s2.fraction_lost_all['r1'], s.fraction_lost_all['r1'])
+    assert s2.inhibitors == s.inhibitors == ['P']

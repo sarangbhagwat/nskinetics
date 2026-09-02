@@ -106,7 +106,10 @@ class FluxSummary:
         empty ``reaction``. Reactions absent from ``fraction_lost`` /
         ``fraction_lost_all`` (i.e. with no entry in the inhibition map) get
         no rows for those quantities, so :meth:`from_csv` reproduces the same
-        omissions rather than inventing entries.
+        omissions rather than inventing entries. ``inhibitors`` is written as a
+        single ``|``-joined field, so an inhibitor name must not itself contain
+        ``|``; an empty ``label`` is written as an empty field and reads back
+        as ``None``.
 
         Parameters
         ----------
@@ -143,7 +146,10 @@ class FluxSummary:
         ``repr``, i.e. they round-trip exactly. A ``fraction_lost_all`` row
         whose value is blank or ``nan`` is skipped, so a summary written by an
         older version (which emitted such a row for unmapped reactions) still
-        reloads with that reaction absent from the dict.
+        reloads with that reaction absent from the dict. Every field is
+        recovered exactly except an empty-string ``label``, which reads back as
+        ``None`` (the two are not distinguished on disk); ``inhibitors`` is
+        split on ``|``, so a name containing that character does not survive.
 
         Parameters
         ----------
