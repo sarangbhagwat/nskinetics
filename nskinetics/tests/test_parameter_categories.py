@@ -160,3 +160,126 @@ def test_snapshot_rejects_a_foreign_model():
         'model toy() S = 1; k = 1; J: S => ; k*S; end')
     with pytest.raises(ValueError, match='k_1h'):
         pc.snapshot_parameters(r)
+
+
+# --- describe -------------------------------------------------------------
+
+def test_describe_isobutanol_inhibition_raised():
+    pc = _pc()
+    base = {'k_7ii': 0.04, 'k_1ii': 0.04, 'k_4ii': 0.04}
+    cur = {'k_7ii': 0.15, 'k_1ii': 0.15, 'k_4ii': 0.15}
+    assert pc.describe_parameter_change(base, cur) == (
+        'stronger isobutanol inhibition of glycolysis/fermentation, '
+        'overflow/acetate and growth')
+
+
+def test_describe_verbose_lists_members_in_source_order():
+    pc = _pc()
+    base = {'k_7ii': 0.04, 'k_1ii': 0.04, 'k_4ii': 0.04}
+    cur = {'k_7ii': 0.15, 'k_1ii': 0.15, 'k_4ii': 0.15}
+    assert pc.describe_parameter_change(base, cur, verbose=True) == (
+        'stronger isobutanol inhibition of glycolysis/fermentation, '
+        'overflow/acetate and growth '
+        '(k_1ii 0.04 -> 0.15, k_4ii 0.04 -> 0.15, k_7ii 0.04 -> 0.15)')
+
+
+def test_describe_ehrlich_on_from_partial_override():
+    pc = _pc()
+    from nskinetics.models.s_cerevisiae_ferm_fb_inhib_mod_ibo import (
+        SCENARIO_A_EHRLICH, SCENARIO_B_EHRLICH)
+    assert pc.describe_parameter_change(SCENARIO_A_EHRLICH, SCENARIO_B_EHRLICH) == (
+        'Ehrlich branch on; isobutanol self-inhibition of Ehrlich branch on')
+    assert pc.describe_parameter_change(SCENARIO_B_EHRLICH, SCENARIO_A_EHRLICH) == (
+        'Ehrlich branch off; isobutanol self-inhibition of Ehrlich branch off')
+
+
+def test_describe_threshold_and_lethality_words():
+    pc = _pc()
+    assert pc.describe_parameter_change({'P_10e': 100.}, {'P_10e': 120.}) == \
+        'later ethanol death onset'
+    assert pc.describe_parameter_change({'P_10a': 5.}, {'P_10a': 3.}) == \
+        'earlier acetate death onset'
+    assert pc.describe_parameter_change({'k_10ie': 0.04}, {'k_10ie': 0.08}) == \
+        'steeper ethanol lethality'
+
+
+def test_describe_affinity_and_regulation_words():
+    pc = _pc()
+    assert pc.describe_parameter_change({'K_7': 0.0101}, {'K_7': 0.02}) == \
+        'lower substrate affinity in growth'
+    assert pc.describe_parameter_change({'K_2i': 0.101}, {'K_2i': 0.05}) == \
+        'weaker glucose regulation of respiration'
+    assert pc.describe_parameter_change({'K_5i': 440.}, {'K_5i': 500.}) == \
+        'stronger glucose regulation of respiration and growth'
+
+
+def test_describe_self_inhibition_and_initial_state():
+    pc = _pc()
+    assert pc.describe_parameter_change({'K_6e': 0.057}, {'K_6e': 0.1}) == \
+        'stronger ethanol self-inhibition of glycolysis/fermentation'
+    assert pc.describe_parameter_change({'X_a': 0.1, 'X_AcDH': 0.0075},
+                                        {'X_a': 0.2, 'X_AcDH': 0.005}) == \
+        'higher initial X_a; lower initial X_AcDH'
+
+
+def test_describe_disjoint_capacity_changes_stay_separate():
+    pc = _pc()
+    base = {'k_7': 1.203, 'k_1h': 0.584}
+    cur = {'k_7': 1.5, 'k_1h': 0.5}
+    assert pc.describe_parameter_change(base, cur) == \
+        'faster growth; slower glycolysis/fermentation'
+
+
+def test_describe_overlapping_opposite_changes_collapse_to_retuned():
+    pc = _pc()
+    base = {'k_1h': 0.584, 'k_1l': 1.43}
+    cur = {'k_1h': 0.7, 'k_1l': 1.0}
+    assert pc.describe_parameter_change(base, cur) == \
+        'retuned glycolysis/fermentation capacity'
+    base = {'k_7ie': 0.04, 'k_7ia': 0.12}
+    cur = {'k_7ie': 0.08, 'k_7ia': 0.06}
+    # different effectors never collapse
+    assert pc.describe_parameter_change(base, cur) == \
+        'stronger ethanol inhibition of growth; weaker acetate inhibition of growth'
+
+
+def test_describe_non_switchable_zero_uses_up_down_words():
+    pc = _pc()
+    assert pc.describe_parameter_change({'K_7': 0.0}, {'K_7': 0.01}) == \
+        'lower substrate affinity in growth'
+
+
+def test_describe_empty_diff():
+    pc = _pc()
+    assert pc.describe_parameter_change({'k_7': 1.0}, {'k_7': 1.0}) == \
+        'no kinetic parameter changes'
+
+
+def test_describe_against_te_r_snapshot():
+    pc = _pc()
+    from nskinetics.models.s_cerevisiae_ferm_fb_inhib_mod_ibo import (
+        te_r, SCENARIO_B_EHRLICH)
+    snap = pc.snapshot_parameters(te_r)
+    assert pc.describe_parameter_change(snap, SCENARIO_B_EHRLICH) == (
+        'Ehrlich branch on; isobutanol self-inhibition of Ehrlich branch on')
+
+
+# --- categorize -----------------------------------------------------------
+
+def test_categorize_groups_by_role_and_module():
+    pc = _pc()
+    out = pc.categorize(['k_7', 'K_5e', 'k_7ii'])
+    assert out == {
+        ('capacity', 'growth'): ['k_7'],
+        ('affinity', 'respiration'): ['K_5e'],
+        ('affinity', 'growth'): ['K_5e'],
+        ('product_inhibition', 'growth'): ['k_7ii'],
+    }
+
+
+def test_categorize_rejects_operation_and_unknown():
+    pc = _pc()
+    with pytest.raises(ValueError, match='operation'):
+        pc.categorize(['D'])
+    with pytest.raises(ValueError, match='nope'):
+        pc.categorize(['nope'])
