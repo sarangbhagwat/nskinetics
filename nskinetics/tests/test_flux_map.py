@@ -50,3 +50,21 @@ def test_reactor_records_state_selection_columns(simulated_V406):
     assert '[s_EtOH]' in cols
     # Every column carries a full trajectory, not just an endpoint.
     assert len(V406.nsk_results_df) > 1
+
+
+def test_scenario_presets_set_exact_values():
+    from nskinetics.models.s_cerevisiae_ferm_fb_inhib_mod_ibo import (
+        te_r, apply_scenario_A, apply_scenario_B)
+    r = te_r._te
+    try:
+        apply_scenario_B(te_r)
+        assert r.k_13 == 5.81 and r.k_14 == 4.8 and r.k_15 == 4.8
+        assert r.k_16 == 2.82 and r.k_16r == 0.0125
+        # inhibition coefficients already at B in the shipped model
+        assert r.k_7ii == 0.15 and r.k_1ii == 0.075
+        apply_scenario_A(te_r)
+        assert r.k_13 == 0.0 and r.k_14 == 0.0 and r.k_15 == 0.0
+        assert r.k_16 == 0.0 and r.k_16r == 0.0
+    finally:
+        apply_scenario_A(te_r)
+        te_r.reset()

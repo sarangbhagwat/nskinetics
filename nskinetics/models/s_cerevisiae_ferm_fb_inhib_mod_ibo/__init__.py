@@ -15,6 +15,10 @@
 from . import s_cerevisiae_ferm_fb_inhib_mod_ibo
 from .s_cerevisiae_ferm_fb_inhib_mod_ibo import *
 
+from . import scenarios
+from .scenarios import *
+
 __all__ = (
      *s_cerevisiae_ferm_fb_inhib_mod_ibo.__all__,
+     *scenarios.__all__,
      )
