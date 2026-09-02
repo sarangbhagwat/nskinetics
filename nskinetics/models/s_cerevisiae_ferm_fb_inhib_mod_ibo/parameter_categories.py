@@ -29,7 +29,8 @@ import math
 from dataclasses import dataclass
 
 __all__ = ('ROLES', 'MODULES', 'MODULE_LABELS', 'REACTION_MODULES',
-           'ParameterInfo', 'KINETIC_PARAMETERS', 'OPERATION_PARAMETERS')
+           'ParameterInfo', 'KINETIC_PARAMETERS', 'OPERATION_PARAMETERS',
+           'snapshot_parameters', 'diff_parameters')
 
 #: Parameter roles, in the order their clauses appear in a description.
 ROLES = ('capacity', 'affinity', 'substrate_regulation',
@@ -199,3 +200,101 @@ OPERATION_PARAMETERS = frozenset({
     'last_vol_glu_feed_added', 'tot_vol_glu_feed_added',
     'glucose_feed_spikeDelay', 'glucose_feed_spike_dissolveDelay',
 })
+
+
+# --- helpers ----------------------------------------------------------------
+
+def snapshot_parameters(model):
+    """Read the current value of every kinetic parameter off a model.
+
+    Parameters
+    ----------
+    model : KineticModel or roadrunner.RoadRunner
+        The shipped *S. cerevisiae* ethanol/isobutanol model (a
+        :class:`~nskinetics.KineticModel` is unwrapped via ``_te``).
+
+    Returns
+    -------
+    dict
+        ``{parameter_id: float}`` for every id in :data:`KINETIC_PARAMETERS`.
+
+    Raises
+    ------
+    ValueError
+        If the model lacks any kinetic parameter, i.e. it is not the shipped
+        model.
+
+    Notes
+    -----
+    ``X_a`` and ``X_AcDH`` are rate-rule variables, so their values evolve
+    during a simulation. Take the baseline and the comparison snapshot at the
+    same point of a run (typically right after :meth:`~nskinetics.KineticModel.reset`).
+    """
+    r = getattr(model, '_te', model)
+    ids = set(r.getGlobalParameterIds())
+    missing = [p for p in KINETIC_PARAMETERS if p not in ids]
+    if missing:
+        raise ValueError(
+            f'{missing[0]!r} is not a parameter of this model; '
+            'snapshot_parameters expects the shipped S. cerevisiae '
+            'ethanol/isobutanol model.')
+    return {p: float(r[p]) for p in KINETIC_PARAMETERS}
+
+
+def _as_values(obj):
+    """Return ``obj`` as a plain ``{id: value}`` dict, snapshotting a model."""
+    if isinstance(obj, dict):
+        return dict(obj)
+    return snapshot_parameters(obj)
+
+
+def _check_known(values, side):
+    unknown = [k for k in values
+               if k not in KINETIC_PARAMETERS and k not in OPERATION_PARAMETERS]
+    if unknown:
+        raise ValueError(
+            f'Unknown parameter(s) in {side}: {unknown}; expected kinetic or '
+            'operation parameters of the shipped model.')
+
+
+def diff_parameters(baseline, current):
+    """Return the kinetic parameters whose value differs between two states.
+
+    Parameters
+    ----------
+    baseline, current : dict or KineticModel or roadrunner.RoadRunner
+        ``{parameter_id: value}`` mappings; a model is snapshotted with
+        :func:`snapshot_parameters` first. ``current`` may be a partial
+        override dict (e.g. ``SCENARIO_B_EHRLICH``): kinetic keys absent from
+        it are treated as unchanged. Keys in :data:`OPERATION_PARAMETERS` are
+        skipped on either side.
+
+    Returns
+    -------
+    dict
+        ``{parameter_id: (old, new)}`` in :data:`KINETIC_PARAMETERS` order.
+        Values within ``math.isclose(rel_tol=1e-12)`` are unchanged.
+
+    Raises
+    ------
+    ValueError
+        If either side carries a key that is neither a kinetic nor an
+        operation parameter, or if ``current`` carries a kinetic key that
+        ``baseline`` lacks.
+    """
+    base = _as_values(baseline)
+    cur = _as_values(current)
+    _check_known(base, 'baseline')
+    _check_known(cur, 'current')
+    missing = [k for k in cur if k in KINETIC_PARAMETERS and k not in base]
+    if missing:
+        raise ValueError(
+            f'{missing} present in current but not in baseline; the baseline '
+            'must carry every parameter being compared.')
+    out = {}
+    for p in KINETIC_PARAMETERS:
+        if p in base and p in cur:
+            old, new = float(base[p]), float(cur[p])
+            if not math.isclose(old, new, rel_tol=1e-12, abs_tol=0.0):
+                out[p] = (old, new)
+    return out

@@ -97,3 +97,66 @@ def test_every_model_parameter_is_classified():
     assert kinetic <= ids
     assert operation <= ids
     assert set(pc.REACTION_MODULES) <= set(r.getReactionIds())
+
+
+# --- snapshot / diff ------------------------------------------------------
+
+def test_diff_reports_changed_kinetic_parameters_in_source_order():
+    pc = _pc()
+    base = {'k_7ii': 0.04, 'k_1ii': 0.04, 'k_4ii': 0.04, 'k_7': 1.203}
+    cur = {'k_7ii': 0.15, 'k_1ii': 0.15, 'k_4ii': 0.15, 'k_7': 1.203}
+    d = pc.diff_parameters(base, cur)
+    assert list(d) == ['k_1ii', 'k_4ii', 'k_7ii']
+    assert d['k_7ii'] == (0.04, 0.15)
+
+
+def test_diff_partial_current_treats_missing_as_unchanged():
+    pc = _pc()
+    base = {'k_13': 0.0, 'k_14': 0.0, 'k_7': 1.203}
+    assert pc.diff_parameters(base, {'k_13': 5.81}) == {'k_13': (0.0, 5.81)}
+
+
+def test_diff_skips_operation_parameters():
+    pc = _pc()
+    base = {'k_7': 1.203, 'max_n_glu_spikes': 5}
+    cur = {'k_7': 1.203, 'max_n_glu_spikes': 13}
+    assert pc.diff_parameters(base, cur) == {}
+
+
+def test_diff_unknown_key_raises():
+    pc = _pc()
+    with pytest.raises(ValueError, match='not_a_param'):
+        pc.diff_parameters({'k_7': 1.0}, {'k_7': 1.0, 'not_a_param': 1.0})
+    with pytest.raises(ValueError, match='qO2'):
+        pc.diff_parameters({'qO2': 1.0}, {})
+
+
+def test_diff_key_only_in_current_raises():
+    pc = _pc()
+    with pytest.raises(ValueError, match='k_13'):
+        pc.diff_parameters({'k_7': 1.0}, {'k_13': 5.81})
+
+
+def test_diff_tolerates_float_noise():
+    pc = _pc()
+    assert pc.diff_parameters({'k_7': 1.0}, {'k_7': 1.0 + 1e-14}) == {}
+
+
+def test_snapshot_reads_every_kinetic_parameter_from_te_r():
+    pc = _pc()
+    from nskinetics.models.s_cerevisiae_ferm_fb_inhib_mod_ibo import te_r
+    snap = pc.snapshot_parameters(te_r)
+    assert set(snap) == set(pc.KINETIC_PARAMETERS)
+    assert all(isinstance(v, float) for v in snap.values())
+    assert snap['k_7'] == pytest.approx(1.203)
+    # a raw roadrunner works too, and gives the same values
+    assert pc.snapshot_parameters(te_r._te) == snap
+
+
+def test_snapshot_rejects_a_foreign_model():
+    pc = _pc()
+    import tellurium as te
+    r = te.loadAntimonyModel(
+        'model toy() S = 1; k = 1; J: S => ; k*S; end')
+    with pytest.raises(ValueError, match='k_1h'):
+        pc.snapshot_parameters(r)
