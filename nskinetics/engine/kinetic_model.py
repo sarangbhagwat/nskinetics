@@ -166,6 +166,49 @@ class KineticModel():
             return 'imass'
         raise KineticSimulationError(f'Unrecognized concentration units {conc!r}.')
 
+    def state_selections(self):
+        """List the RoadRunner selections that fully capture integrator state.
+
+        The returned selections are everything :func:`compute_flux_summary`
+        must write back into the model to re-evaluate a stored trajectory:
+        ``'time'``, each settable compartment, every floating species as a
+        concentration selection (``[species]``), every rate-rule variable,
+        and every parameter assigned by a compiled event. Variables defined
+        by assignment rules are excluded because they cannot be set
+        independently.
+
+        Returns
+        -------
+        list of str
+            Ordered, de-duplicated selections, ``'time'`` first.
+        """
+        r = self._te
+        try:
+            assigned = set(r.getAssignmentRuleIds())
+        except Exception:
+            assigned = set()
+        floating = set(r.getFloatingSpeciesIds())
+        sels = ['time']
+
+        def _add(sel):
+            if sel not in sels:
+                sels.append(sel)
+
+        for c in r.getCompartmentIds():
+            if c not in assigned:
+                _add(c)
+        for s in r.getFloatingSpeciesIds():
+            _add(f'[{s}]')
+        for v in r.getRateRuleIds():
+            if v not in assigned:
+                _add(v)
+        for event in self.events:
+            for var in event.do:
+                if var in assigned:
+                    continue
+                _add(f'[{var}]' if var in floating else var)
+        return sels
+
     def validate_units(self):
         """Raise ``KineticSimulationError`` if time/conc units are unrecognized."""
         time_u = self._units.get('time', '').lower()
