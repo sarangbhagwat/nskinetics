@@ -27,12 +27,11 @@ from matplotlib.patches import FancyArrowPatch, FancyBboxPatch, Rectangle
 
 from nskinetics.engine.flux_analysis import FluxSummary
 from nskinetics.visualization import FluxMapSpec, draw_flux_map
-from nskinetics.visualization.flux_map import C_FLUX, C_JOINT
+from nskinetics.visualization.flux_map import (
+    C_FLUX, C_JOINT, C_ZERO, STRIP_LEN, LABEL_OFFSET, _fmt_value)
 
-C_ZERO = '#B4B2A9'   # color of a zero-flux (dashed) edge
 C_P = '#D55E00'      # inhibitor colors used by _spec()
 C_Q = '#0072B2'
-STRIP_LEN = 9.0      # full strip-row length in mm
 
 
 def _spec(**kwargs):
@@ -161,9 +160,9 @@ def test_zero_flux_edge_is_dashed_grey_and_unlabeled():
                  if tuple(a.get_edgecolor()) == to_rgba(C_FLUX)]
         assert len(dashed) == 1 and len(solid) == 1
         assert dashed[0].get_linestyle() not in ('solid', '-')
-        # only the nonzero edge is labeled; header and node labels remain
+        # only the nonzero edge is labeled; letter, header and node labels stay
         assert [t.get_text() for t in ax.texts] == [
-            'A', 'harvest 40 h; Q 42 g/L', '10', 'S', 'P', 'Q']
+            'a', 'A', 'harvest 40 h · Q 42 g/L', '10', 'S', 'P', 'Q']
     finally:
         plt.close(fig)
 
@@ -214,3 +213,184 @@ def test_draw_does_not_mutate_global_rcparams(tmp_path):
                                save_dir=str(tmp_path), formats=('png', 'pdf'))
     plt.close(fig)
     assert snapshot() == before
+
+
+# --- value formatting -------------------------------------------------------
+
+def test_fmt_value_rules():
+    assert _fmt_value(0) == '0'          # only an exact zero is bare '0'
+    assert _fmt_value(0.0) == '0'
+    assert _fmt_value(1e-9) == '0.0'     # tiny but nonzero keeps a decimal
+    assert _fmt_value(0.16) == '0.2'
+    assert _fmt_value(1.44) == '1.4'
+    assert _fmt_value(9.0) == '9.0'
+    assert _fmt_value(12.4) == '12'      # >= 10 -> integer
+    assert _fmt_value(236.04) == '236'
+
+
+def test_edge_labels_use_the_value_formatter():
+    spec = _spec()
+    summary = _summary('A', 0.24, cumulative_flux={'r1': 0.24, 'r2': 15.6})
+    fig, (ax,) = draw_flux_map([summary], spec)
+    try:
+        texts = [t.get_text() for t in ax.texts]
+        assert '0.2' in texts and '16' in texts
+    finally:
+        plt.close(fig)
+
+
+# --- panel letters, product labels, header ---------------------------------
+
+def test_panel_letters_are_bold_lowercase_and_ordered():
+    summaries = [_summary('A', 10.), _summary('B', 6.)]
+    fig, axes = draw_flux_map(summaries, _spec())
+    try:
+        for ax, letter in zip(axes, 'ab'):
+            first = ax.texts[0]
+            assert first.get_text() == letter
+            assert first.get_fontweight() == 'bold'
+            assert first.get_fontsize() == 8.0
+            # the scenario label follows on the same baseline
+            label = ax.texts[1]
+            assert label.get_text() in ('A', 'B')
+            assert label.get_position()[1] == first.get_position()[1]
+            assert label.get_position()[0] > first.get_position()[0]
+    finally:
+        plt.close(fig)
+
+
+def test_product_labels_rename_header_titers():
+    spec = _spec(product_labels={'Q': 'quinone'})
+    fig, (ax,) = draw_flux_map([_summary('A', 10.)], spec)
+    try:
+        assert ax.texts[2].get_text() == 'harvest 40 h · quinone 42 g/L'
+    finally:
+        plt.close(fig)
+    # with no product_labels entry the raw species id is used
+    fig, (ax,) = draw_flux_map([_summary('A', 10.)], _spec())
+    try:
+        assert ax.texts[2].get_text() == 'harvest 40 h · Q 42 g/L'
+    finally:
+        plt.close(fig)
+
+
+# --- perpendicular value labels --------------------------------------------
+
+def test_value_labels_sit_off_the_line_perpendicular_to_the_edge():
+    # r1 S(10,40) -> P(10,20) is vertical: the label goes to the RIGHT.
+    # r2 P(10,20) -> Q(40,20) is horizontal: the label goes ABOVE.
+    spec = _spec()
+    fig, (ax,) = draw_flux_map([_summary('A', 10.)], spec)
+    try:
+        by_text = {t.get_text(): t for t in ax.texts}
+        vert = by_text['10']
+        x, y = vert.get_position()
+        assert y == 30.0                       # the edge midpoint, unmoved
+        assert x == 10.0 + LABEL_OFFSET        # pushed off the line, rightward
+        assert vert.get_ha() == 'left' and vert.get_va() == 'center'
+        horiz = by_text['5.0']
+        x, y = horiz.get_position()
+        assert x == 25.0                       # the edge midpoint, unmoved
+        assert y == 20.0 + LABEL_OFFSET        # pushed off the line, upward
+        assert horiz.get_ha() == 'center' and horiz.get_va() == 'bottom'
+    finally:
+        plt.close(fig)
+
+
+def test_value_label_normal_is_flipped_upward_for_a_reversed_edge():
+    # Q(40,20) -> P(10,20) runs leftward; the normal must still point up, so
+    # the label never lands under the line.
+    spec = _spec(edges={'r1': ('S', 'P'), 'r2': ('Q', 'P')})
+    fig, (ax,) = draw_flux_map([_summary('A', 10.)], spec)
+    try:
+        horiz = [t for t in ax.texts if t.get_text() == '5.0'][0]
+        assert horiz.get_position()[1] == 20.0 + LABEL_OFFSET
+        assert horiz.get_va() == 'bottom'
+    finally:
+        plt.close(fig)
+
+
+# --- inactive-branch strips -------------------------------------------------
+
+def test_zero_flux_strip_outlines_are_faint():
+    spec = _spec()
+    summary = _summary('A', 10., cumulative_flux={'r1': 10., 'r2': 0.0},
+                       fraction_lost={'r1': {'P': 0.3}, 'r2': {'Q': 0.0}},
+                       fraction_lost_all={'r1': 0.35, 'r2': 0.0})
+    fig, (ax,) = draw_flux_map([summary], spec)
+    try:
+        outlines = [r for r in _strip_rects(ax) if not r.get_fill()]
+        faint = [r for r in outlines
+                 if tuple(r.get_edgecolor()) == to_rgba(C_ZERO)]
+        # r2 carried no flux: all three of its rows (2 inhibitors + joint) are
+        # drawn faint; r1's three stay in the normal outline color.
+        assert len(outlines) == 6
+        assert len(faint) == 3
+    finally:
+        plt.close(fig)
+
+
+# --- legend -----------------------------------------------------------------
+
+def test_legend_axes_is_present_and_keyed():
+    spec = _spec()
+    summaries = [_summary('A', 10.), _summary('B', 6.)]
+    fig, axes = draw_flux_map(summaries, spec)
+    try:
+        # panel axes only in the return value; the legend is the extra axes
+        assert len(axes) == 2
+        assert len(fig.axes) == 3
+        legend = [a for a in fig.axes if a not in axes][0]
+        texts = [t.get_text() for t in legend.texts]
+        assert 'pathway inactive' in texts
+        assert 'all inhibitors' in texts
+        for inh in spec.inhibitors:
+            assert inh in texts
+        assert any('cumulative flux' in t for t in texts)
+        assert any('fraction of potential flux lost' in t for t in texts)
+        # three flux samples, all at or below the largest drawn flux
+        samples = [float(t) for t in texts
+                   if t.replace('.', '', 1).isdigit()]
+        assert len(samples) == 3
+        assert samples == sorted(samples)
+        assert max(samples) <= 10.0
+        # one line per flux sample plus the dashed "inactive" sample
+        assert len(legend.lines) == 4
+        assert legend.lines[-1].get_linestyle() not in ('solid', '-')
+        # one swatch per inhibitor + the joint one
+        assert len(legend.patches) == len(spec.inhibitors) + 1
+        # the figure stays within the Nature height budget
+        assert fig.get_size_inches()[1] * 25.4 < 170.
+    finally:
+        plt.close(fig)
+
+
+def test_legend_gains_an_enhancement_swatch_only_for_a_drawn_reaction():
+    fig, axes = draw_flux_map([_summary('A', 10.)],
+                              _spec(enhancement_reactions={'r1'}))
+    try:
+        legend = [a for a in fig.axes if a not in axes][0]
+        assert 'enhancement' in [t.get_text() for t in legend.texts]
+        assert [p for p in legend.patches if p.get_hatch()]
+    finally:
+        plt.close(fig)
+    # r9 is mapped but not drawn, so no enhancement key is added
+    fig, axes = draw_flux_map([_summary('A', 10.)],
+                              _spec(enhancement_reactions={'r9'}))
+    try:
+        legend = [a for a in fig.axes if a not in axes][0]
+        assert 'enhancement' not in [t.get_text() for t in legend.texts]
+        assert not [p for p in legend.patches if p.get_hatch()]
+    finally:
+        plt.close(fig)
+
+
+# --- spec.reactions ---------------------------------------------------------
+
+def test_spec_reactions_appends_mapped_but_undrawn_reactions():
+    spec = _spec(inhibition_map={'ki': ('r1', 'P'), 'Ke': ('r2', 'Q'),
+                                 'kd': ('r9', 'P'), 'kd2': ('r9', 'Q')})
+    # drawn edges first, in edge order; then undrawn mapped ones, first-seen
+    assert spec.reactions == ['r1', 'r2', 'r9']
+    # a spec whose map names only drawn reactions is just the edge list
+    assert _spec().reactions == list(_spec().edges)
