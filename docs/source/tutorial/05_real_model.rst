@@ -247,9 +247,11 @@ first, then apply the change:
 
 The preset switched on the four Ehrlich capacities (``k_13`` .. ``k_16``)
 and the ``k_16r`` reverse term, which is a self-inhibition parameter, so it
-gets its own clause. A partial override dict can also be passed directly as
-the "current" side, and ``verbose=True`` appends the parameter names and
-values to each clause:
+gets its own clause. Note that the snippet mutates the model in place: ``km``
+keeps scenario B applied -- the Ehrlich branch on -- for the rest of the
+session. A partial override dict can also be passed directly as the
+"current" side, and ``verbose=True`` appends the parameter names and values
+to each clause:
 
 .. code-block:: python
 

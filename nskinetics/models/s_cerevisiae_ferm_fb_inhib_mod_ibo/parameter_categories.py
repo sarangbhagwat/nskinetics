@@ -84,7 +84,8 @@ class ParameterInfo:
         One of :data:`ROLES`.
     reactions : tuple of str
         Reaction ids the parameter appears in (empty for initial-state
-        parameters, which sit in rate rules rather than rate laws).
+        parameters, which are rate-rule variables with explicit initial
+        values).
     modules : tuple of str
         Pathway modules, derived from ``reactions`` through
         :data:`REACTION_MODULES` unless given explicitly.
@@ -95,9 +96,9 @@ class ParameterInfo:
         ``None`` for plain capacities, affinities and initial state.
     """
     role: str
-    reactions: tuple
-    modules: tuple
-    effector: str = None
+    reactions: tuple[str, ...]
+    modules: tuple[str, ...]
+    effector: str | None = None
 
 
 def _p(role, *reactions, effector=None, modules=None):
@@ -401,6 +402,13 @@ def describe_parameter_change(baseline, current, verbose=False):
     str
         The description, or ``'no kinetic parameter changes'``.
 
+    Raises
+    ------
+    ValueError
+        Propagated from :func:`diff_parameters`: for an id that is neither a
+        kinetic nor an operation parameter, or for a kinetic id present in
+        ``current`` but absent from ``baseline``.
+
     Notes
     -----
     A zero-to-nonzero change reads as ``on`` (and the reverse as ``off``)
@@ -411,6 +419,20 @@ def describe_parameter_change(baseline, current, verbose=False):
     module sets overlap; disjoint module sets stay as two clauses.
     Initial-state parameters always get one clause each, naming the
     parameter.
+
+    Two limits of the grammar are worth knowing when reading a phrase:
+
+    * A ``mixed`` (``retuned ...``) clause lists the *union* of the merged
+      groups' modules, so a module that moved in only one direction is
+      still reported as retuned. Raising ``k_1h`` and ``k_2`` while
+      lowering ``k_6`` gives ``retuned glycolysis/fermentation and
+      respiration capacity``, although respiration only sped up.
+    * ``on`` and ``off`` describe the changed parameter's own term, not the
+      whole module: zeroing ``k_5e`` alone gives ``respiration off`` even
+      though ``k_5`` still carries ``r5``. The shipped scenarios zero every
+      Ehrlich capacity together, so ``Ehrlich branch on``/``off`` is exact.
+
+    Modules inside a clause are listed in :data:`MODULES` display order.
     """
     diff = diff_parameters(baseline, current)
     if not diff:
@@ -484,7 +506,8 @@ def categorize(parameter_ids):
     -------
     dict
         ``{(role, module): [parameter_ids]}`` preserving input order; a
-        parameter spanning two modules appears under both keys.
+        parameter spanning two modules appears under both keys. Ids are not
+        de-duplicated: an id passed twice is appended twice.
 
     Raises
     ------

@@ -60,6 +60,15 @@ the Ehrlich branch (r13--r16).
 Operation parameters -- fed-batch feeding, aeration staging, dilution -- are
 not kinetics and are skipped by the helpers.
 
+.. autodata:: ROLES
+   :annotation:
+
+.. autodata:: MODULES
+   :annotation:
+
+.. autodata:: MODULE_LABELS
+   :annotation:
+
 .. autodata:: KINETIC_PARAMETERS
    :annotation:
 

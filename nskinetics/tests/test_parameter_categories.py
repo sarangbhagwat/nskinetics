@@ -65,6 +65,33 @@ def test_two_module_parameters():
     assert pc.KINETIC_PARAMETERS['K_1i'].effector == 'acetaldehyde'
 
 
+def test_every_role_assignment_matches_the_spec_table():
+    # Part 1 of
+    # docs/superpowers/specs/2026-09-02-parameter-categories-design.md
+    pc = _pc()
+    expected = {
+        'capacity': frozenset(
+            'k_1h k_1l k_1e k_2 k_3 k_4 k_5 k_5e k_6 k_7 k_8 k_9 k_9e k_9c '
+            'k_10 k_11 k_13 k_14 k_15 k_16'.split()),
+        'affinity': frozenset(
+            'K_1h K_1l K_1e K_2 K_3 K_4 K_5 K_5e K_6 K_7 K_9 K_9e K_13 K_14 '
+            'K_15 K_16'.split()),
+        'substrate_regulation': frozenset('K_1i K_2i K_5i K_9i'.split()),
+        'product_inhibition': frozenset(
+            'k_1ie k_1ia k_1ii k_4ie k_4ia k_4ii k_6ia k_6ii k_7ie k_7ia '
+            'k_7ii k_16ie k_16ia'.split()),
+        'product_self_inhibition': frozenset('K_6e k_6r K_16i k_16r'.split()),
+        'lethality': frozenset('k_10ie k_10ia k_10ii'.split()),
+        'lethality_threshold': frozenset('P_10e P_10a P_10i'.split()),
+        'initial_state': frozenset('X_a X_AcDH'.split()),
+    }
+    assert set(expected) == set(pc.ROLES)
+    actual = {role: frozenset(p for p, info in pc.KINETIC_PARAMETERS.items()
+                              if info.role == role)
+              for role in pc.ROLES}
+    assert actual == expected
+
+
 def test_kinetic_and_operation_sets_are_disjoint():
     pc = _pc()
     assert not set(pc.KINETIC_PARAMETERS) & pc.OPERATION_PARAMETERS
@@ -151,6 +178,11 @@ def test_snapshot_reads_every_kinetic_parameter_from_te_r():
     assert snap['k_7'] == pytest.approx(1.203)
     # a raw roadrunner works too, and gives the same values
     assert pc.snapshot_parameters(te_r._te) == snap
+    # the subpackage re-exports the module's names, not copies of them
+    from nskinetics.models.s_cerevisiae_ferm_fb_inhib_mod_ibo import (
+        describe_parameter_change, KINETIC_PARAMETERS)
+    assert describe_parameter_change is pc.describe_parameter_change
+    assert KINETIC_PARAMETERS is pc.KINETIC_PARAMETERS
 
 
 def test_snapshot_rejects_a_foreign_model():
@@ -249,10 +281,27 @@ def test_describe_overlapping_opposite_changes_collapse_to_retuned():
         'stronger ethanol inhibition of growth; weaker acetate inhibition of growth'
 
 
+def test_describe_mixed_clause_outside_capacity():
+    pc = _pc()
+    assert pc.describe_parameter_change({'K_1h': 1., 'K_1l': 2.},
+                                        {'K_1h': 2., 'K_1l': 1.}) == (
+        'retuned substrate affinity in glycolysis/fermentation')
+
+
 def test_describe_non_switchable_zero_uses_up_down_words():
     pc = _pc()
     assert pc.describe_parameter_change({'K_7': 0.0}, {'K_7': 0.01}) == \
         'lower substrate affinity in growth'
+
+
+def test_every_parameter_describes_in_every_direction():
+    pc = _pc()
+    for p in pc.KINETIC_PARAMETERS:
+        for old, new in ((1., 2.), (2., 1.), (0., 1.), (1., 0.)):
+            text = pc.describe_parameter_change({p: old}, {p: new})
+            assert isinstance(text, str), (p, old, new)
+            assert text, (p, old, new)
+            assert text != 'no kinetic parameter changes', (p, old, new)
 
 
 def test_describe_empty_diff():
