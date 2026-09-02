@@ -11,8 +11,10 @@ Renders one or more :class:`~nskinetics.FluxSummary` objects onto a shared
 :class:`FluxMapSpec` node layout: edge width encodes cumulative flux (shared
 scale across panels), and each inhibited step carries a compact strip whose
 row lengths are the fraction of potential flux lost per inhibitor plus a grey
-joint-effect row. A legend band beneath the panels keys both encodings. Sized
-for a Nature-family double-column figure (Arial, 5-8 pt, vector PDF with
+joint-effect row. A legend band beneath the panels keys both encodings, laid
+out from measured text widths so items never collide at any figure width.
+Sized for a Nature-family double-column figure (Arial, 5-8 pt -- no text below
+the 5 pt floor, and 8 pt only for the bold panel letters -- vector PDF with
 editable text + 600 dpi PNG).
 """
 
@@ -21,6 +23,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 from matplotlib.patches import FancyBboxPatch, FancyArrowPatch, Rectangle
 
 __all__ = ('FluxMapSpec', 'draw_flux_map')
@@ -31,7 +34,7 @@ C_JOINT = '#666666'
 C_ZERO = '#B4B2A9'   # faint grey: zero-flux edges and their strip outlines
 C_ROW = '#CCCCCC'    # strip-row outline for an active reaction
 FS_NODE = 6.0
-FS_VAL = 4.6
+FS_VAL = 5.0         # 5 pt is the Nature-family floor; nothing goes below it
 FS_HEAD = 7.0
 FS_LETTER = 8.0      # Nature-style bold lowercase panel letter
 FS_LEG = 5.2
@@ -44,9 +47,17 @@ STRIP_ROW_GAP = 0.3  # vertical gap between strip rows in mm
 LABEL_OFFSET = 1.6   # edge value label offset from the line, in mm
 LEGEND_H = 13.0      # height of the legend band in mm
 MAX_MUTATION_SCALE = 9.0   # cap on the flux-scaled arrowhead size
+LEADER_LW = 0.3      # hairline linking a strip to the edge it belongs to
 
-#: Panel letters, in order.
-_LETTERS = 'abcdefghijklmnopqrstuvwxyz'
+# --- legend band metrics (mm) ---
+LEG_PAD = 1.0        # clear space at the top/bottom of the band
+LEG_MARGIN = 2.0     # clear space at the left/right of the band
+LEG_GAP = 0.8        # between an item's graphic and its label
+LEG_ITEM_GAP = 3.5   # between one item and the next
+LEG_ROW_H = 4.0      # maximum row pitch; shrinks when rows wrap
+LEG_SAMPLE_W = 5.0   # length of a flux-sample line
+LEG_SWATCH_W = 3.5   # width of a strip-color swatch
+LEG_SWATCH_H = 2.0   # height of a strip-color swatch
 
 #: rcParams applied *only* while a figure is drawn and saved (Nature-family
 #: conventions: Arial, editable vector text). Applied through
@@ -77,8 +88,9 @@ class FluxMapSpec:
         ``{parameter_id: (reaction_id, inhibitor_name)}`` (as for
         :func:`~nskinetics.compute_flux_summary`).
     enhancement_reactions : set
-        Reactions whose negative fractions are drawn as enhancement (hatched,
-        ``+`` marker) rather than loss.
+        Reactions expected to show enhancement rather than loss; a drawn one
+        adds the enhancement key to the legend. It does NOT gate the drawing:
+        a negative fraction is hatched and marked ``+`` wherever it occurs.
     products : list
         Species ids whose final titers appear in each panel header.
     product_labels : dict, optional
@@ -121,6 +133,29 @@ class FluxMapSpec:
         return out
 
 
+def _panel_letter(i):
+    """Panel letter for zero-based panel index ``i``.
+
+    Counts ``a``..``z``, then ``aa``, ``ab``, ... so any number of panels is
+    labelled (a 26-entry literal would raise on the 27th).
+
+    Parameters
+    ----------
+    i : int
+        Zero-based panel index.
+
+    Returns
+    -------
+    str
+    """
+    out = ''
+    i += 1
+    while i:
+        i, rem = divmod(i - 1, 26)
+        out = chr(ord('a') + rem) + out
+    return out
+
+
 def _fmt_value(v):
     """Format a cumulative flux for an edge label or header titer.
 
@@ -132,10 +167,15 @@ def _fmt_value(v):
     Returns
     -------
     str
-        ``'0'`` only for an exact zero, one decimal below 10, else an integer.
+        ``'0'`` only for an exact zero; ``'<0.1'`` for a nonzero value that
+        would otherwise round to ``'0.0'``; one decimal below 10, else an
+        integer.
     """
     if v == 0:
         return '0'
+    if abs(v) < 0.05:
+        # a real but tiny flux must not read as nothing at all
+        return '<0.1'
     if abs(v) < 10:
         return f'{v:.1f}'
     return f'{v:.0f}'
@@ -268,8 +308,13 @@ def _draw_edge(ax, p0, p1, w):
         color=C_FLUX, shrinkA=0, shrinkB=0, zorder=3))
 
 
-def _draw_bar(ax, x, yy, L, h, frac, color, enh, ec=C_ROW):
+def _draw_bar(ax, x, yy, L, h, frac, color, ec=C_ROW):
     """Draw one strip row: outline, proportional fill, enhancement marker.
+
+    A negative ``frac`` is an enhancement -- removing the "inhibitor" would
+    *lower* the flux -- and is always drawn hatched and marked ``+``, whatever
+    the spec's ``enhancement_reactions`` says: that set only decides whether
+    the legend carries an enhancement key.
 
     Parameters
     ----------
@@ -284,9 +329,6 @@ def _draw_bar(ax, x, yy, L, h, frac, color, enh, ec=C_ROW):
         drawn length is clamped to the full row length.
     color : str
         Fill color for this row.
-    enh : bool
-        Whether this reaction is drawn as enhancement, so that a negative
-        ``frac`` is hatched and marked ``+`` instead of read as a loss.
     ec : str, optional
         Outline color; ``C_ZERO`` marks a reaction that carried no flux at
         all, so an inactive branch does not read as an uninhibited one.
@@ -296,7 +338,7 @@ def _draw_bar(ax, x, yy, L, h, frac, color, enh, ec=C_ROW):
     mag = abs(frac)
     if mag == 0:
         return
-    gain = enh and frac < 0
+    gain = frac < 0
     ax.add_patch(Rectangle((x, yy), L * min(mag, 1.0), h, fc=color, ec='none',
                            hatch='///' if gain else None, zorder=6))
     if gain:
@@ -305,20 +347,65 @@ def _draw_bar(ax, x, yy, L, h, frac, color, enh, ec=C_ROW):
                 zorder=7)
 
 
+def _strip_bbox(x, y, n_rows):
+    """Bounding box ``(x0, y0, x1, y1)`` in mm of a strip anchored at ``x, y``.
+
+    Parameters
+    ----------
+    x, y : float
+        Lower-left corner of the strip's TOP row, in mm; rows hang downward.
+    n_rows : int
+        Number of rows drawn (inhibitors plus the joint row).
+
+    Returns
+    -------
+    tuple of float
+    """
+    y_top = y + STRIP_ROW_H
+    y_bot = y - (n_rows - 1) * (STRIP_ROW_H + STRIP_ROW_GAP)
+    return x, y_bot, x + STRIP_LEN, y_top
+
+
+def _draw_leader(ax, bbox, target):
+    """Link a strip to the edge it describes with a hairline leader.
+
+    The leader runs from whichever corner of the strip is nearest the edge
+    midpoint to that midpoint, so an offset strip is unambiguously attributed
+    to its reaction. Nothing is drawn when the midpoint already lies inside
+    the strip's bounding box (the strip sits on its own edge).
+
+    Parameters
+    ----------
+    ax : matplotlib.axes.Axes
+        Panel to draw on.
+    bbox : tuple of float
+        ``(x0, y0, x1, y1)`` of the strip, in mm.
+    target : tuple of float
+        ``(x_mm, y_mm)`` edge midpoint to point at.
+    """
+    x0, y0, x1, y1 = bbox
+    tx, ty = target
+    if x0 <= tx <= x1 and y0 <= ty <= y1:
+        return
+    corners = ((x0, y0), (x0, y1), (x1, y0), (x1, y1))
+    cx, cy = min(corners, key=lambda c: (c[0] - tx) ** 2 + (c[1] - ty) ** 2)
+    ax.add_line(Line2D([cx, tx], [cy, ty], lw=LEADER_LW, color=C_ZERO,
+                       solid_capstyle='butt', zorder=2))
+
+
 def _draw_strip(ax, x, y, rid, summary, spec):
     fl = summary.fraction_lost.get(rid, {})
-    enh = rid in spec.enhancement_reactions
     # An inactive branch gets faint outlines, so that an all-empty strip reads
     # as "no flux" rather than as "no inhibition".
     ec = C_ROW if summary.cumulative_flux.get(rid, 0.0) else C_ZERO
     yy = y
     for inh, color in spec.inhibitors.items():
         _draw_bar(ax, x, yy, STRIP_LEN, STRIP_ROW_H, fl.get(inh, 0.0),
-                  color, enh, ec=ec)
+                  color, ec=ec)
         yy -= (STRIP_ROW_H + STRIP_ROW_GAP)
     # joint row (grey), drawn on the same conventions as the rows above
     _draw_bar(ax, x, yy, STRIP_LEN, STRIP_ROW_H,
-              summary.fraction_lost_all.get(rid, 0.0), C_JOINT, enh, ec=ec)
+              summary.fraction_lost_all.get(rid, 0.0), C_JOINT, ec=ec)
 
 
 def _draw_panel(ax, summary, spec, scale, annotate_values, letter):
@@ -350,11 +437,14 @@ def _draw_panel(ax, summary, spec, scale, annotate_values, letter):
             lx, ly, ha, va = _label_placement((xa, ya), (xb, yb))
             ax.text(lx, ly, _fmt_value(flux), fontsize=FS_VAL,
                     ha=ha, va=va, color=C_FLUX)
-        # strip for inhibited reactions
+        # strip for inhibited reactions, with a hairline back to the edge
         if any(v[0] == rid for v in spec.inhibition_map.values()):
             dx, dy = spec.strip_offsets.get(rid, (4.0, 0.0))
-            _draw_strip(ax, (xa + xb) / 2 + dx, (ya + yb) / 2 + dy,
-                        rid, summary, spec)
+            mx, my = (xa + xb) / 2, (ya + yb) / 2
+            sx, sy = mx + dx, my + dy
+            _draw_strip(ax, sx, sy, rid, summary, spec)
+            _draw_leader(ax, _strip_bbox(sx, sy, len(spec.inhibitors) + 1),
+                         (mx, my))
     # nodes
     for x, y, label in spec.nodes.values():
         ax.add_patch(FancyBboxPatch((x - NODE_HW, y - NODE_HH),
@@ -397,8 +487,91 @@ def _legend_flux_values(fmax):
     return vals
 
 
+def _renderer(fig):
+    """A renderer to measure text with, or ``None`` to let matplotlib pick.
+
+    Parameters
+    ----------
+    fig : matplotlib.figure.Figure
+        The figure the text lives on.
+
+    Returns
+    -------
+    matplotlib.backend_bases.RendererBase or None
+        ``None`` is a valid argument to
+        :meth:`~matplotlib.text.Text.get_window_extent`, which then builds a
+        renderer itself; that is the fallback for a canvas (pdf, svg) that
+        exposes none.
+    """
+    get = getattr(fig.canvas, 'get_renderer', None)
+    return get() if get is not None else None
+
+
+def _text_width_mm(ax, artist, renderer):
+    """Width of a drawn text artist in the legend's mm data units.
+
+    Parameters
+    ----------
+    ax : matplotlib.axes.Axes
+        The axes the text belongs to (its ``transData`` sets the mm scale).
+    artist : matplotlib.text.Text
+        The text to measure.
+    renderer : matplotlib.backend_bases.RendererBase or None
+        Renderer to measure with; ``None`` lets matplotlib supply one.
+
+    Returns
+    -------
+    float
+    """
+    bb = artist.get_window_extent(renderer)
+    inv = ax.transData.inverted()
+    (x0, _), (x1, _) = inv.transform([(bb.x0, bb.y0), (bb.x1, bb.y0)])
+    return abs(x1 - x0)
+
+
+def _legend_entries(spec, fmax):
+    """The legend's items and captions, in reading order.
+
+    Parameters
+    ----------
+    spec : FluxMapSpec
+        Supplies inhibitor names/colors and the enhancement set.
+    fmax : float
+        Largest drawn cumulative flux.
+
+    Returns
+    -------
+    (list, list)
+        Items as ``(kind, payload, label, color)`` -- ``kind`` is ``'line'``
+        (flux sample, payload = the flux value), ``'dash'`` (inactive-pathway
+        sample) or ``'swatch'`` (payload = hatch or ``None``) -- and the
+        caption strings.
+    """
+    items = [('line', v, _fmt_value(v), C_FLUX) for v in
+             _legend_flux_values(fmax)]
+    items.append(('dash', None, 'pathway inactive', C_ZERO))
+    for inh, color in spec.inhibitors.items():
+        items.append(('swatch', None, inh, color))
+    items.append(('swatch', None, 'all inhibitors', C_JOINT))
+    if any(rid in spec.enhancement_reactions for rid in spec.edges):
+        items.append(('swatch', '///', 'enhancement', C_JOINT))
+    captions = ["cumulative flux, g of each step's substrate per L "
+                'final broth',
+                'fraction of potential flux lost (strip = 0-100 %)']
+    return items, captions
+
+
 def _draw_legend(ax, spec, scale, fmax, width_mm):
-    """Draw the legend band: edge-width key (left), strip key (right).
+    """Draw the legend band: edge-width key, then the strip key.
+
+    Items flow left to right and wrap to a further row whenever the next one
+    would cross the band's right margin, so the band stays clean at one-panel
+    (88 mm) and two-panel (176 mm) widths alike. Each item's width is the
+    measured width of its own label (via
+    :meth:`~matplotlib.text.Text.get_window_extent`, converted to the band's
+    mm data units) plus its graphic, so nothing depends on a guessed pitch.
+    The row pitch shrinks if the content needs more rows than the band's
+    nominal height allows.
 
     Parameters
     ----------
@@ -418,50 +591,70 @@ def _draw_legend(ax, spec, scale, fmax, width_mm):
     ax.set_ylim(0, LEGEND_H)
     ax.set_aspect('equal')
     ax.axis('off')
-    y_item, y_cap, x0 = 8.0, 2.6, 2.0
-    sec2_x = 0.50 * width_mm
+    fig = ax.get_figure()
+    fig.canvas.draw()                 # so a renderer exists to measure with
+    renderer = _renderer(fig)
+    items, captions = _legend_entries(spec, fmax)
+    usable = width_mm - 2 * LEG_MARGIN
 
-    # --- edge-width key ---
-    vals = _legend_flux_values(fmax)
-    pitch = (sec2_x - 2.0 - x0) / (len(vals) + 1)
-    samp = min(6.0, 0.42 * pitch)
-    for i, v in enumerate(vals):
-        xs = x0 + i * pitch
-        ax.plot([xs, xs + samp], [y_item, y_item], color=C_FLUX,
-                lw=scale(v), solid_capstyle='butt')
-        ax.text(xs + samp + 0.8, y_item, _fmt_value(v), fontsize=FS_LEG,
-                ha='left', va='center')
-    xs = x0 + len(vals) * pitch
-    ax.plot([xs, xs + samp], [y_item, y_item], color=C_ZERO, lw=0.5,
-            ls=(0, (2, 2)))
-    ax.text(xs + samp + 0.8, y_item, 'pathway inactive', fontsize=FS_LEG,
-            ha='left', va='center', color='#555555')
-    ax.text(x0, y_cap, 'cumulative flux, g L$^{-1}$ final broth',
-            fontsize=FS_LEG, ha='left', va='center', color='#555555')
+    # --- pass 1: create every text, measure it, and plan the rows ---
+    plan = []          # (row, x_mm, entry, artists...)
+    row, x = 0, 0.0
+    for kind, payload, label, color in items:
+        marker = None
+        if kind == 'swatch' and payload:
+            marker = ax.text(0, 0, '+', fontsize=FS_VAL, ha='left',
+                             va='center', color=color)
+        text = ax.text(0, 0, label, fontsize=FS_LEG, ha='left', va='center',
+                       color='#555555' if kind == 'dash' else None)
+        graphic_w = LEG_SAMPLE_W if kind in ('line', 'dash') else LEG_SWATCH_W
+        w = graphic_w + LEG_GAP + _text_width_mm(ax, text, renderer)
+        if marker is not None:
+            w += _text_width_mm(ax, marker, renderer) + LEG_GAP
+        if x > 0. and x + w > usable:
+            row, x = row + 1, 0.
+        plan.append((row, x, kind, payload, color, graphic_w, marker, text))
+        x += w + LEG_ITEM_GAP
+    row += 1
+    cap_artists = []
+    x = 0.
+    for cap in captions:
+        text = ax.text(0, 0, cap, fontsize=FS_LEG, ha='left', va='center',
+                       color='#555555')
+        w = _text_width_mm(ax, text, renderer)
+        if x > 0. and x + w > usable:
+            row, x = row + 1, 0.
+        cap_artists.append((row, x, text))
+        x += w + 2 * LEG_ITEM_GAP
+    n_rows = row + 1
 
-    # --- strip key ---
-    labels = list(spec.inhibitors) + ['all inhibitors']
-    colors = list(spec.inhibitors.values()) + [C_JOINT]
-    hatches = [None] * len(labels)
-    if any(rid in spec.enhancement_reactions for rid in spec.edges):
-        labels.append('enhancement')
-        colors.append(C_JOINT)
-        hatches.append('///')
-    pitch = (width_mm - 2.0 - sec2_x) / len(labels)
-    sw_w, sw_h = min(4.0, 0.3 * pitch), 2.0
-    for i, (lab, col, hat) in enumerate(zip(labels, colors, hatches)):
-        x = sec2_x + i * pitch
-        ax.add_patch(Rectangle((x, y_item - sw_h / 2), sw_w, sw_h, fc=col,
-                               ec=C_ROW, lw=0.3, hatch=hat))
-        tx = x + sw_w + 0.8
-        if hat:
-            ax.text(tx, y_item, '+', fontsize=FS_VAL, ha='left', va='center',
-                    color=col)
-            tx += 1.4
-        ax.text(tx, y_item, lab, fontsize=FS_LEG, ha='left', va='center')
-    ax.text(sec2_x, y_cap,
-            'fraction of potential flux lost (strip = 0-100 %)',
-            fontsize=FS_LEG, ha='left', va='center', color='#555555')
+    # --- pass 2: place everything on a pitch that fits the band ---
+    pitch = min(LEG_ROW_H, (LEGEND_H - 2 * LEG_PAD) / n_rows)
+    top = LEGEND_H / 2 + n_rows * pitch / 2
+
+    def _y(r):
+        return top - (r + 0.5) * pitch
+
+    for r, x0, kind, payload, color, graphic_w, marker, text in plan:
+        x0 += LEG_MARGIN
+        y = _y(r)
+        if kind == 'line':
+            ax.plot([x0, x0 + graphic_w], [y, y], color=color,
+                    lw=scale(payload), solid_capstyle='butt')
+        elif kind == 'dash':
+            ax.plot([x0, x0 + graphic_w], [y, y], color=color, lw=0.5,
+                    ls=(0, (2, 2)))
+        else:
+            ax.add_patch(Rectangle((x0, y - LEG_SWATCH_H / 2), graphic_w,
+                                   LEG_SWATCH_H, fc=color, ec=C_ROW, lw=0.3,
+                                   hatch=payload))
+        tx = x0 + graphic_w + LEG_GAP
+        if marker is not None:
+            marker.set_position((tx, y))
+            tx += _text_width_mm(ax, marker, renderer) + LEG_GAP
+        text.set_position((tx, y))
+    for r, x0, text in cap_artists:
+        text.set_position((x0 + LEG_MARGIN, _y(r)))
 
 
 def draw_flux_map(summaries, spec, save_dir=None, formats=('png', 'pdf'),
@@ -528,7 +721,7 @@ def draw_flux_map(summaries, spec, save_dir=None, formats=('png', 'pdf'),
         axes = [fig.add_subplot(gs[0, i]) for i in range(n)]
         legend_ax = fig.add_subplot(gs[1, :])
         for i, (ax, s) in enumerate(zip(axes, summaries)):
-            _draw_panel(ax, s, spec, scale, annotate_values, _LETTERS[i])
+            _draw_panel(ax, s, spec, scale, annotate_values, _panel_letter(i))
         _draw_legend(legend_ax, spec, scale, fmax, total_w)
         if save_dir:
             os.makedirs(save_dir, exist_ok=True)

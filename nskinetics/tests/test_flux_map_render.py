@@ -28,7 +28,8 @@ from matplotlib.patches import FancyArrowPatch, FancyBboxPatch, Rectangle
 from nskinetics.engine.flux_analysis import FluxSummary
 from nskinetics.visualization import FluxMapSpec, draw_flux_map
 from nskinetics.visualization.flux_map import (
-    C_FLUX, C_JOINT, C_ZERO, STRIP_LEN, LABEL_OFFSET, _fmt_value)
+    C_FLUX, C_JOINT, C_ZERO, LEADER_LW, STRIP_LEN, STRIP_ROW_H,
+    STRIP_ROW_GAP, LABEL_OFFSET, _fmt_value, _panel_letter)
 
 C_P = '#D55E00'      # inhibitor colors used by _spec()
 C_Q = '#0072B2'
@@ -220,7 +221,10 @@ def test_draw_does_not_mutate_global_rcparams(tmp_path):
 def test_fmt_value_rules():
     assert _fmt_value(0) == '0'          # only an exact zero is bare '0'
     assert _fmt_value(0.0) == '0'
-    assert _fmt_value(1e-9) == '0.0'     # tiny but nonzero keeps a decimal
+    assert _fmt_value(1e-9) == '<0.1'    # nonzero never prints as '0.0'
+    assert _fmt_value(0.049) == '<0.1'
+    assert _fmt_value(-1e-3) == '<0.1'
+    assert _fmt_value(0.05) == '0.1'     # from here it rounds honestly
     assert _fmt_value(0.16) == '0.2'
     assert _fmt_value(1.44) == '1.4'
     assert _fmt_value(9.0) == '9.0'
@@ -381,6 +385,161 @@ def test_legend_gains_an_enhancement_swatch_only_for_a_drawn_reaction():
         legend = [a for a in fig.axes if a not in axes][0]
         assert 'enhancement' not in [t.get_text() for t in legend.texts]
         assert not [p for p in legend.patches if p.get_hatch()]
+    finally:
+        plt.close(fig)
+
+
+# --- legend layout ----------------------------------------------------------
+
+def _shipped_like_spec(width_mm):
+    """A spec with as many legend items as the shipped one, at ``width_mm``.
+
+    Three inhibitors plus an enhancement reaction that IS drawn, so the legend
+    carries its widest possible item set (three flux samples, the inactive
+    key, three inhibitor swatches, the joint swatch and the enhancement key).
+    """
+    return _spec(
+        nodes={'S': (10., 50., 'Substrate'), 'P': (10., 25., 'Product'),
+               'Q': (40., 25., 'Byproduct')},
+        inhibitors={'ethanol': C_P, 'acetate': '#CC79A7',
+                    'isobutanol': C_Q},
+        enhancement_reactions={'r2'},
+        size_mm=(width_mm, 92.))
+
+
+def _legend_axes(fig, axes):
+    return [a for a in fig.axes if a not in axes][0]
+
+
+def _assert_legend_is_clean(fig, axes):
+    """Every legend text inside the legend axes, and no two overlapping."""
+    legend = _legend_axes(fig, axes)
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    box = legend.get_window_extent(renderer)
+    extents = [t.get_window_extent(renderer) for t in legend.texts]
+    assert extents, 'the legend drew no text at all'
+    for text, e in zip(legend.texts, extents):
+        assert box.x0 <= e.x0 and e.x1 <= box.x1, \
+            f'{text.get_text()!r} overflows the legend horizontally'
+        assert box.y0 <= e.y0 and e.y1 <= box.y1, \
+            f'{text.get_text()!r} overflows the legend vertically'
+    for i, a in enumerate(extents):
+        for b, other in zip(extents[i + 1:], legend.texts[i + 1:]):
+            assert not (a.x0 < b.x1 and b.x0 < a.x1
+                        and a.y0 < b.y1 and b.y0 < a.y1), (
+                f'{legend.texts[i].get_text()!r} overlaps '
+                f'{other.get_text()!r}')
+
+
+def test_legend_is_clean_at_one_panel_width():
+    spec = _shipped_like_spec(88.)
+    fig, axes = draw_flux_map([_summary('A', 10.)], spec)
+    try:
+        legend = _legend_axes(fig, axes)
+        # the enhancement key is present: this is the crowded case
+        assert 'enhancement' in [t.get_text() for t in legend.texts]
+        _assert_legend_is_clean(fig, axes)
+    finally:
+        plt.close(fig)
+
+
+def test_legend_is_clean_at_two_panel_width():
+    spec = _shipped_like_spec(88.)
+    fig, axes = draw_flux_map([_summary('A', 10.), _summary('B', 6.)], spec)
+    try:
+        assert fig.get_size_inches()[0] * 25.4 == pytest.approx(176.)
+        _assert_legend_is_clean(fig, axes)
+    finally:
+        plt.close(fig)
+
+
+def test_legend_items_wrap_rather_than_collide_in_a_narrow_band():
+    # A band far too narrow for one row must wrap, not overprint.
+    spec = _shipped_like_spec(60.)
+    fig, axes = draw_flux_map([_summary('A', 10.)], spec)
+    try:
+        legend = _legend_axes(fig, axes)
+        ys = {round(t.get_position()[1], 6) for t in legend.texts}
+        assert len(ys) > 2                    # items wrapped onto more rows
+        _assert_legend_is_clean(fig, axes)
+    finally:
+        plt.close(fig)
+
+
+def test_legend_caption_names_the_flux_unit():
+    fig, axes = draw_flux_map([_summary('A', 10.)], _spec())
+    try:
+        texts = [t.get_text() for t in _legend_axes(fig, axes).texts]
+        assert ("cumulative flux, g of each step's substrate per L "
+                'final broth') in texts
+    finally:
+        plt.close(fig)
+
+
+# --- panel letters beyond z -------------------------------------------------
+
+def test_panel_letters_continue_past_z():
+    assert [_panel_letter(i) for i in (0, 1, 25)] == ['a', 'b', 'z']
+    assert [_panel_letter(i) for i in (26, 27, 51, 52)] == \
+        ['aa', 'ab', 'az', 'ba']
+
+
+# --- enhancement is a property of the value, not of the spec ----------------
+
+def test_negative_fraction_is_hatched_without_an_enhancement_entry():
+    # `enhancement_reactions` keys the LEGEND; a negative fraction is drawn as
+    # a gain wherever it occurs.
+    spec = _spec(enhancement_reactions=set())
+    summary = _summary('A', 10.,
+                       fraction_lost={'r1': {'P': -0.4}, 'r2': {'Q': 0.1}},
+                       fraction_lost_all={'r1': -0.45, 'r2': 0.1})
+    fig, (ax,) = draw_flux_map([summary], spec)
+    try:
+        hatched = [r for r in _strip_rects(ax) if r.get_hatch()]
+        assert len(hatched) == 2                       # r1's P row and joint
+        assert [t.get_text() for t in ax.texts].count('+') == 2
+    finally:
+        plt.close(fig)
+
+
+# --- strip-to-edge leaders --------------------------------------------------
+
+def test_each_offset_strip_gets_a_leader_to_its_edge_midpoint():
+    spec = _spec(strip_offsets={'r1': (6., 4.), 'r2': (0., -8.)})
+    fig, (ax,) = draw_flux_map([_summary('A', 10.)], spec)
+    try:
+        leaders = [ln for ln in ax.lines if ln.get_linewidth() == LEADER_LW]
+        assert len(leaders) == 2                    # one per inhibited edge
+        n_rows = len(spec.inhibitors) + 1
+        for rid, (a, b) in spec.edges.items():
+            xa, ya, _ = spec.nodes[a]
+            xb, yb, _ = spec.nodes[b]
+            mx, my = (xa + xb) / 2, (ya + yb) / 2
+            hit = [ln for ln in leaders
+                   if ln.get_xdata()[-1] == mx and ln.get_ydata()[-1] == my]
+            assert len(hit) == 1, f'no leader points at {rid}'
+            # ... and it starts on a corner of that reaction's strip
+            dx, dy = spec.strip_offsets[rid]
+            sx, sy = mx + dx, my + dy
+            y_bot = sy - (n_rows - 1) * (STRIP_ROW_H + STRIP_ROW_GAP)
+            corners = {(sx, y_bot), (sx, sy + STRIP_ROW_H),
+                       (sx + STRIP_LEN, y_bot),
+                       (sx + STRIP_LEN, sy + STRIP_ROW_H)}
+            start = (hit[0].get_xdata()[0], hit[0].get_ydata()[0])
+            assert start in corners
+            assert to_rgba(hit[0].get_color()) == to_rgba(C_ZERO)
+    finally:
+        plt.close(fig)
+
+
+def test_no_leader_when_the_strip_covers_its_own_edge_midpoint():
+    spec = _spec(strip_offsets={'r1': (-STRIP_LEN / 2, 0.),
+                                'r2': (-STRIP_LEN / 2, 0.)})
+    fig, (ax,) = draw_flux_map([_summary('A', 10.)], spec)
+    try:
+        assert not [ln for ln in ax.lines
+                    if ln.get_linewidth() == LEADER_LW]
     finally:
         plt.close(fig)
 
