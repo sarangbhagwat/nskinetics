@@ -118,13 +118,44 @@ def test_fraction_lost_signs_and_zero():
 def test_state_restored_after_compute():
     km = _simulate_toy()
     r = km._te
-    before = {c: r[c] for c in km.state_selections() if c != 'time'}
+    # every selection, 'time' included: it is written back on every row too.
+    before = {c: r[c] for c in km.state_selections()}
+    assert 'time' in before
     before_params = {p: r[p] for p in _TOY_MAP}
     compute_flux_summary(km, _TOY_MAP, reactions=['r1', 'r2', 'r3'])
     for c, v in before.items():
         assert r[c] == v, f'{c} not restored'
     for p, v in before_params.items():
         assert r[p] == v, f'{p} not restored'
+
+
+def test_state_restored_when_computation_raises():
+    # The restore lives in a `finally`, so a failure part-way through must not
+    # leave the model parked at some arbitrary trajectory row.
+    from nskinetics.engine import flux_analysis as fa
+    km = _simulate_toy()
+    r = km._te
+    before = {c: r[c] for c in km.state_selections()}
+    before_params = {p: r[p] for p in _TOY_MAP}
+
+    def _boom(r_, df, ordered_cols, idx_of, n):
+        fa._apply_row(r_, df, ordered_cols, n // 2)   # move the model off t_end
+        raise RuntimeError('boom')
+
+    original = fa._rates_along
+    fa._rates_along = _boom
+    try:
+        compute_flux_summary(km, _TOY_MAP, reactions=['r1', 'r2', 'r3'])
+        assert False, 'expected RuntimeError'
+    except RuntimeError as e:
+        assert 'boom' in str(e)
+    finally:
+        fa._rates_along = original
+
+    for c, v in before.items():
+        assert r[c] == v, f'{c} not restored after failure'
+    for p, v in before_params.items():
+        assert r[p] == v, f'{p} not restored after failure'
 
 
 def test_missing_columns_raise():

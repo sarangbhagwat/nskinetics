@@ -40,9 +40,18 @@ class FluxSummary:
         ``{reaction_id: g/L of final broth}`` (``cumulative_mass`` / final volume).
     fraction_lost : dict
         ``{reaction_id: {inhibitor: fraction}}``; ``1 - actual/uninhibited``.
-        Negative for enhancement (e.g. product-accelerated decay).
+        Negative for enhancement (e.g. product-accelerated decay). The
+        "uninhibited" counterfactual is *not* a re-simulation: it is this
+        model's own rate law re-evaluated along the actual (inhibited)
+        trajectory with that inhibitor's coefficients set to zero, so it
+        measures the flux lost at the states the system really visited.
+        Reactions with no entry in ``inhibition_map`` are absent from this
+        dict (use ``.get()``), and a fraction is ``0.0`` when the uninhibited
+        integral is exactly zero (a dormant reaction).
     fraction_lost_all : dict
-        ``{reaction_id: fraction}`` with every mapped coefficient zeroed at once.
+        ``{reaction_id: fraction}`` with every mapped coefficient zeroed at
+        once — same counterfactual convention and same omissions as
+        ``fraction_lost``.
     final_volume : float
         Broth volume at the last trajectory row (model volume units).
     final_concentrations : dict
@@ -76,33 +85,54 @@ def _resolve_model(model_or_unit):
         f'(got {type(model_or_unit).__name__}).')
 
 
-def _apply_row(r, df, state_cols, i):
-    # Set non-concentration state (compartments, params, rate-rule vars) first,
-    # then concentrations: writing a compartment volume rescales the
-    # concentrations derived from held amounts, so concentrations must be set
-    # last to land at their recorded values.
-    for c in state_cols:
-        if not c.startswith('['):
-            r[c] = df[c].iat[i]
-    for c in state_cols:
-        if c.startswith('['):
-            r[c] = df[c].iat[i]
+def _write_order(selections):
+    """Order selections so a write-back lands at the intended values.
+
+    Non-concentration state (``time``, compartments, parameters, rate-rule
+    variables) is written first and concentration selections (``[species]``)
+    last: writing a compartment volume rescales the concentrations derived
+    from the held amounts, so concentrations must be set afterwards. Every
+    write-back in this module (trajectory rows and the state restore) goes
+    through this order, so neither depends on the order
+    :meth:`~KineticModel.state_selections` happens to emit.
+
+    Parameters
+    ----------
+    selections : sequence of str
+        RoadRunner selections to reorder.
+
+    Returns
+    -------
+    list of str
+    """
+    return ([c for c in selections if not c.startswith('[')]
+            + [c for c in selections if c.startswith('[')])
 
 
-def _rates_along(r, df, state_cols, idx_of, n):
+def _apply_row(r, df, ordered_cols, i):
+    for c in ordered_cols:
+        r[c] = df[c].iat[i]
+
+
+def _restore(r, snap, ordered_cols):
+    for c in ordered_cols:
+        r[c] = snap[c]
+
+
+def _rates_along(r, df, ordered_cols, idx_of, n):
     out = {rid: np.empty(n) for rid in idx_of}
     for i in range(n):
-        _apply_row(r, df, state_cols, i)
+        _apply_row(r, df, ordered_cols, i)
         rates = r.getReactionRates()
         for rid, j in idx_of.items():
             out[rid][i] = rates[j]
     return out
 
 
-def _cum_one(r, df, state_cols, rid_index, n, t):
+def _cum_one(r, df, ordered_cols, rid_index, n, t):
     vals = np.empty(n)
     for i in range(n):
-        _apply_row(r, df, state_cols, i)
+        _apply_row(r, df, ordered_cols, i)
         vals[i] = r.getReactionRates()[rid_index]
     return float(np.trapezoid(vals, t))
 
@@ -177,7 +207,9 @@ def compute_flux_summary(model_or_unit, inhibition_map, reactions=None,
             f'{missing}. Record KineticModel.state_selections() (an '
             'NSKBatchReactor does this automatically).')
 
-    state_no_time = [c for c in state_cols if c != 'time']
+    # `time` is written back on every row too, so it must be snapshotted and
+    # restored along with the rest of the state.
+    ordered_cols = _write_order(state_cols)
     t = df['time'].to_numpy()
     n = len(df)
     idx_of = {rid: rxn_ids.index(rid) for rid in reactions}
@@ -193,10 +225,10 @@ def compute_flux_summary(model_or_unit, inhibition_map, reactions=None,
     for p, (rid, inh) in inhibition_map.items():
         by_rxn[rid][inh].append(p)
 
-    snap = {c: r[c] for c in state_no_time}
+    snap = {c: r[c] for c in ordered_cols}
     snap_par = {p: r[p] for p in inhibition_map}
     try:
-        base = _rates_along(r, df, state_cols, idx_of, n)
+        base = _rates_along(r, df, ordered_cols, idx_of, n)
         cumulative_mass = {rid: float(np.trapezoid(base[rid], t))
                            for rid in reactions}
         fraction_lost = {}
@@ -212,7 +244,7 @@ def compute_flux_summary(model_or_unit, inhibition_map, reactions=None,
                 saved = {p: r[p] for p in plist}
                 for p in plist:
                     r[p] = 0.0
-                cf = _cum_one(r, df, state_cols, idx_of[rid], n, t)
+                cf = _cum_one(r, df, ordered_cols, idx_of[rid], n, t)
                 for p, v in saved.items():
                     r[p] = v
                 fl[inh] = _frac(cumulative_mass[rid], cf)
@@ -220,13 +252,12 @@ def compute_flux_summary(model_or_unit, inhibition_map, reactions=None,
             saved = {p: r[p] for p in all_params}
             for p in all_params:
                 r[p] = 0.0
-            cf_all = _cum_one(r, df, state_cols, idx_of[rid], n, t)
+            cf_all = _cum_one(r, df, ordered_cols, idx_of[rid], n, t)
             for p, v in saved.items():
                 r[p] = v
             fraction_lost_all[rid] = _frac(cumulative_mass[rid], cf_all)
     finally:
-        for c, v in snap.items():
-            r[c] = v
+        _restore(r, snap, ordered_cols)
         for p, v in snap_par.items():
             r[p] = v
 
