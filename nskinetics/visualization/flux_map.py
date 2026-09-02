@@ -92,7 +92,9 @@ class FluxMapSpec:
         adds the enhancement key to the legend. It does NOT gate the drawing:
         a negative fraction is hatched and marked ``+`` wherever it occurs.
     products : list
-        Species ids whose final titers appear in each panel header.
+        Species whose final concentrations appear in each panel header --
+        products, plus any residual substrate worth stating (display names via
+        ``product_labels``).
     product_labels : dict, optional
         ``{species_id: display name}`` used for those header titers; a species
         with no entry is shown by its raw id.
@@ -167,12 +169,16 @@ def _fmt_value(v):
     Returns
     -------
     str
-        ``'0'`` only for an exact zero; ``'<0.1'`` for a nonzero value that
-        would otherwise round to ``'0.0'``; one decimal below 10, else an
-        integer.
+        ``'0'`` only for an exact zero; ``'<0.1'`` for a tiny positive value
+        that would otherwise round to ``'0.0'`` and ``'≈0'`` for a tiny
+        negative one (a residual that is numerically just below zero, where
+        ``'<0.1'`` would read as a real quantity); one decimal below 10, else
+        an integer.
     """
     if v == 0:
         return '0'
+    if -0.05 < v < 0:
+        return '≈0'
     if abs(v) < 0.05:
         # a real but tiny flux must not read as nothing at all
         return '<0.1'

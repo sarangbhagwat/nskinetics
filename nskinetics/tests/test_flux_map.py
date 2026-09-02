@@ -73,6 +73,17 @@ def test_scenario_presets_set_exact_values():
         te_r.reset()
 
 
+def test_shipped_model_needs_no_time_write_back():
+    # `prod_EtOH := s_EtOH/time` is the model's only time-dependent assignment
+    # rule and no rate law reads it, so the replay must leave `time` alone --
+    # the model's compiled native events trigger on it.
+    from nskinetics.engine import flux_analysis as fa
+    from nskinetics.models.s_cerevisiae_ferm_fb_inhib_mod_ibo import te_r
+    r = te_r._te
+    assert 'prod_EtOH' in fa._time_dependent_variables(r.getCurrentSBML())
+    assert fa._kinetic_laws_use_time(r) is False
+
+
 def test_shipped_spec_maps_only_model_reactions_and_params():
     from nskinetics.models.s_cerevisiae_ferm_fb_inhib_mod_ibo import (
         te_r, FLUX_MAP_SPEC)

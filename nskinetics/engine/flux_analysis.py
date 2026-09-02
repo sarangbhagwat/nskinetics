@@ -35,6 +35,14 @@ _TIME_CSYMBOL = 'symbols/time'
 #: Matches one ``<kineticLaw>`` element (and its contents) in an SBML document.
 _KINETIC_LAW_RE = re.compile(r'<kineticLaw\b.*?</kineticLaw>', re.S)
 
+#: Matches one ``<assignmentRule>``: its target variable and its math body.
+_ASSIGNMENT_RULE_RE = re.compile(
+    r'<assignmentRule\b[^>]*\bvariable="([^"]+)"(.*?)</assignmentRule>', re.S)
+
+#: Matches a MathML identifier reference; the capture is the whole name, so
+#: membership tests compare complete tokens rather than substrings.
+_CI_RE = re.compile(r'<ci\b[^>]*>\s*([^<]*?)\s*</ci>')
+
 
 def _read_float(val):
     """Parse one CSV ``value`` cell, or ``None`` if it is blank/unparseable.
@@ -286,14 +294,51 @@ def _write_order(selections):
             + [c for c in selections if c.startswith('[')])
 
 
-def _kinetic_laws_use_time(r):
-    """Whether any of the model's rate laws reads the SBML time symbol.
+def _time_dependent_variables(sbml):
+    """Assignment-rule variables whose value depends on simulation time.
 
-    Only the ``<kineticLaw>`` elements are inspected: a reference to time
-    anywhere else (an assignment rule such as ``prod_EtOH := s_EtOH/time``, an
-    event trigger) does not affect a rate re-evaluation, because
-    :func:`compute_flux_summary` reads the reaction rates directly rather than
-    integrating. A model whose current SBML cannot be retrieved is treated as
+    Seeded with the rules whose math contains the SBML time csymbol, then
+    closed transitively: a rule that references (as a whole ``<ci>`` token) a
+    variable already known to be time-dependent is itself time-dependent.
+
+    Parameters
+    ----------
+    sbml : str
+        The model's current SBML document.
+
+    Returns
+    -------
+    set of str
+        Variable ids; empty when no assignment rule reads time.
+    """
+    rules = {var: body for var, body in _ASSIGNMENT_RULE_RE.findall(sbml)}
+    refs = {var: set(_CI_RE.findall(body)) for var, body in rules.items()}
+    time_vars = {var for var, body in rules.items() if _TIME_CSYMBOL in body}
+    changed = bool(time_vars)
+    while changed:
+        changed = False
+        for var, names in refs.items():
+            if var not in time_vars and names & time_vars:
+                time_vars.add(var)
+                changed = True
+    return time_vars
+
+
+def _kinetic_laws_use_time(r):
+    """Whether any of the model's rate laws reads simulation time.
+
+    A rate law reads time either directly, through the SBML time csymbol, or
+    indirectly, by referencing an assignment-rule variable that (transitively)
+    depends on time -- e.g. ``temp := T0 + ramp*time`` used in an Arrhenius
+    rate law. Both count: :func:`compute_flux_summary` re-evaluates rate laws
+    at written-back states, so an undetected indirect dependence would
+    evaluate every rate at one frozen clock value and silently corrupt every
+    integral.
+
+    A reference to time anywhere else does not count -- an assignment rule no
+    rate law reads (the shipped model's ``prod_EtOH := s_EtOH/time``), or an
+    event trigger -- because the rates are read directly rather than
+    integrated. A model whose current SBML cannot be retrieved is treated as
     time-dependent, i.e. the conservative answer.
 
     Parameters
@@ -309,7 +354,13 @@ def _kinetic_laws_use_time(r):
         sbml = r.getCurrentSBML()
     except (AttributeError, RuntimeError):
         return True
-    return any(_TIME_CSYMBOL in law for law in _KINETIC_LAW_RE.findall(sbml))
+    time_vars = _time_dependent_variables(sbml)
+    for law in _KINETIC_LAW_RE.findall(sbml):
+        if _TIME_CSYMBOL in law:
+            return True
+        if time_vars and time_vars & set(_CI_RE.findall(law)):
+            return True
+    return False
 
 
 def _apply_row(r, arrs, cols, i):
@@ -397,7 +448,7 @@ def _frac(base, counterfactual):
 
 
 def compute_flux_summary(model_or_unit, inhibition_map, reactions=None,
-                         label=None, t_end=None):
+                         label=None, t_end=None, write_time=None):
     """Compute cumulative flux and inhibition strengths for a simulated run.
 
     For a reactor the window is 0..harvest time (``unit.tau``); the reactor
@@ -426,6 +477,10 @@ def compute_flux_summary(model_or_unit, inhibition_map, reactions=None,
         Defaults to the reactor's harvest time ``unit.tau`` when
         ``model_or_unit`` is a reactor, and to the whole trajectory for a bare
         :class:`~nskinetics.KineticModel`.
+    write_time : bool, optional
+        Whether to write ``'time'`` back on every replayed row. ``None`` (the
+        default) decides automatically from the model's rate laws; ``True`` or
+        ``False`` forces it. See the Notes.
 
     Returns
     -------
@@ -446,12 +501,17 @@ def compute_flux_summary(model_or_unit, inhibition_map, reactions=None,
     -----
     The trajectory is replayed by writing each row's state back into the
     model and reading its reaction rates. ``'time'`` is written back only when
-    a ``<kineticLaw>`` actually references the SBML time symbol: a model with
-    compiled native events (as the shipped one has) would otherwise have its
-    time-triggered events re-armed by the backwards time jump at the start of
-    every counterfactual pass. ``'time'`` is snapshotted and restored either
-    way, and is always recorded as a column, so the restore contract is
-    unchanged.
+    a rate law actually reads it -- directly through the SBML time csymbol, or
+    indirectly through an assignment-rule variable that depends on time (see
+    :func:`_kinetic_laws_use_time`). A model with compiled native events (as
+    the shipped one has) would otherwise have its time-triggered events
+    re-armed by the backwards time jump at the start of every counterfactual
+    pass. ``'time'`` is snapshotted and restored either way, and is always
+    recorded as a column, so the restore contract is unchanged.
+
+    ``write_time`` is the escape hatch from that detection, which reads the
+    model's SBML text: pass ``True`` to force the write-back for a model whose
+    time dependence the parser cannot see, or ``False`` to suppress it.
     """
     km = _resolve_model(model_or_unit)
     unit = model_or_unit if km is not model_or_unit else None
@@ -499,9 +559,10 @@ def compute_flux_summary(model_or_unit, inhibition_map, reactions=None,
     # model carries compiled native SBML events whose triggers depend on time,
     # and jumping time backwards outside an integration step re-arms them.
     ordered_cols = _write_order(state_cols)
-    write_cols = ordered_cols
-    if 'time' in write_cols and not _kinetic_laws_use_time(r):
-        write_cols = [c for c in ordered_cols if c != 'time']
+    if write_time is None:
+        write_time = _kinetic_laws_use_time(r)
+    write_cols = (ordered_cols if write_time
+                  else [c for c in ordered_cols if c != 'time'])
     t = df['time'].to_numpy()
     n = len(df)
     # Hoist the per-column arrays out of the write-back loops: one numpy
@@ -522,6 +583,12 @@ def compute_flux_summary(model_or_unit, inhibition_map, reactions=None,
 
     snap = {c: r[c] for c in ordered_cols}
     snap_par = {p: r[p] for p in inhibition_map}
+
+    def _restore_model():
+        _restore(r, snap, ordered_cols)
+        for p, v in snap_par.items():
+            r[p] = v
+
     try:
         cumulative_mass = _cum(r, arrs, write_cols, idx_of, n, t)
         fraction_lost = {}
@@ -549,10 +616,15 @@ def compute_flux_summary(model_or_unit, inhibition_map, reactions=None,
             for p, v in saved.items():
                 r[p] = v
             fraction_lost_all[rid] = _frac(cumulative_mass[rid], cf_all)
-    finally:
-        _restore(r, snap, ordered_cols)
-        for p, v in snap_par.items():
-            r[p] = v
+    except BaseException as exc:
+        # The model is restored on the way out either way, but a failure in
+        # the restore must chain from the original error rather than mask it.
+        try:
+            _restore_model()
+        except BaseException as restore_exc:
+            raise restore_exc from exc
+        raise
+    _restore_model()
 
     # env is the model's broth-volume compartment; fall back to 1.0
     final_volume = float(df['env'].iloc[-1]) if 'env' in df.columns else 1.0

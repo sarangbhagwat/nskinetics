@@ -116,22 +116,56 @@ end
 """
 
 
-def _simulate_time_toy():
-    km = nsk.KineticModel(te.loadAntimonyModel(_TOY_TIME),
+# A rate law that reads the clock only INDIRECTLY, through an assignment-rule
+# variable: no time csymbol appears inside <kineticLaw>, so detecting this
+# needs the transitive closure over the assignment rules. `hot` adds a second
+# hop (temp -> hot), which the closure must follow.
+_TOY_TIME_RULE = """
+model flux_toy_time_rule()
+  compartment env; species S in env, P in env;
+  temp := 1 + 0.01*time;
+  hot := 0.5*temp;
+  r1: S -> P; k1*S*hot*exp(-ki*P)*env;
+  S = 10; P = 0; env = 1; k1 = 0.6; ki = 0.2;
+end
+"""
+
+# A time-dependent assignment rule that feeds NO rate law -- exactly the
+# shipped model's `prod_EtOH := s_EtOH/time`. `time` must stay unwritten.
+_TOY_IDLE_TIME_RULE = """
+model flux_toy_idle_time_rule()
+  compartment env; species S in env, P in env;
+  prod := P/(time + 1);
+  r1: S -> P; k1*S*exp(-ki*P)*env;
+  S = 10; P = 0; env = 1; k1 = 0.3; ki = 0.2;
+end
+"""
+
+
+def _simulate_simple(antimony_text):
+    """Simulate a toy with no events, recording its state and ``r1``."""
+    km = nsk.KineticModel(te.loadAntimonyModel(antimony_text),
                           units={'time': 'h', 'conc': 'g/L'})
     km.reset()
     km.simulate(0, 10, 2001, km.state_selections() + ['r1'])
     return km
 
 
-def test_time_is_not_written_back_when_no_rate_law_reads_it():
-    # The toy references `time` only in event triggers, so writing it back per
-    # row would re-arm compiled native events outside an integration step.
+def _r1_matches_recorded_rate(km, **kwargs):
+    """Whether the replayed r1 integral matches the recorded rate column."""
+    from nskinetics import compute_flux_summary
+    s = compute_flux_summary(km, {'ki': ('r1', 'P')}, reactions=['r1'],
+                             **kwargs)
+    df = km.results_df
+    return np.isclose(s.cumulative_mass['r1'],
+                      np.trapezoid(df['r1'].to_numpy(),
+                                   df['time'].to_numpy()), rtol=1e-9)
+
+
+def _write_sets(km, imap, reactions, **kwargs):
+    """The column sets `compute_flux_summary` writes back, per replay pass."""
     from nskinetics import compute_flux_summary
     from nskinetics.engine import flux_analysis as fa
-    km = _simulate_toy()
-    assert 'time' in km.state_selections()      # still recorded and restored
-    assert fa._kinetic_laws_use_time(km._te) is False
     seen = []
     original = fa._rates_along
 
@@ -141,9 +175,21 @@ def test_time_is_not_written_back_when_no_rate_law_reads_it():
 
     fa._rates_along = _spy
     try:
-        s = compute_flux_summary(km, _TOY_MAP, reactions=['r1', 'r2', 'r3'])
+        summary = compute_flux_summary(km, imap, reactions=reactions,
+                                       **kwargs)
     finally:
         fa._rates_along = original
+    return seen, summary
+
+
+def test_time_is_not_written_back_when_no_rate_law_reads_it():
+    # The toy references `time` only in event triggers, so writing it back per
+    # row would re-arm compiled native events outside an integration step.
+    from nskinetics.engine import flux_analysis as fa
+    km = _simulate_toy()
+    assert 'time' in km.state_selections()      # still recorded and restored
+    assert fa._kinetic_laws_use_time(km._te) is False
+    seen, s = _write_sets(km, _TOY_MAP, ['r1', 'r2', 'r3'])
     assert seen, 'the write-back loop never ran'
     assert all('time' not in cols for cols in seen)
     assert all('env' in cols and '[S]' in cols for cols in seen)
@@ -158,7 +204,7 @@ def test_time_is_not_written_back_when_no_rate_law_reads_it():
 def test_time_is_written_back_when_a_rate_law_reads_it():
     from nskinetics import compute_flux_summary
     from nskinetics.engine import flux_analysis as fa
-    km = _simulate_time_toy()
+    km = _simulate_simple(_TOY_TIME)
     assert fa._kinetic_laws_use_time(km._te) is True
     s = compute_flux_summary(km, {'ki': ('r1', 'P')}, reactions=['r1'])
     df = km.results_df
@@ -167,6 +213,44 @@ def test_time_is_written_back_when_a_rate_law_reads_it():
                       np.trapezoid(df['r1'].to_numpy(),
                                    df['time'].to_numpy()), rtol=1e-9)
     assert 0.0 < s.fraction_lost['r1']['P'] < 1.0
+
+
+def test_time_is_written_back_through_an_assignment_rule_chain():
+    # `time` reaches r1 only via `temp` -> `hot`, so no time csymbol appears
+    # inside <kineticLaw>: without the transitive closure the clock would be
+    # pinned and every integral silently wrong.
+    from nskinetics.engine import flux_analysis as fa
+    km = _simulate_simple(_TOY_TIME_RULE)
+    sbml = km._te.getCurrentSBML()
+    assert fa._time_dependent_variables(sbml) == {'temp', 'hot'}
+    assert not any(fa._TIME_CSYMBOL in law
+                   for law in fa._KINETIC_LAW_RE.findall(sbml))
+    assert fa._kinetic_laws_use_time(km._te) is True
+    seen, _s = _write_sets(km, {'ki': ('r1', 'P')}, ['r1'])
+    assert seen and all('time' in cols for cols in seen)
+    assert _r1_matches_recorded_rate(km)
+    # ... and forcing the clock off breaks it, so the test really discriminates
+    assert not _r1_matches_recorded_rate(km, write_time=False)
+
+
+def test_a_time_rule_that_feeds_no_rate_law_leaves_time_unwritten():
+    # Exactly the shipped model's `prod_EtOH := s_EtOH/time`.
+    from nskinetics.engine import flux_analysis as fa
+    km = _simulate_simple(_TOY_IDLE_TIME_RULE)
+    assert fa._time_dependent_variables(km._te.getCurrentSBML()) == {'prod'}
+    assert fa._kinetic_laws_use_time(km._te) is False
+    seen, _s = _write_sets(km, {'ki': ('r1', 'P')}, ['r1'])
+    assert seen and all('time' not in cols for cols in seen)
+    assert _r1_matches_recorded_rate(km)
+
+
+def test_write_time_forces_the_write_back_either_way():
+    km = _simulate_toy()
+    forced, _s = _write_sets(km, _TOY_MAP, ['r1'], write_time=True)
+    assert forced and all('time' in cols for cols in forced)
+    off, _s2 = _write_sets(km, {'ki': ('r1', 'P')}, ['r1'],
+                           write_time=False)
+    assert off and all('time' not in cols for cols in off)
 
 
 def test_mass_balance_closes_on_Q():

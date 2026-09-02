@@ -223,7 +223,9 @@ def test_fmt_value_rules():
     assert _fmt_value(0.0) == '0'
     assert _fmt_value(1e-9) == '<0.1'    # nonzero never prints as '0.0'
     assert _fmt_value(0.049) == '<0.1'
-    assert _fmt_value(-1e-3) == '<0.1'
+    assert _fmt_value(-1e-3) == '≈0'     # tiny negative reads as ~nothing
+    assert _fmt_value(-0.049) == '≈0'
+    assert _fmt_value(-0.06) == '-0.1'   # a real negative still prints
     assert _fmt_value(0.05) == '0.1'     # from here it rounds honestly
     assert _fmt_value(0.16) == '0.2'
     assert _fmt_value(1.44) == '1.4'
