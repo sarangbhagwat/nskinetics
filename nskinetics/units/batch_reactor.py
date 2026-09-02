@@ -434,8 +434,10 @@ class NSKBatchReactor(BatchBioreactor):
 
         Built from the configured features (working volume, spike-count retry,
         feed-volume tracking, aeration) plus ``track_vars`` and the
-        species->chemical map. Chemistry-agnostic: no feature-specific column
-        name is hardcoded here.
+        species->chemical map, plus the kinetic model's
+        :meth:`~nskinetics.KineticModel.state_selections` so the recorded
+        trajectory is self-sufficient for post-hoc rate re-evaluation.
+        Chemistry-agnostic: no feature-specific column name is hardcoded here.
         """
         cols = []
 
@@ -455,6 +457,14 @@ class NSKBatchReactor(BatchBioreactor):
             add(name)
         for name in self.map_species_to_chemicals:
             add(name)
+        # Ensure the trajectory is self-sufficient for post-hoc rate
+        # re-evaluation (compute_flux_summary): append every state selection
+        # the kinetic model needs. Additive and de-duplicated; does not affect
+        # integration (selections are output columns only).
+        nkm = self.nsk_kinetic_model
+        if nkm is not None:
+            for name in nkm.state_selections():
+                add(name)
         return cols
 
     def _reset_and_simulate(self, feed, reset_spike_cap=False):

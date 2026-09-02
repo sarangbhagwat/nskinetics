@@ -9,9 +9,11 @@
 from . import test_events
 from . import test_kinetic_model_reset
 from . import test_flux_analysis
+from . import test_flux_map
 
 __all__ = (
      'test_events',
      'test_kinetic_model_reset',
      'test_flux_analysis',
+     'test_flux_map',
      )
