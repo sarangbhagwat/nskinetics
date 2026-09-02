@@ -6,14 +6,20 @@
 # https://github.com/sarangbhagwat/nskinetics/blob/main/LICENSE
 # for license details.
 
+# NOTE: `nskinetics/__init__.py` imports this package, so every module
+# registered below is imported by a plain `import nskinetics`. Test modules
+# that import pytest, biosteam or the shipped kinetic model at top level are
+# therefore deliberately NOT registered here (currently `test_processes` and
+# `test_flux_map`): registering them would make `import nskinetics` fail on an
+# install without those extras, and would pollute `sys.modules` for the
+# import-guard tests. pytest still collects them by path.
+
 from . import test_events
 from . import test_kinetic_model_reset
 from . import test_flux_analysis
-from . import test_flux_map
 
 __all__ = (
      'test_events',
      'test_kinetic_model_reset',
      'test_flux_analysis',
-     'test_flux_map',
      )

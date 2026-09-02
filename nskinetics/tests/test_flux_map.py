@@ -32,14 +32,21 @@ def simulated_V406():
     tmo.settings.set_thermo(chems)
     bst.main_flowsheet.set_flowsheet('test_flux_map')
     from nskinetics.processes import create_sugar_prep_and_fermentation_system
-    sys = create_sugar_prep_and_fermentation_system()
-    sys.simulate()
-    return sys.flowsheet.unit.V406
+    system = create_sugar_prep_and_fermentation_system()
+    system.simulate()
+    return system.flowsheet.unit.V406
 
 
 def test_reactor_records_state_selection_columns(simulated_V406):
     V406 = simulated_V406
     km = V406.nsk_kinetic_model
-    cols = set(V406.nsk_results_df.columns)
+    columns = list(V406.nsk_results_df.columns)
+    cols = set(columns)
     for sel in km.state_selections():
         assert sel in cols, f'missing state column {sel}'
+    # The state selections are appended, so the pre-existing columns must
+    # survive unmoved: 'time' stays first and the mapped species remain.
+    assert columns[0] == 'time'
+    assert '[s_EtOH]' in cols
+    # Every column carries a full trajectory, not just an endpoint.
+    assert len(V406.nsk_results_df) > 1
