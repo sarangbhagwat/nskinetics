@@ -12,4 +12,5 @@ the biosteam process bridge, and ready-made process section factories.
    units
    processes
    flux_analysis
+   models
    exceptions

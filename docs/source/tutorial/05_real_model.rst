@@ -218,6 +218,52 @@ literature-derived values) in scenarios explicitly exploring isobutanol
 co-production. Nothing about the fed-batch feeding or stage-switch machinery
 above changes between the two cases — only the kinetic parameters do.
 
+Describing a parameter change
+-----------------------------
+
+When a scenario or an uncertainty run changes a set of kinetic parameters,
+the shipped model can name the change in a few words. Every kinetic
+parameter is classified by *role* (what kind of term it is in its rate law:
+a capacity, a saturation constant, a product-inhibition coefficient, ...)
+and by pathway *module* (glycolysis/fermentation, growth, the Ehrlich
+branch, ...); :func:`~nskinetics.models.s_cerevisiae_ferm_fb_inhib_mod_ibo.describe_parameter_change`
+diffs a baseline snapshot against the current values and phrases each group
+of changes as direction + role + effector + modules. Snapshot the baseline
+first, then apply the change:
+
+.. code-block:: python
+
+   from nskinetics.models.s_cerevisiae_ferm_fb_inhib_mod_ibo import (
+       snapshot_parameters, describe_parameter_change, SCENARIO_B_EHRLICH)
+
+   baseline = snapshot_parameters(km)          # km from the top of this page
+   for name, value in SCENARIO_B_EHRLICH.items():
+       km.set_value(name, value)
+   print(describe_parameter_change(baseline, km))
+
+.. code-block:: text
+
+   Ehrlich branch on; isobutanol self-inhibition of Ehrlich branch on
+
+The preset switched on the four Ehrlich capacities (``k_13`` .. ``k_16``)
+and the ``k_16r`` reverse term, which is a self-inhibition parameter, so it
+gets its own clause. A partial override dict can also be passed directly as
+the "current" side, and ``verbose=True`` appends the parameter names and
+values to each clause:
+
+.. code-block:: python
+
+   print(describe_parameter_change(
+       baseline, {'k_7ie': 0.08, 'k_1ie': 0.04}, verbose=True))
+
+.. code-block:: text
+
+   stronger ethanol inhibition of glycolysis/fermentation and growth (k_1ie 0.02 -> 0.04, k_7ie 0.04 -> 0.08)
+
+Operation parameters -- the fed-batch feeding thresholds, the stage-switch
+cutoffs, the dilution rate -- are not kinetics and are ignored by the
+helper; describe those changes in words yourself.
+
 Next: :doc:`06_process_tea_bridge` takes a kinetic model like this one and
 drives a biosteam process unit with it, connecting kinetics to process
 design and TEA.

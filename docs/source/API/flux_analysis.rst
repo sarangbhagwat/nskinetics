@@ -27,33 +27,6 @@ from step to step.
 
 .. autofunction:: draw_flux_map
 
-Shipped model: scenarios and flux map
--------------------------------------
-
-.. currentmodule:: nskinetics.models.s_cerevisiae_ferm_fb_inhib_mod_ibo
-
-The shipped *S. cerevisiae* ethanol/isobutanol model carries a ready-made
-layout and a one-call end-to-end helper. ``FLUX_MAP_SPEC.reactions`` is the
-reaction list to hand to :func:`~nskinetics.compute_flux_summary`: the drawn
-edges plus mapped-but-undrawn reactions such as biomass decay (``r10``).
-
-Its ``inhibition_map`` includes, alongside the product-inhibition
-coefficients, the thermodynamic reverse-reaction (product) terms of the two
-reversible steps (``k_6r`` on ``r6``, ``k_16r`` on ``r16``). A strip row
-therefore reports everything the product does to that step: ADH's "fraction
-lost to ethanol" counts both the inhibition of the forward rate and the
-ethanol-driven reverse flux.
-
-:func:`draw_scenario_flux_map` changes only the Ehrlich rate constants between
-its two panels, never the fed-batch feeding strategy, so panel **b** is
-scenario A's process with the Ehrlich branch switched on -- not the isobutanol
-biorefinery's full scenario-B configuration.
-
-.. autodata:: FLUX_MAP_SPEC
-   :annotation:
-
-.. autofunction:: draw_scenario_flux_map
-
-.. autofunction:: apply_scenario_A
-
-.. autofunction:: apply_scenario_B
+The shipped *S. cerevisiae* ethanol/isobutanol model ships its own layout
+(``FLUX_MAP_SPEC``), scenario presets and an end-to-end
+``draw_scenario_flux_map`` helper; see :doc:`models`.

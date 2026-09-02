@@ -181,6 +181,12 @@ def test_describe_verbose_lists_members_in_source_order():
         'stronger isobutanol inhibition of glycolysis/fermentation, '
         'overflow/acetate and growth '
         '(k_1ii 0.04 -> 0.15, k_4ii 0.04 -> 0.15, k_7ii 0.04 -> 0.15)')
+    # the exact phrase quoted in tutorial 05
+    assert pc.describe_parameter_change(
+        {'k_1ie': 0.02, 'k_7ie': 0.04},
+        {'k_1ie': 0.04, 'k_7ie': 0.08}, verbose=True) == (
+        'stronger ethanol inhibition of glycolysis/fermentation and growth '
+        '(k_1ie 0.02 -> 0.04, k_7ie 0.04 -> 0.08)')
 
 
 def test_describe_ehrlich_on_from_partial_override():
