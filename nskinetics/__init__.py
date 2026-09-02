@@ -26,6 +26,8 @@ from . import models
 
 from . import processes
 
+from . import visualization
+
 __all__ = (
      *exceptions.__all__,
      *engine.__all__,
@@ -33,5 +35,6 @@ __all__ = (
      'tests',
      'units',
      'models',
-     'processes'
+     'processes',
+     'visualization'
      )

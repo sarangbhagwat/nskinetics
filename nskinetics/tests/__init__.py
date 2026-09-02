@@ -8,11 +8,15 @@
 
 # NOTE: `nskinetics/__init__.py` imports this package, so every module
 # registered below is imported by a plain `import nskinetics`. Test modules
-# that import pytest, biosteam or the shipped kinetic model at top level are
-# therefore deliberately NOT registered here (currently `test_processes` and
-# `test_flux_map`): registering them would make `import nskinetics` fail on an
-# install without those extras, and would pollute `sys.modules` for the
-# import-guard tests. pytest still collects them by path.
+# that import pytest, biosteam or the shipped kinetic model at top level, or
+# that otherwise have import-time side effects, are therefore deliberately NOT
+# registered here (currently `test_processes`, `test_flux_map` and
+# `test_flux_map_render`): registering them would make `import nskinetics`
+# fail on an install without those extras, would pollute `sys.modules` for the
+# import-guard tests, and -- in the case of `test_flux_map_render`, which calls
+# `matplotlib.use('Agg')` at import time -- would silently force a headless
+# matplotlib backend on every user who imports the package. pytest still
+# collects them by path.
 
 from . import test_events
 from . import test_kinetic_model_reset
