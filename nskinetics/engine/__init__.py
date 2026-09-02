@@ -10,8 +10,11 @@ from . import kinetic_model
 from .kinetic_model import *
 from . import events
 from .events import *
+from . import flux_analysis
+from .flux_analysis import *
 
 __all__ = (
      *kinetic_model.__all__,
      *events.__all__,
+     *flux_analysis.__all__,
      )
