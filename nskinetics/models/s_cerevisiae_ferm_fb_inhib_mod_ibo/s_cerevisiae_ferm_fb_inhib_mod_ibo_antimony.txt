@@ -269,7 +269,7 @@ model *bhagwat2026()
   k_16 has g_per_l_per_h;
   K_16 = 0.034;
   K_16 has g_per_l;
-  k_16r = 0.0;
+  k_16r = 0.0125;
   k_16r has dimensionless;
   K_16i = 0.057;
   K_16i has dimensionless;
