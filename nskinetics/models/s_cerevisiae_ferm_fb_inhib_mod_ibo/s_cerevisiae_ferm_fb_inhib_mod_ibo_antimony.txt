@@ -163,8 +163,9 @@ model *bhagwat2026()
   // shipped process starts at (Slininger et al., Biotechnol. Bioeng. 1989,
   // Measurement of oxygen solubility in fermentation media). 0.20 is a
   // mid-run value. In the shipped process (aeration off at x = 5 g/L) the
-  // total qO2*x peaks at ~19.6 mmol/L/h -- OUR_demand, the quantity the cap
-  // compares, is lower still -- and the bound never binds; a glucose-lean,
+  // total qO2*x peaks at ~19.6 mmol/L/h -- OUR_demand, the quantity that
+  // the cap compares against, is lower still while aerated -- and the
+  // bound never binds; a glucose-lean,
   // fully aerobic batch climbing past ~10 g/L biomass does bind (unbounded
   // demand ~69 mmol/L/h; f_O2 bottoms at ~0.58). Glucose-rich runs stay
   // under the cap because r2/r5/r8 are glucose-inhibited (K_2i, K_5i).
