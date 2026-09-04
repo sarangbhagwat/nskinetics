@@ -26,6 +26,12 @@ model *bhagwat2026()
   // respiratory O2 is f_O2*OUR_gated + OUR_committed, so f_O2 is chosen to
   // make that equal OTR_max exactly when the cap binds (clamped to [0, 1]).
   // Coefficients are those of qO2_TCA_growth_only; units mmol O2/L/h.
+  // Scope: the cap covers those qO2_TCA_growth_only terms only. The
+  // model's total qO2 also carries the ungated aerobic NADH re-oxidation
+  // term 0.178*r1 + 0.363*r4 - 0.363*r6 - 0.363*r16, so qO2*x -- what
+  // AerationSpec sizes the air stream from -- can exceed OTR_max (by
+  // ~20 % in a bound 100 g/L batch). Extending the cap to total qO2 is
+  // a follow-up.
   v2_0 := (k_2*s_pyr/((s_pyr + K_2)*(K_2i*s_glu + 1)))*a*env;
   v5_0 := (k_5*s_acetate/(s_acetate + K_5) + k_5e*s_acetate/((s_acetate + K_5e)*(1 + K_5i*s_glu)))*a*env;
   v7_0 := (k_7*s_glu*2.71828^(-k_7ie*s_EtOH)*2.71828^(-k_7ia*s_acetate)*2.71828^(-k_7ii*s_IBO)/(s_glu + K_7))*a*env;
@@ -156,9 +162,11 @@ model *bhagwat2026()
   // solubilities in fermentation media), by ~30 % at the ~220 g/L sugar the
   // shipped process starts at (Slininger et al., Biotechnol. Bioeng. 1989,
   // Measurement of oxygen solubility in fermentation media). 0.20 is a
-  // mid-run value. The shipped process (aeration off at x = 5 g/L) peaks at
-  // ~19.6 mmol/L/h and is not bound; a glucose-lean, fully aerobic batch
-  // climbing past ~10 g/L biomass is (~69 mmol/L/h). Glucose-rich runs stay
+  // mid-run value. In the shipped process (aeration off at x = 5 g/L) the
+  // total qO2*x peaks at ~19.6 mmol/L/h -- OUR_demand, the quantity the cap
+  // compares, is lower still -- and the bound never binds; a glucose-lean,
+  // fully aerobic batch climbing past ~10 g/L biomass does bind (unbounded
+  // demand ~69 mmol/L/h; f_O2 bottoms at ~0.58). Glucose-rich runs stay
   // under the cap because r2/r5/r8 are glucose-inhibited (K_2i, K_5i).
   kLa = 200;
   kLa has per_h;

@@ -19,8 +19,9 @@ not kinetics and are excluded from descriptions; they are enumerated in
 :data:`OPERATION_PARAMETERS` only so the classification can be proven
 complete against the model. RoadRunner also lists assignment-rule outputs
 (``qO2``, the ``y_*`` yields, the ``curr_*`` mirrors, the oxygen-transfer
-factor ``f_O2`` and its ``OUR_*``/``OTR_max`` inputs) as global parameters;
-those are derived quantities and are neither listed nor described.
+factor ``f_O2`` and its ``v2_0``/``v5_0``/``v7_0``/``v8_0``, ``OUR_*`` and
+``OTR_max`` inputs) as global parameters; those are derived quantities and
+are neither listed nor described.
 
 This module is pure Python and imports nothing from the package, so its
 tables can be read without loading the model.

@@ -221,13 +221,14 @@ under the ``OTR_max`` = 40 mmol O2/L/h that the default ``kLa`` = 200 /h and
 rate laws are glucose-inhibited and this feeding strategy holds glucose at
 100–140 g/L. The bound bites in glucose-lean, fully aerobic runs — a
 100 g/L batch under the model's default 10 → 100 g/L refills, glucose-lean
-while it binds, exceeds the cap near peak biomass (demand ~68 mmol O2/L/h,
-``f_O2`` down to ~0.58), which is what the package's
+while it binds, exceeds the cap near peak biomass (unbounded demand
+~69 mmol O2/L/h; realized respiratory uptake held at the 40 mmol O2/L/h
+cap, ``f_O2`` down to ~0.58), which is what the package's
 ``test_o2_transfer_bound`` tests pin — while the shipped fed-batch process
 in :doc:`06_process_tea_bridge` is never bound (its aeration stops at 5 g/L
 biomass). Lower ``r.kLa`` to describe a poorly aerated vessel and watch
 ``f_O2`` dip below 1 — in this run nothing happens until ``kLa`` falls
-below about 90 /h (demand 17.5 mmol/L/h versus a cap of 0.2 × ``kLa``);
+below about 88 /h (demand 17.5 mmol/L/h versus a cap of 0.2 × ``kLa``);
 :doc:`the shipped-model API page </API/models>` documents the parameters.
 
 ``[s_IBO]`` stays at exactly ``0.0``. This is not a bug — it is the shipped

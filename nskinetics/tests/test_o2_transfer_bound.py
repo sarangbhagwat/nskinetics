@@ -100,7 +100,7 @@ def test_default_cap_is_non_binding_in_a_staged_batch():
     ``f_O2`` is identically 1 while aerated and the cap changes nothing. The
     corresponding claim for the shipped fed-batch is carried separately, by the
     in-repo diagnostic's ``min_f_O2_aerobic`` probe."""
-    # Peak demand while aerated is ~13.5 mmol/L/h here, comfortably below the
+    # Peak demand while aerated is ~13.3 mmol/L/h here, comfortably below the
     # 40 mmol/L/h default cap.
     with _batch(stage_1_max_x=5.0) as r:
         d = _run(r)
