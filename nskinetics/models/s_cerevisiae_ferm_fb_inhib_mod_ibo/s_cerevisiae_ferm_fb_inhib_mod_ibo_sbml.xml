@@ -80,6 +80,24 @@
           <unit kind="second" exponent="1" scale="3" multiplier="3.6"/>
         </listOfUnits>
       </unitDefinition>
+      <unitDefinition id="per_h" name="per hour">
+        <listOfUnits>
+          <unit kind="second" exponent="-1" scale="3" multiplier="3.6"/>
+        </listOfUnits>
+      </unitDefinition>
+      <unitDefinition id="mmole_per_l" name="mmole per liter">
+        <listOfUnits>
+          <unit kind="mole" exponent="1" scale="-3" multiplier="1"/>
+          <unit kind="litre" exponent="-1" scale="0" multiplier="1"/>
+        </listOfUnits>
+      </unitDefinition>
+      <unitDefinition id="mmole_per_l_per_h" name="mmole per liter per hour">
+        <listOfUnits>
+          <unit kind="mole" exponent="1" scale="-3" multiplier="1"/>
+          <unit kind="litre" exponent="-1" scale="0" multiplier="1"/>
+          <unit kind="second" exponent="-1" scale="3" multiplier="3.6"/>
+        </listOfUnits>
+      </unitDefinition>
       <unitDefinition id="mmole_per_g_per_h" name="mmole per gram BM per hour">
         <listOfUnits>
           <unit kind="mole" exponent="1" scale="-3" multiplier="1"/>
@@ -98,11 +116,6 @@
         <listOfUnits>
           <unit kind="litre" exponent="1" scale="0" multiplier="1"/>
           <unit kind="gram" exponent="-1" scale="0" multiplier="1"/>
-        </listOfUnits>
-      </unitDefinition>
-      <unitDefinition id="per_h" name="per hour">
-        <listOfUnits>
-          <unit kind="second" exponent="-1" scale="3" multiplier="3.6"/>
         </listOfUnits>
       </unitDefinition>
       <unitDefinition id="substance" name="gram">
@@ -267,6 +280,32 @@
       <parameter id="is_aerobic" value="1" units="dimensionless" constant="true"/>
       <parameter id="qCO2" units="mmole_per_g_per_h" constant="false"/>
       <parameter id="qO2_TCA_growth_only" constant="false"/>
+      <parameter id="v2_0" constant="false"/>
+      <parameter id="k_2" value="0.501" units="g_per_l_per_h" constant="true"/>
+      <parameter id="K_2" value="2e-05" units="g_per_l" constant="true"/>
+      <parameter id="K_2i" value="0.101" units="l_per_g" constant="true"/>
+      <parameter id="v5_0" constant="false"/>
+      <parameter id="k_5" value="0.0104" units="g_per_l_per_h" constant="true"/>
+      <parameter id="K_5" value="0.0102" units="g_per_l" constant="true"/>
+      <parameter id="k_5e" value="0.775" units="g_per_l_per_h" constant="true"/>
+      <parameter id="K_5e" value="0.1" units="g_per_l" constant="true"/>
+      <parameter id="K_5i" value="440" units="l_per_g" constant="true"/>
+      <parameter id="v7_0" constant="false"/>
+      <parameter id="k_7" value="1.203" units="g_per_l_per_h" constant="true"/>
+      <parameter id="k_7ie" value="0.04" units="l_per_g" constant="true"/>
+      <parameter id="k_7ia" value="0.12" units="l_per_g" constant="true"/>
+      <parameter id="k_7ii" value="0.15" units="l_per_g" constant="true"/>
+      <parameter id="K_7" value="0.0101" units="g_per_l" constant="true"/>
+      <parameter id="v8_0" constant="false"/>
+      <parameter id="k_8" value="0.589" units="g_per_l_per_h" constant="true"/>
+      <parameter id="OTR_max" units="mmole_per_l_per_h" constant="false"/>
+      <parameter id="kLa" value="200" units="per_h" constant="true"/>
+      <parameter id="C_O2_sat" value="0.2" units="mmole_per_l" constant="true"/>
+      <parameter id="OUR_gated" units="mmole_per_l_per_h" constant="false"/>
+      <parameter id="anaerobic_growth_mult" value="1" units="dimensionless" constant="true"/>
+      <parameter id="OUR_committed" units="mmole_per_l_per_h" constant="false"/>
+      <parameter id="OUR_demand" units="mmole_per_l_per_h" constant="false"/>
+      <parameter id="f_O2" units="dimensionless" constant="false"/>
       <parameter id="tot_mass_glu" constant="false"/>
       <parameter id="conc_glu_feed_spike" value="600" units="g_per_l" constant="false"/>
       <parameter id="tot_vol_glu_feed_added" value="0" units="volume" constant="false"/>
@@ -292,9 +331,6 @@
       <parameter id="k_1ie" value="0.02" units="l_per_g" constant="true"/>
       <parameter id="k_1ia" value="0.06" units="l_per_g" constant="true"/>
       <parameter id="k_1ii" value="0.075" units="l_per_g" constant="true"/>
-      <parameter id="k_2" value="0.501" units="g_per_l_per_h" constant="true"/>
-      <parameter id="K_2" value="2e-05" units="g_per_l" constant="true"/>
-      <parameter id="K_2i" value="0.101" units="l_per_g" constant="true"/>
       <parameter id="k_3" value="5.81" units="g_per_l_per_h" constant="true"/>
       <parameter id="K_3" value="5e-07" units="g_per_l" constant="true"/>
       <parameter id="k_4" value="4.8" units="g_per_l_per_h" constant="true"/>
@@ -302,24 +338,12 @@
       <parameter id="k_4ia" value="0.12" units="l_per_g" constant="true"/>
       <parameter id="k_4ii" value="0.15" units="l_per_g" constant="true"/>
       <parameter id="K_4" value="0.000264" units="g_per_l" constant="true"/>
-      <parameter id="k_5" value="0.0104" units="g_per_l_per_h" constant="true"/>
-      <parameter id="K_5" value="0.0102" units="g_per_l" constant="true"/>
-      <parameter id="k_5e" value="0.775" units="g_per_l_per_h" constant="true"/>
-      <parameter id="K_5e" value="0.1" units="g_per_l" constant="true"/>
-      <parameter id="K_5i" value="440" units="l_per_g" constant="true"/>
       <parameter id="k_6" value="2.82" units="g_per_l_per_h" constant="true"/>
       <parameter id="k_6r" value="0.0125" units="dimensionless" constant="true"/>
       <parameter id="K_6" value="0.034" units="g_per_l" constant="true"/>
       <parameter id="K_6e" value="0.057" units="dimensionless" constant="true"/>
       <parameter id="k_6ia" value="0.06" units="l_per_g" constant="true"/>
       <parameter id="k_6ii" value="0.075" units="l_per_g" constant="true"/>
-      <parameter id="anaerobic_growth_mult" value="1" units="dimensionless" constant="true"/>
-      <parameter id="k_7" value="1.203" units="g_per_l_per_h" constant="true"/>
-      <parameter id="k_7ie" value="0.04" units="l_per_g" constant="true"/>
-      <parameter id="k_7ia" value="0.12" units="l_per_g" constant="true"/>
-      <parameter id="k_7ii" value="0.15" units="l_per_g" constant="true"/>
-      <parameter id="K_7" value="0.0101" units="g_per_l" constant="true"/>
-      <parameter id="k_8" value="0.589" units="g_per_l_per_h" constant="true"/>
       <parameter id="k_9" value="0.008" units="g_per_l_per_h" constant="true"/>
       <parameter id="K_9" value="1e-06" units="g_per_l" constant="true"/>
       <parameter id="k_9e" value="0.0751" units="g_per_l_per_h" constant="true"/>
@@ -342,7 +366,7 @@
       <parameter id="k_15" value="0" units="g_per_l_per_h" constant="true"/>
       <parameter id="K_15" value="0.000264" units="g_per_l" constant="true"/>
       <parameter id="k_16" value="0" units="g_per_l_per_h" constant="true"/>
-      <parameter id="k_16r" value="0" units="dimensionless" constant="true"/>
+      <parameter id="k_16r" value="0.0125" units="dimensionless" constant="true"/>
       <parameter id="K_16" value="0.034" units="g_per_l" constant="true"/>
       <parameter id="K_16i" value="0.057" units="dimensionless" constant="true"/>
       <parameter id="k_16ia" value="0.06" units="l_per_g" constant="true"/>
@@ -618,6 +642,292 @@
           </apply>
         </math>
       </assignmentRule>
+      <assignmentRule variable="v2_0">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <times/>
+            <apply>
+              <divide/>
+              <apply>
+                <times/>
+                <ci> k_2 </ci>
+                <ci> s_pyr </ci>
+              </apply>
+              <apply>
+                <times/>
+                <apply>
+                  <plus/>
+                  <ci> s_pyr </ci>
+                  <ci> K_2 </ci>
+                </apply>
+                <apply>
+                  <plus/>
+                  <apply>
+                    <times/>
+                    <ci> K_2i </ci>
+                    <ci> s_glu </ci>
+                  </apply>
+                  <cn type="integer"> 1 </cn>
+                </apply>
+              </apply>
+            </apply>
+            <ci> a </ci>
+            <ci> env </ci>
+          </apply>
+        </math>
+      </assignmentRule>
+      <assignmentRule variable="v5_0">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <times/>
+            <apply>
+              <plus/>
+              <apply>
+                <divide/>
+                <apply>
+                  <times/>
+                  <ci> k_5 </ci>
+                  <ci> s_acetate </ci>
+                </apply>
+                <apply>
+                  <plus/>
+                  <ci> s_acetate </ci>
+                  <ci> K_5 </ci>
+                </apply>
+              </apply>
+              <apply>
+                <divide/>
+                <apply>
+                  <times/>
+                  <ci> k_5e </ci>
+                  <ci> s_acetate </ci>
+                </apply>
+                <apply>
+                  <times/>
+                  <apply>
+                    <plus/>
+                    <ci> s_acetate </ci>
+                    <ci> K_5e </ci>
+                  </apply>
+                  <apply>
+                    <plus/>
+                    <cn type="integer"> 1 </cn>
+                    <apply>
+                      <times/>
+                      <ci> K_5i </ci>
+                      <ci> s_glu </ci>
+                    </apply>
+                  </apply>
+                </apply>
+              </apply>
+            </apply>
+            <ci> a </ci>
+            <ci> env </ci>
+          </apply>
+        </math>
+      </assignmentRule>
+      <assignmentRule variable="v7_0">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <times/>
+            <apply>
+              <divide/>
+              <apply>
+                <times/>
+                <ci> k_7 </ci>
+                <ci> s_glu </ci>
+                <apply>
+                  <power/>
+                  <cn> 2.71828 </cn>
+                  <apply>
+                    <times/>
+                    <apply>
+                      <minus/>
+                      <ci> k_7ie </ci>
+                    </apply>
+                    <ci> s_EtOH </ci>
+                  </apply>
+                </apply>
+                <apply>
+                  <power/>
+                  <cn> 2.71828 </cn>
+                  <apply>
+                    <times/>
+                    <apply>
+                      <minus/>
+                      <ci> k_7ia </ci>
+                    </apply>
+                    <ci> s_acetate </ci>
+                  </apply>
+                </apply>
+                <apply>
+                  <power/>
+                  <cn> 2.71828 </cn>
+                  <apply>
+                    <times/>
+                    <apply>
+                      <minus/>
+                      <ci> k_7ii </ci>
+                    </apply>
+                    <ci> s_IBO </ci>
+                  </apply>
+                </apply>
+              </apply>
+              <apply>
+                <plus/>
+                <ci> s_glu </ci>
+                <ci> K_7 </ci>
+              </apply>
+            </apply>
+            <ci> a </ci>
+            <ci> env </ci>
+          </apply>
+        </math>
+      </assignmentRule>
+      <assignmentRule variable="v8_0">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <times/>
+            <apply>
+              <divide/>
+              <apply>
+                <times/>
+                <ci> k_8 </ci>
+                <ci> s_acetate </ci>
+              </apply>
+              <apply>
+                <times/>
+                <apply>
+                  <plus/>
+                  <ci> s_acetate </ci>
+                  <ci> K_5e </ci>
+                </apply>
+                <apply>
+                  <plus/>
+                  <cn type="integer"> 1 </cn>
+                  <apply>
+                    <times/>
+                    <ci> K_5i </ci>
+                    <ci> s_glu </ci>
+                  </apply>
+                </apply>
+              </apply>
+            </apply>
+            <ci> a </ci>
+            <ci> env </ci>
+          </apply>
+        </math>
+      </assignmentRule>
+      <assignmentRule variable="OTR_max">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <times/>
+            <ci> kLa </ci>
+            <ci> C_O2_sat </ci>
+          </apply>
+        </math>
+      </assignmentRule>
+      <assignmentRule variable="OUR_gated">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <divide/>
+            <apply>
+              <times/>
+              <cn type="rational"> 1000 <sep/> 32 </cn>
+              <apply>
+                <plus/>
+                <apply>
+                  <times/>
+                  <cn> 0.908 </cn>
+                  <ci> v2_0 </ci>
+                </apply>
+                <apply>
+                  <times/>
+                  <cn> 1.066 </cn>
+                  <ci> v5_0 </ci>
+                </apply>
+                <apply>
+                  <times/>
+                  <cn> 0.214 </cn>
+                  <ci> v8_0 </ci>
+                </apply>
+                <apply>
+                  <times/>
+                  <apply>
+                    <minus/>
+                    <cn type="integer"> 1 </cn>
+                    <ci> anaerobic_growth_mult </ci>
+                  </apply>
+                  <cn> 0.063 </cn>
+                  <ci> v7_0 </ci>
+                </apply>
+              </apply>
+            </apply>
+            <ci> env </ci>
+          </apply>
+        </math>
+      </assignmentRule>
+      <assignmentRule variable="OUR_committed">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <divide/>
+            <apply>
+              <times/>
+              <cn type="rational"> 1000 <sep/> 32 </cn>
+              <ci> anaerobic_growth_mult </ci>
+              <cn> 0.063 </cn>
+              <ci> v7_0 </ci>
+            </apply>
+            <ci> env </ci>
+          </apply>
+        </math>
+      </assignmentRule>
+      <assignmentRule variable="OUR_demand">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <plus/>
+            <ci> OUR_gated </ci>
+            <ci> OUR_committed </ci>
+          </apply>
+        </math>
+      </assignmentRule>
+      <assignmentRule variable="f_O2">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <times/>
+            <ci> is_aerobic </ci>
+            <piecewise>
+              <piece>
+                <cn type="integer"> 1 </cn>
+                <apply>
+                  <leq/>
+                  <ci> OUR_demand </ci>
+                  <ci> OTR_max </ci>
+                </apply>
+              </piece>
+              <piece>
+                <cn type="integer"> 0 </cn>
+                <apply>
+                  <geq/>
+                  <ci> OUR_committed </ci>
+                  <ci> OTR_max </ci>
+                </apply>
+              </piece>
+              <otherwise>
+                <apply>
+                  <divide/>
+                  <apply>
+                    <minus/>
+                    <ci> OTR_max </ci>
+                    <ci> OUR_committed </ci>
+                  </apply>
+                  <ci> OUR_gated </ci>
+                </apply>
+              </otherwise>
+            </piecewise>
+          </apply>
+        </math>
+      </assignmentRule>
       <assignmentRule variable="tot_mass_glu">
         <math xmlns="http://www.w3.org/1998/Math/MathML">
           <apply>
@@ -756,10 +1066,10 @@
           <speciesReference species="Red" stoichiometry="0.178" constant="true"/>
         </listOfProducts>
         <listOfModifiers>
-          <modifierSpeciesReference species="s_acetate"/>
+          <modifierSpeciesReference species="s_IBO"/>
           <modifierSpeciesReference species="s_acetald"/>
           <modifierSpeciesReference species="s_EtOH"/>
-          <modifierSpeciesReference species="s_IBO"/>
+          <modifierSpeciesReference species="s_acetate"/>
           <modifierSpeciesReference species="a"/>
         </listOfModifiers>
         <kineticLaw>
@@ -882,42 +1192,12 @@
           <speciesReference species="CO2" stoichiometry="1.499" constant="true"/>
           <speciesReference species="Red" stoichiometry="0.908" constant="true"/>
         </listOfProducts>
-        <listOfModifiers>
-          <modifierSpeciesReference species="s_glu"/>
-          <modifierSpeciesReference species="a"/>
-        </listOfModifiers>
         <kineticLaw>
           <math xmlns="http://www.w3.org/1998/Math/MathML">
             <apply>
               <times/>
-              <ci> is_aerobic </ci>
-              <apply>
-                <divide/>
-                <apply>
-                  <times/>
-                  <ci> k_2 </ci>
-                  <ci> s_pyr </ci>
-                </apply>
-                <apply>
-                  <times/>
-                  <apply>
-                    <plus/>
-                    <ci> s_pyr </ci>
-                    <ci> K_2 </ci>
-                  </apply>
-                  <apply>
-                    <plus/>
-                    <apply>
-                      <times/>
-                      <ci> K_2i </ci>
-                      <ci> s_glu </ci>
-                    </apply>
-                    <cn type="integer"> 1 </cn>
-                  </apply>
-                </apply>
-              </apply>
-              <ci> a </ci>
-              <ci> env </ci>
+              <ci> f_O2 </ci>
+              <ci> v2_0 </ci>
             </apply>
           </math>
         </kineticLaw>
@@ -931,8 +1211,8 @@
           <speciesReference species="Red" stoichiometry="0.363" constant="true"/>
         </listOfProducts>
         <listOfModifiers>
-          <modifierSpeciesReference species="s_EtOH"/>
           <modifierSpeciesReference species="s_IBO"/>
+          <modifierSpeciesReference species="s_EtOH"/>
           <modifierSpeciesReference species="a"/>
         </listOfModifiers>
         <kineticLaw>
@@ -1014,58 +1294,12 @@
           <speciesReference species="CO2" stoichiometry="1.446" constant="true"/>
           <speciesReference species="Red" stoichiometry="1.066" constant="true"/>
         </listOfProducts>
-        <listOfModifiers>
-          <modifierSpeciesReference species="s_glu"/>
-          <modifierSpeciesReference species="a"/>
-        </listOfModifiers>
         <kineticLaw>
           <math xmlns="http://www.w3.org/1998/Math/MathML">
             <apply>
               <times/>
-              <ci> is_aerobic </ci>
-              <apply>
-                <plus/>
-                <apply>
-                  <divide/>
-                  <apply>
-                    <times/>
-                    <ci> k_5 </ci>
-                    <ci> s_acetate </ci>
-                  </apply>
-                  <apply>
-                    <plus/>
-                    <ci> s_acetate </ci>
-                    <ci> K_5 </ci>
-                  </apply>
-                </apply>
-                <apply>
-                  <divide/>
-                  <apply>
-                    <times/>
-                    <ci> k_5e </ci>
-                    <ci> s_acetate </ci>
-                  </apply>
-                  <apply>
-                    <times/>
-                    <apply>
-                      <plus/>
-                      <ci> s_acetate </ci>
-                      <ci> K_5e </ci>
-                    </apply>
-                    <apply>
-                      <plus/>
-                      <cn type="integer"> 1 </cn>
-                      <apply>
-                        <times/>
-                        <ci> K_5i </ci>
-                        <ci> s_glu </ci>
-                      </apply>
-                    </apply>
-                  </apply>
-                </apply>
-              </apply>
-              <ci> a </ci>
-              <ci> env </ci>
+              <ci> f_O2 </ci>
+              <ci> v5_0 </ci>
             </apply>
           </math>
         </kineticLaw>
@@ -1096,8 +1330,8 @@
           <speciesReference species="s_EtOH" stoichiometry="1.045" constant="true"/>
         </listOfProducts>
         <listOfModifiers>
-          <modifierSpeciesReference species="s_acetate"/>
           <modifierSpeciesReference species="s_IBO"/>
+          <modifierSpeciesReference species="s_acetate"/>
           <modifierSpeciesReference species="a"/>
         </listOfModifiers>
         <kineticLaw>
@@ -1169,8 +1403,8 @@
           <speciesReference species="s_IBO" stoichiometry="0.638" constant="true"/>
         </listOfProducts>
         <listOfModifiers>
-          <modifierSpeciesReference species="s_acetate"/>
           <modifierSpeciesReference species="s_EtOH"/>
+          <modifierSpeciesReference species="s_acetate"/>
           <modifierSpeciesReference species="a"/>
         </listOfModifiers>
         <kineticLaw>
@@ -1242,12 +1476,6 @@
           <speciesReference species="CO2" stoichiometry="0.127" constant="true"/>
           <speciesReference species="Red" stoichiometry="0.063" constant="true"/>
         </listOfProducts>
-        <listOfModifiers>
-          <modifierSpeciesReference species="s_acetate"/>
-          <modifierSpeciesReference species="s_EtOH"/>
-          <modifierSpeciesReference species="s_IBO"/>
-          <modifierSpeciesReference species="a"/>
-        </listOfModifiers>
         <kineticLaw>
           <math xmlns="http://www.w3.org/1998/Math/MathML">
             <apply>
@@ -1262,60 +1490,10 @@
                     <cn type="integer"> 1 </cn>
                     <ci> anaerobic_growth_mult </ci>
                   </apply>
-                  <ci> is_aerobic </ci>
+                  <ci> f_O2 </ci>
                 </apply>
               </apply>
-              <apply>
-                <divide/>
-                <apply>
-                  <times/>
-                  <ci> k_7 </ci>
-                  <ci> s_glu </ci>
-                  <apply>
-                    <power/>
-                    <cn> 2.71828 </cn>
-                    <apply>
-                      <times/>
-                      <apply>
-                        <minus/>
-                        <ci> k_7ie </ci>
-                      </apply>
-                      <ci> s_EtOH </ci>
-                    </apply>
-                  </apply>
-                  <apply>
-                    <power/>
-                    <cn> 2.71828 </cn>
-                    <apply>
-                      <times/>
-                      <apply>
-                        <minus/>
-                        <ci> k_7ia </ci>
-                      </apply>
-                      <ci> s_acetate </ci>
-                    </apply>
-                  </apply>
-                  <apply>
-                    <power/>
-                    <cn> 2.71828 </cn>
-                    <apply>
-                      <times/>
-                      <apply>
-                        <minus/>
-                        <ci> k_7ii </ci>
-                      </apply>
-                      <ci> s_IBO </ci>
-                    </apply>
-                  </apply>
-                </apply>
-                <apply>
-                  <plus/>
-                  <ci> s_glu </ci>
-                  <ci> K_7 </ci>
-                </apply>
-              </apply>
-              <ci> a </ci>
-              <ci> env </ci>
+              <ci> v7_0 </ci>
             </apply>
           </math>
         </kineticLaw>
@@ -1341,42 +1519,12 @@
           <speciesReference species="CO2" stoichiometry="0.325" constant="true"/>
           <speciesReference species="Red" stoichiometry="0.214" constant="true"/>
         </listOfProducts>
-        <listOfModifiers>
-          <modifierSpeciesReference species="s_glu"/>
-          <modifierSpeciesReference species="a"/>
-        </listOfModifiers>
         <kineticLaw>
           <math xmlns="http://www.w3.org/1998/Math/MathML">
             <apply>
               <times/>
-              <ci> is_aerobic </ci>
-              <apply>
-                <divide/>
-                <apply>
-                  <times/>
-                  <ci> k_8 </ci>
-                  <ci> s_acetate </ci>
-                </apply>
-                <apply>
-                  <times/>
-                  <apply>
-                    <plus/>
-                    <ci> s_acetate </ci>
-                    <ci> K_5e </ci>
-                  </apply>
-                  <apply>
-                    <plus/>
-                    <cn type="integer"> 1 </cn>
-                    <apply>
-                      <times/>
-                      <ci> K_5i </ci>
-                      <ci> s_glu </ci>
-                    </apply>
-                  </apply>
-                </apply>
-              </apply>
-              <ci> a </ci>
-              <ci> env </ci>
+              <ci> f_O2 </ci>
+              <ci> v8_0 </ci>
             </apply>
           </math>
         </kineticLaw>
@@ -1460,8 +1608,8 @@
           <speciesReference species="AcDH" stoichiometry="1" constant="true"/>
         </listOfProducts>
         <listOfModifiers>
-          <modifierSpeciesReference species="s_glu"/>
           <modifierSpeciesReference species="s_EtOH"/>
+          <modifierSpeciesReference species="s_glu"/>
         </listOfModifiers>
         <kineticLaw>
           <math xmlns="http://www.w3.org/1998/Math/MathML">
@@ -1535,9 +1683,9 @@
           <speciesReference species="a" stoichiometry="1" constant="true"/>
         </listOfReactants>
         <listOfModifiers>
-          <modifierSpeciesReference species="s_acetate"/>
-          <modifierSpeciesReference species="s_EtOH"/>
           <modifierSpeciesReference species="s_IBO"/>
+          <modifierSpeciesReference species="s_EtOH"/>
+          <modifierSpeciesReference species="s_acetate"/>
         </listOfModifiers>
         <kineticLaw>
           <math xmlns="http://www.w3.org/1998/Math/MathML">

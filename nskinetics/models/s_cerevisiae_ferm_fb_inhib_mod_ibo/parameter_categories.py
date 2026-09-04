@@ -18,7 +18,8 @@ Operation parameters -- fed-batch feeding, aeration staging, dilution -- are
 not kinetics and are excluded from descriptions; they are enumerated in
 :data:`OPERATION_PARAMETERS` only so the classification can be proven
 complete against the model. RoadRunner also lists assignment-rule outputs
-(``qO2``, the ``y_*`` yields, the ``curr_*`` mirrors) as global parameters;
+(``qO2``, the ``y_*`` yields, the ``curr_*`` mirrors, the oxygen-transfer
+factor ``f_O2`` and its ``OUR_*``/``OTR_max`` inputs) as global parameters;
 those are derived quantities and are neither listed nor described.
 
 This module is pure Python and imports nothing from the package, so its
@@ -196,6 +197,7 @@ KINETIC_PARAMETERS = {
 OPERATION_PARAMETERS = frozenset({
     'D', 'is_aerobic', 'stage_1_max_time', 'stage_1_max_x',
     'anaerobic_growth_mult',
+    'kLa', 'C_O2_sat',                      # oxygen-transfer capacity
     'max_n_glu_spikes', 'n_glu_spikes',
     'threshold_conc_glu_spike', 'target_conc_glu_spike',
     'conc_glu_feed_spike',

@@ -17,6 +17,25 @@ model *bhagwat2026()
   qO2_TCA_growth_only := (1000/32)*((0.908*r2 + 1.066*r5) + 0.063*r7 + 0.214*r8)/(x*env);
   cell := x*env*0.0015;
 
+  // Oxygen-transfer bound. The four O2-dependent rate laws are written once,
+  // unscaled (v*_0, g/h basis, exactly the reactions' expressions without
+  // their is_aerobic prefactor); the reactions below apply f_O2 to them.
+  // OUR_gated is the respiratory + growth-associated O2 demand f_O2 can
+  // throttle; OUR_committed is the growth-associated O2 of the ungated
+  // anaerobic_growth_mult share of r7, which runs regardless. Realized
+  // respiratory O2 is f_O2*OUR_gated + OUR_committed, so f_O2 is chosen to
+  // make that equal OTR_max exactly when the cap binds (clamped to [0, 1]).
+  // Coefficients are those of qO2_TCA_growth_only; units mmol O2/L/h.
+  v2_0 := (k_2*s_pyr/((s_pyr + K_2)*(K_2i*s_glu + 1)))*a*env;
+  v5_0 := (k_5*s_acetate/(s_acetate + K_5) + k_5e*s_acetate/((s_acetate + K_5e)*(1 + K_5i*s_glu)))*a*env;
+  v7_0 := (k_7*s_glu*2.71828^(-k_7ie*s_EtOH)*2.71828^(-k_7ia*s_acetate)*2.71828^(-k_7ii*s_IBO)/(s_glu + K_7))*a*env;
+  v8_0 := (k_8*s_acetate/((s_acetate + K_5e)*(1 + K_5i*s_glu)))*a*env;
+  OTR_max := kLa*C_O2_sat;
+  OUR_gated := (1000/32)*(0.908*v2_0 + 1.066*v5_0 + 0.214*v8_0 + (1.0-anaerobic_growth_mult)*0.063*v7_0)/env;
+  OUR_committed := (1000/32)*anaerobic_growth_mult*0.063*v7_0/env;
+  OUR_demand := OUR_gated + OUR_committed;
+  f_O2 := is_aerobic*piecewise(1, OUR_demand <= OTR_max, 0, OUR_committed >= OTR_max, (OTR_max - OUR_committed)/OUR_gated);
+
   tot_mass_glu := (conc_glu_feed_spike*tot_vol_glu_feed_added) + target_conc_glu_spike*(env - tot_vol_glu_feed_added);
   y_EtOH_glu_added := s_EtOH*env/tot_mass_glu;
   y_EtOH_glu_consumed := s_EtOH*env/(tot_mass_glu-s_glu*env);
@@ -39,13 +58,13 @@ model *bhagwat2026()
 
   // Reactions:
   r1: s_glu => 0.978 s_pyr + 0.178 $Red; (k_1l*s_glu/(s_glu + K_1l) + k_1h*s_glu/(s_glu + K_1h) + k_1e*s_acetald*s_glu/(s_glu*(K_1i*s_acetald + 1) + K_1e))*2.71828^(-k_1ie*s_EtOH)*2.71828^(-k_1ia*s_acetate)*2.71828^(-k_1ii*s_IBO)*a*env;
-  r2: s_pyr => 1.499 $CO2 + 0.908 $Red; is_aerobic*(k_2*s_pyr/((s_pyr + K_2)*(K_2i*s_glu + 1)))*a*env;
+  r2: s_pyr => 1.499 $CO2 + 0.908 $Red; f_O2*v2_0;
   r3: s_pyr => 0.5 s_acetald + 0.33 $CO2; (k_3*s_pyr^4/(s_pyr^4 + K_3))*a*env;
   r4: s_acetald => 1.363 s_acetate + 0.363 $Red; (k_4*s_acetald*2.71828^(-k_4ie*s_EtOH)*2.71828^(-k_4ia*s_acetate)*2.71828^(-k_4ii*s_IBO)/(s_acetald + K_4))*a*X_AcDH*env;
-  r5: s_acetate => 1.446 $CO2 + 1.066 $Red; is_aerobic*(k_5*s_acetate/(s_acetate + K_5) + k_5e*s_acetate/((s_acetate + K_5e)*(1 + K_5i*s_glu)))*a*env;
+  r5: s_acetate => 1.446 $CO2 + 1.066 $Red; f_O2*v5_0;
   r6: s_acetald + 0.363 $Red -> 1.045 s_EtOH; (k_6*(s_acetald - k_6r*s_EtOH)/(s_acetald + K_6 + K_6e*s_EtOH))*2.71828^(-k_6ia*s_acetate)*2.71828^(-k_6ii*s_IBO)*a*env;
-  r7: s_glu => 0.732 x + 0.127 $CO2 + 0.063 $Red; (anaerobic_growth_mult + (1.0-anaerobic_growth_mult)*is_aerobic)*(k_7*s_glu*2.71828^(-k_7ie*s_EtOH)*2.71828^(-k_7ia*s_acetate)*2.71828^(-k_7ii*s_IBO)/(s_glu + K_7))*a*env;
-  r8: s_acetate => 0.619 x + 0.325 $CO2 + 0.214 $Red; is_aerobic*(k_8*s_acetate/((s_acetate + K_5e)*(1 + K_5i*s_glu)))*a*env;
+  r7: s_glu => 0.732 x + 0.127 $CO2 + 0.063 $Red; (anaerobic_growth_mult + (1.0-anaerobic_growth_mult)*f_O2)*v7_0;
+  r8: s_acetate => 0.619 x + 0.325 $CO2 + 0.214 $Red; f_O2*v8_0;
   r9: $a => $AcDH; ((k_9*s_glu/(s_glu + K_9) + k_9e*s_EtOH/(s_EtOH + K_9e))/(K_9i*s_glu + 1) + k_9c*s_glu/(s_glu + K_9))*a*env;
   r10: $a => ; k_10*piecewise(2.71828^(k_10ie*(s_EtOH - P_10e)), s_EtOH > P_10e, 1)*piecewise(2.71828^(k_10ia*(s_acetate - P_10a)), s_acetate > P_10a, 1)*piecewise(2.71828^(k_10ii*(s_IBO - P_10i)), s_IBO > P_10i, 1)*a*env;
   r11: $AcDH => ; k_11*AcDH*env;
@@ -118,6 +137,38 @@ model *bhagwat2026()
   stage_1_max_x has g_per_l;
   anaerobic_growth_mult = 1.0;
   anaerobic_growth_mult has dimensionless;
+
+  // Oxygen-transfer capacity of the vessel, OTR_max = kLa*C_O2_sat
+  // (40 mmol O2/L/h at the defaults). Operation parameters, not kinetics.
+  // kLa = 200 /h is mid-industrial: air-sparged pilot S. cerevisiae
+  // fermentations measure 136-473 /h over 150-500 rpm (Hensirisak 1997,
+  // Scale-up the use of a microbubble dispersion to increase oxygen
+  // transfer in aerobic fermentation of baker's yeast, Virginia Tech
+  // thesis); stirred-tank fermentors sit in this band and O2 transfer is
+  // usually the rate-limiting step (Garcia-Ochoa & Gomez, Biotechnol. Adv.
+  // 2009, doi:10.1016/j.biotechadv.2008.10.006); industrial high-cell-
+  // density baker's-yeast fed-batch is explicitly OTR-limited (van Hoek et
+  // al., Biotechnol. Bioeng. 2000, Fermentative capacity in high-cell-
+  // density fed-batch cultures of baker's yeast).
+  // C_O2_sat = 0.20 mmol/L: air-saturated water at 32 C is ~0.23 mmol/L;
+  // medium sugars and salts depress it log-additively (Quicker et al.,
+  // Biotechnol. Bioeng. 1981, Comparison of measured and calculated oxygen
+  // solubilities in fermentation media), by ~30 % at the ~220 g/L sugar the
+  // shipped process starts at (Slininger et al., Biotechnol. Bioeng. 1989,
+  // Measurement of oxygen solubility in fermentation media). 0.20 is a
+  // mid-run value. The shipped process (aeration off at x = 5 g/L) peaks at
+  // ~19.6 mmol/L/h and is not bound; a glucose-lean, fully aerobic batch
+  // climbing past ~10 g/L biomass is (~69 mmol/L/h). Glucose-rich runs stay
+  // under the cap because r2/r5/r8 are glucose-inhibited (K_2i, K_5i).
+  kLa = 200;
+  kLa has per_h;
+  C_O2_sat = 0.2;
+  C_O2_sat has mmole_per_l;
+  OTR_max has mmole_per_l_per_h;
+  OUR_gated has mmole_per_l_per_h;
+  OUR_committed has mmole_per_l_per_h;
+  OUR_demand has mmole_per_l_per_h;
+  f_O2 has dimensionless;
 
   qO2 has mmole_per_g_per_h;
   qCO2 has mmole_per_g_per_h;
@@ -282,6 +333,7 @@ model *bhagwat2026()
 
   // Other declarations:
   var X_a, X_AcDH, qO2, qCO2;
+  var v2_0, v5_0, v7_0, v8_0, OTR_max, OUR_gated, OUR_committed, OUR_demand, f_O2;
 
   var n_glu_spikes, glucose_feed_spikeDelay, threshold_conc_glu_spike, target_conc_glu_spike, conc_glu_feed_spike, last_vol_glu_feed_added, tot_vol_glu_feed_added;
   var tot_mass_glu, y_EtOH_glu_added, y_EtOH_glu_consumed;
@@ -293,6 +345,7 @@ model *bhagwat2026()
   const k_1h, K_1h, k_1l, K_1l, k_1e, K_1e, K_1i, k_2, K_2, K_2i;
   const k_3, K_3, k_4, K_4, k_5, K_5, k_5e, K_5e, K_5i, k_6, K_6, k_6r, K_6e;
   const k_7, K_7, k_8, k_9, K_9, k_9e, K_9e, K_9i, k_9c, k_11, D;
+  const kLa, C_O2_sat;
   const k_13, K_13, k_14, K_14, k_15, K_15, k_16, K_16, k_16r, K_16i
 
   // Unit definitions:
@@ -304,6 +357,8 @@ model *bhagwat2026()
   unit l_per_g = litre / gram;
   unit g_per_l_per_h = gram / (litre * 3600 second);
   unit mmole_per_g_per_h = 1e-3 mole / (3600 second * gram);
+  unit mmole_per_l = 1e-3 mole / litre;
+  unit mmole_per_l_per_h = 1e-3 mole / (litre * 3600 second);
 
   // Display Names:
   substance is "gram";
@@ -314,6 +369,8 @@ model *bhagwat2026()
   l_per_g is "liter  per gram";
   g_per_l_per_h is "gram  per liter per hour";
   mmole_per_g_per_h is "mmole per gram BM per hour";
+  mmole_per_l is "mmole per liter";
+  mmole_per_l_per_h is "mmole per liter per hour";
   env is "environment";
   s_glu is "Glucose";
   s_pyr is "Pyruvate";

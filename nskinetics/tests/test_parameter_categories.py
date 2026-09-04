@@ -96,7 +96,7 @@ def test_kinetic_and_operation_sets_are_disjoint():
     pc = _pc()
     assert not set(pc.KINETIC_PARAMETERS) & pc.OPERATION_PARAMETERS
     assert len(pc.KINETIC_PARAMETERS) == 65
-    assert len(pc.OPERATION_PARAMETERS) == 14
+    assert len(pc.OPERATION_PARAMETERS) == 16
 
 
 def test_flux_map_inhibition_map_is_consistent():
