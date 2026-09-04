@@ -45,6 +45,7 @@ EXPECTED_TRACK_VARS = [
     'prod_EtOH',
     'curr_tot_vol_glu_feed_added',
     'curr_env',
+    'f_O2',
 ]
 
 

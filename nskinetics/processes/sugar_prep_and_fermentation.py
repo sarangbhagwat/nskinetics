@@ -159,6 +159,11 @@ _DEFAULT_TRACK_VARS = (
     'prod_EtOH',
     'curr_tot_vol_glu_feed_added',
     'curr_env',
+    # Oxygen-transfer factor in [0, 1]: 1 while aerated and not transfer-
+    # limited (the whole aerobic stage of the shipped operation), in (0, 1)
+    # where the kLa bound throttles the aerobic fluxes, and 0 once
+    # is_aerobic clears at the end of stage 1.
+    'f_O2',
 )
 
 # The isobutanol biorefinery's baseline_specifications dict (scenario baselines
