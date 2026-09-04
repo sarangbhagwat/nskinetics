@@ -156,20 +156,25 @@ concentration — bracket every species selector to stay in g/L:
 
 .. code-block:: python
 
-   cols = ['time', '[s_glu]', '[s_EtOH]', '[s_IBO]', '[x]', 'n_glu_spikes']
+   cols = ['time', '[s_glu]', '[s_EtOH]', '[s_IBO]', '[x]', 'n_glu_spikes', 'f_O2']
    res = km.simulate(0, 200, 2001, cols)
    print('final:', dict(zip(cols, res[-1])))
 
 (``n_glu_spikes`` stays unbracketed — it is a bookkeeping counter, not a
 species, so it has no amount/concentration distinction.)
 
-Running the full snippet above end-to-end in the ``HP_2024`` environment
+(``f_O2`` is the model's oxygen-transfer factor — 1 while the vessel's
+``kLa``-bounded O2 transfer keeps up with the aerobic fluxes' demand, below 1
+while it throttles them; see
+:doc:`the shipped-model API page </API/models>`.)
+
+Running the full snippet above end-to-end in the ``IBO_2026`` environment
 prints:
 
 .. code-block:: text
 
-   final: {'time': 200.0, '[s_glu]': 100.60863088929011, '[s_EtOH]': 120.09229434175234,
-           '[s_IBO]': 0.0, '[x]': 11.199896074114044, 'n_glu_spikes': 8.0}
+   final: {'time': 200.0, '[s_glu]': 124.84688666549971, '[s_EtOH]': 106.52919597573849,
+           '[s_IBO]': 0.0, '[x]': 12.899819897336942, 'n_glu_spikes': 8.0, 'f_O2': 1.0}
 
 .. code-block:: python
 
@@ -181,7 +186,7 @@ prints:
    :width: 450
 
    Eight glucose spikes hold glucose in the 100–140 g/L band until feeding
-   tapers off past ~34 h; ethanol and biomass climb while the isobutanol
+   tapers off past ~47 h; ethanol and biomass climb while the isobutanol
    branch stays at 0 (its rate constants are 0 in the shipped baseline).
 
 Reading the final state
@@ -194,17 +199,36 @@ the ``threshold_conc_glu_spike`` trigger (100 g/L) back up toward
 — with this model's compartment volume not diluted by any outflow —
 ``[s_glu]`` can only decrease as it is consumed, never exceeding the 140 g/L
 target it was just set to. Tracing the eight spikes confirms this pattern:
-they land at roughly ``t=5.5``, ``7.1``, ``8.8``, ``10.8``, ``13.5``,
-``17.2``, ``23.0``, and ``34.1`` h, each jumping ``[s_glu]`` from the 100 g/L
+they land at roughly ``t=5.5``, ``7.2``, ``9.1``, ``11.4``, ``14.5``,
+``19.2``, ``27.1``, and ``46.9`` h, each jumping ``[s_glu]`` from the 100 g/L
 threshold back up to essentially the 140 g/L target. The spikes cluster early
 and spread further apart later, as the volumetric glucose draw-down between
-spikes slows; after the eighth spike, ``[s_glu]`` simply decays for the
-remaining ~166 h, reaching the final ``100.6`` g/L — settling just above the
-100 g/L threshold, so no ninth spike fires. ``[s_EtOH]`` climbs to ``120.1``
-g/L and biomass ``[x]`` grows elevenfold (``1 → 11.2``), both driven by the
-aerobic growth/fermentation rate laws active throughout this run (recall from
-the previous section that ``stage_1_max_time``/``stage_1_max_x`` default to
-infinity, so the run never switches to the anaerobic stage).
+spikes slows; after the eighth spike, ``[s_glu]`` decays to a ~125 g/L
+plateau within roughly 50 h of that spike and holds there for the rest of
+the run, ending at ``124.8`` g/L — still well clear of the 100 g/L
+threshold, so no ninth spike fires. ``[s_EtOH]`` climbs to ``106.5`` g/L
+and biomass ``[x]`` grows almost thirteenfold (``1 → 12.9``), both driven
+by the aerobic growth/fermentation rate laws active throughout this run
+(recall from the previous section that ``stage_1_max_time``/``stage_1_max_x``
+default to infinity, so the run never switches to the anaerobic stage).
+
+This run also shows how the shipped model's oxygen-transfer bound behaves.
+Aeration stays on throughout and biomass climbs past 10 g/L, yet ``f_O2``
+reads 1 for all 200 h: the respiratory O2 demand of the aerobic fluxes peaks
+at only ``17.5`` mmol O2/L/h (at ``t ≈ 9.0 h``, biomass ``11.6`` g/L), well
+under the ``OTR_max`` = 40 mmol O2/L/h that the default ``kLa`` = 200 /h and
+``C_O2_sat`` = 0.20 mmol/L allow, because the respiration and acetate-growth
+rate laws are glucose-inhibited and this feeding strategy holds glucose at
+100–140 g/L. The bound bites in glucose-lean, fully aerobic runs — a
+100 g/L batch under the model's default 10 → 100 g/L refills, glucose-lean
+while it binds, exceeds the cap near peak biomass (demand ~68 mmol O2/L/h,
+``f_O2`` down to ~0.58), which is what the package's
+``test_o2_transfer_bound`` tests pin — while the shipped fed-batch process
+in :doc:`06_process_tea_bridge` is never bound (its aeration stops at 5 g/L
+biomass). Lower ``r.kLa`` to describe a poorly aerated vessel and watch
+``f_O2`` dip below 1 — in this run nothing happens until ``kLa`` falls
+below about 90 /h (demand 17.5 mmol/L/h versus a cap of 0.2 × ``kLa``);
+:doc:`the shipped-model API page </API/models>` documents the parameters.
 
 ``[s_IBO]`` stays at exactly ``0.0``. This is not a bug — it is the shipped
 model's own default: the four isobutanol-pathway rate constants

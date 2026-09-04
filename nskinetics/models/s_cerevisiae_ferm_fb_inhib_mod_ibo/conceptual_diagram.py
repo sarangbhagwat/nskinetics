@@ -251,9 +251,10 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
             ha='left', va='center', zorder=3)
     ax.text(94, 120.2,
             'is_aerobic = 1 while $t$ < stage_1_max_time and '
-            '$x$ < stage_1_max_x, then 0.\nGates O$_2$-dependent fluxes '
-            '(r2, r5, r8); growth r7 scales by\nanaerobic_growth_mult when '
-            'anaerobic.',
+            '$x$ < stage_1_max_x, then 0.\nf_O2 = is_aerobic × transfer '
+            'fraction, capped so respiratory O$_2$ ≤ kLa·C$_{O_2}$*;\nscales '
+            'r2, r5, r8 and aerobic growth r7 (anaerobic_growth_mult share '
+            'ungated).',
             fontsize=FS_NOTE, ha='left', va='center', color=C_TEXT,
             linespacing=1.35, zorder=3)
 
@@ -468,7 +469,7 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
             fontsize=FS_LEGEND, va='center', zorder=5)
 
     _badge(ax, 125, y1, 'O$_2$', C_O2)
-    ax.text(129.5, y1, 'aerobic only (is_aerobic gate)',
+    ax.text(129.5, y1, 'aerobic only (f_O2 gate/scaling)',
             fontsize=FS_LEGEND, va='center', zorder=5)
     _badge(ax, 125, y2, 'AcDH', '#FFFFFF', tc='#1F7A5C', ec='#1F7A5C',
            w=8.6)

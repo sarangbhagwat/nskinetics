@@ -68,8 +68,24 @@ Modules: glycolysis/fermentation (r1, r3, r6), respiration (r2, r5),
 overflow/acetate (r4), growth (r7, r8), physiological state (r9--r11), and
 the Ehrlich branch (r13--r16).
 
-Operation parameters -- fed-batch feeding, aeration staging, dilution -- are
-not kinetics and are skipped by the helpers.
+Operation parameters -- fed-batch feeding, aeration staging, dilution, and
+the vessel's oxygen-transfer capacity -- are not kinetics and are skipped by
+the helpers. The last of these is the pair ``kLa`` (volumetric O2
+mass-transfer coefficient, default 200 /h) and ``C_O2_sat`` (dissolved-O2
+saturation, default 0.20 mmol/L): the model caps the realized respiratory
+O2 uptake of its aerobic fluxes at ``OTR_max = kLa*C_O2_sat`` (40 mmol
+O2/L/h at the defaults) through the assignment-rule factor ``f_O2``, which
+scales r2, r5, r8 and the aerobic share of r7 so that uptake equals
+``OTR_max`` exactly while the bound binds, and reads 1 wherever it does not
+(and 0 while ``is_aerobic`` is off). Only the growth-associated O2 of the
+ungated ``anaerobic_growth_mult`` share of r7 (1.0 by default) is committed
+and never throttled. The shipped fed-batch process (aeration off at 5 g/L
+biomass, peak demand ~20 mmol/L/h) is never bound; a glucose-lean, fully
+aerobic batch that grows past ~10 g/L biomass is, while glucose-rich runs
+stay under the cap because r2, r5 and r8 are glucose-inhibited. Set either
+parameter on the model (``te_r._te.kLa = 100``) to describe a different vessel;
+``f_O2`` is a default result column of the process factory so a bound run
+is visible in ``V406.nsk_results_df``.
 
 .. autodata:: ROLES
    :annotation:
