@@ -45,15 +45,17 @@ def _model():
 
 
 @contextlib.contextmanager
-def _batch(*, kLa=None, aerobic=True, stage_1_max_x=math.inf):
+def _batch(*, kLa=None, aerobic=True, stage_1_max_x=math.inf,
+           anaerobic_growth_mult=None):
     """Reset the shipped model to a 100 g/L glucose batch (the model's default
     10 -> 100 g/L glucose refills stay active) and yield the raw RoadRunner
-    object; restores ``kLa`` and the stage-1 cutoffs afterwards so later
-    tests (and the process factory, which sets them itself) see the SBML
-    defaults."""
+    object; restores ``kLa``, ``anaerobic_growth_mult`` and the stage-1
+    cutoffs afterwards so later tests (and the process factory, which sets
+    them itself) see the SBML defaults."""
     te_r, reset = _model()
     r = te_r._te
     old_kLa = r.kLa
+    old_agm = r.anaerobic_growth_mult
     try:
         reset(te_r)
         r.s_glu = 100.
@@ -63,9 +65,12 @@ def _batch(*, kLa=None, aerobic=True, stage_1_max_x=math.inf):
         r.is_aerobic = 1 if aerobic else 0
         if kLa is not None:
             r.kLa = kLa
+        if anaerobic_growth_mult is not None:
+            r.anaerobic_growth_mult = anaerobic_growth_mult
         yield r
     finally:
         r.kLa = old_kLa
+        r.anaerobic_growth_mult = old_agm
         r.stage_1_max_time = math.inf
         r.stage_1_max_x = math.inf
         reset(te_r)
@@ -142,12 +147,13 @@ def test_default_cap_binds_in_fully_aerobic_batch():
     # The gate scales the gated rate laws, term for term.
     np.testing.assert_allclose(d['r2'], f * d['v2_0'], rtol=1e-9, atol=1e-12)
     # Against an uncapped run the bound costs respiration and, through it,
-    # biomass: r8 (growth on acetate) is gated, and r7 is not throttled at the
-    # default anaerobic_growth_mult = 1. It does *not* push carbon into
-    # ethanol -- r3 (pyruvate -> acetaldehyde) is a Hill term saturated far
-    # above K_3 = 5e-7, so throttling r2 leaves pyruvate standing rather than
-    # raising the ethanol branch; less active biomass means slightly less
-    # ethanol too (110.215 vs 110.363 g/L at t = 60 h).
+    # biomass: r8 (growth on acetate) is gated, and at the default
+    # anaerobic_growth_mult = 0.75 a 0.25 share of r7 (growth on glucose) is
+    # gated too. It does *not* push carbon into ethanol -- r3 (pyruvate ->
+    # acetaldehyde) is a Hill term saturated far above K_3 = 5e-7, so
+    # throttling r2 leaves pyruvate standing rather than raising the ethanol
+    # branch; less active biomass means slightly less ethanol too (109.995 vs
+    # 110.363 g/L at t = 60 h).
     with _batch(kLa=1e9) as r:
         d_unbounded = _run(r)
     assert np.all(d_unbounded['f_O2'] == 1.0)
@@ -198,12 +204,16 @@ def test_anaerobic_stage_forces_zero():
 
 
 def test_zero_gated_demand_has_no_nan():
-    # At t = 0 of a batch there is no pyruvate or acetate yet, so the gated
+    # At t = 0 of a batch there is no pyruvate or acetate yet, so with
+    # anaerobic_growth_mult = 1 (no growth O2 in the gated share) the gated
     # demand is exactly 0 while growth's committed share is not: the
     # piecewise must take its first branch without dividing by OUR_gated.
+    # Pinned here to 1 so the edge case is exercised regardless of the
+    # shipped default (0.75, which routes a 0.25 growth share into OUR_gated
+    # and so makes it nonzero from t = 0).
     # (x = 0 itself is not a usable state of this model: the pre-existing
     # X_a' rate rule divides by x*env.)
-    with _batch() as r:
+    with _batch(anaerobic_growth_mult=1.0) as r:
         d = _run(r, t_end=5., n=51)
     assert d['OUR_gated'][0] == 0.0
     assert d['OUR_committed'][0] > 0.0

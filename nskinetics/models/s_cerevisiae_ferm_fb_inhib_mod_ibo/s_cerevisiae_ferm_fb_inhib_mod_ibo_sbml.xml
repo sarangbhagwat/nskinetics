@@ -302,7 +302,7 @@
       <parameter id="kLa" value="200" units="per_h" constant="true"/>
       <parameter id="C_O2_sat" value="0.2" units="mmole_per_l" constant="true"/>
       <parameter id="OUR_gated" units="mmole_per_l_per_h" constant="false"/>
-      <parameter id="anaerobic_growth_mult" value="1" units="dimensionless" constant="true"/>
+      <parameter id="anaerobic_growth_mult" value="0.75" units="dimensionless" constant="true"/>
       <parameter id="OUR_committed" units="mmole_per_l_per_h" constant="false"/>
       <parameter id="OUR_demand" units="mmole_per_l_per_h" constant="false"/>
       <parameter id="f_O2" units="dimensionless" constant="false"/>

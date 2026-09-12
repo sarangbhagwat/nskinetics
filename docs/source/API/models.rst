@@ -81,7 +81,7 @@ share of r7 so that uptake equals ``OTR_max`` exactly while the bound
 binds, and reads 1 wherever it does not (and 0 while ``is_aerobic`` is
 off). Only the
 growth-associated O2 of the ungated ``anaerobic_growth_mult`` share of r7
-(1.0 by default) is committed and never throttled. The cap does *not*
+(0.75 by default) is committed and never throttled. The cap does *not*
 cover the model's total ``qO2`` -- the quantity ``AerationSpec`` sizes the
 air stream from -- which additionally carries the aerobic NADH
 re-oxidation of r1 and r4, net of the NADH that r6 and r16 consume. That
