@@ -87,7 +87,7 @@ growth-associated O2 of the ungated ``anaerobic_growth_mult`` share of r7
 (0.75 by default) is committed and never throttled. The cap does *not*
 cover the model's total ``qO2`` -- the quantity ``AerationSpec`` sizes the
 air stream from -- which additionally carries the aerobic NADH
-re-oxidation of r1 and r4, net of the NADH that r6 and r16 consume. That
+re-oxidation of r1 and r4, net of the NAD(P)H that r6, r14 and r16 consume. That
 term is not throttled, so ``qO2*x`` can exceed ``OTR_max`` (by ~20 % in a
 bound 100 g/L batch); extending the cap to total ``qO2`` is a follow-up.
 The shipped fed-batch process (aeration off at 5 g/L biomass, total

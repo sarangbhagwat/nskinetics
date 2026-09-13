@@ -388,13 +388,15 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
     # === engineered pathway reactions ======================================
     _arrow(ax, [pyr['right'], (135, 76)], lw=1.1)
     _rxn_marker(ax, 113, 76, 'r13', enzyme='ALS', enz_dxy=(0, 3.9))
+    _tag(ax, 118.5, 73.2, 'CO$_2$', ha='left', fs=FS_ENZ)
     _arrow(ax, [al['bottom'], dhi['top']], lw=1.1)
     _rxn_marker(ax, 152, 68.3, 'r14', enzyme='KARI', enz_dxy=(8.6, 0))
+    _tag(ax, 144.7, 68.3, '–NADPH', ha='right', fs=FS_ENZ)
     _arrow(ax, [dhi['bottom'], kiv['top']], lw=1.1)
     _rxn_marker(ax, 152, 52.8, 'r15', enzyme='DHAD', enz_dxy=(8.7, 0))
     _arrow(ax, [kiv['bottom'], ibo['top']], lw=1.1)
     _rxn_marker(ax, 152, 36.8, 'r16', enzyme='KDC+ADH', enz_dxy=(10.6, 0))
-    _tag(ax, 144.7, 36.8, '–NADH', ha='right', fs=FS_ENZ)
+    _tag(ax, 144.7, 36.8, '–NADPH, CO$_2$', ha='right', fs=FS_ENZ)
 
     # === control edges =====================================================
     # acetaldehyde overflow signal activates the high-capacity glycolytic

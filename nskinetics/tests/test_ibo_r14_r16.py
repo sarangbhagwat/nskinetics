@@ -37,28 +37,35 @@ import pytest
 pytestmark = pytest.mark.slow
 
 # --- expected coefficients ---------------------------------------------------
-# Commit 1 of the spec lands the r16 law change with r16's pre-existing
-# 0.363 $Red left in place and the rules untouched; commit 2 moves these four
-# constants to the corrected bookkeeping. Nothing else in this module changes
-# between the two commits.
+# These four constants are the corrected Ehrlich bookkeeping (spec §1.1 and
+# §1.3); they are the only thing that changed between the two commits of the
+# spec.
 
-#: g Red per g KIV on r16 (commit 1: r6's 0.363, uncorrected).
-R16_RED = 0.363
+#: g Red per g KIV on r16: one NADPH per mole KIV, 16/116.12 (r6's 0.363 is
+#: per g acetaldehyde, 44.05 g/mol, and was copied uncorrected).
+R16_RED = 0.138
 
 #: ``{reaction: (reactants, products)}`` as ``{species_id: stoichiometry}``.
+#: CO2: r13 44.01/(2*88.06) per g pyruvate, r16 44.01/116.12 per g KIV;
+#: Red on r14: one NADPH per mole acetolactate, 16/132.11.
 STOICH = {
-    'r13': ({'s_pyr': 1.0}, {'s_AL': 0.750}),
-    'r14': ({'s_AL': 1.0}, {'s_DHI': 1.015}),
+    'r13': ({'s_pyr': 1.0}, {'s_AL': 0.750, 'CO2': 0.250}),
+    'r14': ({'s_AL': 1.0, 'Red': 0.121}, {'s_DHI': 1.015}),
     'r15': ({'s_DHI': 1.0}, {'s_KIV': 0.866}),
-    'r16': ({'s_KIV': 1.0, 'Red': R16_RED}, {'s_IBO': 0.638}),
+    'r16': ({'s_KIV': 1.0, 'Red': R16_RED}, {'s_IBO': 0.638, 'CO2': 0.379}),
 }
 
-#: Signed coefficients of ``qO2*x*env*32/1000`` (g O2-equivalents/h).
+#: Signed coefficients of ``qO2*x*env*32/1000`` (g O2-equivalents/h): the
+#: rule subtracts the $Red consumers r6, r16 and (since commit 2) r14.
 QO2_TERMS = {'r1': 0.178, 'r2': 0.908, 'r4': 0.363, 'r5': 1.066,
-             'r6': -0.363, 'r16': -R16_RED, 'r7': 0.063, 'r8': 0.214}
+             'r6': -0.363, 'r16': -R16_RED, 'r14': -0.121,
+             'r7': 0.063, 'r8': 0.214}
 
-#: Coefficients of ``qCO2*x*env*44.01/1000`` (g CO2/h).
-QCO2_TERMS = {'r2': 1.499, 'r3': 0.5, 'r5': 1.466, 'r7': 0.127, 'r8': 0.325}
+#: Coefficients of ``qCO2*x*env*44.01/1000`` (g CO2/h). The pre-existing
+#: r3/r5 mismatches against the reactions (0.33 vs 0.5; 1.446 vs 1.466) are
+#: Lei's and are reproduced, not corrected.
+QCO2_TERMS = {'r2': 1.499, 'r3': 0.5, 'r5': 1.466, 'r7': 0.127, 'r8': 0.325,
+              'r13': 0.250, 'r16': 0.379}
 
 RATE_IDS = ('r1', 'r2', 'r3', 'r4', 'r5', 'r6', 'r7', 'r8',
             'r13', 'r14', 'r15', 'r16')

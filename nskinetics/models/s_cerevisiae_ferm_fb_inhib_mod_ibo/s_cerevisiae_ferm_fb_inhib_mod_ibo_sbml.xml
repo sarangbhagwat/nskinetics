@@ -501,38 +501,46 @@
                   <apply>
                     <minus/>
                     <apply>
-                      <plus/>
+                      <minus/>
                       <apply>
-                        <times/>
-                        <cn> 0.178 </cn>
-                        <ci> r1 </ci>
-                      </apply>
-                      <apply>
-                        <times/>
-                        <cn> 0.908 </cn>
-                        <ci> r2 </ci>
+                        <plus/>
+                        <apply>
+                          <times/>
+                          <cn> 0.178 </cn>
+                          <ci> r1 </ci>
+                        </apply>
+                        <apply>
+                          <times/>
+                          <cn> 0.908 </cn>
+                          <ci> r2 </ci>
+                        </apply>
+                        <apply>
+                          <times/>
+                          <cn> 0.363 </cn>
+                          <ci> r4 </ci>
+                        </apply>
+                        <apply>
+                          <times/>
+                          <cn> 1.066 </cn>
+                          <ci> r5 </ci>
+                        </apply>
                       </apply>
                       <apply>
                         <times/>
                         <cn> 0.363 </cn>
-                        <ci> r4 </ci>
-                      </apply>
-                      <apply>
-                        <times/>
-                        <cn> 1.066 </cn>
-                        <ci> r5 </ci>
+                        <ci> r6 </ci>
                       </apply>
                     </apply>
                     <apply>
                       <times/>
-                      <cn> 0.363 </cn>
-                      <ci> r6 </ci>
+                      <cn> 0.138 </cn>
+                      <ci> r16 </ci>
                     </apply>
                   </apply>
                   <apply>
                     <times/>
-                    <cn> 0.363 </cn>
-                    <ci> r16 </ci>
+                    <cn> 0.121 </cn>
+                    <ci> r14 </ci>
                   </apply>
                 </apply>
                 <apply>
@@ -592,6 +600,16 @@
                   <times/>
                   <cn> 0.325 </cn>
                   <ci> r8 </ci>
+                </apply>
+                <apply>
+                  <times/>
+                  <cn> 0.25 </cn>
+                  <ci> r13 </ci>
+                </apply>
+                <apply>
+                  <times/>
+                  <cn> 0.379 </cn>
+                  <ci> r16 </ci>
                 </apply>
               </apply>
             </apply>
@@ -1066,11 +1084,11 @@
           <speciesReference species="Red" stoichiometry="0.178" constant="true"/>
         </listOfProducts>
         <listOfModifiers>
-          <modifierSpeciesReference species="a"/>
           <modifierSpeciesReference species="s_IBO"/>
+          <modifierSpeciesReference species="s_acetate"/>
           <modifierSpeciesReference species="s_acetald"/>
           <modifierSpeciesReference species="s_EtOH"/>
-          <modifierSpeciesReference species="s_acetate"/>
+          <modifierSpeciesReference species="a"/>
         </listOfModifiers>
         <kineticLaw>
           <math xmlns="http://www.w3.org/1998/Math/MathML">
@@ -1211,9 +1229,9 @@
           <speciesReference species="Red" stoichiometry="0.363" constant="true"/>
         </listOfProducts>
         <listOfModifiers>
-          <modifierSpeciesReference species="a"/>
           <modifierSpeciesReference species="s_IBO"/>
           <modifierSpeciesReference species="s_EtOH"/>
+          <modifierSpeciesReference species="a"/>
         </listOfModifiers>
         <kineticLaw>
           <math xmlns="http://www.w3.org/1998/Math/MathML">
@@ -1330,9 +1348,9 @@
           <speciesReference species="s_EtOH" stoichiometry="1.045" constant="true"/>
         </listOfProducts>
         <listOfModifiers>
-          <modifierSpeciesReference species="a"/>
           <modifierSpeciesReference species="s_IBO"/>
           <modifierSpeciesReference species="s_acetate"/>
+          <modifierSpeciesReference species="a"/>
         </listOfModifiers>
         <kineticLaw>
           <math xmlns="http://www.w3.org/1998/Math/MathML">
@@ -1397,15 +1415,16 @@
       <reaction id="r16" reversible="false">
         <listOfReactants>
           <speciesReference species="s_KIV" stoichiometry="1" constant="true"/>
-          <speciesReference species="Red" stoichiometry="0.363" constant="true"/>
+          <speciesReference species="Red" stoichiometry="0.138" constant="true"/>
         </listOfReactants>
         <listOfProducts>
           <speciesReference species="s_IBO" stoichiometry="0.638" constant="true"/>
+          <speciesReference species="CO2" stoichiometry="0.379" constant="true"/>
         </listOfProducts>
         <listOfModifiers>
-          <modifierSpeciesReference species="a"/>
-          <modifierSpeciesReference species="s_EtOH"/>
           <modifierSpeciesReference species="s_acetate"/>
+          <modifierSpeciesReference species="s_EtOH"/>
+          <modifierSpeciesReference species="a"/>
         </listOfModifiers>
         <kineticLaw>
           <math xmlns="http://www.w3.org/1998/Math/MathML">
@@ -1446,6 +1465,40 @@
                     <ci> k_16ie </ci>
                   </apply>
                   <ci> s_EtOH </ci>
+                </apply>
+              </apply>
+              <ci> a </ci>
+              <ci> env </ci>
+            </apply>
+          </math>
+        </kineticLaw>
+      </reaction>
+      <reaction id="r14" reversible="false">
+        <listOfReactants>
+          <speciesReference species="s_AL" stoichiometry="1" constant="true"/>
+          <speciesReference species="Red" stoichiometry="0.121" constant="true"/>
+        </listOfReactants>
+        <listOfProducts>
+          <speciesReference species="s_DHI" stoichiometry="1.015" constant="true"/>
+        </listOfProducts>
+        <listOfModifiers>
+          <modifierSpeciesReference species="a"/>
+        </listOfModifiers>
+        <kineticLaw>
+          <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+              <times/>
+              <apply>
+                <divide/>
+                <apply>
+                  <times/>
+                  <ci> k_14 </ci>
+                  <ci> s_AL </ci>
+                </apply>
+                <apply>
+                  <plus/>
+                  <ci> K_14 </ci>
+                  <ci> s_AL </ci>
                 </apply>
               </apply>
               <ci> a </ci>
@@ -1576,6 +1629,40 @@
           </math>
         </kineticLaw>
       </reaction>
+      <reaction id="r13" reversible="false">
+        <listOfReactants>
+          <speciesReference species="s_pyr" stoichiometry="1" constant="true"/>
+        </listOfReactants>
+        <listOfProducts>
+          <speciesReference species="s_AL" stoichiometry="0.75" constant="true"/>
+          <speciesReference species="CO2" stoichiometry="0.25" constant="true"/>
+        </listOfProducts>
+        <listOfModifiers>
+          <modifierSpeciesReference species="a"/>
+        </listOfModifiers>
+        <kineticLaw>
+          <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+              <times/>
+              <apply>
+                <divide/>
+                <apply>
+                  <times/>
+                  <ci> k_13 </ci>
+                  <ci> s_pyr </ci>
+                </apply>
+                <apply>
+                  <plus/>
+                  <ci> K_13 </ci>
+                  <ci> s_pyr </ci>
+                </apply>
+              </apply>
+              <ci> a </ci>
+              <ci> env </ci>
+            </apply>
+          </math>
+        </kineticLaw>
+      </reaction>
       <reaction metaid="bhagwat2026.r9" sboTerm="SBO:0000184" id="r9" name="Acdh production" reversible="false">
         <annotation>
           <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:vCard="http://www.w3.org/2001/vcard-rdf/3.0#" xmlns:vCard4="http://www.w3.org/2006/vcard/ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/" xmlns:bqmodel="http://biomodels.net/model-qualifiers/">
@@ -1671,8 +1758,8 @@
         </listOfReactants>
         <listOfModifiers>
           <modifierSpeciesReference species="s_IBO"/>
-          <modifierSpeciesReference species="s_EtOH"/>
           <modifierSpeciesReference species="s_acetate"/>
+          <modifierSpeciesReference species="s_EtOH"/>
         </listOfModifiers>
         <kineticLaw>
           <math xmlns="http://www.w3.org/1998/Math/MathML">
@@ -1919,72 +2006,6 @@
               <times/>
               <ci> AcDH </ci>
               <ci> D </ci>
-              <ci> env </ci>
-            </apply>
-          </math>
-        </kineticLaw>
-      </reaction>
-      <reaction id="r13" reversible="false">
-        <listOfReactants>
-          <speciesReference species="s_pyr" stoichiometry="1" constant="true"/>
-        </listOfReactants>
-        <listOfProducts>
-          <speciesReference species="s_AL" stoichiometry="0.75" constant="true"/>
-        </listOfProducts>
-        <listOfModifiers>
-          <modifierSpeciesReference species="a"/>
-        </listOfModifiers>
-        <kineticLaw>
-          <math xmlns="http://www.w3.org/1998/Math/MathML">
-            <apply>
-              <times/>
-              <apply>
-                <divide/>
-                <apply>
-                  <times/>
-                  <ci> k_13 </ci>
-                  <ci> s_pyr </ci>
-                </apply>
-                <apply>
-                  <plus/>
-                  <ci> K_13 </ci>
-                  <ci> s_pyr </ci>
-                </apply>
-              </apply>
-              <ci> a </ci>
-              <ci> env </ci>
-            </apply>
-          </math>
-        </kineticLaw>
-      </reaction>
-      <reaction id="r14" reversible="false">
-        <listOfReactants>
-          <speciesReference species="s_AL" stoichiometry="1" constant="true"/>
-        </listOfReactants>
-        <listOfProducts>
-          <speciesReference species="s_DHI" stoichiometry="1.015" constant="true"/>
-        </listOfProducts>
-        <listOfModifiers>
-          <modifierSpeciesReference species="a"/>
-        </listOfModifiers>
-        <kineticLaw>
-          <math xmlns="http://www.w3.org/1998/Math/MathML">
-            <apply>
-              <times/>
-              <apply>
-                <divide/>
-                <apply>
-                  <times/>
-                  <ci> k_14 </ci>
-                  <ci> s_AL </ci>
-                </apply>
-                <apply>
-                  <plus/>
-                  <ci> K_14 </ci>
-                  <ci> s_AL </ci>
-                </apply>
-              </apply>
-              <ci> a </ci>
               <ci> env </ci>
             </apply>
           </math>
