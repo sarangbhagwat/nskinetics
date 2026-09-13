@@ -64,10 +64,10 @@ def test_scenario_presets_set_exact_values():
     try:
         apply_scenario_B(te_r)
         assert r.k_13 == 5.81 and r.k_14 == 4.8 and r.k_15 == 4.8
-        assert r.k_16 == 2.82 and r.k_16r == 0.0125
+        assert r.k_16 == 2.82
         apply_scenario_A(te_r)
         assert r.k_13 == 0.0 and r.k_14 == 0.0 and r.k_15 == 0.0
-        assert r.k_16 == 0.0 and r.k_16r == 0.0
+        assert r.k_16 == 0.0
     finally:
         apply_scenario_A(te_r)
         te_r.reset()

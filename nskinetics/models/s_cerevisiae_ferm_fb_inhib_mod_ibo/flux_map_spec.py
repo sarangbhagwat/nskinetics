@@ -14,13 +14,17 @@ column runs down x = 44, its two by-product branches leave to the left
 column runs down x = 72. Edges are the kinetic reactions (dilution/outflow
 reactions are omitted -- D = 0 in fed-batch use). The inhibition mapping is
 the canonical set of product-inhibition coefficients: exponential terms
-(k_*ie/ia/ii), the saturable denominator self-inhibition terms (K_6e on r6,
-K_16i on r16) and the thermodynamic reverse-reaction (product) terms of the
-two reversible steps (k_6r on r6, k_16r on r16). The strips therefore include
-those reverse terms alongside the inhibition coefficients, so ADH's "fraction
-lost to ethanol" counts both the ethanol inhibition of the forward rate and
-the ethanol-driven reverse flux. r10 (active-biomass decay) is
-product-ENHANCED, listed in enhancement_reactions.
+(k_*ie/ia/ii), the saturable denominator self-inhibition term (K_6e on r6)
+and the thermodynamic reverse-reaction (product) term of the one reversible
+step (k_6r on r6). The r6 strip therefore includes that reverse term
+alongside the inhibition coefficients, so ADH's "fraction lost to ethanol"
+counts both the ethanol inhibition of the forward rate and the
+ethanol-driven reverse flux. r16 is irreversible Michaelis-Menten in KIV
+with no isobutanol term of its own (K_16i and k_16r stay declared at 0 but
+are not mapped: compute_flux_summary measures a strip by zeroing the
+coefficient, and zeroing an already-absent term would read a meaningless
+0), so it carries only its ethanol and acetate strips. r10 (active-biomass
+decay) is product-ENHANCED, listed in enhancement_reactions.
 
 r10 is deliberately absent from ``edges``: biomass decay has no network edge to
 hang a strip on, so no strip is drawn for it. It stays in ``inhibition_map``,
@@ -80,7 +84,6 @@ _INHIBITION_MAP = {
     'k_7ie': ('r7', 'ethanol'),   'k_7ia': ('r7', 'acetate'),   'k_7ii': ('r7', 'isobutanol'),
     'k_10ie': ('r10', 'ethanol'), 'k_10ia': ('r10', 'acetate'), 'k_10ii': ('r10', 'isobutanol'),
     'k_16ie': ('r16', 'ethanol'), 'k_16ia': ('r16', 'acetate'),
-    'K_16i': ('r16', 'isobutanol'), 'k_16r': ('r16', 'isobutanol'),
 }
 
 #: Shipped :class:`~nskinetics.visualization.FluxMapSpec` for this model; its

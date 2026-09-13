@@ -222,13 +222,16 @@ def test_describe_verbose_lists_members_in_source_order():
 
 
 def test_describe_ehrlich_on_from_partial_override():
+    # The presets switch the four Ehrlich capacities k_13..k_16 together and
+    # nothing else (r16 has no reverse term since 2026-09-13), so the whole
+    # change is one capacity clause.
     pc = _pc()
     from nskinetics.models.s_cerevisiae_ferm_fb_inhib_mod_ibo import (
         SCENARIO_A_EHRLICH, SCENARIO_B_EHRLICH)
     assert pc.describe_parameter_change(SCENARIO_A_EHRLICH, SCENARIO_B_EHRLICH) == (
-        'Ehrlich branch on; isobutanol self-inhibition of Ehrlich branch on')
+        'Ehrlich branch on')
     assert pc.describe_parameter_change(SCENARIO_B_EHRLICH, SCENARIO_A_EHRLICH) == (
-        'Ehrlich branch off; isobutanol self-inhibition of Ehrlich branch off')
+        'Ehrlich branch off')
 
 
 def test_describe_threshold_and_lethality_words():

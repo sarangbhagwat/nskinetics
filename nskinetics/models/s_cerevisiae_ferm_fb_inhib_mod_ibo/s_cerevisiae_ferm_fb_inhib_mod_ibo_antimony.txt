@@ -98,7 +98,24 @@ model *bhagwat2026()
   r13: s_pyr => 0.750 s_AL; (k_13*s_pyr/(K_13 + s_pyr))*a*env;
   r14: s_AL => 1.015 s_DHI; (k_14*s_AL/(K_14 + s_AL))*a*env;
   r15: s_DHI => 0.866 s_KIV; (k_15*s_DHI/(K_15 + s_DHI))*a*env;
-  r16: s_KIV + 0.363 $Red -> 0.638 s_IBO; (k_16*(s_KIV - k_16r*s_IBO)/(s_KIV + K_16 + K_16i*s_IBO))*2.71828^(-k_16ia*s_acetate)*2.71828^(-k_16ie*s_EtOH)*a*env;
+  // r16 (lumped 2-keto-acid decarboxylase + alcohol dehydrogenase) is
+  // Aro10-limited: per unit flux the decarboxylase is ~15x the more expensive
+  // enzyme of the pair (Aro10 kcat 19 /s on KIV vs Adh6 296 /s on the
+  // aldehyde; isobutanol burden model), so the lumped law is a decarboxylase
+  // law, Michaelis-Menten in KIV (Aro10 Km 8.5 mM on KIV, Kneen et al. 2011
+  // FEBS J. 278:1842, doi:10.1111/j.1742-4658.2011.08103.x). No reverse term:
+  // the decarboxylation releases CO2 and is irreversible, so isobutanol
+  // cannot be carried back to KIV -- the k_16r Haldane term previously copied
+  // from r6 (Adh1) had no carrier. No product term: isobutanol cannot bind a
+  // decarboxylase, and the Adh6 sub-step (Km 0.13-0.21 mM on branched
+  // aldehydes; 50-fold higher catalytic efficiency on aldehydes than on
+  // alcohols, Larroy et al. 2002 Biochem. J. 361:163) is saturated and not
+  // rate-limiting, so a competitive alcohol term on it would not reach the
+  // lumped rate -- the K_16i term previously copied from r6 (K_6e) had no
+  // carrier either. Isobutanol toxicity is carried by the k_*ii terms on
+  // r1/r4/r6/r7 and by r10. The cross-product exponentials (k_16ia, k_16ie)
+  // are unchanged. See nskinetics docs/reports/r14-r16-rate-laws-and-affinity-anchoring.md.
+  r16: s_KIV + 0.363 $Red => 0.638 s_IBO; (k_16*s_KIV/(s_KIV + K_16))*2.71828^(-k_16ia*s_acetate)*2.71828^(-k_16ie*s_EtOH)*a*env;
 
   // Events:
 
@@ -241,8 +258,10 @@ model *bhagwat2026()
   // Cross-product inhibition of the alcohol-forming steps (r6 ADH, r16
   // Ehrlich): each terminal step is inhibited by the products it does NOT
   // itself make. r6 already self-inhibits on ethanol (K_6e/k_6r) and so
-  // takes acetate + isobutanol here; r16 already self-inhibits on isobutanol
-  // (K_16i/k_16r) and so takes acetate + ethanol (below). Coefficients are
+  // takes acetate + isobutanol here; r16 takes acetate + ethanol (below).
+  // r16 has no isobutanol term of its own: its rate-limiting decarboxylase
+  // cannot bind isobutanol (see the r16 block), and isobutanol toxicity is
+  // carried by the k_*ii terms on r1/r4/r6/r7 and by r10. Coefficients are
   // 0.5x the growth (r7) set, matching the r1 production-step rationale that
   // fermentation is less product-sensitive than growth
   // (Eur. J. Appl. Microbiol. Biotechnol. 1981, doi:10.1007/BF00511253);
@@ -333,19 +352,41 @@ model *bhagwat2026()
   K_13 has g_per_l;
   k_14 = 0.0;
   k_14 has g_per_l_per_h;
-  K_14 = 0.000264;
+  // K_14: KARI (Ilv5) acetolactate affinity. No S. cerevisiae Km is
+  // published; the N. crassa reductoisomerase surrogate gives Km 0.32 mM
+  // (Kiritani et al. 1966 JBC 241:2047; BRENDA EC 1.1.1.86) = 0.042 g/L
+  // acetolactate (132.11 g/mol). Transferred to this broth-volume
+  // pseudo-concentration model with the scale factor S = K_model/Km_in-vitro
+  // = 0.4, the geometric mean of what Lei's fitted r3/r4/r6 constants imply
+  // against their enzymes' Km (S = 0.27-0.60, 0.17-0.25, 0.70) -> 0.017 g/L
+  // (band 0.007-0.030 over the S range; was 2.64e-4, copied from K_4).
+  K_14 = 0.017;
   K_14 has g_per_l;
   k_15 = 0.0;
   k_15 has g_per_l_per_h;
-  K_15 = 0.000264;
+  // K_15: DHAD (Ilv3) DHIV affinity. E. coli IlvD surrogate, Km 1.5 mM
+  // (Flint et al. 1993 JBC 268:14732; BRENDA EC 4.2.1.9) = 0.201 g/L DHIV
+  // (134.13 g/mol); S = 0.4 -> 0.080 g/L (band 0.034-0.14 over the S range;
+  // was 2.64e-4, copied from K_4).
+  K_15 = 0.080;
   K_15 has g_per_l;
   k_16 = 0.0;
   k_16 has g_per_l_per_h;
-  K_16 = 0.034;
+  // K_16: Aro10 (the rate-limiting decarboxylase of the lumped r16) KIV
+  // affinity, Km 8.5 mM (Kneen et al. 2011; BRENDA EC 4.1.1.43). Anchored by
+  // ratio to r3's Pdc exactly as K_13 was, with the molar-mass correction:
+  // (8.5/1.1) x 0.302 mM x 116.12 g/mol = 0.27 g/L (band 0.27-0.60 for Pdc
+  // Km 1.1-0.5 mM; S = 0.4 would give 0.39; was 0.034, copied from K_6).
+  K_16 = 0.27;
   K_16 has g_per_l;
-  k_16r = 0.0125;
+  // k_16r, K_16i: the reverse and isobutanol product terms r16 no longer
+  // carries (see the r16 block) -- inert since 2026-09-13. Declared, at 0,
+  // only because the isobutanol repo's scenario-B / opt_* workbooks exec
+  // `K_16i = x` onto this model at load time and kinetic_optimization.py
+  // sweeps K_16i: they must keep resolving, and they do nothing.
+  k_16r = 0.0;
   k_16r has dimensionless;
-  K_16i = 0.057;
+  K_16i = 0.0;
   K_16i has dimensionless;
   // r16 cross-product inhibition (acetate + ethanol); see the r6 block above.
   // Dormant while the Ehrlich branch is off (k_16 = 0), kept symmetric with r6.

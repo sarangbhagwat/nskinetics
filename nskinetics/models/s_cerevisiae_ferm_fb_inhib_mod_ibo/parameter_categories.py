@@ -177,6 +177,11 @@ KINETIC_PARAMETERS = {
     # --- product self-inhibition: K_*e*P denominator and k_*r*P reverse term ---
     'K_6e': _p('product_self_inhibition', 'r6', effector='ethanol'),
     'k_6r': _p('product_self_inhibition', 'r6', effector='ethanol'),
+    # K_16i and k_16r are inert since 2026-09-13 (r16 is irreversible
+    # Michaelis-Menten in KIV; the terms left its rate law) but stay declared
+    # at 0 in the model for the isobutanol workbooks that exec them, so they
+    # stay classified here: snapshot_parameters must read every declared
+    # kinetic parameter, and a workbook override of either still describes.
     'K_16i': _p('product_self_inhibition', 'r16', effector='isobutanol'),
     'k_16r': _p('product_self_inhibition', 'r16', effector='isobutanol'),
     # --- lethality: steepness of the threshold-gated exp on r10 ---

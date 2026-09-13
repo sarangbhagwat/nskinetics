@@ -392,7 +392,7 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
     _rxn_marker(ax, 152, 68.3, 'r14', enzyme='KARI', enz_dxy=(8.6, 0))
     _arrow(ax, [dhi['bottom'], kiv['top']], lw=1.1)
     _rxn_marker(ax, 152, 52.8, 'r15', enzyme='DHAD', enz_dxy=(8.7, 0))
-    _arrow(ax, [kiv['bottom'], ibo['top']], lw=1.1, reversible=True)
+    _arrow(ax, [kiv['bottom'], ibo['top']], lw=1.1)
     _rxn_marker(ax, 152, 36.8, 'r16', enzyme='KDC+ADH', enz_dxy=(10.6, 0))
     _tag(ax, 144.7, 36.8, '–NADH', ha='right', fs=FS_ENZ)
 
@@ -448,7 +448,7 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
     ax.text(15, y1, 'reaction flux (mass basis)', fontsize=FS_LEGEND,
             va='center', zorder=5)
     _leg_arrow(6, y2, C_FLUX, reversible=True)
-    ax.text(15, y2, 'reversible (r6, r16)', fontsize=FS_LEGEND, va='center',
+    ax.text(15, y2, 'reversible (r6)', fontsize=FS_LEGEND, va='center',
             zorder=5)
     _arrow(ax, [(6, y3), (10.5, y3)], color=C_FEED, lw=1.0, mutation=5.5,
            zorder=5)

@@ -9,10 +9,13 @@
 ethanol/isobutanol model.
 
 The two configurations differ only in the engineered Ehrlich pathway (r13-r16):
-scenario A leaves it off (all five rate constants -- k_13, k_14, k_15, k_16,
-k_16r -- zero, so no isobutanol is made); scenario B turns it on. Every product-inhibition coefficient is already at its
-scenario-B value in the shipped antimony (it has no effect in A because
-isobutanol stays zero), so only the r13-r16 rate constants change here.
+scenario A leaves it off (all four rate constants -- k_13, k_14, k_15, k_16 --
+zero, so no isobutanol is made); scenario B turns it on. Every
+product-inhibition coefficient is already at its scenario-B value in the
+shipped antimony (it has no effect in A because isobutanol stays zero), so
+only the r13-r16 rate constants change here. r16 is irreversible
+Michaelis-Menten in KIV (since 2026-09-13), so there is no reverse term to
+switch.
 
 Values mirror ``parameter-distributions_corn_IBO_EtOH_B.xlsx`` in the
 (read-only) isobutanol biorefinery, which is the source of truth. The
@@ -23,13 +26,13 @@ too, but that is a caller concern and is NOT set here.
 __all__ = ('apply_scenario_A', 'apply_scenario_B',
            'SCENARIO_B_EHRLICH', 'SCENARIO_A_EHRLICH')
 
-# r13-r16 rate constants (K_* saturation/inhibition constants are already at
-# their scenario-B values in the shipped antimony and are unchanged).
+# r13-r16 rate constants (K_* saturation constants are already at their
+# scenario-B values in the shipped antimony and are unchanged).
 SCENARIO_B_EHRLICH = {
-    'k_13': 5.81, 'k_14': 4.8, 'k_15': 4.8, 'k_16': 2.82, 'k_16r': 0.0125,
+    'k_13': 5.81, 'k_14': 4.8, 'k_15': 4.8, 'k_16': 2.82,
 }
 SCENARIO_A_EHRLICH = {
-    'k_13': 0.0, 'k_14': 0.0, 'k_15': 0.0, 'k_16': 0.0, 'k_16r': 0.0,
+    'k_13': 0.0, 'k_14': 0.0, 'k_15': 0.0, 'k_16': 0.0,
 }
 
 

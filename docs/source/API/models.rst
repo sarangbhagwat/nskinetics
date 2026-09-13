@@ -20,11 +20,14 @@ helper. ``FLUX_MAP_SPEC.reactions`` is the reaction list to hand to
 mapped-but-undrawn reactions such as biomass decay (``r10``).
 
 Its ``inhibition_map`` includes, alongside the product-inhibition
-coefficients, the thermodynamic reverse-reaction (product) terms of the two
-reversible steps (``k_6r`` on ``r6``, ``k_16r`` on ``r16``). A strip row
-therefore reports everything the product does to that step: ADH's "fraction
-lost to ethanol" counts both the inhibition of the forward rate and the
-ethanol-driven reverse flux.
+coefficients, the thermodynamic reverse-reaction (product) term of the one
+reversible step (``k_6r`` on ``r6``). A strip row therefore reports
+everything the product does to that step: ADH's "fraction lost to ethanol"
+counts both the inhibition of the forward rate and the ethanol-driven
+reverse flux. ``r16`` (the lumped Ehrlich decarboxylase + ADH step) is
+irreversible Michaelis--Menten in KIV with no isobutanol term of its own --
+its ``K_16i``/``k_16r`` stay declared at 0 for the downstream workbooks that
+set them, but do nothing -- so it carries only its ethanol and acetate strips.
 
 :func:`~nskinetics.models.s_cerevisiae_ferm_fb_inhib_mod_ibo.flux_map_spec.draw_scenario_flux_map`
 changes only the Ehrlich rate constants between its two panels, never the

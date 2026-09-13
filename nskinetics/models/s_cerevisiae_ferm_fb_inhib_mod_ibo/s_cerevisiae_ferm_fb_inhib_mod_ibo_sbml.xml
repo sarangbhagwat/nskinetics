@@ -360,15 +360,13 @@
       <parameter id="k_11" value="0.02" units="g_per_l_per_h" constant="true"/>
       <parameter id="D" name="Dilutionrate" value="0" units="per_h" constant="true"/>
       <parameter id="k_13" value="0" units="g_per_l_per_h" constant="true"/>
-      <parameter id="K_13" value="5e-07" units="g_per_l" constant="true"/>
+      <parameter id="K_13" value="0.1" units="g_per_l" constant="true"/>
       <parameter id="k_14" value="0" units="g_per_l_per_h" constant="true"/>
-      <parameter id="K_14" value="0.000264" units="g_per_l" constant="true"/>
+      <parameter id="K_14" value="0.017" units="g_per_l" constant="true"/>
       <parameter id="k_15" value="0" units="g_per_l_per_h" constant="true"/>
-      <parameter id="K_15" value="0.000264" units="g_per_l" constant="true"/>
+      <parameter id="K_15" value="0.08" units="g_per_l" constant="true"/>
       <parameter id="k_16" value="0" units="g_per_l_per_h" constant="true"/>
-      <parameter id="k_16r" value="0.0125" units="dimensionless" constant="true"/>
-      <parameter id="K_16" value="0.034" units="g_per_l" constant="true"/>
-      <parameter id="K_16i" value="0.057" units="dimensionless" constant="true"/>
+      <parameter id="K_16" value="0.27" units="g_per_l" constant="true"/>
       <parameter id="k_16ia" value="0.06" units="l_per_g" constant="true"/>
       <parameter id="k_16ie" value="0.02" units="l_per_g" constant="true"/>
       <parameter id="max_n_glu_spikes" value="5" units="dimensionless" constant="true"/>
@@ -378,6 +376,8 @@
       <parameter id="glucose_feed_spike_dissolveDelay" value="0.001" units="time_unit" constant="true"/>
       <parameter id="stage_1_max_time" value="INF" units="time_unit" constant="true"/>
       <parameter id="stage_1_max_x" value="INF" units="g_per_l" constant="true"/>
+      <parameter id="k_16r" value="0" units="dimensionless" constant="true"/>
+      <parameter id="K_16i" value="0" units="dimensionless" constant="true"/>
     </listOfParameters>
     <listOfRules>
       <assignmentRule variable="a">
@@ -1066,11 +1066,11 @@
           <speciesReference species="Red" stoichiometry="0.178" constant="true"/>
         </listOfProducts>
         <listOfModifiers>
+          <modifierSpeciesReference species="a"/>
           <modifierSpeciesReference species="s_IBO"/>
           <modifierSpeciesReference species="s_acetald"/>
           <modifierSpeciesReference species="s_EtOH"/>
           <modifierSpeciesReference species="s_acetate"/>
-          <modifierSpeciesReference species="a"/>
         </listOfModifiers>
         <kineticLaw>
           <math xmlns="http://www.w3.org/1998/Math/MathML">
@@ -1211,9 +1211,9 @@
           <speciesReference species="Red" stoichiometry="0.363" constant="true"/>
         </listOfProducts>
         <listOfModifiers>
+          <modifierSpeciesReference species="a"/>
           <modifierSpeciesReference species="s_IBO"/>
           <modifierSpeciesReference species="s_EtOH"/>
-          <modifierSpeciesReference species="a"/>
         </listOfModifiers>
         <kineticLaw>
           <math xmlns="http://www.w3.org/1998/Math/MathML">
@@ -1330,9 +1330,9 @@
           <speciesReference species="s_EtOH" stoichiometry="1.045" constant="true"/>
         </listOfProducts>
         <listOfModifiers>
+          <modifierSpeciesReference species="a"/>
           <modifierSpeciesReference species="s_IBO"/>
           <modifierSpeciesReference species="s_acetate"/>
-          <modifierSpeciesReference species="a"/>
         </listOfModifiers>
         <kineticLaw>
           <math xmlns="http://www.w3.org/1998/Math/MathML">
@@ -1394,7 +1394,7 @@
           </math>
         </kineticLaw>
       </reaction>
-      <reaction id="r16" reversible="true">
+      <reaction id="r16" reversible="false">
         <listOfReactants>
           <speciesReference species="s_KIV" stoichiometry="1" constant="true"/>
           <speciesReference species="Red" stoichiometry="0.363" constant="true"/>
@@ -1403,9 +1403,9 @@
           <speciesReference species="s_IBO" stoichiometry="0.638" constant="true"/>
         </listOfProducts>
         <listOfModifiers>
+          <modifierSpeciesReference species="a"/>
           <modifierSpeciesReference species="s_EtOH"/>
           <modifierSpeciesReference species="s_acetate"/>
-          <modifierSpeciesReference species="a"/>
         </listOfModifiers>
         <kineticLaw>
           <math xmlns="http://www.w3.org/1998/Math/MathML">
@@ -1416,25 +1416,12 @@
                 <apply>
                   <times/>
                   <ci> k_16 </ci>
-                  <apply>
-                    <minus/>
-                    <ci> s_KIV </ci>
-                    <apply>
-                      <times/>
-                      <ci> k_16r </ci>
-                      <ci> s_IBO </ci>
-                    </apply>
-                  </apply>
+                  <ci> s_KIV </ci>
                 </apply>
                 <apply>
                   <plus/>
                   <ci> s_KIV </ci>
                   <ci> K_16 </ci>
-                  <apply>
-                    <times/>
-                    <ci> K_16i </ci>
-                    <ci> s_IBO </ci>
-                  </apply>
                 </apply>
               </apply>
               <apply>
@@ -1956,20 +1943,12 @@
                 <apply>
                   <times/>
                   <ci> k_13 </ci>
-                  <apply>
-                    <power/>
-                    <ci> s_pyr </ci>
-                    <cn type="integer"> 4 </cn>
-                  </apply>
+                  <ci> s_pyr </ci>
                 </apply>
                 <apply>
                   <plus/>
                   <ci> K_13 </ci>
-                  <apply>
-                    <power/>
-                    <ci> s_pyr </ci>
-                    <cn type="integer"> 4 </cn>
-                  </apply>
+                  <ci> s_pyr </ci>
                 </apply>
               </apply>
               <ci> a </ci>
