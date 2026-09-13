@@ -85,7 +85,17 @@ model *bhagwat2026()
   x_out: x => ; x*D*env;
   AcDH_out: $AcDH => ; AcDH*D*env;
 
-  r13: s_pyr => 0.750 s_AL; (k_13*s_pyr^4/(K_13 + s_pyr^4))*a*env;
+  // r13 (acetolactate synthase, Ilv2/Ilv6 or B. subtilis AlsS) is hyperbolic
+  // in pyruvate: purified ALS follows Michaelis-Menten kinetics (Pang &
+  // Duggleby 1999 Biochemistry 38:5222, doi:10.1021/bi983013m; AlsS Km 13.6 mM,
+  // Atsumi et al. 2009 AEM 75:6306, doi:10.1128/AEM.01160-09), and the
+  // sigmoidal ALS seen in glucose-grown crude extracts is an artifact of
+  // competition with pyruvate decarboxylase (McDonald et al. 1973 J. Bacteriol.
+  // 114:332, doi:10.1128/jb.114.1.332-340.1973) -- the competition r3/r13
+  // resolve explicitly. The Hill n=4 form of r3 is Lei's fitted overflow switch
+  // and was previously copied here verbatim, which pinned r13/r3 = k_13/k_3 at
+  // every pyruvate level. See isobutanol docs/reports/r13-rate-law.md.
+  r13: s_pyr => 0.750 s_AL; (k_13*s_pyr/(K_13 + s_pyr))*a*env;
   r14: s_AL => 1.015 s_DHI; (k_14*s_AL/(K_14 + s_AL))*a*env;
   r15: s_DHI => 0.866 s_KIV; (k_15*s_DHI/(K_15 + s_DHI))*a*env;
   r16: s_KIV + 0.363 $Red -> 0.638 s_IBO; (k_16*(s_KIV - k_16r*s_IBO)/(s_KIV + K_16 + K_16i*s_IBO))*2.71828^(-k_16ia*s_acetate)*2.71828^(-k_16ie*s_EtOH)*a*env;
@@ -315,7 +325,11 @@ model *bhagwat2026()
   P_10i has g_per_l;
   k_13 = 0.0;
   k_13 has g_per_l_per_h;
-  K_13 = 5e-07;
+  // K_13: ALS/Pdc pyruvate-affinity ratio (Ilv2/Ilv6 Km 3.9 mM, BRENDA EC 2.2.1.6;
+  // Pdc wild-type Km 0.5-1.1 mM, BRENDA EC 4.1.1.1) x r3's half-saturation
+  // K_3^(1/4) = 0.027 g/L -> 0.10 g/L (was 5e-7, copied from K_3, i.e. the same
+  // affinity as Pdc; an AlsS basis would be ~0.35 g/L). A true g/L quantity now.
+  K_13 = 0.1;
   K_13 has g_per_l;
   k_14 = 0.0;
   k_14 has g_per_l_per_h;
