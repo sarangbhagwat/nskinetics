@@ -11,8 +11,8 @@
 # that import pytest, biosteam or the shipped kinetic model at top level, or
 # that otherwise have import-time side effects, are therefore deliberately NOT
 # registered here (currently `test_processes`, `test_flux_map`,
-# `test_flux_map_render`, `test_parameter_categories` and
-# `test_o2_transfer_bound`): registering them would make `import nskinetics`
+# `test_flux_map_render`, `test_parameter_categories`, `test_o2_transfer_bound`
+# and `test_ibo_r14_r16`): registering them would make `import nskinetics`
 # fail on an install without those extras, would pollute `sys.modules` for the
 # import-guard tests, and -- in the case of `test_flux_map_render`, which calls
 # `matplotlib.use('Agg')` at import time -- would silently force a headless

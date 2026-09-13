@@ -225,9 +225,9 @@ def test_shipped_sbml_matches_the_live_model():
         assert shipped.getParameter(pid).getValue() == pytest.approx(
             live.getParameter(pid).getValue()), pid
     for rid in ('r13', 'r14', 'r15', 'r16'):
-        s, l = shipped.getReaction(rid), live.getReaction(rid)
-        assert s.getReversible() == l.getReversible(), rid
-        assert _formula(s.getKineticLaw()) == _formula(l.getKineticLaw()), rid
+        s_rx, l_rx = shipped.getReaction(rid), live.getReaction(rid)
+        assert s_rx.getReversible() == l_rx.getReversible(), rid
+        assert _formula(s_rx.getKineticLaw()) == _formula(l_rx.getKineticLaw()), rid
         _, sr, sp = _reaction_sides(shipped, rid)
         _, lr, lp = _reaction_sides(live, rid)
         assert sr == pytest.approx(lr) and sp == pytest.approx(lp), rid

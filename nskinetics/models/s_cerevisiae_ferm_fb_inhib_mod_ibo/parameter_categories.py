@@ -181,7 +181,10 @@ KINETIC_PARAMETERS = {
     # Michaelis-Menten in KIV; the terms left its rate law) but stay declared
     # at 0 in the model for the isobutanol workbooks that exec them, so they
     # stay classified here: snapshot_parameters must read every declared
-    # kinetic parameter, and a workbook override of either still describes.
+    # kinetic parameter; note that a workbook override of either still yields
+    # an 'isobutanol self-inhibition of Ehrlich branch' clause from
+    # describe_parameter_change even though the parameter no longer does
+    # anything.
     'K_16i': _p('product_self_inhibition', 'r16', effector='isobutanol'),
     'k_16r': _p('product_self_inhibition', 'r16', effector='isobutanol'),
     # --- lethality: steepness of the threshold-gated exp on r10 ---
