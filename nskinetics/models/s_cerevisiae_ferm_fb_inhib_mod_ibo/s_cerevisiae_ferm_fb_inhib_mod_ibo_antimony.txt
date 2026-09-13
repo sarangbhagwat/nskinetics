@@ -123,7 +123,9 @@ model *bhagwat2026()
   // (44.01/(2*88.06) = 0.250 per g pyruvate) and r16 (44.01/116.12 = 0.379
   // per g KIV) and enters the qCO2 rule. $CO2 is a boundary species: effluent
   // CO2 in the process bridge comes from its carbon balance, so qCO2 is a
-  // diagnostic. See nskinetics docs/reports/r14-r16-rate-laws-and-affinity-anchoring.md.
+  // diagnostic. The affinity anchoring behind K_13-K_16 is documented at
+  // their declarations below; the rate-law and stoichiometry rationale is
+  // in the 2026-09-13 model(ibo) commit history (a2b001c, b61360e, 623ff6f).
   r16: s_KIV + 0.138 $Red => 0.638 s_IBO + 0.379 $CO2; (k_16*s_KIV/(s_KIV + K_16))*2.71828^(-k_16ia*s_acetate)*2.71828^(-k_16ie*s_EtOH)*a*env;
 
   // Events:
