@@ -305,6 +305,39 @@ def test_select_tau_index_policies():
     assert ok is False and idx == -1
 
 
+def test_select_tau_index_flat_trace_falls_back_to_last_row():
+    """A 'min'/'max' policy on a variable that never moved -- its whole
+    (post-last-spike) trace lies within the half-unit the policy's rounding
+    implies, 0.5 * 10**-n_decimals -- has no extremum to find: it reports the
+    LAST row (tau = the run's end) with success False, instead of the FIRST
+    row of the all-equal plateau (t = 0, a zero-hour batch). Found on a
+    stalled culture: glucose sat at ~300 g/L for the whole run, every row
+    rounded to 300 at 0 decimals, and ['min', '[s_glu]'] picked row 0."""
+    from nskinetics.units.batch_reactor import select_tau_index
+    cols = ['time', 'val']
+    flat = np.array([[0.0, 300.0], [1.0, 299.99], [2.0, 299.98], [3.0, 299.97]])
+    # Flat at the policy's 0-decimal resolution (range 0.03 <= 0.5): last row, False.
+    idx, ok = select_tau_index(flat, cols, tau=None, policy=('min', 'val'), n_decimals=0)
+    assert (idx, ok) == (3, False)
+    idx, ok = select_tau_index(flat, cols, tau=None, policy=('max', 'val'), n_decimals=0)
+    assert (idx, ok) == (3, False)
+    # The tolerance follows n_decimals: at 2 decimals (tol 0.005) the same
+    # trace DID move (range 0.03), so the ordinary first-extremum rule applies.
+    idx, ok = select_tau_index(flat, cols, tau=None, policy=('min', 'val'), n_decimals=2)
+    assert (idx, ok) == (3, True)
+    idx, ok = select_tau_index(flat, cols, tau=None, policy=('max', 'val'), n_decimals=2)
+    assert (idx, ok) == (0, True)
+    # A trace whose minimum genuinely sits at row 0 but that MOVED keeps the
+    # first-extremum answer: the RANGE test, not a row-0 test, defines flat.
+    moved = np.array([[0.0, 1.0], [1.0, 5.0], [2.0, 5.0], [3.0, 2.0]])
+    idx, ok = select_tau_index(moved, cols, tau=None, policy=('min', 'val'), n_decimals=0)
+    assert (idx, ok) == (0, True)
+    # A genuine depletion is unchanged: the first row of the zero plateau.
+    depleting = np.array([[0.0, 300.0], [1.0, 150.0], [2.0, 0.2], [3.0, 0.1]])
+    idx, ok = select_tau_index(depleting, cols, tau=None, policy=('min', 'val'), n_decimals=0)
+    assert (idx, ok) == (2, True)
+
+
 class _FakeResultsUnit:
     """Minimal stand-in exposing the attributes AerationSpec/SpikeReduceRetry read."""
     def __init__(self, nsk_results_dict):

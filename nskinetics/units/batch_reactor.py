@@ -31,7 +31,10 @@ def select_tau_index(results, col_names, tau, policy, n_decimals=2):
         Reaction time; used only when ``policy is None``.
     policy : None or tuple
         ``None`` -> nearest-time row. ``('max'|'min', var)`` -> first row where
-        ``var`` (rounded to ``n_decimals``) equals its rounded max/min.
+        ``var`` (rounded to ``n_decimals``) equals its rounded max/min. A
+        ``var`` whose whole trace lies within ``0.5 * 10**-n_decimals`` (it
+        never moved, so every row would match and the first is t = 0) has no
+        extremum to find and reports the LAST row with ``success`` False.
         ``('equals', var, value)`` -> first row where ``var`` (rounded) equals
         ``value`` (rounded).
     n_decimals : int
@@ -40,8 +43,9 @@ def select_tau_index(results, col_names, tau, policy, n_decimals=2):
     Returns
     -------
     (index, success) : tuple[int, bool]
-        ``success`` is ``False`` (and ``index`` is ``-1``) only when an
-        ``'equals'`` policy finds no match.
+        ``success`` is ``False`` when an ``'equals'`` policy finds no match
+        (``index`` is ``-1``) or when a ``'max'``/``'min'`` policy's variable
+        never moved (``index`` is the last row: tau = the run's end).
     """
     if policy is None:
         idx = get_index_nearest_element_from_sorted_array(
@@ -51,6 +55,19 @@ def select_tau_index(results, col_names, tau, policy, n_decimals=2):
     if policy[0] in ('max', 'min'):
         col = col_names.index(policy[1])
         column = results[:, col]
+        # A variable that never moved -- its whole trace within the half-unit
+        # the rounding below implies -- has no extremum to find: every row
+        # would match, and the FIRST one is t = 0, a zero-hour batch whose
+        # effluent is the raw feed (found on a stalled culture whose glucose
+        # sat at ~300 g/L for the whole run under ['min', '[s_glu]'] at 0
+        # decimals). Report the LAST row -- tau = the run's end, an honest
+        # failed batch -- and success False (NSKBatchReactor stores it as
+        # _tau_update_success). The RANGE defines flat: a trace whose
+        # extremum genuinely sits at row 0 but that moved keeps the
+        # first-extremum answer below.
+        tol = 0.5*10.0**(-n_decimals)
+        if column.max() - column.min() <= tol:
+            return len(column) - 1, False
         target = getattr(column, policy[0])()
         idx = np.where(np.round(column, n_decimals) == np.round(target, n_decimals))[0][0]
         return idx, True
