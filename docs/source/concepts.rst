@@ -107,7 +107,14 @@ constructs a :class:`~nskinetics.units.FedBatchStrategySpecification` from
 its own units and attaches it to the fermentor
 (``V406.fed_batch_strategy_specification``, short alias ``V406.fbs_spec``);
 construction is side-effect-free — the strategy is imposed only when the
-caller invokes ``load_specifications()``. The factory also ships its own
+caller invokes ``load_specifications()``. The same specification is also
+attached as the fermentor's ``spike_feed_reconciler``: every fermentor run
+ends by comparing the spike-feed sugar its kinetics added with what the
+spike inlet delivers, and, if they disagree, re-derives the splitter split
+from that run and re-simulates the feed trains (with the spike count
+frozen) until they agree — so the effluent is conserved at the reactor
+boundary on every run, not only when the last ``load_specifications()``
+happened to match it. The factory also ships its own
 chemical set,
 :func:`~nskinetics.processes.create_sugar_prep_and_fermentation_chemicals`,
 activated only by calling the factory with ``set_thermo=True``; by default

@@ -573,3 +573,8 @@ def create_sugar_prep_and_fermentation_system(
     fbs_kwargs.update(fbs_spec_kwargs or {})
     V406.fed_batch_strategy_specification = V406.fbs_spec = \
         FedBatchStrategySpecification(**fbs_kwargs)
+    # Close the spike-feed balance at the reactor boundary: every V406 run
+    # re-derives the S301 split from the run behind its own effluent and
+    # re-simulates the feed trains until the spike inlet delivers the sugar
+    # the kinetics added (docs/reports/fed-batch-spike-feed-reconciliation.md).
+    V406.spike_feed_reconciler = V406.fbs_spec

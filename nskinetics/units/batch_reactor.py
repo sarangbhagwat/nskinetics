@@ -266,6 +266,29 @@ class NSKBatchReactor(BatchBioreactor):
         ``validator(model) -> None``; each raises on failure.
     spike_feed_index : int, optional
         Index of the spike-feed inlet stream (excluded from the initial mix).
+    spike_feed_reconciler : object, optional
+        Hook that closes the spike-feed balance at the reactor boundary
+        (default ``None``: off). The kinetic model is initialised from the
+        initial charge only and its feed-spike events add whatever spike
+        volume the dynamics dictate, so the species the spike inlet actually
+        delivers is otherwise never compared with what the run consumed. When
+        given (and ``spike_feed_index`` is set), every kinetic run ends by
+        evaluating ``reconciler.spike_feed_balance(reactor, minimal_feed,
+        spike_feed) -> (implied, delivered)`` [kg/hr]; while the relative
+        residual ``(implied - delivered)/delivered`` exceeds
+        :attr:`spike_feed_reconciliation_tol`, the reactor calls
+        ``reconciler.reconcile_spike_feed(reactor)`` (expected to re-derive
+        the upstream split from *this* run and re-simulate the feed trains),
+        rebuilds its feeds from the refreshed inlets, and re-runs the
+        kinetics with the spike count frozen at the count the previous pass
+        reached (so a spike-count discontinuity cannot two-cycle). After
+        :attr:`spike_feed_max_reconciliation_passes` unsuccessful passes a
+        :class:`~nskinetics.exceptions.MassBalanceError` is raised. The
+        :class:`~nskinetics.units.FedBatchStrategySpecification` implements
+        this protocol; the process factory attaches it. After every run the
+        reactor exposes ``spike_feed_implied``, ``spike_feed_delivered``,
+        ``spike_feed_residual`` (``None`` when the hook is off) and
+        ``n_spike_feed_reconciliation_passes``.
     N, V_max, T, P, Nmin, Nmax :
         Standard ``BatchBioreactor`` sizing parameters, passed through to
         biosteam's ``NRELAnaerobicBatchBioreactor``. Give exactly one of ``N``
@@ -279,6 +302,15 @@ class NSKBatchReactor(BatchBioreactor):
     #: 3785 m3 (1 MM gal), biosteam's NREL batch-reactor cost-correlation
     #: reference scale.
     default_V_max = 3785.
+    #: Spike-feed reconciliation hook (see the class docstring); ``None`` = off.
+    spike_feed_reconciler = None
+    #: [float] Relative spike-feed residual, |implied - delivered|/delivered,
+    #: below which a run is accepted without reconciling. The quickstart
+    #: baseline sits at ~8e-5.
+    spike_feed_reconciliation_tol = 1e-3
+    #: [int] Reconciliation passes (extra kinetic runs) allowed before a
+    #: :class:`~nskinetics.exceptions.MassBalanceError` is raised.
+    spike_feed_max_reconciliation_passes = 4
     # Class-level placeholder so `hasattr(NSKBatchReactor, 'simulate_kinetics')`
     # holds even before instantiation; `_init` overrides this per-instance with
     # the bound `_nsk_te_simulate_kinetics` method.
@@ -295,7 +327,7 @@ class NSKBatchReactor(BatchBioreactor):
               feed_volume_added_var=None,
               aeration=None, converge_air_supply=True, spike_retry=None,
               pre_reactions=(), validators=(),
-              spike_feed_index=None,
+              spike_feed_index=None, spike_feed_reconciler=None,
               N=None, V_max=None, T=305.15, P=101325., Nmin=2, Nmax=36):
         # biosteam's NRELAnaerobicBatchBioreactor (the post-2.53
         # BatchBioreactor) requires exactly one of `N`/`V_max` and no longer
@@ -333,6 +365,13 @@ class NSKBatchReactor(BatchBioreactor):
         self.pre_reactions = list(pre_reactions)
         self.validators = list(validators)
         self.spike_feed_index = spike_feed_index
+        self.spike_feed_reconciler = spike_feed_reconciler
+        self.spike_feed_implied = self.spike_feed_delivered = None
+        self.spike_feed_residual = None
+        self.n_spike_feed_reconciliation_passes = 0
+        # Set only during reconciliation passes: the spike count the kinetics
+        # must not exceed (skips the full run + SpikeReduceRetry).
+        self._frozen_spike_count = None
 
         self.run_type = 'simulate kinetics'
         # Full-trajectory results live on the kinetic model; the
@@ -486,18 +525,27 @@ class NSKBatchReactor(BatchBioreactor):
         """Bound implementation of ``simulate_kinetics``: run the kinetic model
         on ``feed`` for reaction time ``tau`` and return the effluent stream."""
         nkm = self.nsk_kinetic_model
-        # initial full simulation
-        self._reset_and_simulate(feed, reset_spike_cap=True)
-        # optional spike-count retry
-        if self.spike_retry is not None:
-            model = nkm._te
-            sr = self.spike_retry
-            # Seed the cap from the count reached by the full run, then let the
-            # retry loop honor the SAME cap attribute it decrements.
-            setattr(model, sr.max_count_var,
-                    list(self.nsk_results_dict[sr.count_var])[-1] - 1)
-            sr.run(
-                model, lambda: self._reset_and_simulate(feed, reset_spike_cap=False))
+        frozen = self._frozen_spike_count
+        if frozen is not None and self.spike_retry is not None:
+            # Spike-feed reconciliation pass: re-run with the cap frozen at
+            # the count the previous pass reached, and no reduce-then-retry,
+            # so the count can only fall, never flip up (a spike-count
+            # discontinuity would otherwise two-cycle against the split).
+            setattr(nkm._te, self.spike_retry.max_count_var, frozen)
+            self._reset_and_simulate(feed, reset_spike_cap=False)
+        else:
+            # initial full simulation
+            self._reset_and_simulate(feed, reset_spike_cap=True)
+            # optional spike-count retry
+            if self.spike_retry is not None:
+                model = nkm._te
+                sr = self.spike_retry
+                # Seed the cap from the count reached by the full run, then let
+                # the retry loop honor the SAME cap attribute it decrements.
+                setattr(model, sr.max_count_var,
+                        list(self.nsk_results_dict[sr.count_var])[-1] - 1)
+                sr.run(
+                    model, lambda: self._reset_and_simulate(feed, reset_spike_cap=False))
         # validators
         for validate in self.validators:
             validate(nkm._te)
@@ -545,12 +593,14 @@ class NSKBatchReactor(BatchBioreactor):
         return effluent
 
     # --- run flow -----------------------------------------------------------
-    def _run(self):
-        vent, effluent = self.outs
+    def _mix_feeds(self, effluent, keep):
+        """Mix the current inlets (all but the spike feed and the air) into
+        ``effluent``, apply the pre-reactions, and return
+        ``(minimal_feed, spike_feed)``: the mix reduced to the mapped
+        chemicals plus water (what the kinetic model is initialised from) and
+        the spike inlet (``None`` without a ``spike_feed_index``)."""
         ins = self.ins
-        vent.empty()
         effluent.empty()
-
         excluded = []
         spike_feed = None
         if self.spike_feed_index is not None:
@@ -567,15 +617,72 @@ class NSKBatchReactor(BatchBioreactor):
             if spike_feed is not None:
                 rxn.force_reaction(spike_feed)
 
-        keep = set(self.map_species_to_chemicals.values()) | {'Water'}
         minimal_feed = effluent.copy()
         for chem in minimal_feed.chemicals:
             if chem.ID not in keep:
                 minimal_feed.imol[chem.ID] = 0.0
+        return minimal_feed, spike_feed
+
+    def _reconcile_spike_feed(self, effluent, keep, minimal_feed, spike_feed,
+                              minimal_effluent):
+        """Close the spike-feed balance for the run just made (see the class
+        docstring). Returns the possibly refreshed
+        ``(minimal_feed, spike_feed, minimal_effluent)``; the reactor's
+        ``spike_feed_*`` attributes describe the accepted run."""
+        reconciler = self.spike_feed_reconciler
+        tol = self.spike_feed_reconciliation_tol
+        max_passes = self.spike_feed_max_reconciliation_passes
+        count_var = self.spike_retry.count_var if self.spike_retry else None
+        n_pass = 0
+        while True:
+            implied, delivered = reconciler.spike_feed_balance(
+                self, minimal_feed, spike_feed)
+            self.spike_feed_implied = implied
+            self.spike_feed_delivered = delivered
+            self.spike_feed_residual = residual = (
+                (implied - delivered) / max(abs(delivered), 1e-12))
+            self.n_spike_feed_reconciliation_passes = n_pass
+            if abs(residual) <= tol:
+                return minimal_feed, spike_feed, minimal_effluent
+            if n_pass >= max_passes:
+                raise MassBalanceError(
+                    f'{self.ID}: spike feed not conserved at the reactor '
+                    f'boundary after {n_pass} reconciliation pass(es): the '
+                    f'kinetic run implies {implied:.4g} kg/hr of spiked species '
+                    f'but the spike inlet delivers {delivered:.4g} kg/hr '
+                    f'(residual {residual:+.3%}, tolerance {tol:.1%}'
+                    + (f', {int(self.nsk_results_specific_tau_dict[count_var])} spikes'
+                       if count_var else '') + ').')
+            n_pass += 1
+            reconciler.reconcile_spike_feed(self)
+            minimal_feed, spike_feed = self._mix_feeds(effluent, keep)
+            if count_var is not None:
+                self._frozen_spike_count = int(round(
+                    self.nsk_results_specific_tau_dict[count_var]))
+            try:
+                minimal_effluent = self.simulate_kinetics(minimal_feed, self._tau)
+            finally:
+                self._frozen_spike_count = None
+
+    def _run(self):
+        vent, effluent = self.outs
+        vent.empty()
+        effluent.empty()
+
+        keep = set(self.map_species_to_chemicals.values()) | {'Water'}
+        minimal_feed, spike_feed = self._mix_feeds(effluent, keep)
 
         run_type = self.run_type
         if run_type == 'simulate kinetics':
             minimal_effluent = self.simulate_kinetics(minimal_feed, self._tau)
+            if spike_feed is not None and self.spike_feed_reconciler is not None:
+                minimal_feed, spike_feed, minimal_effluent = \
+                    self._reconcile_spike_feed(effluent, keep, minimal_feed,
+                                               spike_feed, minimal_effluent)
+            else:
+                self.spike_feed_implied = self.spike_feed_delivered = None
+                self.spike_feed_residual = None
+                self.n_spike_feed_reconciliation_passes = 0
         elif run_type == 'index saved nsk_results by tau':
             self._select_tau_index_from_saved(self.tau)
             minimal_effluent = self._build_effluent(minimal_feed)

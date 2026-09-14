@@ -101,6 +101,12 @@ The bridge-specific keyword arguments
 - ``spike_feed_index`` — the index into ``ins`` (here, ``2`` →
   ``spike_feed``) of the stream that supplies spike-feed composition/cost,
   excluded from the initial reactor charge so it is not double-counted.
+  The kinetics decide how much spike volume is added; nothing here ties
+  that to what ``spike_feed`` carries. In a flowsheet where an upstream
+  split sets the spike stream, give the reactor a ``spike_feed_reconciler``
+  (a :class:`~nskinetics.units.FedBatchStrategySpecification` implements
+  it) and it will close that balance itself at the end of every run,
+  exposing the relative mismatch as ``spike_feed_residual``.
 - ``track_vars`` — extra model selections to record as result columns beyond
   those the reactor needs internally. The ``map_species_to_chemicals`` keys
   (``'S'``, ``'P'``) record species *amounts* (what the effluent mass is built

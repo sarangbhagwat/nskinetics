@@ -6,6 +6,7 @@
 # https://github.com/sarangbhagwat/nskinetics/blob/main/LICENSE
 # for license details.
 
+import numpy as np
 from flexsolve import IQ_interpolation
 
 from ..exceptions import FeedingStrategyError
@@ -178,6 +179,11 @@ class FedBatchStrategySpecification:
       simulations.
     - Coordinated simulation of all upstream units to ensure consistency
       between specified targets and achievable process conditions.
+    - Reconciling the spike feed at the reactor boundary: when attached as
+      the reactor's ``spike_feed_reconciler``, :meth:`spike_feed_balance`
+      and :meth:`reconcile_spike_feed` let the reactor re-derive the split
+      from the run behind its effluent, so the spike inlet delivers the
+      species the kinetics actually added.
 
     Parameters
     ----------
@@ -445,15 +451,115 @@ class FedBatchStrategySpecification:
 
         self._simulate_upstream_units()
         fermentation_reactor.simulate()
+        # One-shot split from the run, for reactors without the
+        # reconciliation hook. When the reactor carries this specification as
+        # its ``spike_feed_reconciler`` the run above has already reconciled
+        # the split against itself (from the measured balance, not the
+        # nominal concentrations); leave that split alone.
+        if getattr(fermentation_reactor, 'spike_feed_reconciler', None) is not self:
+            self._set_split_from_run(fermentation_reactor)
 
-        d = fermentation_reactor.nsk_results_specific_tau_dict
-        final_env_vol = d[cv.resolve_volume_col(fermentation_reactor)]
-        vol_spike_added = d[cv.resolve_feed_volume_added_col(fermentation_reactor)]
+    # --- spike-feed reconciliation (NSKBatchReactor.spike_feed_reconciler) --
+    def _spike_volumes_from_run(self, reactor):
+        """``(initial volume, spike volume added)`` of the reactor's current
+        tau-row results, in the kinetic model's (normalised) volume units."""
+        cv = self.control_variables
+        d = reactor.nsk_results_specific_tau_dict
+        final_env_vol = d[cv.resolve_volume_col(reactor)]
+        vol_spike_added = d[cv.resolve_feed_volume_added_col(reactor)]
+        return final_env_vol - vol_spike_added, vol_spike_added
 
-        initial_env_vol = final_env_vol - vol_spike_added
+    def _set_split_from_run(self, reactor):
+        """Set the splitter split (fraction to the initial feed) so the
+        controlled species is divided between the initial feed and the spike
+        feed in the proportion the reactor's current run consumed them."""
+        initial_env_vol, vol_spike_added = self._spike_volumes_from_run(reactor)
         species_in_initial_feed = initial_env_vol * self.target_conc
         species_in_spikes = vol_spike_added * self.spike_conc
         self.splitter.split = species_in_initial_feed/(species_in_initial_feed+species_in_spikes) # split to initial feed
+
+    def spike_feed_balance(self, reactor, minimal_feed, spike_feed):
+        """Controlled-species mass the reactor's current run implies its spike
+        inlet carried, versus what the spike inlet actually delivers.
+
+        Parameters
+        ----------
+        reactor : NSKBatchReactor
+            Reactor whose ``nsk_results_specific_tau_dict`` holds the run.
+        minimal_feed : thermosteam.Stream
+            The initial charge the kinetic model was initialised from (its
+            solvent volume is the model's unit working volume).
+        spike_feed : thermosteam.Stream
+            The reactor's spike inlet.
+
+        Returns
+        -------
+        (implied, delivered) : tuple[float, float]
+            Mass flows [kg/hr] of the controlled species: ``implied`` is
+            the spike volume the run added (relative to its initial volume)
+            times the spike concentration *the model ran with* times the
+            initial charge's solvent volume; ``delivered`` is the spike
+            inlet's controlled-species mass.
+        """
+        initial_env_vol, vol_spike_added = self._spike_volumes_from_run(reactor)
+        km = reactor.nsk_kinetic_model
+        spike_conc = km.get_value(self.control_variables.spike_conc_var)
+        initial_volume = minimal_feed.ivol[self.solvent_ID]
+        implied = vol_spike_added / initial_env_vol * spike_conc * initial_volume
+        delivered = spike_feed.imass[self.species_IDs].sum()
+        return implied, delivered
+
+    def reconcile_spike_feed(self, reactor):
+        """Re-derive the split from the reactor's measured spike-feed balance
+        and re-simulate both feed trains, so the spike inlet delivers what
+        the reactor's current run added.
+
+        Called by :class:`~nskinetics.units.NSKBatchReactor` from inside its
+        own run (see its ``spike_feed_reconciler``) after it has stored
+        ``spike_feed_implied`` / ``spike_feed_delivered``; does not simulate
+        the reactor.
+
+        Both conditioning trains are intensive (an evaporator vapour fraction
+        and a water-to-sugar ratio hold each stream's concentration whatever
+        its flow), so ``delivered`` scales with ``1 - split`` and ``implied``
+        with ``split`` (through the initial volume). The split that closes
+        the balance therefore follows from the measured ratio alone::
+
+            split' = 1 / (1 + (implied/delivered) * (1 - split)/split)
+
+        The nominal target/spike concentrations deliberately do not enter:
+        before a strategy is imposed the trains sit at raw actuator values
+        (e.g. a flowsheet's initialising simulate), where a split derived
+        from the nominal concentrations is a fixed point that never closes.
+        With nothing delivered (or no measured balance on the reactor) the
+        ratio is undefined and the run-based nominal split
+        (:meth:`load_threshold_conc_and_tau_max`'s one-shot) is used instead.
+
+        This closes the balance of the controlled *species*. The spike
+        stream's solvent is conserved only when the stream is at the spike
+        concentration the model ran with, which :meth:`load_desired_concs`
+        guarantees; a run before the strategy is imposed (raw actuator
+        values) delivers a more dilute spike whose excess solvent the
+        effluent does not carry.
+
+        Parameters
+        ----------
+        reactor : NSKBatchReactor
+            Reactor carrying ``spike_feed_implied`` and
+            ``spike_feed_delivered`` [kg/hr] for its current run.
+        """
+        implied = getattr(reactor, 'spike_feed_implied', None)
+        delivered = getattr(reactor, 'spike_feed_delivered', None)
+        measured = implied is not None and delivered is not None and delivered > 0
+        if measured:
+            split = float(np.atleast_1d(self.splitter.split)[0])
+            measured = 0 < split < 1
+        if measured:
+            k = (implied / delivered) * (1 - split) / split
+            self.splitter.split = 1.0 / (1.0 + k)
+        else:
+            self._set_split_from_run(reactor)
+        self._simulate_upstream_units()
 
     def _solve_actuator(self, actuator, obj_f, desired_conc):
         try:

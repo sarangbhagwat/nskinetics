@@ -296,3 +296,158 @@ def test_load_max_n_spikes_accepts_zero_and_floats():
     assert km.values['max_n_glu_spikes'] == 0
     spec.load_max_n_spikes(12.0)
     assert km.values['max_n_glu_spikes'] == 12.0
+
+
+# --- spike-feed reconciliation (see docs/reports/fed-batch-spike-feed-reconciliation.md)
+
+class _ReconcilingKineticModel(_StubKineticModel):
+    """Also answers get_value, the way the spec reads the spike concentration
+    the model actually ran with."""
+    def get_value(self, selection):
+        return self.values[selection]
+
+
+class _RanReactor(_StubReactor):
+    """Stub reactor carrying the tau-row results of a finished run."""
+    def __init__(self, curr_env, curr_tot_vol_added):
+        self.nsk_kinetic_model = _ReconcilingKineticModel()
+        self.nsk_results_specific_tau_dict = {
+            'curr_env': curr_env, 'curr_tot_vol_added': curr_tot_vol_added}
+        self.n_simulate_calls = 0
+
+    def simulate(self):
+        self.n_simulate_calls += 1
+
+
+class _Recorder(_StubUnit):
+    """Unit stub whose simulate() records the splitter split at call time."""
+    def __init__(self, ID, splitter):
+        super().__init__(ID=ID)
+        self.splitter = splitter
+        self.splits_seen = []
+
+    def simulate(self):
+        self.splits_seen.append(getattr(self.splitter, 'split', None))
+
+
+def _make_ran_spec(curr_env=1.08, added=0.08, **overrides):
+    reactor = _RanReactor(curr_env, added)
+    reactor.nsk_kinetic_model.values['conc_spike'] = 600.0
+    splitter = _Recorder('S301', None)
+    splitter.splitter = splitter
+    feed_unit = _Recorder('F301', splitter)
+    spike_unit = _Recorder('F302', splitter)
+    spec = _make_spec(fermentation_reactor=reactor, splitter=splitter,
+                      feed_units_sequential=[feed_unit],
+                      spike_units_sequential=[spike_unit], **overrides)
+    return spec, reactor, splitter, feed_unit, spike_unit
+
+
+def test_spike_feed_balance_returns_implied_and_delivered():
+    """implied = added/(env - added) * spike conc THE MODEL RAN WITH * initial
+    solvent volume; delivered = the spike inlet's controlled-species mass."""
+    spec, reactor, *_ = _make_ran_spec(curr_env=1.08, added=0.08)
+    # The spec's stored spike_conc deliberately disagrees with the model's:
+    # the balance must use the model's value.
+    spec.spike_conc = 650.0
+    minimal_feed = _StubStream(imass={'Glucose': 22000.0}, ivol={'Water': 100.0})
+    spike_feed = _StubStream(imass={'Glucose': 4000.0}, ivol={'Water': 6.0})
+    implied, delivered = spec.spike_feed_balance(reactor, minimal_feed, spike_feed)
+    assert implied == pytest.approx(0.08 / 1.0 * 600.0 * 100.0)  # 4800 kg/hr
+    assert delivered == pytest.approx(4000.0)
+
+
+def test_reconcile_spike_feed_without_measured_balance_uses_the_run_split():
+    """A reactor that carries no measured balance (no spike_feed_implied /
+    spike_feed_delivered) gets the split derived from its CURRENT tau-row
+    results (no new reactor run), and both feed trains are re-simulated only
+    after the split is written."""
+    spec, reactor, splitter, feed_unit, spike_unit = _make_ran_spec(
+        curr_env=1.08, added=0.08, target_conc=220.0, spike_conc=600.0)
+    spec.reconcile_spike_feed(reactor)
+    expected = (1.0 * 220.0) / (1.0 * 220.0 + 0.08 * 600.0)
+    assert splitter.split == pytest.approx(expected)
+    assert reactor.n_simulate_calls == 0
+    assert feed_unit.splits_seen == [pytest.approx(expected)]
+    assert spike_unit.splits_seen == [pytest.approx(expected)]
+
+
+def test_load_threshold_conc_and_tau_max_uses_the_reconciliation_split():
+    """The one-shot split in load_threshold_conc_and_tau_max is the same
+    formula reconcile_spike_feed applies, evaluated on the run it triggers."""
+    spec, reactor, splitter, *_ = _make_ran_spec(
+        curr_env=1.2, added=0.2, target_conc=220.0, spike_conc=600.0)
+    spec.load_threshold_conc_and_tau_max(threshold_conc=210.0, tau_max=72.0)
+    assert reactor.n_simulate_calls == 1
+    assert reactor.tau_max == 72.0
+    assert reactor.nsk_kinetic_model.values['threshold_conc_v'] == 210.0
+    assert splitter.split == pytest.approx((1.0 * 220.0) / (1.0 * 220.0 + 0.2 * 600.0))
+
+
+def test_reactor_spike_feed_reconciliation_defaults():
+    """NSKBatchReactor ships the reconciliation hook off (None) with a 0.1 %
+    relative tolerance and four passes, as class-level defaults."""
+    from nskinetics.units import NSKBatchReactor
+    assert NSKBatchReactor.spike_feed_reconciler is None
+    assert NSKBatchReactor.spike_feed_reconciliation_tol == 1e-3
+    assert NSKBatchReactor.spike_feed_max_reconciliation_passes == 4
+
+
+def _make_measured_spec(split, implied, delivered):
+    """Spec + reactor stub carrying a measured spike-feed balance."""
+    spec, reactor, splitter, feed_unit, spike_unit = _make_ran_spec(
+        curr_env=1.08, added=0.08, target_conc=220.0, spike_conc=600.0)
+    splitter.split = split
+    reactor.spike_feed_implied = implied
+    reactor.spike_feed_delivered = delivered
+    return spec, reactor, splitter, feed_unit, spike_unit
+
+
+def test_reconcile_spike_feed_uses_the_measured_balance_not_nominal_concs():
+    """The feed trains are intensive (delivered ~ 1 - split, implied ~ split
+    through the initial volume), so the split that closes the balance follows
+    from the measured implied/delivered ratio alone:
+    split' = 1 / (1 + (implied/delivered) * (1 - split)/split).
+    Nominal target/spike concentrations must NOT enter: before a strategy is
+    imposed the trains sit at raw actuator values (the isobutanol
+    biorefinery's initialising simulate), where the nominal formula is a
+    fixed point that never closes."""
+    spec, reactor, splitter, feed_unit, spike_unit = _make_measured_spec(
+        split=0.8, implied=45430.0, delivered=16250.0)
+    spec.reconcile_spike_feed(reactor)
+    k = (45430.0 / 16250.0) * (1 - 0.8) / 0.8
+    expected = 1.0 / (1.0 + k)
+    nominal = 220.0 / (220.0 + 0.08 * 600.0)
+    assert splitter.split == pytest.approx(expected)
+    assert splitter.split != pytest.approx(nominal)
+    assert feed_unit.splits_seen == [pytest.approx(expected)]
+    assert spike_unit.splits_seen == [pytest.approx(expected)]
+
+
+def test_reconcile_spike_feed_falls_back_to_nominal_split_without_delivery():
+    """With nothing delivered (split at 1, or an empty spike train) the
+    measured ratio is undefined; fall back to the run-based nominal split."""
+    spec, reactor, splitter, *_ = _make_measured_spec(
+        split=1.0, implied=4800.0, delivered=0.0)
+    spec.reconcile_spike_feed(reactor)
+    assert splitter.split == pytest.approx(220.0 / (220.0 + 0.08 * 600.0))
+
+
+def test_reconcile_spike_feed_no_spikes_sends_everything_to_the_initial_feed():
+    spec, reactor, splitter, *_ = _make_measured_spec(
+        split=0.8, implied=0.0, delivered=16250.0)
+    spec.reconcile_spike_feed(reactor)
+    assert splitter.split == pytest.approx(1.0)
+
+
+def test_load_threshold_conc_and_tau_max_keeps_a_reconciled_split():
+    """When the reactor carries this spec as its spike_feed_reconciler, the
+    run inside load_threshold_conc_and_tau_max has already reconciled the
+    split against itself; the nominal one-shot must not overwrite it."""
+    spec, reactor, splitter, *_ = _make_ran_spec(
+        curr_env=1.2, added=0.2, target_conc=220.0, spike_conc=600.0)
+    reactor.spike_feed_reconciler = spec
+    splitter.split = 0.7
+    spec.load_threshold_conc_and_tau_max(threshold_conc=210.0, tau_max=72.0)
+    assert reactor.n_simulate_calls == 1
+    assert splitter.split == 0.7
