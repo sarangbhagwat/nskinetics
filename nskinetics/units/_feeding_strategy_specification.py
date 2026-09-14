@@ -308,7 +308,8 @@ class FedBatchStrategySpecification:
             raise ValueError("target_conc must be positive.")
 
         if self.threshold_conc < 0:
-            raise ValueError("threshold_conc must be positive.")
+            raise ValueError("threshold_conc must be non-negative "
+                             "(0 = spike on exhaustion).")
 
         if self.spike_conc <= 0:
             raise ValueError("spike_conc must be positive.")

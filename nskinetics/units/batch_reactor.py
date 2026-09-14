@@ -549,15 +549,35 @@ class NSKBatchReactor(BatchBioreactor):
         # validators
         for validate in self.validators:
             validate(nkm._te)
-        # tau selection
+        # tau selection. A 'min'/'max'/'equals' policy searches only the rows
+        # at or after the run's last spike: a policy on the spiked species
+        # (e.g. ['min', '[s_glu]']) would otherwise land on the FIRST
+        # depletion -- the first spike's own trigger row -- whenever the
+        # spike threshold is at or near zero, reporting 0 or 1 spikes at tau
+        # by integrator-row placement whatever the run actually fired, and
+        # the spike-feed reconciler would then freeze that count.
+        results, cols = self.nsk_results, self.nsk_results_col_names
+        offset = (self._last_spike_row(results, cols)
+                  if self.tau_update_policy is not None else 0)
         tau_index, ok = select_tau_index(
-            self.nsk_results, self.nsk_results_col_names, tau,
+            results[offset:], cols, tau,
             self.tau_update_policy, self.n_decimal_places_for_tau_update_policy)
+        tau_index += offset
         self._tau_update_success = ok
         self._load_specific_tau(tau_index)
         if self.aeration is not None:
             self.aeration.compute_cumulative_O2(self, tau_index)
         return self._build_effluent(feed)
+
+    def _last_spike_row(self, results, cols):
+        """First results row at which the spike counter holds its final
+        value: the row of the run's last spike (0 when the reactor has no
+        spike retry / count column, or the run fired no spike)."""
+        sr = self.spike_retry
+        if sr is None or sr.count_var is None or sr.count_var not in cols:
+            return 0
+        counts = results[:, cols.index(sr.count_var)]
+        return int(np.argmax(counts == counts[-1]))
 
     def _load_specific_tau(self, tau_index):
         cols = self.nsk_results_col_names
