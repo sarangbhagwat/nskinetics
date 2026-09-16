@@ -5,18 +5,24 @@
 # This module is under the MIT open-source license. See
 # https://github.com/sarangbhagwat/nskinetics/blob/main/LICENSE
 # for license details.
-"""Tests for the r14-r16 rate laws, affinity anchoring and Ehrlich
+"""Tests for the r14-r17 rate laws, affinity anchoring and Ehrlich
 stoichiometry bookkeeping of the shipped *S. cerevisiae* ethanol/isobutanol
 model (see
-``docs/superpowers/specs/2026-09-13-r14-r16-rate-laws-affinity-anchoring-design.md``).
+``docs/superpowers/specs/2026-09-15-r16-split-aro10-adh6-design.md`` and its
+2026-09-13 predecessor).
 
-r16 (lumped 2-keto-acid decarboxylase + ADH) is irreversible Michaelis-Menten
-in KIV: the ``k_16r`` reverse term and the ``K_16i`` isobutanol product term
-copied from r6 are gone from the law but stay declared at 0 so that the
-isobutanol repo's workbooks, which ``exec`` ``K_16i = x`` onto the model, keep
-resolving. ``K_14``/``K_15``/``K_16`` are anchored to the fitted core, and the
-Ehrlich branch's NAD(P)H and CO2 are bookkept in the reactions and in the
-``qO2``/``qCO2`` assignment rules.
+The Ehrlich branch's terminal step is split in two: r16 is the Aro10
+2-keto-acid decarboxylase (irreversible Michaelis-Menten in KIV, releasing
+isobutyraldehyde + CO2, no cofactor and no cross-product terms, mirroring
+r3/Pdc), and r17 is the Adh6 NADPH reductase (a full structural mirror of
+r6/Adh1: Haldane reverse ``k_17r``, competitive isobutanol ``K_17e``, and
+acetate/ethanol cross-inhibition ``k_17ia``/``k_17ie``). ``K_17``/``K_17e``
+are anchored to the fitted ``K_6``/``K_6e`` by the in-vitro Adh6:Adh1 Km
+ratio. ``k_16r``/``K_16i`` and the lumped step's cross-product coefficients
+``k_16ia``/``k_16ie`` remain declared at 0 and inert on the clean
+decarboxylase, so the isobutanol repo's workbooks, which ``exec``
+``K_16i = x`` / ``k_16ia = x`` / ``k_16ie = x`` onto the model, keep
+resolving.
 
 Marked ``slow`` as a whole and deliberately not registered in
 ``nskinetics/tests/__init__.py``: the shipped subpackage builds ``te_r`` on
@@ -37,13 +43,16 @@ import pytest
 pytestmark = pytest.mark.slow
 
 # --- expected coefficients ---------------------------------------------------
-# These four constants are the corrected Ehrlich bookkeeping (spec §1.1 and
-# §1.3); they are the only thing that changed between the two commits of the
-# spec.
+# The split is taken at the molar node, so at steady flux it is mass-identical
+# to the lumped r16 it replaces: 0.621 * 1.028 = 0.638 g IBO and
+# 0.621 * 0.222 = 0.138 g $Red per g KIV, the lumped law's own coefficients.
 
-#: g Red per g KIV on r16: one NADPH per mole KIV, 16/116.12 (r6's 0.363 is
-#: per g acetaldehyde, 44.05 g/mol, and was copied uncorrected).
-R16_RED = 0.138
+#: g isobutyraldehyde per g KIV on r16: 72.11/116.12 (the rest leaves as CO2).
+R16_ALD = 0.621
+
+#: g Red per g isobutyraldehyde on r17: one NADPH per mole aldehyde,
+#: 16/72.11 (Lei's $Red convention: 16 g O-equivalents per mole).
+R17_RED = 0.222
 
 #: ``{reaction: (reactants, products)}`` as ``{species_id: stoichiometry}``.
 #: CO2: r13 44.01/(2*88.06) per g pyruvate, r16 44.01/116.12 per g KIV;
@@ -52,23 +61,25 @@ STOICH = {
     'r13': ({'s_pyr': 1.0}, {'s_AL': 0.750, 'CO2': 0.250}),
     'r14': ({'s_AL': 1.0, 'Red': 0.121}, {'s_DHI': 1.015}),
     'r15': ({'s_DHI': 1.0}, {'s_KIV': 0.866}),
-    'r16': ({'s_KIV': 1.0, 'Red': R16_RED}, {'s_IBO': 0.638, 'CO2': 0.379}),
+    'r16': ({'s_KIV': 1.0}, {'s_isobutald': R16_ALD, 'CO2': 0.379}),
+    'r17': ({'s_isobutald': 1.0, 'Red': R17_RED}, {'s_IBO': 1.028}),
 }
 
 #: Signed coefficients of ``qO2*x*env*32/1000`` (g O2-equivalents/h): the
-#: rule subtracts the $Red consumers r6, r16 and (since commit 2) r14.
+#: rule subtracts the $Red consumers r6, r14 and r17. The NADPH credit moved
+#: from r16 to r17 with the split, since r17 is the step that consumes it.
 QO2_TERMS = {'r1': 0.178, 'r2': 0.908, 'r4': 0.363, 'r5': 1.066,
-             'r6': -0.363, 'r16': -R16_RED, 'r14': -0.121,
+             'r6': -0.363, 'r17': -R17_RED, 'r14': -0.121,
              'r7': 0.063, 'r8': 0.214}
 
 #: Coefficients of ``qCO2*x*env*44.01/1000`` (g CO2/h). The pre-existing
 #: r3/r5 mismatches against the reactions (0.33 vs 0.5; 1.446 vs 1.466) are
-#: Lei's and are reproduced, not corrected.
+#: Lei's and are reproduced, not corrected. r16 keeps the decarboxylation.
 QCO2_TERMS = {'r2': 1.499, 'r3': 0.5, 'r5': 1.466, 'r7': 0.127, 'r8': 0.325,
               'r13': 0.250, 'r16': 0.379}
 
 RATE_IDS = ('r1', 'r2', 'r3', 'r4', 'r5', 'r6', 'r7', 'r8',
-            'r13', 'r14', 'r15', 'r16')
+            'r13', 'r14', 'r15', 'r16', 'r17')
 
 
 # --- helpers ---------------------------------------------------------------
@@ -134,6 +145,58 @@ def test_defaults():
     # still declared: the isobutanol workbooks exec `K_16i = x` onto the model
     ids = set(r.getGlobalParameterIds())
     assert {'K_16i', 'k_16r'} <= ids
+    # Adh6 (r17): K_17 anchors to the fitted K_6 by the Adh6:Adh1 aldehyde-Km
+    # ratio with the molar-mass correction, K_17e to K_6e through the same
+    # 0.70 in-vitro -> in-vivo transfer factor r6 itself implies.
+    assert r.K_17 == pytest.approx(0.0086)
+    assert r.K_17e == pytest.approx(0.020)
+    assert r.k_17r == pytest.approx(0.00025)
+    assert r.k_17ia == pytest.approx(0.06)
+    assert r.k_17ie == pytest.approx(0.02)
+    # Adh6 is constitutive: its vmax has a nonzero default so a workbook that
+    # sets only k_16 (the Aro10 knob gating the branch) still makes isobutanol.
+    assert r.k_17 == pytest.approx(44.0)
+    assert {'k_17', 'K_17', 'k_17r', 'K_17e', 'k_17ia', 'k_17ie'} <= ids
+    # the lumped law's own cross-product coefficients stay declared, at 0 and
+    # inert, for the same workbook reason as K_16i/k_16r (rows 74-75 of the
+    # scenario-B and opt_* workbooks exec them)
+    assert {'k_16ia', 'k_16ie'} <= ids
+    assert r.k_16ia == 0.0 and r.k_16ie == 0.0
+
+
+def test_K_17_is_anchored_to_the_fitted_K_6():
+    # The anchoring rule, recomputed from its inputs rather than restated:
+    # K_17 = K_6 * (Km_Adh6,ald / Km_Adh1,ald) * (MW_isobutald / MW_acetald),
+    # with Adh6 0.17 mM (Larroy 2002, 3-methylbutanal surrogate) and Adh1
+    # 1.1 mM (Ganzhorn 1987).
+    te_r, *_ = _model()
+    r = te_r._te
+    expected = r.K_6 * (0.17 / 1.1) * (72.11 / 44.05)
+    assert r.K_17 == pytest.approx(expected, rel=0.03)
+    # K_17e = K_17 / Ki_IBO,model, Ki_IBO,model = 0.70 * 50 * 0.17 mM in g/L;
+    # the 0.70 is r6's own transfer factor, K_6/K_6e = 0.60 g/L vs 18 mM.
+    ki_ibo = 0.70 * 50 * 0.17e-3 * 74.12          # mol/L -> g/L isobutanol
+    assert r.K_17e == pytest.approx(r.K_17 / ki_ibo, rel=0.05)
+
+
+def test_r16_ignores_its_retired_cross_product_coefficients():
+    # k_16ia/k_16ie are declared only for the isobutanol workbooks that exec
+    # them; the decarboxylase law has no carrier for them, so a workbook
+    # writing 0.06/0.02 (its baseline rows) must not touch r16 -- and r17,
+    # which carries the live k_17ia/k_17ie, must not read them either.
+    with _scenario_B_state(s_KIV=0.1, s_isobutald=0.01, s_acetate=1.0,
+                           s_EtOH=20.0, s_IBO=26.0, x=10.0) as r:
+        try:
+            r16_default, r17_default = r['r16'], r['r17']
+            r.k_16ia = 0.06
+            r.k_16ie = 0.02
+            r16_armed, r17_armed = r['r16'], r['r17']
+        finally:
+            r.k_16ia = 0.0
+            r.k_16ie = 0.0
+    assert r16_default > 0.0
+    assert r16_armed == pytest.approx(r16_default, rel=1e-12)
+    assert r17_armed == pytest.approx(r17_default, rel=1e-12)
 
 
 # --- 2. r16 is insensitive to the retired terms -----------------------------
@@ -158,6 +221,55 @@ def test_r16_ignores_K_16i_and_k_16r():
     assert rate_armed == pytest.approx(rate_default, rel=1e-12)
 
 
+# --- 2b. the split: a clean decarboxylase and a full ADH mirror --------------
+
+def test_r16_is_a_clean_decarboxylase_law():
+    # Aro10 mirrors r3/Pdc: no cofactor, no reverse, no product or
+    # cross-product terms. Everything ADH-specific lives on r17 now.
+    te_r, *_ = _model()
+    m = _sbml_model(te_r._te.getSBML())
+    law = _formula(m.getReaction('r16').getKineticLaw())
+    for absent in ('k_16r', 'K_16i', 'k_16ia', 'k_16ie', 'k_17ia', 'k_17ie',
+                   's_IBO', 's_EtOH', 's_acetate', 'Red'):
+        assert absent not in law, absent
+    assert 'k_16' in law and 'K_16' in law and 's_KIV' in law
+
+
+def test_r17_mirrors_the_r6_ADH_law():
+    # Structural mirror of r6 with isobutanol as the self-product: the same
+    # Haldane numerator, competitive denominator and two cross-product
+    # exponentials, on the aldehyde r16 now makes.
+    te_r, *_ = _model()
+    m = _sbml_model(te_r._te.getSBML())
+    law = _formula(m.getReaction('r17').getKineticLaw())
+    for present in ('k_17', 'k_17r', 'K_17', 'K_17e', 'k_17ia', 'k_17ie',
+                    's_isobutald', 's_IBO', 's_acetate', 's_EtOH'):
+        assert present in law, present
+    # r17 must not inhibit itself on the product it does not make
+    assert 'k_17ii' not in law
+    assert m.getReaction('r17').getReversible() is True
+
+
+def test_r17_reverse_and_product_terms_are_live():
+    # Unlike the retired k_16r/K_16i, these reach the rate: the ADH step is a
+    # real carrier for them. Raising K_17e must slow r17 at a high titer.
+    with _scenario_B_state(s_isobutald=0.01, s_IBO=26.0, x=10.0) as r:
+        try:
+            base = r['r17']
+            r.K_17e = 0.20
+            suppressed = r['r17']
+            r.K_17e = 0.020
+            r.k_17r = 0.05
+            reversed_ = r['r17']
+        finally:
+            r.K_17e = 0.020
+            r.k_17r = 0.00025
+    assert base > 0.0
+    assert suppressed < base
+    # k_17r * s_IBO = 1.3 > s_isobutald = 0.01, so the net rate goes negative
+    assert reversed_ < 0.0
+
+
 # --- 3. stoichiometry -------------------------------------------------------
 
 def test_stoichiometry_and_reversibility():
@@ -167,13 +279,46 @@ def test_stoichiometry_and_reversibility():
         rx, got_reactants, got_products = _reaction_sides(m, rid)
         assert got_reactants == pytest.approx(reactants), rid
         assert got_products == pytest.approx(products), rid
-        assert rx.getReversible() is False, rid
-    # r6 is the model's one reversible step (Haldane form on Adh1)
+        assert rx.getReversible() is (rid == 'r17'), rid
+    # r6 and r17 are the model's two reversible steps (Haldane ADH forms)
     assert m.getReaction('r6').getReversible() is True
     # the retired terms are gone from the r16 law itself, not just zeroed
     law = _formula(m.getReaction('r16').getKineticLaw())
     assert 'k_16r' not in law and 'K_16i' not in law
-    assert 'k_16ia' in law and 'k_16ie' in law
+
+
+def test_the_split_conserves_the_lumped_coefficients():
+    # At steady flux through the node, r16 + r17 must move exactly what the
+    # single lumped r16 moved per g KIV: 0.638 g isobutanol and 0.138 g $Red.
+    te_r, *_ = _model()
+    m = _sbml_model(te_r._te.getSBML())
+    _, r16_in, r16_out = _reaction_sides(m, 'r16')
+    _, r17_in, r17_out = _reaction_sides(m, 'r17')
+    ald_per_kiv = r16_out['s_isobutald']
+    assert ald_per_kiv * r17_out['s_IBO'] == pytest.approx(0.638, abs=5e-4)
+    assert ald_per_kiv * r17_in['Red'] == pytest.approx(0.138, abs=5e-4)
+    # and the decarboxylation CO2 is unchanged by the split
+    assert r16_out['CO2'] == pytest.approx(0.379)
+    # carbon closes on r16: isobutyraldehyde + CO2 = 1 g per g KIV
+    assert ald_per_kiv + r16_out['CO2'] == pytest.approx(1.0, abs=1e-3)
+
+
+def test_isobutaldehyde_is_an_internal_intermediate():
+    # Like s_AL / s_DHI / s_KIV: made and consumed inside the branch, with no
+    # dilution outflow of its own (D = 0 in fed-batch use, but the asymmetry
+    # would still be wrong) and no biosteam chemical mapping.
+    te_r, *_ = _model()
+    r = te_r._te
+    assert 's_isobutald' in set(r.getFloatingSpeciesIds())
+    assert 's_isobutald_out' not in set(r.getReactionIds())
+    m = _sbml_model(r.getSBML())
+    consumers = [rx.getId() for rx in m.getListOfReactions()
+                 if any(s.getSpecies() == 's_isobutald'
+                        for s in rx.getListOfReactants())]
+    producers = [rx.getId() for rx in m.getListOfReactions()
+                 if any(s.getSpecies() == 's_isobutald'
+                        for s in rx.getListOfProducts())]
+    assert producers == ['r16'] and consumers == ['r17']
 
 
 # --- 4. rule coefficients, behaviourally ------------------------------------
@@ -221,10 +366,11 @@ def test_shipped_sbml_matches_the_live_model():
     shipped = doc.getModel()
     live = _sbml_model(te_r._te.getSBML())      # as loaded, scenario-invariant
     for pid in ('K_13', 'K_14', 'K_15', 'K_16', 'K_16i', 'k_16r',
+                'k_17', 'K_17', 'k_17r', 'K_17e', 'k_17ia', 'k_17ie',
                 'anaerobic_growth_mult'):
         assert shipped.getParameter(pid).getValue() == pytest.approx(
             live.getParameter(pid).getValue()), pid
-    for rid in ('r13', 'r14', 'r15', 'r16'):
+    for rid in ('r13', 'r14', 'r15', 'r16', 'r17'):
         s_rx, l_rx = shipped.getReaction(rid), live.getReaction(rid)
         assert s_rx.getReversible() == l_rx.getReversible(), rid
         assert _formula(s_rx.getKineticLaw()) == _formula(l_rx.getKineticLaw()), rid

@@ -7,12 +7,12 @@ model *bhagwat2026()
   species s_EtOH in env, x in env, $a in env, $AcDH in env, $CO2 in env, $Red in env;
   species $S_f in env;
   species s_AL in env, s_DHI in env, s_KIV in env;
-  species s_IBO in env;
+  species s_isobutald in env, s_IBO in env;
 
   // Assignment Rules:
   a := x*X_a;
   AcDH := x*X_AcDH;
-  qO2 := is_aerobic*(1000/32)*((0.178*r1 + 0.908*r2 + 0.363*r4 + 1.066*r5 - 0.363*r6 - 0.138*r16 - 0.121*r14) + 0.063*r7 + 0.214*r8)/(x*env);
+  qO2 := is_aerobic*(1000/32)*((0.178*r1 + 0.908*r2 + 0.363*r4 + 1.066*r5 - 0.363*r6 - 0.222*r17 - 0.121*r14) + 0.063*r7 + 0.214*r8)/(x*env);
   qCO2 := (1000/44.01)*(1.499*r2 + 0.5*r3 + 1.466*r5 + 0.127*r7 + 0.325*r8 + 0.250*r13 + 0.379*r16)/(x*env);
   qO2_TCA_growth_only := (1000/32)*((0.908*r2 + 1.066*r5) + 0.063*r7 + 0.214*r8)/(x*env);
   cell := x*env*0.0015;
@@ -28,7 +28,7 @@ model *bhagwat2026()
   // Coefficients are those of qO2_TCA_growth_only; units mmol O2/L/h.
   // Scope: the cap covers those qO2_TCA_growth_only terms only. The
   // model's total qO2 also carries the ungated aerobic NAD(P)H re-oxidation
-  // term 0.178*r1 + 0.363*r4 - 0.363*r6 - 0.138*r16 - 0.121*r14, so qO2*x -- what
+  // term 0.178*r1 + 0.363*r4 - 0.363*r6 - 0.222*r17 - 0.121*r14, so qO2*x -- what
   // AerationSpec sizes the air stream from -- can exceed OTR_max (by
   // ~20 % in a bound 100 g/L batch). Extending the cap to total qO2 is
   // a follow-up.
@@ -98,35 +98,54 @@ model *bhagwat2026()
   r13: s_pyr => 0.750 s_AL + 0.250 $CO2; (k_13*s_pyr/(K_13 + s_pyr))*a*env;
   r14: s_AL + 0.121 $Red => 1.015 s_DHI; (k_14*s_AL/(K_14 + s_AL))*a*env;
   r15: s_DHI => 0.866 s_KIV; (k_15*s_DHI/(K_15 + s_DHI))*a*env;
-  // r16 (lumped 2-keto-acid decarboxylase + alcohol dehydrogenase) is
-  // Aro10-limited: per unit flux the decarboxylase is ~15x the more expensive
-  // enzyme of the pair (Aro10 kcat 19 /s on KIV vs Adh6 296 /s on the
-  // aldehyde; isobutanol burden model), so the lumped law is a decarboxylase
-  // law, Michaelis-Menten in KIV (Aro10 Km 8.5 mM on KIV, Kneen et al. 2011
-  // FEBS J. 278:1842, doi:10.1111/j.1742-4658.2011.08103.x). No reverse term:
-  // the decarboxylation releases CO2 and is irreversible, so isobutanol
-  // cannot be carried back to KIV -- the k_16r Haldane term previously copied
-  // from r6 (Adh1) had no carrier. No product term: isobutanol cannot bind a
-  // decarboxylase, and the Adh6 sub-step (Km 0.13-0.21 mM on branched
-  // aldehydes; 50-fold higher catalytic efficiency on aldehydes than on
-  // alcohols, Larroy et al. 2002 Biochem. J. 361:163) is saturated and not
-  // rate-limiting, so a competitive alcohol term on it would not reach the
-  // lumped rate -- the K_16i term previously copied from r6 (K_6e) had no
-  // carrier either. Isobutanol toxicity is carried by the k_*ii terms on
-  // r1/r4/r6/r7 and by r10. The cross-product exponentials (k_16ia, k_16ie)
-  // are unchanged. Stoichiometry (g per g substrate; one NAD(P)H bookkept as
-  // 16 g O-equivalents per mole, Lei's $Red convention): r14 takes one NADPH
-  // per mole acetolactate, 16/132.11 = 0.121 $Red; r16 takes one NADPH per
-  // mole KIV, 16/116.12 = 0.138 $Red (the 0.363 it carried until 2026-09-13
-  // was r6's per-gram-acetaldehyde figure, 2.6x too large, and credited qO2
-  // with 2.6x the NADH re-oxidation r16 can supply); CO2 is released by r13
-  // (44.01/(2*88.06) = 0.250 per g pyruvate) and r16 (44.01/116.12 = 0.379
-  // per g KIV) and enters the qCO2 rule. $CO2 is a boundary species: effluent
-  // CO2 in the process bridge comes from its carbon balance, so qCO2 is a
-  // diagnostic. The affinity anchoring behind K_13-K_16 is documented at
-  // their declarations below; the rate-law and stoichiometry rationale is
-  // in the 2026-09-13 model(ibo) commit history (a2b001c, b61360e, 623ff6f).
-  r16: s_KIV + 0.138 $Red => 0.638 s_IBO + 0.379 $CO2; (k_16*s_KIV/(s_KIV + K_16))*2.71828^(-k_16ia*s_acetate)*2.71828^(-k_16ie*s_EtOH)*a*env;
+  // r16 (Aro10, a branched-chain 2-keto-acid decarboxylase) and r17 (Adh6, a
+  // broad-specificity NADPH-dependent alcohol dehydrogenase) were one lumped
+  // reaction until 2026-09-15. The lump was Aro10-limited -- per unit flux the
+  // decarboxylase is ~15x the more expensive enzyme of the pair (Aro10 kcat
+  // 19 /s on KIV vs Adh6 296 /s on the aldehyde; isobutanol burden model) --
+  // so it was written as a decarboxylase law and could not express an Adh6
+  // knob at all. They are split so the two alcohol dehydrogenases of the
+  // model, Adh1 (r6, ethanol) and Adh6 (r17, isobutanol), can be tuned
+  // independently.
+  //
+  // r16 is Michaelis-Menten in KIV (Aro10 Km 8.5 mM on KIV, Kneen et al. 2011
+  // FEBS J. 278:1842, doi:10.1111/j.1742-4658.2011.08103.x) and irreversible:
+  // the decarboxylation releases CO2, so isobutyraldehyde cannot be carried
+  // back to KIV. It carries no product, cross-product or cofactor term at all
+  // -- a decarboxylase binds neither alcohol, and the cross-product
+  // exponentials belong on the alcohol-forming step -- exactly like r3 (Pdc),
+  // the decarboxylase it parallels. k_16r and K_16i (the Haldane and
+  // competitive terms once copied here from r6) and k_16ia and k_16ie (the
+  // cross-product exponentials the lumped step carried) remain declared at 0
+  // and inert, with no carrier (see their declarations below).
+  //
+  // r17 is a full structural mirror of r6 (Adh1): reversible Michaelis-Menten
+  // with a Haldane reverse term (k_17r), a competitive isobutanol term (K_17e)
+  // and the acetate/ethanol cross-product exponentials (k_17ia, k_17ie) -- the
+  // products it does not itself make. Adh6 genuinely is reversible and
+  // product-inhibited (Larroy et al. 2002 Biochem. J. 361:163: Km 0.13-0.21 mM
+  // on branched aldehydes, ~50-fold higher catalytic efficiency on aldehydes
+  // than on alcohols), so unlike the lumped law it is a real carrier for those
+  // terms. Isobutanol toxicity elsewhere is carried by the k_*ii terms on
+  // r1/r4/r6/r7 and by r10.
+  //
+  // Stoichiometry (g per g substrate; one NAD(P)H bookkept as 16 g
+  // O-equivalents per mole, Lei's $Red convention): r14 takes one NADPH per
+  // mole acetolactate, 16/132.11 = 0.121 $Red; r16 splits KIV into
+  // isobutyraldehyde (72.11/116.12 = 0.621) and CO2 (44.01/116.12 = 0.379);
+  // r17 takes one NADPH per mole aldehyde, 16/72.11 = 0.222 $Red, and makes
+  // 74.12/72.11 = 1.028 g isobutanol per g aldehyde. The split is taken at the
+  // molar node, so at steady flux it is mass-identical to the lumped law it
+  // replaces: 0.621*1.028 = 0.638 g IBO and 0.621*0.222 = 0.138 g $Red per g
+  // KIV, its own coefficients. The NADPH credit in qO2 therefore moves with
+  // the step that consumes it (- 0.138*r16 -> - 0.222*r17); the CO2 in qCO2
+  // stays on r16. $CO2 is a boundary species: effluent CO2 in the process
+  // bridge comes from its carbon balance, so qCO2 is a diagnostic. The
+  // affinity anchoring behind K_13-K_17 is documented at their declarations
+  // below; the rate-law rationale is in the 2026-09-13 and 2026-09-15
+  // model(ibo) commit history.
+  r16: s_KIV => 0.621 s_isobutald + 0.379 $CO2; (k_16*s_KIV/(s_KIV + K_16))*a*env;
+  r17: s_isobutald + 0.222 $Red -> 1.028 s_IBO; (k_17*(s_isobutald - k_17r*s_IBO)/(s_isobutald + K_17 + K_17e*s_IBO))*2.71828^(-k_17ia*s_acetate)*2.71828^(-k_17ie*s_EtOH)*a*env;
 
   // Events:
 
@@ -143,6 +162,7 @@ model *bhagwat2026()
   s_AL = 0;
   s_DHI = 0;
   s_KIV = 0;
+  s_isobutald = 0;
   s_IBO = 0;
 
   // Compartment initializations:
@@ -266,13 +286,14 @@ model *bhagwat2026()
   k_6r has dimensionless;
   K_6e = 0.057;
   K_6e has dimensionless;
-  // Cross-product inhibition of the alcohol-forming steps (r6 ADH, r16
-  // Ehrlich): each terminal step is inhibited by the products it does NOT
-  // itself make. r6 already self-inhibits on ethanol (K_6e/k_6r) and so
-  // takes acetate + isobutanol here; r16 takes acetate + ethanol (below).
-  // r16 has no isobutanol term of its own: its rate-limiting decarboxylase
-  // cannot bind isobutanol (see the r16 block), and isobutanol toxicity is
-  // carried by the k_*ii terms on r1/r4/r6/r7 and by r10. Coefficients are
+  // Cross-product inhibition of the alcohol-forming steps (r6 Adh1, r17 Adh6):
+  // each terminal step is inhibited by the products it does NOT itself make.
+  // r6 already self-inhibits on ethanol (K_6e/k_6r) and so takes acetate +
+  // isobutanol here; r17 self-inhibits on isobutanol (K_17e/k_17r) and takes
+  // acetate + ethanol (below). r16 (Aro10) takes none: a decarboxylase binds
+  // no alcohol; the coefficients that used to sit on the lumped step (k_16ia,
+  // k_16ie) live on as k_17ia/k_17ie since the 2026-09-15 split, and the old
+  // names stay declared at 0 without a carrier. Coefficients are
   // 0.5x the growth (r7) set, matching the r1 production-step rationale that
   // fermentation is less product-sensitive than growth
   // (Eur. J. Appl. Microbiol. Biotechnol. 1981, doi:10.1007/BF00511253);
@@ -391,20 +412,73 @@ model *bhagwat2026()
   K_16 = 0.27;
   K_16 has g_per_l;
   // k_16r, K_16i: the reverse and isobutanol product terms r16 no longer
-  // carries (see the r16 block) -- inert since 2026-09-13. Declared, at 0,
-  // only because the isobutanol repo's scenario-B / opt_* workbooks exec
+  // carries (see the r16/r17 block) -- inert since 2026-09-13; the live
+  // terms with that meaning are k_17r/K_17e on r17. Declared, at 0, only
+  // because the isobutanol repo's scenario-B / opt_* workbooks exec
   // `K_16i = x` onto this model at load time and kinetic_optimization.py
   // sweeps K_16i: they must keep resolving, and they do nothing.
   k_16r = 0.0;
   k_16r has dimensionless;
   K_16i = 0.0;
   K_16i has dimensionless;
-  // r16 cross-product inhibition (acetate + ethanol); see the r6 block above.
-  // Dormant while the Ehrlich branch is off (k_16 = 0), kept symmetric with r6.
-  k_16ia = 0.06;
+  // k_16ia, k_16ie: the acetate/ethanol cross-product exponentials the
+  // lumped r16 carried until 2026-09-15 -- inert since the split, which left
+  // r16 a pure decarboxylase with no carrier for them; the live coefficients
+  // are k_17ia/k_17ie on r17 (below). Declared, at 0, for the same reason as
+  // K_16i: the scenario-B / opt_* workbooks exec `k_16ia = x` / `k_16ie = x`
+  // onto this model at load time (their baseline rows carry the 0.06/0.02
+  // that k_17ia/k_17ie now default to) and kinetic_optimization.py lists
+  // both in its inhibition groups. They must keep resolving, and do nothing.
+  k_16ia = 0.0;
   k_16ia has l_per_g;
-  k_16ie = 0.02;
+  k_16ie = 0.0;
   k_16ie has l_per_g;
+  // r17 (Adh6) parameters. Every affinity is anchored to its fitted
+  // ethanol-branch analog through the in-vitro Km ratio, so the in-vitro ->
+  // in-vivo transfer the fitted constant already embeds carries over: the
+  // Adh6 reductase pairs with the Adh1 reductase, K_17 <- K_6 and
+  // K_17e <- K_6e. In-vitro inputs: Adh1 acetaldehyde Km 1.1 mM and ethanol
+  // Km ~18 mM (Ganzhorn et al. 1987 JBC 262:3754; FEMS Yeast Res. 12:33),
+  // Adh6 branched-aldehyde Km 0.13-0.21 mM (midpoint 0.17; Larroy et al. 2002
+  // Biochem. J. 361:163, 3-methylbutanal as the tested surrogate for
+  // isobutyraldehyde) with ~50-fold higher catalytic efficiency on aldehydes
+  // than on alcohols.
+  //
+  // K_17 = K_6 x (0.17/1.1) x (72.11/44.05) = 0.0086 g/L: the Adh6:Adh1
+  // aldehyde-affinity ratio with the molar-mass correction (isobutyraldehyde
+  // 72.11 vs acetaldehyde 44.05 g/mol).
+  // K_17e = K_17/Ki_IBO,model = 0.020 (the competitive term is K_sub/Ki_prod),
+  // with Ki_IBO,model = 0.70 x 50 x 0.17 mM = 0.44 g/L isobutanol. The 0.70 is
+  // r6's own transfer factor, read back out of the fitted pair: K_6/K_6e =
+  // 0.034/0.057 = 0.60 g/L = 12.9 mM against the in-vitro ethanol Km ~18 mM.
+  // K_17e is therefore anchored to r6 end-to-end, not to a blanket scale.
+  // k_17r = k_6r/50 = 2.5e-4: the fitted Adh1 reverse balance scaled by Adh6's
+  // 50-fold aldehyde preference. Small, as it should be -- Adh6 is
+  // functionally an aldehyde reductase.
+  // k_17 = 44 g/L/h: a vmax, so grounded on the kcat ratio rather than a Km
+  // ratio -- (296/19) x k_16's scenario-B value 2.82. Adh6 is constitutive
+  // (native, broad-specificity), so unlike k_13-k_16 it is NOT a scenario
+  // toggle and defaults nonzero: the branch is gated at the KIV entry by k_16,
+  // and a workbook that sets only k_16 still makes isobutanol. The value is
+  // set to keep Adh6 non-limiting, i.e. the isobutyraldehyde pool negligible
+  // against KIV at scenario-B flux; raise it if that stops holding.
+  k_17 = 44.0;
+  k_17 has g_per_l_per_h;
+  K_17 = 0.0086;
+  K_17 has g_per_l;
+  k_17r = 0.00025;
+  k_17r has dimensionless;
+  K_17e = 0.020;
+  K_17e has dimensionless;
+  // r17 cross-product inhibition (acetate + ethanol); see the r6 block above.
+  // The lumped r16's k_16ia/k_16ie, re-homed by the 2026-09-15 split: they
+  // inhibit the alcohol-forming step, which is now r17. Dormant while the
+  // Ehrlich branch is off (k_16 = 0 leaves no aldehyde to reduce), kept
+  // symmetric with r6.
+  k_17ia = 0.06;
+  k_17ia has l_per_g;
+  k_17ie = 0.02;
+  k_17ie has l_per_g;
 
   // Other declarations:
   var X_a, X_AcDH, qO2, qCO2;
@@ -416,12 +490,12 @@ model *bhagwat2026()
 
   const k_7ie, k_7ia, k_7ii, k_1ie, k_1ia, k_1ii, k_4ie, k_4ia, k_4ii, k_10;
   const k_10ie, k_10ia, k_10ii, P_10e, P_10a, P_10i;
-  const k_6ia, k_6ii, k_16ia, k_16ie;
+  const k_6ia, k_6ii, k_16ia, k_16ie, k_17ia, k_17ie;
   const k_1h, K_1h, k_1l, K_1l, k_1e, K_1e, K_1i, k_2, K_2, K_2i;
   const k_3, K_3, k_4, K_4, k_5, K_5, k_5e, K_5e, K_5i, k_6, K_6, k_6r, K_6e;
   const k_7, K_7, k_8, k_9, K_9, k_9e, K_9e, K_9i, k_9c, k_11, D;
   const kLa, C_O2_sat;
-  const k_13, K_13, k_14, K_14, k_15, K_15, k_16, K_16, k_16r, K_16i
+  const k_13, K_13, k_14, K_14, k_15, K_15, k_16, K_16, k_16r, K_16i, k_17, K_17, k_17r, K_17e
 
   // Unit definitions:
   unit substance = gram;
@@ -453,6 +527,7 @@ model *bhagwat2026()
   s_acetald is "Acetaldehyde";
   s_EtOH is "EtOH";
   s_IBO is "Isobutanol";
+  s_isobutald is "Isobutyraldehyde";
   x is "BM";
   a is "BM(active)";
   AcDH is "BM(AcDH)";
@@ -484,6 +559,7 @@ model *bhagwat2026()
   s_acetate.sboTerm = 247
   s_acetald.sboTerm = 247
   s_EtOH.sboTerm = 247
+  s_isobutald.sboTerm = 247
   x.sboTerm = 240
   a.sboTerm = 241
   AcDH.sboTerm = 241
@@ -520,6 +596,8 @@ model *bhagwat2026()
                      "http://identifiers.org/kegg.compound/C00084"
   s_EtOH identity "http://identifiers.org/chebi/CHEBI:16236",
                   "http://identifiers.org/kegg.compound/C00469"
+  s_isobutald identity "http://identifiers.org/chebi/CHEBI:48943",
+                       "http://identifiers.org/kegg.compound/C22919"
   CO2 identity "http://identifiers.org/chebi/CHEBI:16526",
                "http://identifiers.org/kegg.compound/C00011"
   Red identity "http://identifiers.org/chebi/CHEBI:16908",

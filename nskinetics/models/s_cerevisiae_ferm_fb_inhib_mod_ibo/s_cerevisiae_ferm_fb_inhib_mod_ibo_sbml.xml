@@ -271,6 +271,20 @@
       <species id="s_AL" compartment="env" initialConcentration="0" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
       <species id="s_DHI" compartment="env" initialConcentration="0" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
       <species id="s_KIV" compartment="env" initialConcentration="0" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species metaid="bhagwat2026.s_isobutald" sboTerm="SBO:0000247" id="s_isobutald" name="Isobutyraldehyde" compartment="env" initialConcentration="0" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false">
+        <annotation>
+          <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:vCard="http://www.w3.org/2001/vcard-rdf/3.0#" xmlns:vCard4="http://www.w3.org/2006/vcard/ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/" xmlns:bqmodel="http://biomodels.net/model-qualifiers/">
+            <rdf:Description rdf:about="#bhagwat2026.s_isobutald">
+              <bqbiol:is>
+                <rdf:Bag>
+                  <rdf:li rdf:resource="http://identifiers.org/chebi/CHEBI:48943"/>
+                  <rdf:li rdf:resource="http://identifiers.org/kegg.compound/C22919"/>
+                </rdf:Bag>
+              </bqbiol:is>
+            </rdf:Description>
+          </rdf:RDF>
+        </annotation>
+      </species>
       <species id="s_IBO" name="Isobutanol" compartment="env" initialConcentration="0" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
     </listOfSpecies>
     <listOfParameters>
@@ -367,8 +381,12 @@
       <parameter id="K_15" value="0.08" units="g_per_l" constant="true"/>
       <parameter id="k_16" value="0" units="g_per_l_per_h" constant="true"/>
       <parameter id="K_16" value="0.27" units="g_per_l" constant="true"/>
-      <parameter id="k_16ia" value="0.06" units="l_per_g" constant="true"/>
-      <parameter id="k_16ie" value="0.02" units="l_per_g" constant="true"/>
+      <parameter id="k_17" value="44" units="g_per_l_per_h" constant="true"/>
+      <parameter id="k_17r" value="0.00025" units="dimensionless" constant="true"/>
+      <parameter id="K_17" value="0.0086" units="g_per_l" constant="true"/>
+      <parameter id="K_17e" value="0.02" units="dimensionless" constant="true"/>
+      <parameter id="k_17ia" value="0.06" units="l_per_g" constant="true"/>
+      <parameter id="k_17ie" value="0.02" units="l_per_g" constant="true"/>
       <parameter id="max_n_glu_spikes" value="5" units="dimensionless" constant="true"/>
       <parameter id="threshold_conc_glu_spike" value="10" units="g_per_l" constant="false"/>
       <parameter id="last_vol_glu_feed_added" value="0" units="volume" constant="false"/>
@@ -378,6 +396,8 @@
       <parameter id="stage_1_max_x" value="INF" units="g_per_l" constant="true"/>
       <parameter id="k_16r" value="0" units="dimensionless" constant="true"/>
       <parameter id="K_16i" value="0" units="dimensionless" constant="true"/>
+      <parameter id="k_16ia" value="0" units="l_per_g" constant="true"/>
+      <parameter id="k_16ie" value="0" units="l_per_g" constant="true"/>
     </listOfParameters>
     <listOfRules>
       <assignmentRule variable="a">
@@ -533,8 +553,8 @@
                     </apply>
                     <apply>
                       <times/>
-                      <cn> 0.138 </cn>
-                      <ci> r16 </ci>
+                      <cn> 0.222 </cn>
+                      <ci> r17 </ci>
                     </apply>
                   </apply>
                   <apply>
@@ -1084,10 +1104,10 @@
           <speciesReference species="Red" stoichiometry="0.178" constant="true"/>
         </listOfProducts>
         <listOfModifiers>
-          <modifierSpeciesReference species="s_IBO"/>
           <modifierSpeciesReference species="s_acetate"/>
           <modifierSpeciesReference species="s_acetald"/>
           <modifierSpeciesReference species="s_EtOH"/>
+          <modifierSpeciesReference species="s_IBO"/>
           <modifierSpeciesReference species="a"/>
         </listOfModifiers>
         <kineticLaw>
@@ -1229,8 +1249,8 @@
           <speciesReference species="Red" stoichiometry="0.363" constant="true"/>
         </listOfProducts>
         <listOfModifiers>
-          <modifierSpeciesReference species="s_IBO"/>
           <modifierSpeciesReference species="s_EtOH"/>
+          <modifierSpeciesReference species="s_IBO"/>
           <modifierSpeciesReference species="a"/>
         </listOfModifiers>
         <kineticLaw>
@@ -1348,8 +1368,8 @@
           <speciesReference species="s_EtOH" stoichiometry="1.045" constant="true"/>
         </listOfProducts>
         <listOfModifiers>
-          <modifierSpeciesReference species="s_IBO"/>
           <modifierSpeciesReference species="s_acetate"/>
+          <modifierSpeciesReference species="s_IBO"/>
           <modifierSpeciesReference species="a"/>
         </listOfModifiers>
         <kineticLaw>
@@ -1412,14 +1432,13 @@
           </math>
         </kineticLaw>
       </reaction>
-      <reaction id="r16" reversible="false">
+      <reaction id="r17" reversible="true">
         <listOfReactants>
-          <speciesReference species="s_KIV" stoichiometry="1" constant="true"/>
-          <speciesReference species="Red" stoichiometry="0.138" constant="true"/>
+          <speciesReference species="s_isobutald" stoichiometry="1" constant="true"/>
+          <speciesReference species="Red" stoichiometry="0.222" constant="true"/>
         </listOfReactants>
         <listOfProducts>
-          <speciesReference species="s_IBO" stoichiometry="0.638" constant="true"/>
-          <speciesReference species="CO2" stoichiometry="0.379" constant="true"/>
+          <speciesReference species="s_IBO" stoichiometry="1.028" constant="true"/>
         </listOfProducts>
         <listOfModifiers>
           <modifierSpeciesReference species="s_acetate"/>
@@ -1434,13 +1453,26 @@
                 <divide/>
                 <apply>
                   <times/>
-                  <ci> k_16 </ci>
-                  <ci> s_KIV </ci>
+                  <ci> k_17 </ci>
+                  <apply>
+                    <minus/>
+                    <ci> s_isobutald </ci>
+                    <apply>
+                      <times/>
+                      <ci> k_17r </ci>
+                      <ci> s_IBO </ci>
+                    </apply>
+                  </apply>
                 </apply>
                 <apply>
                   <plus/>
-                  <ci> s_KIV </ci>
-                  <ci> K_16 </ci>
+                  <ci> s_isobutald </ci>
+                  <ci> K_17 </ci>
+                  <apply>
+                    <times/>
+                    <ci> K_17e </ci>
+                    <ci> s_IBO </ci>
+                  </apply>
                 </apply>
               </apply>
               <apply>
@@ -1450,7 +1482,7 @@
                   <times/>
                   <apply>
                     <minus/>
-                    <ci> k_16ia </ci>
+                    <ci> k_17ia </ci>
                   </apply>
                   <ci> s_acetate </ci>
                 </apply>
@@ -1462,7 +1494,7 @@
                   <times/>
                   <apply>
                     <minus/>
-                    <ci> k_16ie </ci>
+                    <ci> k_17ie </ci>
                   </apply>
                   <ci> s_EtOH </ci>
                 </apply>
@@ -1663,6 +1695,40 @@
           </math>
         </kineticLaw>
       </reaction>
+      <reaction id="r16" reversible="false">
+        <listOfReactants>
+          <speciesReference species="s_KIV" stoichiometry="1" constant="true"/>
+        </listOfReactants>
+        <listOfProducts>
+          <speciesReference species="s_isobutald" stoichiometry="0.621" constant="true"/>
+          <speciesReference species="CO2" stoichiometry="0.379" constant="true"/>
+        </listOfProducts>
+        <listOfModifiers>
+          <modifierSpeciesReference species="a"/>
+        </listOfModifiers>
+        <kineticLaw>
+          <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+              <times/>
+              <apply>
+                <divide/>
+                <apply>
+                  <times/>
+                  <ci> k_16 </ci>
+                  <ci> s_KIV </ci>
+                </apply>
+                <apply>
+                  <plus/>
+                  <ci> s_KIV </ci>
+                  <ci> K_16 </ci>
+                </apply>
+              </apply>
+              <ci> a </ci>
+              <ci> env </ci>
+            </apply>
+          </math>
+        </kineticLaw>
+      </reaction>
       <reaction metaid="bhagwat2026.r9" sboTerm="SBO:0000184" id="r9" name="Acdh production" reversible="false">
         <annotation>
           <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:vCard="http://www.w3.org/2001/vcard-rdf/3.0#" xmlns:vCard4="http://www.w3.org/2006/vcard/ns#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/" xmlns:bqmodel="http://biomodels.net/model-qualifiers/">
@@ -1757,9 +1823,9 @@
           <speciesReference species="a" stoichiometry="1" constant="true"/>
         </listOfReactants>
         <listOfModifiers>
-          <modifierSpeciesReference species="s_IBO"/>
           <modifierSpeciesReference species="s_acetate"/>
           <modifierSpeciesReference species="s_EtOH"/>
+          <modifierSpeciesReference species="s_IBO"/>
         </listOfModifiers>
         <kineticLaw>
           <math xmlns="http://www.w3.org/1998/Math/MathML">
