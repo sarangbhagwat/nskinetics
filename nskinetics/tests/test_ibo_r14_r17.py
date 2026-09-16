@@ -155,7 +155,9 @@ def test_defaults():
     assert r.k_17ie == pytest.approx(0.02)
     # Adh6 is constitutive: its vmax has a nonzero default so a workbook that
     # sets only k_16 (the Aro10 knob gating the branch) still makes isobutanol.
-    assert r.k_17 == pytest.approx(44.0)
+    # k_17 anchors to the fitted Adh1 vmax k_6 by the Adh6:Adh1 kcat ratio
+    # (296/1800), so it sits ~6x below k_6 -- see test_k_17_is_anchored_...
+    assert r.k_17 == pytest.approx(0.4637)
     assert {'k_17', 'K_17', 'k_17r', 'K_17e', 'k_17ia', 'k_17ie'} <= ids
     # the lumped law's own cross-product coefficients stay declared, at 0 and
     # inert, for the same workbook reason as K_16i/k_16r (rows 74-75 of the
@@ -177,6 +179,16 @@ def test_K_17_is_anchored_to_the_fitted_K_6():
     # the 0.70 is r6's own transfer factor, K_6/K_6e = 0.60 g/L vs 18 mM.
     ki_ibo = 0.70 * 50 * 0.17e-3 * 74.12          # mol/L -> g/L isobutanol
     assert r.K_17e == pytest.approx(r.K_17 / ki_ibo, rel=0.05)
+
+
+def test_k_17_is_anchored_to_the_fitted_k_6_by_the_kcat_ratio():
+    # k_17 (Adh6 vmax) mirrors r6 the way K_17/k_17r do: it is the fitted
+    # Adh1 vmax k_6 scaled by the Adh6:Adh1 turnover ratio, not tied to the
+    # arbitrary scenario-B k_16 (the old (296/19) x k_16 basis). kcat_Adh6 =
+    # 296 /s (Larroy 2002), kcat_Adh1 = 1800 /s (Ganzhorn 1987, JBC 262:3754).
+    te_r, *_ = _model()
+    r = te_r._te
+    assert r.k_17 == pytest.approx((296.0 / 1800.0) * r.k_6, rel=0.01)
 
 
 def test_r16_ignores_its_retired_cross_product_coefficients():

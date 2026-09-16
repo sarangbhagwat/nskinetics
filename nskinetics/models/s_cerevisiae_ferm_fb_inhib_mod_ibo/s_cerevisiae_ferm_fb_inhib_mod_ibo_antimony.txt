@@ -455,14 +455,21 @@ model *bhagwat2026()
   // k_17r = k_6r/50 = 2.5e-4: the fitted Adh1 reverse balance scaled by Adh6's
   // 50-fold aldehyde preference. Small, as it should be -- Adh6 is
   // functionally an aldehyde reductase.
-  // k_17 = 44 g/L/h: a vmax, so grounded on the kcat ratio rather than a Km
-  // ratio -- (296/19) x k_16's scenario-B value 2.82. Adh6 is constitutive
-  // (native, broad-specificity), so unlike k_13-k_16 it is NOT a scenario
-  // toggle and defaults nonzero: the branch is gated at the KIV entry by k_16,
-  // and a workbook that sets only k_16 still makes isobutanol. The value is
-  // set to keep Adh6 non-limiting, i.e. the isobutyraldehyde pool negligible
-  // against KIV at scenario-B flux; raise it if that stops holding.
-  k_17 = 44.0;
+  // k_17 = 0.4637 g/L/h: a vmax, so grounded on a kcat ratio rather than a Km
+  // ratio, and anchored to the fitted Adh1 vmax k_6 exactly as K_17/k_17r are
+  // anchored to K_6/k_6r -- k_17 = (kcat_Adh6/kcat_Adh1) x k_6 = (296/1800) x
+  // 2.82. kcat_Adh6 = 296 /s on the branched aldehyde (Larroy et al. 2002;
+  // isobutanol burden model), kcat_Adh1 = 1800 /s on acetaldehyde (Ganzhorn
+  // et al. 1987 JBC 262:3754, the same Adh1 source as K_17's Km), so Adh6
+  // turns over ~6x slower than Adh1 and k_17 sits well below k_6. (The
+  // previous 44 g/L/h divided kcat_Adh6 by Aro10's decarboxylase kcat 19 /s
+  // and multiplied the arbitrary scenario-B k_16 = 2.82, inflating the vmax
+  // ~95x and making Adh6 artificially non-limiting; anchoring to k_6 removes
+  // that dependence on k_16.) Adh6 is constitutive (native, broad-
+  // specificity), so unlike k_13-k_16 it is NOT a scenario toggle and defaults
+  // nonzero: the branch is gated at the KIV entry by k_16, and a workbook that
+  // sets only k_16 still makes isobutanol.
+  k_17 = 0.4637;
   k_17 has g_per_l_per_h;
   K_17 = 0.0086;
   K_17 has g_per_l;
