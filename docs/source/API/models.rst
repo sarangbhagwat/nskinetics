@@ -20,14 +20,21 @@ helper. ``FLUX_MAP_SPEC.reactions`` is the reaction list to hand to
 mapped-but-undrawn reactions such as biomass decay (``r10``).
 
 Its ``inhibition_map`` includes, alongside the product-inhibition
-coefficients, the thermodynamic reverse-reaction (product) term of the one
-reversible step (``k_6r`` on ``r6``). A strip row therefore reports
-everything the product does to that step: ADH's "fraction lost to ethanol"
-counts both the inhibition of the forward rate and the ethanol-driven
-reverse flux. ``r16`` (the lumped Ehrlich decarboxylase + ADH step) is
-irreversible Michaelis--Menten in KIV with no isobutanol term of its own --
-its ``K_16i``/``k_16r`` stay declared at 0 for the downstream workbooks that
-set them, but do nothing -- so it carries only its ethanol and acetate strips.
+coefficients, the thermodynamic reverse-reaction (product) terms of the two
+reversible steps (``k_6r`` on ``r6``, ``k_17r`` on ``r17``). A strip row
+therefore reports everything the product does to that step: ADH's "fraction
+lost to ethanol" counts both the inhibition of the forward rate and the
+ethanol-driven reverse flux.
+
+The Ehrlich branch ends in two steps. ``r16`` is the Aro10 decarboxylase --
+irreversible Michaelis--Menten in KIV, releasing isobutyraldehyde and CO2,
+with no product or cross-product term of any kind, so it carries no strip at
+all. ``r17`` is the Adh6 reductase, a structural mirror of ``r6``, and it
+carries the ethanol and acetate strips together with its own isobutanol
+terms ``K_17e``/``k_17r``. The lumped step's ``K_16i``/``k_16r`` and
+``k_16ia``/``k_16ie`` stay declared at 0 for the downstream workbooks that
+set them, but do nothing; the live knobs with those meanings are ``K_17e``
+and ``k_17ia``/``k_17ie``.
 
 :func:`~nskinetics.models.s_cerevisiae_ferm_fb_inhib_mod_ibo.flux_map_spec.draw_scenario_flux_map`
 changes only the Ehrlich rate constants between its two panels, never the
@@ -69,7 +76,7 @@ and ``lethality_threshold`` (the steepness and onset of the product-enhanced
 biomass decay on ``r10``), and ``initial_state`` (``X_a``, ``X_AcDH``).
 Modules: glycolysis/fermentation (r1, r3, r6), respiration (r2, r5),
 overflow/acetate (r4), growth (r7, r8), physiological state (r9--r11), and
-the Ehrlich branch (r13--r16).
+the Ehrlich branch (r13--r17).
 
 Operation parameters -- fed-batch feeding, aeration staging, dilution, and
 the vessel's oxygen-transfer capacity -- are not kinetics and are skipped by
@@ -87,7 +94,7 @@ growth-associated O2 of the ungated ``anaerobic_growth_mult`` share of r7
 (0.75 by default) is committed and never throttled. The cap does *not*
 cover the model's total ``qO2`` -- the quantity ``AerationSpec`` sizes the
 air stream from -- which additionally carries the aerobic NADH
-re-oxidation of r1 and r4, net of the NAD(P)H that r6, r14 and r16 consume. That
+re-oxidation of r1 and r4, net of the NAD(P)H that r6, r14 and r17 consume. That
 term is not throttled, so ``qO2*x`` can exceed ``OTR_max`` (by ~20 % in a
 bound 100 g/L batch); extending the cap to total ``qO2`` is a follow-up.
 The shipped fed-batch process (aeration off at 5 g/L biomass, total

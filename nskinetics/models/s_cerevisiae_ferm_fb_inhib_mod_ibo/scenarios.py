@@ -8,14 +8,22 @@
 """Kinetic-only scenario presets for the shipped *S. cerevisiae*
 ethanol/isobutanol model.
 
-The two configurations differ only in the engineered Ehrlich pathway (r13-r16):
-scenario A leaves it off (all four rate constants -- k_13, k_14, k_15, k_16 --
-zero, so no isobutanol is made); scenario B turns it on. Every
+The two configurations differ only in the engineered Ehrlich pathway
+(r13-r17): scenario A leaves it off (all four rate constants -- k_13, k_14,
+k_15, k_16 -- zero, so no isobutanol is made); scenario B turns it on. Every
 product-inhibition coefficient is already at its scenario-B value in the
 shipped antimony (it has no effect in A because isobutanol stays zero), so
 only the r13-r16 rate constants change here. r16 is irreversible
 Michaelis-Menten in KIV (since 2026-09-13), so there is no reverse term to
 switch.
+
+``k_17``, the Adh6 capacity of the reductase r17 that the 2026-09-15 split
+broke out of the lumped r16, is deliberately NOT a scenario key. Adh6 is
+native and constitutive, so it keeps its nonzero default in both scenarios;
+the branch is gated at its KIV entry by ``k_16``, and with ``k_16 = 0`` no
+isobutyraldehyde is ever made for r17 to reduce. This is also what lets a
+caller that knows only the four historical capacities (the isobutanol
+workbooks) still switch the branch on correctly.
 
 Values mirror ``parameter-distributions_corn_IBO_EtOH_B.xlsx`` in the
 (read-only) isobutanol biorefinery, which is the source of truth. The
@@ -27,7 +35,8 @@ __all__ = ('apply_scenario_A', 'apply_scenario_B',
            'SCENARIO_B_EHRLICH', 'SCENARIO_A_EHRLICH')
 
 # r13-r16 rate constants (K_* saturation constants are already at their
-# scenario-B values in the shipped antimony and are unchanged).
+# scenario-B values in the shipped antimony and are unchanged; k_17/K_17 and
+# the rest of the Adh6 set are constitutive, not scenario-switched).
 SCENARIO_B_EHRLICH = {
     'k_13': 5.81, 'k_14': 4.8, 'k_15': 4.8, 'k_16': 2.82,
 }

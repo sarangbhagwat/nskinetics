@@ -19,11 +19,14 @@ and the thermodynamic reverse-reaction (product) term of the one reversible
 step (k_6r on r6). The r6 strip therefore includes that reverse term
 alongside the inhibition coefficients, so ADH's "fraction lost to ethanol"
 counts both the ethanol inhibition of the forward rate and the
-ethanol-driven reverse flux. r16 is irreversible Michaelis-Menten in KIV
-with no isobutanol term of its own (K_16i and k_16r stay declared at 0 but
-are not mapped: compute_flux_summary measures a strip by zeroing the
-coefficient, and zeroing an already-absent term would read a meaningless
-0), so it carries only its ethanol and acetate strips. r10 (active-biomass
+ethanol-driven reverse flux. Since the 2026-09-15 split the Ehrlich branch ends in two steps: r16 (Aro10)
+is a pure decarboxylase carrying no product term of any kind, so it gets no
+strip at all (K_16i, k_16r, k_16ia and k_16ie stay declared at 0 but are not
+mapped: compute_flux_summary measures a strip by zeroing the coefficient, and
+zeroing an already-absent term would read a meaningless 0), and r17 (Adh6) is the
+reversible, isobutanol-inhibited ADH that carries them -- its strip therefore
+includes K_17e and k_17r alongside its ethanol and acetate coefficients,
+exactly as r6's includes K_6e and k_6r. r10 (active-biomass
 decay) is product-ENHANCED, listed in enhancement_reactions.
 
 r10 is deliberately absent from ``edges``: biomass decay has no network edge to
@@ -51,9 +54,10 @@ _NODES = {
     'tca': (26, 56, 'TCA'),
     'ace': (12, 32, 'Acetate'),
     'al':  (72, 78, 'AL'),
-    'dhi': (72, 54, 'DHIV'),
-    'kiv': (72, 30, 'KIV'),
-    'ibo': (72, 8, 'Isobutanol'),
+    'dhi': (72, 58, 'DHIV'),
+    'kiv': (72, 38, 'KIV'),
+    'iald': (72, 22, 'Isobutald.'),
+    'ibo': (72, 6, 'Isobutanol'),
 }
 _EDGES = {
     'r1': ('glu', 'pyr'),   # glycolysis
@@ -67,7 +71,8 @@ _EDGES = {
     'r13': ('pyr', 'al'),   # ALS
     'r14': ('al', 'dhi'),   # KARI
     'r15': ('dhi', 'kiv'),  # DHAD
-    'r16': ('kiv', 'ibo'),  # KDC+ADH
+    'r16': ('kiv', 'iald'),  # KDC (Aro10)
+    'r17': ('iald', 'ibo'),  # ADH (Adh6)
 }
 # {inhibitor: color} (Okabe-Ito, matching conceptual_diagram)
 _INHIBITORS = {
@@ -83,7 +88,8 @@ _INHIBITION_MAP = {
     'k_6ia': ('r6', 'acetate'),   'k_6ii': ('r6', 'isobutanol'),
     'k_7ie': ('r7', 'ethanol'),   'k_7ia': ('r7', 'acetate'),   'k_7ii': ('r7', 'isobutanol'),
     'k_10ie': ('r10', 'ethanol'), 'k_10ia': ('r10', 'acetate'), 'k_10ii': ('r10', 'isobutanol'),
-    'k_16ie': ('r16', 'ethanol'), 'k_16ia': ('r16', 'acetate'),
+    'k_17ie': ('r17', 'ethanol'), 'k_17ia': ('r17', 'acetate'),
+    'K_17e':  ('r17', 'isobutanol'), 'k_17r': ('r17', 'isobutanol'),
 }
 
 #: Shipped :class:`~nskinetics.visualization.FluxMapSpec` for this model; its
@@ -110,7 +116,7 @@ FLUX_MAP_SPEC = FluxMapSpec(
         'r1': (-13.0, 2.5),
         'r4': (-4.5, -2.5),
         'r6': (-13.0, 2.5),
-        'r16': (-13.0, 2.5),
+        'r17': (-13.0, 2.5),
     },
     size_mm=(88.0, 92.0),
 )

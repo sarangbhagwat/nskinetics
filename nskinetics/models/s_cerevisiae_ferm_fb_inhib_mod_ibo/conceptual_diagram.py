@@ -11,7 +11,7 @@ kinetic model (Antimony model ``bhagwat2026``, extending Lei et al. 2001,
 J. Biotechnol. 88:205-21 / BIOMD0000000245 with an engineered isobutanol
 pathway, product inhibition, aeration staging, and fed-batch feeding).
 
-The figure shows the reaction network (r1-r11, r13-r16) and the control
+The figure shows the reaction network (r1-r11, r13-r17) and the control
 structure — exponential product inhibition, glucose repression, the
 acetaldehyde overflow signal, aerobic gating, the AcDH physiological-state
 machinery, and the fed-batch glucose-spike loop — sized to Nature
@@ -305,14 +305,16 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
                                 boxstyle='round,pad=0,rounding_size=2',
                                 fc=TINT_IBO, ec=TINT_IBO_EDGE, lw=0.9,
                                 zorder=2))
-    ax.text(152, 86.0, 'Engineered isobutanol\npathway (r13–r16)',
+    ax.text(152, 86.0, 'Engineered isobutanol\npathway (r13–r17)',
             fontsize=FS_PANEL - 0.3, fontweight='bold', color='#B04A00',
             ha='center', va='center', linespacing=1.2, zorder=3)
 
-    al = _box(ax, 152, 76, 34, 7, ['AL'])
-    dhi = _box(ax, 152, 60.5, 34, 7, ['DHIV'])
-    kiv = _box(ax, 152, 45, 34, 7, ['KIV'])
-    ibo = _box(ax, 152, 28.5, 34, 7, ['Isobutanol'], fc=TINT_PRODUCT)
+    al = _box(ax, 152, 78, 34, 6.4, ['AL'])
+    dhi = _box(ax, 152, 65, 34, 6.4, ['DHIV'])
+    kiv = _box(ax, 152, 52, 34, 6.4, ['KIV'])
+    iald = _box(ax, 152, 39, 34, 6.4, ['Isobutyraldehyde'],
+                fs=FS_SPECIES - 0.8)
+    ibo = _box(ax, 152, 26, 34, 6.4, ['Isobutanol'], fc=TINT_PRODUCT)
 
     # === biomass / physiological-state panel (bottom left) =================
     ax.add_patch(FancyBboxPatch((8, 18), 60, 23.5,
@@ -390,13 +392,18 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
     _rxn_marker(ax, 113, 76, 'r13', enzyme='ALS', enz_dxy=(0, 3.9))
     _tag(ax, 118.5, 73.2, 'CO$_2$', ha='left', fs=FS_ENZ)
     _arrow(ax, [al['bottom'], dhi['top']], lw=1.1)
-    _rxn_marker(ax, 152, 68.3, 'r14', enzyme='KARI', enz_dxy=(8.6, 0))
-    _tag(ax, 144.7, 68.3, '–NADPH', ha='right', fs=FS_ENZ)
+    _rxn_marker(ax, 152, 71.5, 'r14', enzyme='KARI', enz_dxy=(8.6, 0))
+    _tag(ax, 144.7, 71.5, '–NADPH', ha='right', fs=FS_ENZ)
     _arrow(ax, [dhi['bottom'], kiv['top']], lw=1.1)
-    _rxn_marker(ax, 152, 52.8, 'r15', enzyme='DHAD', enz_dxy=(8.7, 0))
-    _arrow(ax, [kiv['bottom'], ibo['top']], lw=1.1)
-    _rxn_marker(ax, 152, 36.8, 'r16', enzyme='KDC+ADH', enz_dxy=(10.6, 0))
-    _tag(ax, 144.7, 36.8, '–NADPH, CO$_2$', ha='right', fs=FS_ENZ)
+    _rxn_marker(ax, 152, 58.5, 'r15', enzyme='DHAD', enz_dxy=(8.7, 0))
+    # r16 Aro10 decarboxylase (irreversible), r17 Adh6 reductase (reversible,
+    # like r6 -- the two alcohol dehydrogenases are drawn alike on purpose)
+    _arrow(ax, [kiv['bottom'], iald['top']], lw=1.1)
+    _rxn_marker(ax, 152, 45.5, 'r16', enzyme='Aro10', enz_dxy=(8.9, 0))
+    _tag(ax, 144.7, 45.5, 'CO$_2$', ha='right', fs=FS_ENZ)
+    _arrow(ax, [iald['bottom'], ibo['top']], lw=1.1, reversible=True)
+    _rxn_marker(ax, 152, 32.5, 'r17', enzyme='Adh6', enz_dxy=(8.6, 0))
+    _tag(ax, 144.7, 32.5, '–NADPH', ha='right', fs=FS_ENZ)
 
     # === control edges =====================================================
     # acetaldehyde overflow signal activates the high-capacity glycolytic
@@ -450,7 +457,7 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
     ax.text(15, y1, 'reaction flux (mass basis)', fontsize=FS_LEGEND,
             va='center', zorder=5)
     _leg_arrow(6, y2, C_FLUX, reversible=True)
-    ax.text(15, y2, 'reversible (r6)', fontsize=FS_LEGEND, va='center',
+    ax.text(15, y2, 'reversible (r6, r17)', fontsize=FS_LEGEND, va='center',
             zorder=5)
     _arrow(ax, [(6, y3), (10.5, y3)], color=C_FEED, lw=1.0, mutation=5.5,
            zorder=5)

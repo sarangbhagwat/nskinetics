@@ -131,6 +131,29 @@ def _balance_error(V406, summary, species, reaction):
     return abs(made - accumulated) / abs(accumulated)
 
 
+def _node_balance_error(V406, summary, species, reactions):
+    """Relative gap for an internal intermediate several reactions share.
+
+    ``_balance_error`` credits one reaction against a terminal product whose
+    accumulation *is* what that reaction made. An intermediate like
+    ``s_isobutald`` (produced by r16, consumed by r17) instead turns over fast
+    and barely accumulates, so no single reaction can balance it. This sums
+    every reaction's signed contribution (``cumulative_mass * stoichiometry``)
+    and compares that net to the change in the species' total amount --
+    normalizing by the largest single contribution, since the accumulation it
+    would otherwise divide by is ~0.
+    """
+    r = V406.nsk_kinetic_model._te
+    df = V406.nsk_results_df.iloc[:V406.tau_index + 1]
+    col = f'[{species}]'
+    contributions = [summary.cumulative_mass[rx] * _stoichiometry(r, species, rx)
+                     for rx in reactions]
+    accumulated = (df[col].iat[-1] * df['env'].iat[-1]
+                   - df[col].iat[0] * df['env'].iat[0])
+    return abs(sum(contributions) - accumulated) / max(abs(c)
+                                                        for c in contributions)
+
+
 def test_product_balances_close_in_both_scenarios(simulated_V406):
     # The strongest available check that the re-evaluated rates really are the
     # model's own: what r6 (and, in scenario B, r16) made must equal what
@@ -150,7 +173,13 @@ def test_product_balances_close_in_both_scenarios(simulated_V406):
         V406.system.simulate()
         sb = compute_flux_summary(V406, imap, reactions=reactions)
         assert _balance_error(V406, sb, 's_EtOH', 'r6') < 1e-3
-        assert _balance_error(V406, sb, 's_IBO', 'r16') < 1e-3
+        # isobutanol is made by r17 (Adh6) since the 2026-09-15 split; r16
+        # (Aro10) now makes the aldehyde r17 reduces
+        assert _balance_error(V406, sb, 's_IBO', 'r17') < 1e-3
+        # s_isobutald is an internal intermediate (r16 makes it, r17 consumes
+        # it), so its own accumulation is ~0 and a single-reaction balance
+        # cannot close; the node conserves mass only across r16 and r17.
+        assert _node_balance_error(V406, sb, 's_isobutald', ('r16', 'r17')) < 1e-2
     finally:
         apply_scenario_A(model)
         V406.system.simulate()
@@ -213,7 +242,9 @@ def test_end_to_end_both_scenarios(tmp_path, simulated_V406):
         assert os.path.exists(os.path.join(tmp_path, 'flux_map.pdf'))
         assert sa.cumulative_flux['r6'] > 0     # ethanol pathway active in A
         assert sb.cumulative_flux['r16'] > 0    # isobutanol pathway active in B
+        assert sb.cumulative_flux['r17'] > 0    # and its ADH step carries flux
         assert sa.cumulative_flux['r16'] == 0.0  # Ehrlich off in A
+        assert sa.cumulative_flux['r17'] == 0.0
         # the integration window ends at the harvest row, not at tau_max
         assert sa.t_end == V406.tau
         assert sa.t_end < V406.nsk_results_df['time'].iat[-1]

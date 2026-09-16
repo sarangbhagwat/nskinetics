@@ -72,15 +72,16 @@ def test_every_role_assignment_matches_the_spec_table():
     expected = {
         'capacity': frozenset(
             'k_1h k_1l k_1e k_2 k_3 k_4 k_5 k_5e k_6 k_7 k_8 k_9 k_9e k_9c '
-            'k_10 k_11 k_13 k_14 k_15 k_16'.split()),
+            'k_10 k_11 k_13 k_14 k_15 k_16 k_17'.split()),
         'affinity': frozenset(
             'K_1h K_1l K_1e K_2 K_3 K_4 K_5 K_5e K_6 K_7 K_9 K_9e K_13 K_14 '
-            'K_15 K_16'.split()),
+            'K_15 K_16 K_17'.split()),
         'substrate_regulation': frozenset('K_1i K_2i K_5i K_9i'.split()),
         'product_inhibition': frozenset(
             'k_1ie k_1ia k_1ii k_4ie k_4ia k_4ii k_6ia k_6ii k_7ie k_7ia '
-            'k_7ii k_16ie k_16ia'.split()),
-        'product_self_inhibition': frozenset('K_6e k_6r K_16i k_16r'.split()),
+            'k_7ii k_16ie k_16ia k_17ie k_17ia'.split()),
+        'product_self_inhibition': frozenset(
+            'K_6e k_6r K_16i k_16r K_17e k_17r'.split()),
         'lethality': frozenset('k_10ie k_10ia k_10ii'.split()),
         'lethality_threshold': frozenset('P_10e P_10a P_10i'.split()),
         'initial_state': frozenset('X_a X_AcDH'.split()),
@@ -95,7 +96,9 @@ def test_every_role_assignment_matches_the_spec_table():
 def test_kinetic_and_operation_sets_are_disjoint():
     pc = _pc()
     assert not set(pc.KINETIC_PARAMETERS) & pc.OPERATION_PARAMETERS
-    assert len(pc.KINETIC_PARAMETERS) == 65
+    # +6 for the Adh6 (r17) parameters at the 2026-09-15 split (k_17, K_17,
+    # k_17r, K_17e, k_17ia, k_17ie); the retired k_16ia/k_16ie stay declared.
+    assert len(pc.KINETIC_PARAMETERS) == 71
     assert len(pc.OPERATION_PARAMETERS) == 16
 
 
@@ -314,12 +317,17 @@ def test_describe_empty_diff():
 
 
 def test_describe_against_te_r_snapshot():
+    # The scenario presets move only the four Ehrlich capacities k_13..k_16.
+    # k_17 (Adh6) is constitutive and not in the dicts, so the whole change is
+    # one capacity clause. (Before the 2026-09-15 split this test expected a
+    # second, self-inhibition clause that the model could no longer produce
+    # once k_16r/K_16i left the r16 law on 2026-09-13.)
     pc = _pc()
     from nskinetics.models.s_cerevisiae_ferm_fb_inhib_mod_ibo import (
         te_r, SCENARIO_B_EHRLICH)
     snap = pc.snapshot_parameters(te_r)
     assert pc.describe_parameter_change(snap, SCENARIO_B_EHRLICH) == (
-        'Ehrlich branch on; isobutanol self-inhibition of Ehrlich branch on')
+        'Ehrlich branch on')
 
 
 # --- categorize -----------------------------------------------------------

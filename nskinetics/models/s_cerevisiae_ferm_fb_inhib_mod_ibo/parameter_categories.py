@@ -72,7 +72,8 @@ REACTION_MODULES = {
     'r13': 'ehrlich',                  # acetolactate synthase
     'r14': 'ehrlich',                  # KARI
     'r15': 'ehrlich',                  # DHAD
-    'r16': 'ehrlich',                  # KDC + ADH
+    'r16': 'ehrlich',                  # KDC (Aro10)
+    'r17': 'ehrlich',                  # ADH (Adh6)
 }
 
 
@@ -138,6 +139,7 @@ KINETIC_PARAMETERS = {
     'k_14': _p('capacity', 'r14'),
     'k_15': _p('capacity', 'r15'),
     'k_16': _p('capacity', 'r16'),
+    'k_17': _p('capacity', 'r17'),
     # --- affinity: S/(S + K) saturation constant ---
     'K_1h': _p('affinity', 'r1'),
     'K_1l': _p('affinity', 'r1'),
@@ -155,6 +157,7 @@ KINETIC_PARAMETERS = {
     'K_14': _p('affinity', 'r14'),
     'K_15': _p('affinity', 'r15'),
     'K_16': _p('affinity', 'r16'),
+    'K_17': _p('affinity', 'r17'),
     # --- substrate regulation: 1/(1 + K*S) repression or signal saturation ---
     'K_1i': _p('substrate_regulation', 'r1', effector='acetaldehyde'),
     'K_2i': _p('substrate_regulation', 'r2', effector='glucose'),
@@ -172,19 +175,35 @@ KINETIC_PARAMETERS = {
     'k_7ie': _p('product_inhibition', 'r7', effector='ethanol'),
     'k_7ia': _p('product_inhibition', 'r7', effector='acetate'),
     'k_7ii': _p('product_inhibition', 'r7', effector='isobutanol'),
+    # k_16ie/k_16ia are inert since the 2026-09-15 split (r16 is a pure
+    # decarboxylase; the live coefficients are k_17ie/k_17ia on r17) but stay
+    # declared at 0 for the isobutanol workbooks that exec them, like
+    # K_16i/k_16r below, so they stay classified: snapshot_parameters must
+    # read every declared kinetic parameter. A workbook override of either
+    # still describes as '... inhibition of Ehrlich branch' although it does
+    # nothing; the flux map does not strip them (nothing to zero).
     'k_16ie': _p('product_inhibition', 'r16', effector='ethanol'),
     'k_16ia': _p('product_inhibition', 'r16', effector='acetate'),
+    'k_17ie': _p('product_inhibition', 'r17', effector='ethanol'),
+    'k_17ia': _p('product_inhibition', 'r17', effector='acetate'),
     # --- product self-inhibition: K_*e*P denominator and k_*r*P reverse term ---
     'K_6e': _p('product_self_inhibition', 'r6', effector='ethanol'),
     'k_6r': _p('product_self_inhibition', 'r6', effector='ethanol'),
+    # The Adh6 step's own product terms. Unlike the r16 pair below these are
+    # live: r17 is a reversible, isobutanol-inhibited alcohol dehydrogenase,
+    # so it is a real carrier for a Haldane reverse and a competitive term.
+    'K_17e': _p('product_self_inhibition', 'r17', effector='isobutanol'),
+    'k_17r': _p('product_self_inhibition', 'r17', effector='isobutanol'),
     # K_16i and k_16r are inert since 2026-09-13 (r16 is irreversible
-    # Michaelis-Menten in KIV; the terms left its rate law) but stay declared
-    # at 0 in the model for the isobutanol workbooks that exec them, so they
-    # stay classified here: snapshot_parameters must read every declared
-    # kinetic parameter; note that a workbook override of either still yields
-    # an 'isobutanol self-inhibition of Ehrlich branch' clause from
-    # describe_parameter_change even though the parameter no longer does
-    # anything.
+    # Michaelis-Menten in KIV; the terms left its rate law, and the
+    # 2026-09-15 split made it a pure decarboxylase, which cannot carry them
+    # even in principle) but stay declared at 0 in the model for the
+    # isobutanol workbooks that exec them, so they stay classified here:
+    # snapshot_parameters must read every declared kinetic parameter; note
+    # that a workbook override of either still yields an 'isobutanol
+    # self-inhibition of Ehrlich branch' clause from describe_parameter_change
+    # even though the parameter no longer does anything. The live knob with
+    # that meaning is now K_17e.
     'K_16i': _p('product_self_inhibition', 'r16', effector='isobutanol'),
     'k_16r': _p('product_self_inhibition', 'r16', effector='isobutanol'),
     # --- lethality: steepness of the threshold-gated exp on r10 ---
