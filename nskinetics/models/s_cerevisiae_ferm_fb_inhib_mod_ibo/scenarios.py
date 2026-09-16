@@ -18,12 +18,17 @@ Michaelis-Menten in KIV (since 2026-09-13), so there is no reverse term to
 switch.
 
 ``k_17``, the Adh6 capacity of the reductase r17 that the 2026-09-15 split
-broke out of the lumped r16, is deliberately NOT a scenario key. Adh6 is
-native and constitutive, so it keeps its nonzero default in both scenarios;
-the branch is gated at its KIV entry by ``k_16``, and with ``k_16 = 0`` no
-isobutyraldehyde is ever made for r17 to reduce. This is also what lets a
-caller that knows only the four historical capacities (the isobutanol
-workbooks) still switch the branch on correctly.
+broke out of the lumped r16, is deliberately NOT a scenario key: Adh6 is
+native and constitutive, neither zeroed in A nor overexpressed in B, so it
+keeps its nonzero default throughout. Aro10 (``k_16``) is likewise a native
+constitutive enzyme and since 2026-09-16 also defaults to a nonzero wild-type
+vmax, but it stays a scenario key -- scenario B overexpresses it (2.82) and
+scenario A re-zeros it as part of a clean "branch off" block. So the model's
+own default gate is the engineered upstream block ``k_13`` .. ``k_15`` (with
+``k_13 = 0`` no acetolactate, hence no KIV, is made for r16/r17 to act on);
+scenario A additionally zeros ``k_16``. Either way a caller that sets only the
+four historical capacities (the isobutanol workbooks) switches the branch on
+correctly.
 
 Values mirror ``parameter-distributions_corn_IBO_EtOH_B.xlsx`` in the
 (read-only) isobutanol biorefinery, which is the source of truth. The

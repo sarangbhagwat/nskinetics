@@ -268,13 +268,19 @@ first, then apply the change:
 
 .. code-block:: text
 
-   Ehrlich branch on
+   Ehrlich branch on; faster Ehrlich branch
 
-The preset switched on the four Ehrlich capacities (``k_13`` .. ``k_16``),
-which share one role, effector and module and so collapse into a single
-clause. Note that the snippet mutates the model in place: ``km``
-keeps scenario B applied -- the Ehrlich branch on -- for the rest of the
-session. A partial override dict can also be passed directly as the
+The preset turns on the engineered upstream capacities ``k_13`` .. ``k_15``
+(0 -> nonzero -- a single ``on`` clause, since they share one role, effector
+and module) and further up-regulates the native Aro10 capacity ``k_16`` from
+its constitutive default to the overexpressed scenario-B level, a separate
+``faster`` clause. (Aro10, like Adh6/``k_17``, is a native enzyme with a
+nonzero default, so it reads as sped up rather than switched on; applying
+scenario A first, which re-zeros ``k_16``, would instead collapse the whole
+change to a single ``Ehrlich branch on``.) Note that the snippet mutates the
+model in place: ``km`` keeps scenario B applied -- the Ehrlich branch on --
+for the rest of the session. A partial override dict can also be passed
+directly as the
 "current" side, and ``verbose=True`` appends the parameter names and values
 to each clause:
 

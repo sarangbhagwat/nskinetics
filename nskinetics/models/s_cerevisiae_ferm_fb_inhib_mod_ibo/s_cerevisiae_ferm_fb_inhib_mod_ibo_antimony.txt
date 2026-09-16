@@ -402,7 +402,27 @@ model *bhagwat2026()
   // was 2.64e-4, copied from K_4).
   K_15 = 0.080;
   K_15 has g_per_l;
-  k_16 = 0.0;
+  // k_16 = 0.02115 g/L/h: the Aro10 vmax, transferred from the fitted Pdc
+  // vmax k_3 by the same three-ratio rule as k_17 -- a vmax is
+  // kcat x [E] x MW_substrate -- so it stays consistent with K_16's own
+  // anchoring to K_3 (which already carries the MW term):
+  //   k_16 = k_3 x (kcat_Aro10/kcat_Pdc1) x ([Aro10]/[Pdc1]) x (MW_KIV/MW_pyr)
+  //        = 5.81 x (19/60) x (5068/581219) x (116.12/88.06).
+  // kcat_Aro10 = 19 /s on KIV (Kneen et al. 2011 FEBS J. 278:1842, the same
+  // Aro10 source as K_16's Km); kcat_Pdc1 = 60 /s on pyruvate (Balakrishnan
+  // et al. 2012 JACS 134:3873); both from the isobutanol burden model's
+  // EHRLICH_STEPS / ANCHOR_STEPS. [Aro10]/[Pdc1] = 5068/581219 = 0.00872
+  // (~1:115) are the SGD quantitative-proteomics medians (yeastgenome.org
+  // loci S000002788 ARO10, S000004034 PDC1) -- the same median set that
+  // anchors k_17's [Adh6]/[Adh1]; Aro10 is barely induced on glucose, hence
+  // the low wild-type level. MW_KIV/MW_pyr = 116.12/88.06 converts k_3's
+  // g-pyruvate basis to k_16's g-KIV basis. Aro10, like Adh6 (k_17), is a
+  // native constitutive enzyme, so k_16 defaults to this nonzero wild-type
+  // level and the branch is gated upstream by the engineered block k_13-k_15
+  // (with k_13 = 0 no acetolactate, hence no KIV, is made). Scenario B
+  // overexpresses Aro10 to k_16 = 2.82 (scenarios.py); the scenario-A preset
+  // re-zeros the whole k_13-k_16 block for a clean "branch off" state.
+  k_16 = 0.02115;
   k_16 has g_per_l_per_h;
   // K_16: Aro10 (the rate-limiting decarboxylase of the lumped r16) KIV
   // affinity, Km 8.5 mM (Kneen et al. 2011; BRENDA EC 4.1.1.43). Anchored by
@@ -472,10 +492,13 @@ model *bhagwat2026()
   // isobutyraldehyde basis. (Earlier drafts: 44 g/L/h used Aro10's kcat 19 /s
   // against the arbitrary scenario-B k_16; 0.4637 kept the kcat ratio but
   // dropped the abundance and MW terms, treating Adh6 as ~as abundant as
-  // Adh1.) Adh6 is constitutive (native, broad-specificity), so unlike
-  // k_13-k_16 it is NOT a scenario toggle and defaults nonzero: the branch is
-  // gated at the KIV entry by k_16, and a workbook that sets only k_16 still
-  // makes isobutanol.
+  // Adh1.) Adh6 is constitutive (native, broad-specificity) and, like Aro10
+  // (k_16 since 2026-09-16), defaults to a nonzero wild-type vmax. The branch
+  // is gated by the engineered upstream block k_13-k_15 (with k_13 = 0 no KIV
+  // is made for r16/r17 to act on), not by the native terminal steps k_16/k_17.
+  // Adh6 alone is not a scenario key -- unlike k_16 it is neither overexpressed
+  // in B nor zeroed in A -- so a caller that sets only the historical k_13-k_16
+  // capacities still gets the correct terminal ADH.
   k_17 = 0.1077;
   k_17 has g_per_l_per_h;
   K_17 = 0.0086;

@@ -317,17 +317,20 @@ def test_describe_empty_diff():
 
 
 def test_describe_against_te_r_snapshot():
-    # The scenario presets move only the four Ehrlich capacities k_13..k_16.
-    # k_17 (Adh6) is constitutive and not in the dicts, so the whole change is
-    # one capacity clause. (Before the 2026-09-15 split this test expected a
-    # second, self-inhibition clause that the model could no longer produce
-    # once k_16r/K_16i left the r16 law on 2026-09-13.)
+    # Since 2026-09-16 the shipped default carries the native Aro10 (k_16) and
+    # Adh6 (k_17) at their nonzero constitutive vmaxes, so the te_r -> scenario
+    # B change is no longer a clean four-capacity switch: k_13-k_15 turn on
+    # (0 -> nonzero) while k_16 is up-regulated from its wild-type 0.02115 to
+    # the overexpressed 2.82 -- a 'faster' clause, not an 'on'. (The
+    # scenario-A -> B preset transition, where A re-zeros the whole block,
+    # still reads as a single 'Ehrlich branch on'; see
+    # test_describe_ehrlich_on_from_partial_override.)
     pc = _pc()
     from nskinetics.models.s_cerevisiae_ferm_fb_inhib_mod_ibo import (
         te_r, SCENARIO_B_EHRLICH)
     snap = pc.snapshot_parameters(te_r)
     assert pc.describe_parameter_change(snap, SCENARIO_B_EHRLICH) == (
-        'Ehrlich branch on')
+        'Ehrlich branch on; faster Ehrlich branch')
 
 
 # --- categorize -----------------------------------------------------------

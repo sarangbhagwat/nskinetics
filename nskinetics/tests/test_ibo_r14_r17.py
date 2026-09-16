@@ -153,11 +153,13 @@ def test_defaults():
     assert r.k_17r == pytest.approx(0.00025)
     assert r.k_17ia == pytest.approx(0.06)
     assert r.k_17ie == pytest.approx(0.02)
-    # Adh6 is constitutive: its vmax has a nonzero default so a workbook that
-    # sets only k_16 (the Aro10 knob gating the branch) still makes isobutanol.
-    # k_17 anchors to the fitted Adh1 vmax k_6 by the Adh6:Adh1 kcat, abundance
-    # and substrate-MW ratios (a vmax is kcat x [E] x MW_sub) -- see the anchor
-    # test below for the full derivation.
+    # Aro10 (k_16) and Adh6 (k_17) are both native constitutive enzymes, so
+    # both vmaxes default nonzero; the branch is gated by the engineered
+    # upstream block k_13-k_15, not by these terminal steps. Each vmax anchors
+    # to its fitted ethanol-branch analog -- k_16 to the Pdc vmax k_3, k_17 to
+    # the Adh1 vmax k_6 -- by the kcat, abundance and substrate-MW ratios (a
+    # vmax is kcat x [E] x MW_sub); see the anchor tests below.
+    assert r.k_16 == pytest.approx(0.02115)
     assert r.k_17 == pytest.approx(0.1077)
     assert {'k_17', 'K_17', 'k_17r', 'K_17e', 'k_17ia', 'k_17ie'} <= ids
     # the lumped law's own cross-product coefficients stay declared, at 0 and
@@ -194,6 +196,20 @@ def test_k_17_is_anchored_to_the_fitted_k_6_by_kcat_abundance_and_mw():
     r = te_r._te
     expected = r.k_6 * (296.0/1800.0) * (14717.0/103727.0) * (72.11/44.05)
     assert r.k_17 == pytest.approx(expected, rel=0.01)
+
+
+def test_k_16_is_anchored_to_the_fitted_k_3_by_kcat_abundance_and_mw():
+    # k_16 (Aro10 vmax) is set exactly as k_17 was: a vmax is
+    # kcat x [E] x MW_substrate, so the transfer from the fitted Pdc vmax k_3
+    # to the native constitutive Aro10 carries all three ratios, staying
+    # consistent with K_16's own anchoring to K_3:
+    #   kcat_Aro10/kcat_Pdc1 = 19/60        (Kneen 2011 / Balakrishnan 2012)
+    #   [Aro10]/[Pdc1]       = 5068/581219  (SGD proteomics medians, ~1:115)
+    #   MW_KIV/MW_pyr        = 116.12/88.06 (the same MW term K_16 carries)
+    te_r, *_ = _model()
+    r = te_r._te
+    expected = r.k_3 * (19.0/60.0) * (5068.0/581219.0) * (116.12/88.06)
+    assert r.k_16 == pytest.approx(expected, rel=0.01)
 
 
 def test_r16_ignores_its_retired_cross_product_coefficients():
@@ -382,7 +398,7 @@ def test_shipped_sbml_matches_the_live_model():
     assert doc.getNumErrors(libsbml.LIBSBML_SEV_ERROR) == 0
     shipped = doc.getModel()
     live = _sbml_model(te_r._te.getSBML())      # as loaded, scenario-invariant
-    for pid in ('K_13', 'K_14', 'K_15', 'K_16', 'K_16i', 'k_16r',
+    for pid in ('K_13', 'K_14', 'K_15', 'K_16', 'K_16i', 'k_16r', 'k_16',
                 'k_17', 'K_17', 'k_17r', 'K_17e', 'k_17ia', 'k_17ie',
                 'anaerobic_growth_mult'):
         assert shipped.getParameter(pid).getValue() == pytest.approx(

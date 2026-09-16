@@ -379,7 +379,7 @@
       <parameter id="K_14" value="0.017" units="g_per_l" constant="true"/>
       <parameter id="k_15" value="0" units="g_per_l_per_h" constant="true"/>
       <parameter id="K_15" value="0.08" units="g_per_l" constant="true"/>
-      <parameter id="k_16" value="0" units="g_per_l_per_h" constant="true"/>
+      <parameter id="k_16" value="0.02115" units="g_per_l_per_h" constant="true"/>
       <parameter id="K_16" value="0.27" units="g_per_l" constant="true"/>
       <parameter id="k_17" value="0.1077" units="g_per_l_per_h" constant="true"/>
       <parameter id="k_17r" value="0.00025" units="dimensionless" constant="true"/>
