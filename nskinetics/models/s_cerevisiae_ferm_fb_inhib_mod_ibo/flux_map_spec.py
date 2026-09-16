@@ -109,7 +109,7 @@ FLUX_MAP_SPEC = FluxMapSpec(
                     's_glu': 'residual glucose'},
     # Strips hang down from their anchor (4 rows, ~5.3 mm tall). Only
     # inhibited reactions get one, so r2/r5/r8/r13-r15 need no entry; the
-    # entries below move r1/r4/r6/r7/r16 off the node boxes, edges and value
+    # entries below move r1/r4/r6/r7/r17 off the node boxes, edges and value
     # labels they would otherwise cross.
     strip_offsets={
         'r7': (-8.5, -2.5),
