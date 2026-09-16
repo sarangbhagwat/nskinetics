@@ -455,21 +455,28 @@ model *bhagwat2026()
   // k_17r = k_6r/50 = 2.5e-4: the fitted Adh1 reverse balance scaled by Adh6's
   // 50-fold aldehyde preference. Small, as it should be -- Adh6 is
   // functionally an aldehyde reductase.
-  // k_17 = 0.4637 g/L/h: a vmax, so grounded on a kcat ratio rather than a Km
-  // ratio, and anchored to the fitted Adh1 vmax k_6 exactly as K_17/k_17r are
-  // anchored to K_6/k_6r -- k_17 = (kcat_Adh6/kcat_Adh1) x k_6 = (296/1800) x
-  // 2.82. kcat_Adh6 = 296 /s on the branched aldehyde (Larroy et al. 2002;
-  // isobutanol burden model), kcat_Adh1 = 1800 /s on acetaldehyde (Ganzhorn
-  // et al. 1987 JBC 262:3754, the same Adh1 source as K_17's Km), so Adh6
-  // turns over ~6x slower than Adh1 and k_17 sits well below k_6. (The
-  // previous 44 g/L/h divided kcat_Adh6 by Aro10's decarboxylase kcat 19 /s
-  // and multiplied the arbitrary scenario-B k_16 = 2.82, inflating the vmax
-  // ~95x and making Adh6 artificially non-limiting; anchoring to k_6 removes
-  // that dependence on k_16.) Adh6 is constitutive (native, broad-
-  // specificity), so unlike k_13-k_16 it is NOT a scenario toggle and defaults
-  // nonzero: the branch is gated at the KIV entry by k_16, and a workbook that
-  // sets only k_16 still makes isobutanol.
-  k_17 = 0.4637;
+  // k_17 = 0.1077 g/L/h: a vmax (= kcat x [E] x MW_substrate), transferred from
+  // the fitted Adh1 vmax k_6 to Adh6 by all three of those ratios, so it stays
+  // consistent with K_17's anchoring (which already carries the same MW term):
+  //   k_17 = k_6 x (kcat_Adh6/kcat_Adh1) x ([Adh6]/[Adh1]) x (MW_ibald/MW_acetald)
+  //        = 2.82 x (296/1800) x (14717/103727) x (72.11/44.05).
+  // kcat_Adh6 = 296 /s on the branched aldehyde (Larroy et al. 2002), kcat_Adh1
+  // = 1800 /s on acetaldehyde (Ganzhorn et al. 1987 JBC 262:3754, the same Adh1
+  // source as K_17's Km); both taken from the isobutanol burden model's
+  // ANCHOR_STEPS. [Adh6]/[Adh1] = 14717/103727 = 0.142 (~7:1) from the SGD
+  // quantitative-proteomics medians (yeastgenome.org loci S000004937 ADH6,
+  // S000005446 ADH1) -- the same abundances the burden model charges Adh6's
+  // pool by, so the kinetics and the proteome cost now assume one Adh6
+  // abundance instead of contradicting each other. MW_ibald/MW_acetald =
+  // 72.11/44.05 converts k_6's g-acetaldehyde basis to k_17's g-
+  // isobutyraldehyde basis. (Earlier drafts: 44 g/L/h used Aro10's kcat 19 /s
+  // against the arbitrary scenario-B k_16; 0.4637 kept the kcat ratio but
+  // dropped the abundance and MW terms, treating Adh6 as ~as abundant as
+  // Adh1.) Adh6 is constitutive (native, broad-specificity), so unlike
+  // k_13-k_16 it is NOT a scenario toggle and defaults nonzero: the branch is
+  // gated at the KIV entry by k_16, and a workbook that sets only k_16 still
+  // makes isobutanol.
+  k_17 = 0.1077;
   k_17 has g_per_l_per_h;
   K_17 = 0.0086;
   K_17 has g_per_l;

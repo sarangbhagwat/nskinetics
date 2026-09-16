@@ -155,9 +155,10 @@ def test_defaults():
     assert r.k_17ie == pytest.approx(0.02)
     # Adh6 is constitutive: its vmax has a nonzero default so a workbook that
     # sets only k_16 (the Aro10 knob gating the branch) still makes isobutanol.
-    # k_17 anchors to the fitted Adh1 vmax k_6 by the Adh6:Adh1 kcat ratio
-    # (296/1800), so it sits ~6x below k_6 -- see test_k_17_is_anchored_...
-    assert r.k_17 == pytest.approx(0.4637)
+    # k_17 anchors to the fitted Adh1 vmax k_6 by the Adh6:Adh1 kcat, abundance
+    # and substrate-MW ratios (a vmax is kcat x [E] x MW_sub) -- see the anchor
+    # test below for the full derivation.
+    assert r.k_17 == pytest.approx(0.1077)
     assert {'k_17', 'K_17', 'k_17r', 'K_17e', 'k_17ia', 'k_17ie'} <= ids
     # the lumped law's own cross-product coefficients stay declared, at 0 and
     # inert, for the same workbook reason as K_16i/k_16r (rows 74-75 of the
@@ -181,14 +182,18 @@ def test_K_17_is_anchored_to_the_fitted_K_6():
     assert r.K_17e == pytest.approx(r.K_17 / ki_ibo, rel=0.05)
 
 
-def test_k_17_is_anchored_to_the_fitted_k_6_by_the_kcat_ratio():
-    # k_17 (Adh6 vmax) mirrors r6 the way K_17/k_17r do: it is the fitted
-    # Adh1 vmax k_6 scaled by the Adh6:Adh1 turnover ratio, not tied to the
-    # arbitrary scenario-B k_16 (the old (296/19) x k_16 basis). kcat_Adh6 =
-    # 296 /s (Larroy 2002), kcat_Adh1 = 1800 /s (Ganzhorn 1987, JBC 262:3754).
+def test_k_17_is_anchored_to_the_fitted_k_6_by_kcat_abundance_and_mw():
+    # k_17 (Adh6 vmax) mirrors r6 the way K_17/k_17r do, but a vmax is
+    # kcat x [E] x MW_substrate, so the transfer from the fitted Adh1 vmax k_6
+    # carries all three ratios -- not the kcat ratio alone, and not the old
+    # (296/19) x scenario-B k_16 basis:
+    #   kcat_Adh6/kcat_Adh1 = 296/1800      (Larroy 2002 / Ganzhorn 1987)
+    #   [Adh6]/[Adh1]       = 14717/103727  (SGD proteomics medians, ~7:1)
+    #   MW_ibald/MW_acetald = 72.11/44.05   (the same MW term K_17 carries)
     te_r, *_ = _model()
     r = te_r._te
-    assert r.k_17 == pytest.approx((296.0 / 1800.0) * r.k_6, rel=0.01)
+    expected = r.k_6 * (296.0/1800.0) * (14717.0/103727.0) * (72.11/44.05)
+    assert r.k_17 == pytest.approx(expected, rel=0.01)
 
 
 def test_r16_ignores_its_retired_cross_product_coefficients():
