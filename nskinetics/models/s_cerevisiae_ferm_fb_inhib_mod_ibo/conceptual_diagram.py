@@ -56,7 +56,7 @@ Y_TOP_MM = 134.                   # axes top with the process-control row ...
 Y_TOP_NO_CONTROLS_MM = 104.       # ... and without it (glucose box tops at 101.5)
 LEGEND_ROW_4_MM = 5.2             # depth of the legend strip below y = 0
                                   # (full figure 139.2 mm; Nat. Commun. cap 170 mm)
-LEGEND_COL_GAP_MM = 6.            # clear space between legend columns
+LEGEND_COL_GAP_MM = 3.5           # clear space between legend columns
 LEGEND_PAD_MM = 4.                # legend strip padding left / right of its content
 
 # --- Okabe-Ito palette (colorblind-safe), assigned by control job ----------
@@ -583,7 +583,7 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
 
     edge_labels = (
         'product inhibition, $e^{-k_i C}$',
-        'product-accelerated decay above a threshold',
+        'product-accelerated decay',
         'glucose repression',
         'activation',
     )
