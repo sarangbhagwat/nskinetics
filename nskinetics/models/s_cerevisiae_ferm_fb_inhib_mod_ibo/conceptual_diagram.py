@@ -12,7 +12,9 @@ J. Biotechnol. 88:205-21 / BIOMD0000000245 with an engineered isobutanol
 pathway, product inhibition, aeration staging, and fed-batch feeding).
 
 The figure shows the reaction network (r1-r11, r13-r17) and the control
-structure — exponential product inhibition, glucose repression, the
+structure — exponential product inhibition (r1, r4, r6, r7, r17),
+threshold-gated product acceleration of biomass decay (r10), glucose
+repression, the
 acetaldehyde overflow signal, O2 dependence (``f_O2`` scaling), the AcDH
 physiological-state machinery, and the fed-batch glucose-spike loop — sized
 to Nature Communications figure specifications (180 mm double-column width,
@@ -52,7 +54,7 @@ MM = 1 / 25.4                     # mm -> inch
 FIG_W_MM = 180.                   # double-column width
 Y_TOP_MM = 134.                   # axes top with the process-control row ...
 Y_TOP_NO_CONTROLS_MM = 104.       # ... and without it (glucose box tops at 101.5)
-LEGEND_ROW_4_MM = 3.5             # extra depth when the legend needs a fourth row
+LEGEND_ROW_4_MM = 3.5             # depth of the legend's fourth row, below y = 0
                                   # (full figure 137.5 mm; Nat. Commun. cap 170 mm)
 
 # --- Okabe-Ito palette (colorblind-safe), assigned by control job ----------
@@ -89,8 +91,9 @@ FS_LEGEND = 5.4
 # The strain-side decision variables of the isobutanol package's
 # metabolic_split_12d kinetic-optimization preset. Capacity levers sit just
 # after the enzyme name of their reaction; the three product-tolerance groups
-# (inhib_ethanol / inhib_isobutanol / inhib_acetate) sit on the drawn
-# product-inhibition stubs, each of which stands for all three effectors.
+# (inhib_ethanol / inhib_isobutanol / inhib_acetate) sit on every drawn
+# product edge -- the inhibition stubs of r1/r4/r6/r7/r17 and the decay edge
+# of r10 -- each of which names the effectors acting there.
 STRAIN_LEVER_MARKS = {
     'glycolysis (k_1l, k_1h, k_1e) @ r1': (101.8, 87.6),
     'k_3 @ r3': (96.6, 65.4),
@@ -103,6 +106,9 @@ STRAIN_LEVER_MARKS = {
     'inhib_* @ r1 stub': (78.6, 90.0),
     'inhib_* @ r4 stub': (62.4, 48.6),
     'inhib_* @ r7 stub': (14.6, 60.4),
+    'inhib_acetate, inhib_isobutanol @ r6 stub': (104.4, 36.4),
+    'inhib_acetate, inhib_ethanol @ r17 stub': (133.6, 31.1),
+    'inhib_* @ r10 decay edge': (24.6, 34.0),
 }
 
 
@@ -296,11 +302,8 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
         ``(fig, ax)`` of the drawn figure.
     """
     _setup_rcparams()
-    # the three badge entries fill column 3, so the legend needs a fourth row
-    # only when the feed entry and the knob entry are both present (otherwise
-    # the knob takes the free feed slot)
-    four_legend_rows = show_strain_levers and show_process_controls
-    y_floor = -LEGEND_ROW_4_MM if four_legend_rows else 0.
+    # the legend's control-edge column always has four entries
+    y_floor = -LEGEND_ROW_4_MM
     y_top = Y_TOP_MM if show_process_controls else Y_TOP_NO_CONTROLS_MM
     fig, ax = plt.subplots(figsize=(FIG_W_MM * MM, (y_top - y_floor) * MM))
     ax.set_xlim(0, FIG_W_MM)
@@ -409,7 +412,7 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
                                 boxstyle='round,pad=0,rounding_size=2',
                                 fc=TINT_BM, ec=TINT_BM_EDGE, lw=0.9,
                                 zorder=2))
-    ax.text(38, 37, 'Biomass $x$ & physiological state',
+    ax.text(38, 38.2, 'Biomass $x$ & physiological state',
             fontsize=FS_PANEL - 0.3, fontweight='bold', color='#1F7A5C',
             ha='center', va='center', zorder=3)
 
@@ -494,7 +497,8 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
     _tag(ax, 144.7, 45.5, 'CO$_2$', ha='right', fs=FS_ENZ)
     _arrow(ax, [iald['bottom'], ibo['top']], lw=1.1, reversible=True)
     _rxn_marker(ax, 152, 32.5, 'r17', enzyme='Adh6', enz_dxy=(8.6, 0))
-    _tag(ax, 144.7, 32.5, '–NADPH', ha='right', fs=FS_ENZ)
+    # (raised off the marker's row to leave room for r17's inhibition stub)
+    _tag(ax, 144.7, 34.1, '–NADPH', ha='right', fs=FS_ENZ)
 
     # === control edges =====================================================
     # acetaldehyde overflow signal activates the high-capacity glycolytic
@@ -514,6 +518,22 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
     _tag(ax, 66.5, 43.7, 'EtOH·Ace·iBuOH', color=C_INHIB, fs=FS_TAG)
     _tbar(ax, (11.3, 58), (17.5, 58), C_INHIB)
     _tag(ax, 18.3, 58, 'EtOH·Ace·iBuOH', color=C_INHIB, ha='left',
+         fs=FS_TAG)
+
+    # the two alcohol dehydrogenases carry only the cross-product
+    # exponentials (their own product acts through the reversible law):
+    # r6 exp(-k_6ia*Ace)*exp(-k_6ii*iBuOH), r17 exp(-k_17ia*Ace)*exp(-k_17ie*EtOH)
+    _tbar(ax, (88.1, 40.5), (93.4, 37.0), C_INHIB)
+    _tag(ax, 94.2, 36.4, 'Ace·iBuOH', color=C_INHIB, ha='left', fs=FS_TAG)
+    _tbar(ax, (149.6, 31.1), (144.4, 31.1), C_INHIB)
+    _tag(ax, 143.6, 31.1, 'Ace·EtOH', color=C_INHIB, ha='right', fs=FS_TAG)
+
+    # product-accelerated decay: above its threshold (P_10e/a/i) each product
+    # multiplies r10 by exp(k_10i*(C - P_10)) -- an activating edge in the
+    # product color, routed down the panel margin left of the X_a box
+    _arrow(ax, [(10.8, 32.7), (10.8, 23.1), (17.0, 23.1)], color=C_INHIB,
+           lw=0.9, ls=(0, (3.2, 1.8)), corner_r=2.5, mutation=5, zorder=5)
+    _tag(ax, 9.6, 34.0, 'EtOH·Ace·iBuOH', color=C_INHIB, ha='left',
          fs=FS_TAG)
 
     # glucose repression stubs (glucose -| r2, r5, r8, r9)
@@ -564,13 +584,17 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
                 fontsize=FS_LEGEND, va='center', zorder=5)
 
     _tbar(ax, (60, y1), (53, y1), C_INHIB, lw=1.0)
-    ax.text(62.5, y1, 'product inhibition, $e^{-k_i C}$ (r1, r4, r7)',
+    ax.text(62.5, y1, 'product inhibition, $e^{-k_i C}$ '
+                      '(r1, r4, r6, r7, r17)',
             fontsize=FS_LEGEND, va='center', zorder=5)
-    _tbar(ax, (60, y2), (53, y2), C_REPR, lw=1.0)
-    ax.text(62.5, y2, 'glucose repression (r2, r5, r8; r9 at high glc)',
+    _leg_arrow(53, y2, C_INHIB, dashed=True)
+    ax.text(62.5, y2, 'product-accelerated decay above a threshold (r10)',
             fontsize=FS_LEGEND, va='center', zorder=5)
-    _leg_arrow(53, y3, C_ACT, dashed=True)
-    ax.text(62.5, y3, 'activation (acetaldehyde $\\rightarrow$ r1; '
+    _tbar(ax, (60, y3), (53, y3), C_REPR, lw=1.0)
+    ax.text(62.5, y3, 'glucose repression (r2, r5, r8; r9 at high glc)',
+            fontsize=FS_LEGEND, va='center', zorder=5)
+    _leg_arrow(53, y4, C_ACT, dashed=True)
+    ax.text(62.5, y4, 'activation (acetaldehyde $\\rightarrow$ r1; '
                       'glc & EtOH $\\rightarrow$ r9)',
             fontsize=FS_LEGEND, va='center', zorder=5)
 
@@ -584,14 +608,10 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
            w=8.6)
     ax.text(131, y3, 'requires AcDH machinery ($a\\,X_\\mathrm{AcDH}$)',
             fontsize=FS_LEGEND, va='center', zorder=5)
-    # the knob entry takes column 3 / row 4, or the freed feed slot (column
-    # 1 / row 3) when the process controls are hidden
     if show_strain_levers:
-        knob_xy, text_x = (((125, y4), 129.5) if show_process_controls
-                           else ((9.5, y3), 15))
-        _knob(ax, *knob_xy)
-        ax.text(text_x, knob_xy[1], 'tunable strain lever',
-                fontsize=FS_LEGEND, va='center', zorder=5)
+        _knob(ax, 125, y4)
+        ax.text(129.5, y4, 'tunable strain lever', fontsize=FS_LEGEND,
+                va='center', zorder=5)
 
     # === save ==============================================================
     if save_dir is None:
