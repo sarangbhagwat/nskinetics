@@ -50,8 +50,11 @@ __all__ = ('draw_conceptual_diagram',)
 
 # --- Nature Communications sizing -----------------------------------------
 MM = 1 / 25.4                     # mm -> inch
-FIG_W_MM, FIG_H_MM = 180., 137.5  # double-column width; height < 170 mm cap
-Y_FLOOR_MM = -3.5                 # axes floor (fourth legend row sits below 0)
+FIG_W_MM = 180.                   # double-column width
+Y_TOP_MM = 134.                   # axes top with the process-control row ...
+Y_TOP_NO_CONTROLS_MM = 112.       # ... and without it (reactor frame tops at 110)
+LEGEND_ROW_4_MM = 3.5             # extra depth when the legend needs a fourth row
+                                  # (full figure 137.5 mm; Nat. Commun. cap 170 mm)
 
 # --- Okabe-Ito palette (colorblind-safe), assigned by control job ----------
 C_FLUX = '#3A3A3A'      # mass/reaction flux
@@ -250,7 +253,9 @@ def _knob(ax, x, y, r=1.05, pointer_angle=45., fc=C_LEVER, ec=C_TEXT, lw=0.35,
 # --- the figure ------------------------------------------------------------
 
 def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
-                            dpi=600, show=False, show_strain_levers=True):
+                            dpi=600, show=False, show_strain_levers=True,
+                            show_process_controls=True,
+                            filename='conceptual_diagram'):
     """Draw the conceptual reaction-network/controls diagram.
 
     Parameters
@@ -270,6 +275,16 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
         strain-side decision variables of the isobutanol package's
         ``metabolic_split_12d`` kinetic-optimization preset) with rotary-knob
         icons. Defaults to True.
+    show_process_controls : bool, optional
+        Draw the process-control row above the reactor (the fed-batch glucose
+        feeding and two-stage aeration panels) with its glucose-spike, glucose
+        sensing and O$_2$ supply connectors and the feed legend entry. False
+        gives the reaction network alone, on a correspondingly shorter
+        figure; the O$_2$ badges stay (they mark aerobic-only reactions).
+        Defaults to True.
+    filename : str, optional
+        Output file stem. Defaults to ``'conceptual_diagram'``; pass another
+        stem to keep a variant from overwriting the full figure.
 
     Returns
     -------
@@ -277,44 +292,50 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
         ``(fig, ax)`` of the drawn figure.
     """
     _setup_rcparams()
-    fig, ax = plt.subplots(figsize=(FIG_W_MM * MM, FIG_H_MM * MM))
+    # the legend needs a fourth row only when the feed entry and the knob
+    # entry are both present (otherwise the knob takes the free feed slot)
+    four_legend_rows = show_strain_levers and show_process_controls
+    y_floor = -LEGEND_ROW_4_MM if four_legend_rows else 0.
+    y_top = Y_TOP_MM if show_process_controls else Y_TOP_NO_CONTROLS_MM
+    fig, ax = plt.subplots(figsize=(FIG_W_MM * MM, (y_top - y_floor) * MM))
     ax.set_xlim(0, FIG_W_MM)
-    ax.set_ylim(Y_FLOOR_MM, FIG_H_MM + Y_FLOOR_MM)
+    ax.set_ylim(y_floor, y_top)
     ax.set_aspect('equal')
     ax.axis('off')
     fig.subplots_adjust(left=0, right=1, bottom=0, top=1)
 
     # === process-control row (top, outside the reactor) ===================
-    ax.add_patch(FancyBboxPatch((4, 113), 82, 19,
-                                boxstyle='round,pad=0,rounding_size=2',
-                                fc=TINT_CTRL, ec=TINT_CTRL_EDGE, lw=0.9,
-                                zorder=2))
-    ax.text(8, 128.2, 'Fed-batch glucose feeding (FeedSpike events)',
-            fontsize=FS_PANEL, fontweight='bold', color='#144E7A',
-            ha='left', va='center', zorder=3)
-    ax.text(8, 119.8,
-            'When $s_\\mathrm{glu}$ < threshold (10 g L$^{-1}$): spike '
-            'concentrated\nfeed (600 g L$^{-1}$) to restore the target '
-            '(100 g L$^{-1}$);\nat most max_n_glu_spikes spikes '
-            '(default 5);\neach spike increases broth volume env.',
-            fontsize=FS_NOTE, ha='left', va='center', color=C_TEXT,
-            linespacing=1.35, zorder=3)
+    if show_process_controls:
+        ax.add_patch(FancyBboxPatch((4, 113), 82, 19,
+                                    boxstyle='round,pad=0,rounding_size=2',
+                                    fc=TINT_CTRL, ec=TINT_CTRL_EDGE, lw=0.9,
+                                    zorder=2))
+        ax.text(8, 128.2, 'Fed-batch glucose feeding (FeedSpike events)',
+                fontsize=FS_PANEL, fontweight='bold', color='#144E7A',
+                ha='left', va='center', zorder=3)
+        ax.text(8, 119.8,
+                'When $s_\\mathrm{glu}$ < threshold (10 g L$^{-1}$): spike '
+                'concentrated\nfeed (600 g L$^{-1}$) to restore the target '
+                '(100 g L$^{-1}$);\nat most max_n_glu_spikes spikes '
+                '(default 5);\neach spike increases broth volume env.',
+                fontsize=FS_NOTE, ha='left', va='center', color=C_TEXT,
+                linespacing=1.35, zorder=3)
 
-    ax.add_patch(FancyBboxPatch((90, 113), 86, 19,
-                                boxstyle='round,pad=0,rounding_size=2',
-                                fc=TINT_CTRL, ec=TINT_CTRL_EDGE, lw=0.9,
-                                zorder=2))
-    ax.text(94, 128.2, 'Two-stage aeration control',
-            fontsize=FS_PANEL, fontweight='bold', color='#144E7A',
-            ha='left', va='center', zorder=3)
-    ax.text(94, 120.2,
-            'is_aerobic = 1 while $t$ < stage_1_max_time and '
-            '$x$ < stage_1_max_x, then 0.\nf_O2 = is_aerobic × transfer '
-            'fraction, capped so respiratory O$_2$ ≤ kLa·C$_{O_2}$*;\nscales '
-            'r2, r5, r8 and aerobic growth r7 (anaerobic_growth_mult share '
-            'ungated).',
-            fontsize=FS_NOTE, ha='left', va='center', color=C_TEXT,
-            linespacing=1.35, zorder=3)
+        ax.add_patch(FancyBboxPatch((90, 113), 86, 19,
+                                    boxstyle='round,pad=0,rounding_size=2',
+                                    fc=TINT_CTRL, ec=TINT_CTRL_EDGE, lw=0.9,
+                                    zorder=2))
+        ax.text(94, 128.2, 'Two-stage aeration control',
+                fontsize=FS_PANEL, fontweight='bold', color='#144E7A',
+                ha='left', va='center', zorder=3)
+        ax.text(94, 120.2,
+                'is_aerobic = 1 while $t$ < stage_1_max_time and '
+                '$x$ < stage_1_max_x, then 0.\nf_O2 = is_aerobic × transfer '
+                'fraction, capped so respiratory O$_2$ ≤ kLa·C$_{O_2}$*;\nscales '
+                'r2, r5, r8 and aerobic growth r7 (anaerobic_growth_mult share '
+                'ungated).',
+                fontsize=FS_NOTE, ha='left', va='center', color=C_TEXT,
+                linespacing=1.35, zorder=3)
 
     # === bioreactor frame ==================================================
     ax.add_patch(FancyBboxPatch((2, 16), 176, 94,
@@ -324,19 +345,21 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
             fontsize=FS_PANEL, fontweight='bold', color='#444444',
             ha='right', va='center', zorder=3)
 
-    # feed arrow into the reactor + sensing line (the fed-batch loop)
-    _arrow(ax, [(45, 113), (45, 104), (78, 104), (78, 101.8)],
-           color=C_FEED, lw=1.2, corner_r=3)
-    _tag(ax, 60, 106.2, 'glucose spike', color=C_FEED, fs=FS_TAG)
-    ax.add_line(Line2D([95, 95, 82, 82], [101.8, 107, 107, 113],
-                       color=C_FEED, lw=0.8, ls=(0, (1.2, 1.4)), zorder=3))
-    _tag(ax, 89.5, 108.6, 'sense $s_\\mathrm{glu}$', color=C_FEED,
-         fs=FS_TAG)
+    # connectors from the process-control row
+    if show_process_controls:
+        # feed arrow into the reactor + sensing line (the fed-batch loop)
+        _arrow(ax, [(45, 113), (45, 104), (78, 104), (78, 101.8)],
+               color=C_FEED, lw=1.2, corner_r=3)
+        _tag(ax, 60, 106.2, 'glucose spike', color=C_FEED, fs=FS_TAG)
+        ax.add_line(Line2D([95, 95, 82, 82], [101.8, 107, 107, 113],
+                           color=C_FEED, lw=0.8, ls=(0, (1.2, 1.4)), zorder=3))
+        _tag(ax, 89.5, 108.6, 'sense $s_\\mathrm{glu}$', color=C_FEED,
+             fs=FS_TAG)
 
-    # O2 supply drop from the aeration panel (left of the reactor caption)
-    _arrow(ax, [(120, 113), (120, 103.5)], color=C_O2, lw=1.0,
-           ls=(0, (2.4, 1.6)), mutation=5.5)
-    _tag(ax, 122.3, 108, 'O$_2$', color='#2E7FB0', fs=FS_TAG, ha='left')
+        # O2 supply drop from the aeration panel (left of the reactor caption)
+        _arrow(ax, [(120, 113), (120, 103.5)], color=C_O2, lw=1.0,
+               ls=(0, (2.4, 1.6)), mutation=5.5)
+        _tag(ax, 122.3, 108, 'O$_2$', color='#2E7FB0', fs=FS_TAG, ha='left')
 
     # === species boxes =====================================================
     glu = _box(ax, 86, 98, 24, 7, ['Glucose'], fc=TINT_SUBSTRATE)
@@ -505,7 +528,7 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
             _knob(ax, x, y)
 
     # === legend strip ======================================================
-    ax.add_patch(FancyBboxPatch((2, -2), 176, 15.5,
+    ax.add_patch(FancyBboxPatch((2, 1.5 + y_floor), 176, 12 - y_floor,
                                 boxstyle='round,pad=0,rounding_size=1.5',
                                 fc='#FAFAFA', ec='#CCCCCC', lw=0.7,
                                 zorder=1))
@@ -522,12 +545,13 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
     _leg_arrow(6, y2, C_FLUX, reversible=True)
     ax.text(15, y2, 'reversible (r6, r17)', fontsize=FS_LEGEND, va='center',
             zorder=5)
-    _arrow(ax, [(6, y3), (10.5, y3)], color=C_FEED, lw=1.0, mutation=5.5,
-           zorder=5)
-    ax.add_line(Line2D([11.3, 13.5], [y3, y3], color=C_FEED, lw=0.9,
-                       ls=(0, (1.2, 1.4)), zorder=5))
-    ax.text(15, y3, 'fed-batch feed; dotted = sensing', fontsize=FS_LEGEND,
-            va='center', zorder=5)
+    if show_process_controls:
+        _arrow(ax, [(6, y3), (10.5, y3)], color=C_FEED, lw=1.0, mutation=5.5,
+               zorder=5)
+        ax.add_line(Line2D([11.3, 13.5], [y3, y3], color=C_FEED, lw=0.9,
+                           ls=(0, (1.2, 1.4)), zorder=5))
+        ax.text(15, y3, 'fed-batch feed; dotted = sensing',
+                fontsize=FS_LEGEND, va='center', zorder=5)
 
     _tbar(ax, (60, y1), (53, y1), C_INHIB, lw=1.0)
     ax.text(62.5, y1, 'product inhibition, $e^{-k_i C}$ (r1, r4, r7)',
@@ -547,12 +571,17 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
            w=8.6)
     ax.text(131, y2, 'requires AcDH machinery ($a\\,X_\\mathrm{AcDH}$)',
             fontsize=FS_LEGEND, va='center', zorder=5)
+    # the knob entry takes column 3 / row 3, or the freed feed slot (column
+    # 1 / row 3) when the process controls are hidden; the closing note takes
+    # column 3 / row 3 whenever that is free, else the fourth row
     if show_strain_levers:
-        _knob(ax, 125, y3)
-        ax.text(129.5, y3, 'tunable strain lever', fontsize=FS_LEGEND,
+        knob_x, text_x = (125, 129.5) if show_process_controls else (9.5, 15)
+        _knob(ax, knob_x, y3)
+        ax.text(text_x, y3, 'tunable strain lever', fontsize=FS_LEGEND,
                 va='center', zorder=5)
-    ax.text(6, y4, 'all rates $\\propto$ $a = X_a x$; conc. in '
-                       'g L$^{-1}$; dilution ($D$ = 0) omitted',
+    note_xy = (6, y4) if four_legend_rows else (121.5, y3)
+    ax.text(*note_xy, 'all rates $\\propto$ $a = X_a x$; conc. in '
+                      'g L$^{-1}$; dilution ($D$ = 0) omitted',
             fontsize=FS_LEGEND - 0.4, va='center', ha='left', zorder=5,
             color=C_MUTED)
 
@@ -560,7 +589,7 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
     if save_dir is None:
         save_dir = os.path.dirname(os.path.abspath(__file__))
     for fmt in formats:
-        out = os.path.join(save_dir, f'conceptual_diagram.{fmt}')
+        out = os.path.join(save_dir, f'{filename}.{fmt}')
         fig.savefig(out, dpi=dpi, facecolor='white')
         print(f'Saved {out}')
     if show:
