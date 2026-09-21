@@ -379,7 +379,7 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
     ald = _box(ax, 86, 54, 26, 7, ['Acetaldehyde'])
     eth = _box(ax, 86, 30, 24, 7, ['Ethanol'], fc=TINT_PRODUCT)
     ace = _box(ax, 48, 54, 20, 7, ['Acetate'])
-    tca = _box(ax, 27, 77, 30, 10, ['TCA cycle &', 'respiration'],
+    tca = _box(ax, 27, 76, 30, 10, ['TCA cycle &', 'respiration'],
                fc='#F4F4F4', ec='#8A8A8A', sub_fs=FS_SPECIES - 0.5)
     # TCA sub-line should not be italic/muted; redraw label cleanly
     # (the helper renders line 2 italic; overwrite with a matching label)
@@ -390,8 +390,8 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
     tca_txt.set_fontsize(FS_SPECIES)
 
     # CO2 vent from TCA
-    _arrow(ax, [(27, 82.3), (27, 88.5)], color='#8A8A8A', lw=0.8, mutation=5)
-    _tag(ax, 27, 90.6, 'CO$_2$', color=C_MUTED, fs=FS_TAG)
+    _arrow(ax, [(27, 81.3), (27, 87.5)], color='#8A8A8A', lw=0.8, mutation=5)
+    _tag(ax, 27, 89.6, 'CO$_2$', color=C_MUTED, fs=FS_TAG)
 
     # === engineered isobutanol pathway panel (right) =======================
     # (the panel reaches left of the species column so that r13, the
@@ -450,11 +450,12 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
     _rxn_marker(ax, 86, 42.2, 'r6', enzyme='Adh1', enz_dxy=(6.9, 0))
     _tag(ax, 81.0, 39.0, '–NADH', ha='right')
 
-    # r2 pyruvate -> TCA
+    # r2 pyruvate -> TCA (the TCA box shares pyruvate's row, so r2 runs
+    # horizontal like r4 and r13)
     _arrow(ax, [pyr['left'], tca['right']], lw=1.1)
-    _rxn_marker(ax, 58, 76.5, 'r2', enzyme=None)
-    _badge(ax, 51.5, 80.3, 'O$_2$', C_O2)
-    _tag(ax, 58, 72.8, '+NADH', fs=FS_ENZ)
+    _rxn_marker(ax, 58, 76, 'r2', enzyme=None)
+    _badge(ax, 51.5, 79.8, 'O$_2$', C_O2)
+    _tag(ax, 58, 72.3, '+NADH', fs=FS_ENZ)
 
     # r4 acetaldehyde -> acetate (needs AcDH machinery)
     _arrow(ax, [ald['left'], ace['right']], lw=1.1)
@@ -464,7 +465,7 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
     _tag(ax, 70, 49.3, '+NADH', fs=FS_ENZ, ha='left')
 
     # r5 acetate -> TCA
-    _arrow(ax, [(44, 57.6), (33, 71.9)], lw=1.1)
+    _arrow(ax, [(44, 57.6), (33.8, 70.9)], lw=1.1)
     _rxn_marker(ax, 38.7, 64.6, 'r5', enzyme='Acs2', enz_dxy=(5.7, 0))
     _badge(ax, 33.0, 64.2, 'O$_2$', C_O2)
     _tag(ax, 42.8, 61.4, '+NADH', fs=FS_ENZ, ha='left')
@@ -544,8 +545,8 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
          fs=FS_TAG)
 
     # glucose repression stubs (glucose -| r2, r5, r8, r9)
-    _tbar(ax, (61.5, 78.2), (64.5, 81.4), C_REPR)
-    _tag(ax, 65.4, 82.6, 'glucose', color=C_REPR, ha='left', fs=FS_TAG)
+    _tbar(ax, (61.5, 77.7), (64.5, 80.9), C_REPR)
+    _tag(ax, 65.4, 82.1, 'glucose', color=C_REPR, ha='left', fs=FS_TAG)
     _tbar(ax, (41.4, 66.7), (45.5, 69.3), C_REPR)
     _tag(ax, 46.4, 70.4, 'glucose', color=C_REPR, ha='left', fs=FS_TAG)
     _tbar(ax, (45.3, 46.4), (41.2, 46.4), C_REPR)
