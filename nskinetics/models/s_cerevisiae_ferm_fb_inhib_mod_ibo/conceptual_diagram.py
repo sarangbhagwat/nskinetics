@@ -97,7 +97,7 @@ FS_LEGEND = 5.4
 STRAIN_LEVER_MARKS = {
     'glycolysis (k_1l, k_1h, k_1e) @ r1': (101.8, 87.6),
     'k_3 @ r3': (96.6, 65.4),
-    'k_6 @ r6': (96.8, 42.2),
+    'k_6 @ r6': (97.6, 42.2),
     'k_13 @ r13': (117.6, 79.9),
     'ehrlich_downstream (k_14) @ r14': (166.4, 71.5),
     'ehrlich_downstream (k_15) @ r15': (166.4, 58.5),
@@ -443,7 +443,7 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
     _tag(ax, 81.0, 62.2, 'CO$_2$', ha='right')
     # r6 ADH (reversible)
     _arrow(ax, [ald['bottom'], eth['top']], lw=1.1, reversible=True)
-    _rxn_marker(ax, 86, 42.2, 'r6', enzyme='ADH', enz_dxy=(6.6, 0))
+    _rxn_marker(ax, 86, 42.2, 'r6', enzyme='Adh1', enz_dxy=(6.9, 0))
     _tag(ax, 81.0, 39.0, '–NADH', ha='right')
 
     # r2 pyruvate -> TCA
