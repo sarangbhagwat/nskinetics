@@ -100,16 +100,16 @@ STRAIN_LEVER_MARKS = {
     'glycolysis (k_1l, k_1h, k_1e) @ r1': (101.8, 87.6),
     'k_3 @ r3': (97.6, 65.4),
     'k_6 @ r6': (97.6, 42.2),
-    'k_13 @ r13': (131.6, 79.9),
-    'ehrlich_downstream (k_14) @ r14': (166.4, 71.5),
-    'ehrlich_downstream (k_15) @ r15': (166.4, 58.5),
-    'ehrlich_downstream (k_16) @ r16': (166.4, 45.5),
-    'k_17 @ r17': (166.4, 32.5),
+    'k_13 @ r13': (125.6, 79.9),
+    'ehrlich_downstream (k_14) @ r14': (160.4, 71.5),
+    'ehrlich_downstream (k_15) @ r15': (160.4, 58.5),
+    'ehrlich_downstream (k_16) @ r16': (160.4, 45.5),
+    'k_17 @ r17': (160.4, 32.5),
     'inhib_* @ r1 stub': (78.6, 90.0),
     'inhib_* @ r4 stub': (62.4, 48.6),
     'inhib_* @ r7 stub': (14.6, 60.4),
     'inhib_acetate, inhib_isobutanol @ r6 stub': (109.8, 36.4),
-    'inhib_acetate, inhib_ethanol @ r17 stub': (131.0, 31.1),
+    'inhib_acetate, inhib_ethanol @ r17 stub': (125.0, 31.1),
     'inhib_* @ r10 decay edge': (31.0, 34.4),
 }
 
@@ -229,9 +229,9 @@ def _badge(ax, x, y, text, fc, tc='white', ec='none', fs=4.4, w=6.0, h=3.4,
 
 
 def _tag(ax, x, y, text, color=C_MUTED, ha='center', fs=FS_TAG, zorder=6,
-         style='italic'):
+         style='italic', rotation=0.):
     ax.text(x, y, text, ha=ha, va='center', fontsize=fs, color=color,
-            style=style, zorder=zorder)
+            style=style, rotation=rotation, zorder=zorder)
 
 
 def _knob(ax, x, y, r=1.05, pointer_angle=45., fc=C_LEVER, ec=C_TEXT, lw=0.35,
@@ -395,21 +395,22 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
 
     # === engineered isobutanol pathway panel (right) =======================
     # (the panel reaches left of the species column so that r13, the
-    # pathway's entry reaction, sits inside it)
-    ax.add_patch(FancyBboxPatch((119, 22), 57, 68,
+    # pathway's entry reaction, sits inside it; its left edge clears the
+    # knob of r6's inhibition stub, which sets how close it can sit)
+    ax.add_patch(FancyBboxPatch((113, 22), 57, 68,
                                 boxstyle='round,pad=0,rounding_size=2',
                                 fc=TINT_IBO, ec=TINT_IBO_EDGE, lw=0.9,
                                 zorder=2))
-    ax.text(147.5, 86.0, 'Engineered isobutanol\npathway (r13–r17)',
+    ax.text(141.5, 86.0, 'Engineered isobutanol\npathway (r13–r17)',
             fontsize=FS_PANEL - 0.3, fontweight='bold', color='#B04A00',
             ha='center', va='center', linespacing=1.2, zorder=3)
 
-    al = _box(ax, 152, 78, 34, 6.4, ['AL'])
-    dhi = _box(ax, 152, 65, 34, 6.4, ['DHIV'])
-    kiv = _box(ax, 152, 52, 34, 6.4, ['KIV'])
-    iald = _box(ax, 152, 39, 34, 6.4, ['Isobutyraldehyde'],
+    al = _box(ax, 146, 78, 34, 6.4, ['AL'])
+    dhi = _box(ax, 146, 65, 34, 6.4, ['DHIV'])
+    kiv = _box(ax, 146, 52, 34, 6.4, ['KIV'])
+    iald = _box(ax, 146, 39, 34, 6.4, ['Isobutyraldehyde'],
                 fs=FS_SPECIES - 0.8)
-    ibo = _box(ax, 152, 26, 34, 6.4, ['Isobutanol'], fc=TINT_PRODUCT)
+    ibo = _box(ax, 146, 26, 34, 6.4, ['Isobutanol'], fc=TINT_PRODUCT)
 
     # === biomass / physiological-state panel (bottom left) =================
     ax.add_patch(FancyBboxPatch((8, 18), 60, 23.5,
@@ -487,23 +488,23 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
     _tag(ax, 43, 43.5, '+NADH, CO$_2$', fs=FS_ENZ, ha='right')
 
     # === engineered pathway reactions ======================================
-    _arrow(ax, [pyr['right'], (135, 76)], lw=1.1)
-    _rxn_marker(ax, 125, 76, 'r13', enzyme='Ilv2+Ilv6', enz_dxy=(0.4, 3.9))
-    _tag(ax, 129.5, 73.2, 'CO$_2$', ha='left', fs=FS_ENZ)
+    _arrow(ax, [pyr['right'], (129, 76)], lw=1.1)
+    _rxn_marker(ax, 119, 76, 'r13', enzyme='Ilv2+Ilv6', enz_dxy=(0.4, 3.9))
+    _tag(ax, 123.5, 73.2, 'CO$_2$', ha='left', fs=FS_ENZ)
     _arrow(ax, [al['bottom'], dhi['top']], lw=1.1)
-    _rxn_marker(ax, 152, 71.5, 'r14', enzyme='Ilv5', enz_dxy=(8.6, 0))
-    _tag(ax, 144.7, 71.5, '–NADPH', ha='right', fs=FS_ENZ)
+    _rxn_marker(ax, 146, 71.5, 'r14', enzyme='Ilv5', enz_dxy=(8.6, 0))
+    _tag(ax, 138.7, 71.5, '–NADPH', ha='right', fs=FS_ENZ)
     _arrow(ax, [dhi['bottom'], kiv['top']], lw=1.1)
-    _rxn_marker(ax, 152, 58.5, 'r15', enzyme='Ilv3', enz_dxy=(8.6, 0))
+    _rxn_marker(ax, 146, 58.5, 'r15', enzyme='Ilv3', enz_dxy=(8.6, 0))
     # r16 Aro10 decarboxylase (irreversible), r17 Adh6 reductase (reversible,
     # like r6 -- the two alcohol dehydrogenases are drawn alike on purpose)
     _arrow(ax, [kiv['bottom'], iald['top']], lw=1.1)
-    _rxn_marker(ax, 152, 45.5, 'r16', enzyme='Aro10', enz_dxy=(8.9, 0))
-    _tag(ax, 144.7, 45.5, 'CO$_2$', ha='right', fs=FS_ENZ)
+    _rxn_marker(ax, 146, 45.5, 'r16', enzyme='Aro10', enz_dxy=(8.9, 0))
+    _tag(ax, 138.7, 45.5, 'CO$_2$', ha='right', fs=FS_ENZ)
     _arrow(ax, [iald['bottom'], ibo['top']], lw=1.1, reversible=True)
-    _rxn_marker(ax, 152, 32.5, 'r17', enzyme='Adh6', enz_dxy=(8.6, 0))
+    _rxn_marker(ax, 146, 32.5, 'r17', enzyme='Adh6', enz_dxy=(8.6, 0))
     # (raised off the marker's row to leave room for r17's inhibition stub)
-    _tag(ax, 144.7, 34.1, '–NADPH', ha='right', fs=FS_ENZ)
+    _tag(ax, 138.7, 34.1, '–NADPH', ha='right', fs=FS_ENZ)
 
     # === control edges =====================================================
     # acetaldehyde overflow signal activates the high-capacity glycolytic
@@ -512,8 +513,10 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
     _arrow(ax, [(99.2, 55), (105, 61), (105, 79), (88.5, 85.8)],
            color=C_ACT, lw=1.0, ls=(0, (3.2, 1.8)), corner_r=5,
            mutation=5.5)
-    _tag(ax, 107, 70, 'overflow\nsignal (+)', color=C_ACT, fs=FS_TAG,
-         ha='left')
+    # (label turned to run up the corridor's straight, below the r13 arrow,
+    # so the isobutanol panel can sit close)
+    _tag(ax, 107.4, 67, 'overflow signal (+)', color=C_ACT, fs=FS_TAG,
+         rotation=90.)
 
     # product inhibition stubs (EtOH, acetate, isobutanol -| r1, r4, r7)
     _tbar(ax, (83.3, 87.6), (74.5, 87.6), C_INHIB)
@@ -532,8 +535,8 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
     _tbar(ax, (88.1, 40.5), (93.4, 37.0), C_INHIB)
     _tag(ax, 94.2, 36.4, 'acetate·isobutanol', color=C_INHIB, ha='left',
          fs=FS_TAG)
-    _tbar(ax, (149.6, 31.1), (145.4, 31.1), C_INHIB)
-    _tag(ax, 144.6, 31.1, 'ethanol·acetate', color=C_INHIB, ha='right',
+    _tbar(ax, (143.6, 31.1), (139.4, 31.1), C_INHIB)
+    _tag(ax, 138.6, 31.1, 'ethanol·acetate', color=C_INHIB, ha='right',
          fs=FS_TAG)
 
     # product-accelerated decay: above its threshold (P_10e/a/i) each product
