@@ -54,8 +54,8 @@ MM = 1 / 25.4                     # mm -> inch
 FIG_W_MM = 180.                   # double-column width
 Y_TOP_MM = 134.                   # axes top with the process-control row ...
 Y_TOP_NO_CONTROLS_MM = 104.       # ... and without it (glucose box tops at 101.5)
-LEGEND_ROW_4_MM = 3.5             # depth of the legend's fourth row, below y = 0
-                                  # (full figure 137.5 mm; Nat. Commun. cap 170 mm)
+LEGEND_ROW_4_MM = 5.2             # depth of the legend strip below y = 0
+                                  # (full figure 139.2 mm; Nat. Commun. cap 170 mm)
 
 # --- Okabe-Ito palette (colorblind-safe), assigned by control job ----------
 C_FLUX = '#3A3A3A'      # mass/reaction flux
@@ -572,7 +572,9 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
 
     # three columns: control edges | badges and the knob | the feed entry;
     # without the feed entry the badge column takes the middle of the strip
-    y1, y2, y3, y4 = 11.3, 7.6, 4.3, 0.8
+    # even 4.2 mm pitch: the badges are 3.4 mm tall, so anything tighter
+    # makes the stacked O2 / AcDH badges touch
+    y1, y2, y3, y4 = 11.3, 7.1, 2.9, -1.3
     xa = 6
     xb = 78 if show_process_controls else 100
     xc = 134
