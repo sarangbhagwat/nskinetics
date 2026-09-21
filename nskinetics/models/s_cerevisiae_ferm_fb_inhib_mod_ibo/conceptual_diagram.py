@@ -23,6 +23,13 @@ The network and controls are curated directly from
 terms (``s_glu_in``, ``*_out``; D = 0 in fed-batch use) are noted but not
 drawn as edges.
 
+Spanner icons mark the engineerable strain levers: the strain-side decision
+variables of the isobutanol biorefinery's ``metabolic_split_12d``
+kinetic-optimization preset (enzyme capacities k_1l/k_1h/k_1e, k_3, k_6,
+k_13, k_14/k_15/k_16, k_17 and the ethanol / isobutanol / acetate
+product-inhibition coefficient groups). Its three feeding-policy variables
+are process levers and are not marked.
+
 Run directly to write ``conceptual_diagram.png`` / ``.pdf`` next to this file::
 
     python conceptual_diagram.py
@@ -35,7 +42,8 @@ import matplotlib
 
 matplotlib.use('Agg') if os.environ.get('MPLBACKEND') is None else None
 import matplotlib.pyplot as plt
-from matplotlib.patches import FancyBboxPatch, FancyArrowPatch, Circle
+from matplotlib.patches import (FancyBboxPatch, FancyArrowPatch, Circle,
+                                PathPatch)
 from matplotlib.path import Path
 from matplotlib.lines import Line2D
 
@@ -43,7 +51,8 @@ __all__ = ('draw_conceptual_diagram',)
 
 # --- Nature Communications sizing -----------------------------------------
 MM = 1 / 25.4                     # mm -> inch
-FIG_W_MM, FIG_H_MM = 180., 134.   # double-column width; height < 170 mm cap
+FIG_W_MM, FIG_H_MM = 180., 137.5  # double-column width; height < 170 mm cap
+Y_FLOOR_MM = -3.5                 # axes floor (fourth legend row sits below 0)
 
 # --- Okabe-Ito palette (colorblind-safe), assigned by control job ----------
 C_FLUX = '#3A3A3A'      # mass/reaction flux
@@ -52,6 +61,7 @@ C_REPR = '#CC79A7'      # glucose repression (reddish purple)
 C_ACT = '#009E73'       # activation / overflow signal (bluish green)
 C_FEED = '#0072B2'      # fed-batch feed & sensing (blue)
 C_O2 = '#56B4E9'        # aerobic gating badge (sky blue)
+C_LEVER = '#E69F00'     # engineerable strain lever spanner (orange)
 C_TEXT = '#1A1A1A'
 C_MUTED = '#666666'
 
@@ -72,6 +82,26 @@ FS_TAG = 4.6
 FS_NOTE = 5.0
 FS_PANEL = 6.8
 FS_LEGEND = 5.4
+
+# --- engineerable strain levers (spanner positions, mm) --------------------
+# The strain-side decision variables of the isobutanol package's
+# metabolic_split_12d kinetic-optimization preset. Capacity levers sit just
+# after the enzyme name of their reaction; the three product-tolerance groups
+# (inhib_ethanol / inhib_isobutanol / inhib_acetate) sit on the drawn
+# product-inhibition stubs, each of which stands for all three effectors.
+STRAIN_LEVER_MARKS = {
+    'glycolysis (k_1l, k_1h, k_1e) @ r1': (101.8, 87.6),
+    'k_3 @ r3': (96.6, 65.4),
+    'k_6 @ r6': (96.8, 42.2),
+    'k_13 @ r13': (117.6, 79.9),
+    'ehrlich_downstream (k_14) @ r14': (166.4, 71.5),
+    'ehrlich_downstream (k_15) @ r15': (166.4, 58.5),
+    'ehrlich_downstream (k_16) @ r16': (166.4, 45.5),
+    'k_17 @ r17': (166.4, 32.5),
+    'inhib_* @ r1 stub': (78.6, 90.0),
+    'inhib_* @ r4 stub': (62.4, 48.6),
+    'inhib_* @ r7 stub': (14.6, 60.4),
+}
 
 
 def _setup_rcparams():
@@ -194,10 +224,34 @@ def _tag(ax, x, y, text, color=C_MUTED, ha='center', fs=FS_TAG, zorder=6,
             style=style, zorder=zorder)
 
 
+def _spanner(ax, x, y, size=3.2, angle=45., fc=C_LEVER, ec=C_TEXT, lw=0.35,
+             zorder=8):
+    """Open-ended spanner icon of length `size` centered at (x, y), drawn as
+    a filled vector path (no font glyph, so the PDF text stays editable)."""
+    R, hw, slot, cx = 0.25, 0.085, 0.10, 0.25   # head radius, handle/jaw half-widths
+    a_jaw, a_handle = np.arcsin(slot / R), np.arcsin(hw / R)
+    upper = np.linspace(a_jaw, np.pi - a_handle, 16)
+    end = np.linspace(np.pi / 2, 3 * np.pi / 2, 9)
+    lower = np.linspace(np.pi + a_handle, 2 * np.pi - a_jaw, 16)
+    verts = np.vstack([
+        np.column_stack([cx + R * np.cos(upper), R * np.sin(upper)]),
+        np.column_stack([-0.5 + hw + hw * np.cos(end), hw * np.sin(end)]),
+        np.column_stack([cx + R * np.cos(lower), R * np.sin(lower)]),
+        [[cx - 0.03, -slot], [cx - 0.03, slot]],      # jaw slot
+    ])
+    t = np.deg2rad(angle)
+    rot = np.array([[np.cos(t), -np.sin(t)], [np.sin(t), np.cos(t)]])
+    verts = verts @ rot.T * size + (x, y)
+    verts = np.vstack([verts, verts[:1]])
+    codes = [Path.MOVETO] + [Path.LINETO] * (len(verts) - 2) + [Path.CLOSEPOLY]
+    ax.add_patch(PathPatch(Path(verts, codes), fc=fc, ec=ec, lw=lw,
+                           joinstyle='round', zorder=zorder))
+
+
 # --- the figure ------------------------------------------------------------
 
 def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
-                            dpi=600, show=False):
+                            dpi=600, show=False, show_strain_levers=True):
     """Draw the conceptual reaction-network/controls diagram.
 
     Parameters
@@ -212,6 +266,11 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
         Communications requires >= 300 dpi at final size).
     show : bool, optional
         Call ``plt.show()`` after saving. Defaults to False.
+    show_strain_levers : bool, optional
+        Mark the engineerable strain levers (``STRAIN_LEVER_MARKS``: the
+        strain-side decision variables of the isobutanol package's
+        ``metabolic_split_12d`` kinetic-optimization preset) with spanner
+        icons. Defaults to True.
 
     Returns
     -------
@@ -221,7 +280,7 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
     _setup_rcparams()
     fig, ax = plt.subplots(figsize=(FIG_W_MM * MM, FIG_H_MM * MM))
     ax.set_xlim(0, FIG_W_MM)
-    ax.set_ylim(0, FIG_H_MM)
+    ax.set_ylim(Y_FLOOR_MM, FIG_H_MM + Y_FLOOR_MM)
     ax.set_aspect('equal')
     ax.axis('off')
     fig.subplots_adjust(left=0, right=1, bottom=0, top=1)
@@ -441,8 +500,13 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
            ls=(0, (3.2, 1.8)), mutation=5, zorder=5)
     _tag(ax, 33.6, 22.7, 'glc · EtOH', color=C_ACT, ha='right', fs=FS_TAG)
 
+    # === engineerable strain levers =======================================
+    if show_strain_levers:
+        for x, y in STRAIN_LEVER_MARKS.values():
+            _spanner(ax, x, y)
+
     # === legend strip ======================================================
-    ax.add_patch(FancyBboxPatch((2, 1.5), 176, 12,
+    ax.add_patch(FancyBboxPatch((2, -2), 176, 15.5,
                                 boxstyle='round,pad=0,rounding_size=1.5',
                                 fc='#FAFAFA', ec='#CCCCCC', lw=0.7,
                                 zorder=1))
@@ -452,7 +516,7 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
                reversible=reversible, ls=(0, (3, 1.8)) if dashed else '-',
                mutation=5.5, zorder=5)
 
-    y1, y2, y3 = 11.3, 7.6, 4.3
+    y1, y2, y3, y4 = 11.3, 7.6, 4.3, 0.8
     _leg_arrow(6, y1, C_FLUX)
     ax.text(15, y1, 'reaction flux (mass basis)', fontsize=FS_LEGEND,
             va='center', zorder=5)
@@ -484,7 +548,11 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
            w=8.6)
     ax.text(131, y2, 'requires AcDH machinery ($a\\,X_\\mathrm{AcDH}$)',
             fontsize=FS_LEGEND, va='center', zorder=5)
-    ax.text(121.5, y3, 'all rates $\\propto$ $a = X_a x$; conc. in '
+    if show_strain_levers:
+        _spanner(ax, 125, y3)
+        ax.text(129.5, y3, 'engineerable strain lever', fontsize=FS_LEGEND,
+                va='center', zorder=5)
+    ax.text(6, y4, 'all rates $\\propto$ $a = X_a x$; conc. in '
                        'g L$^{-1}$; dilution ($D$ = 0) omitted',
             fontsize=FS_LEGEND - 0.4, va='center', ha='left', zorder=5,
             color=C_MUTED)
