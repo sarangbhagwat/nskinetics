@@ -96,7 +96,7 @@ FS_LEGEND = 5.4
 # of r10 -- each of which names the effectors acting there.
 STRAIN_LEVER_MARKS = {
     'glycolysis (k_1l, k_1h, k_1e) @ r1': (101.8, 87.6),
-    'k_3 @ r3': (96.6, 65.4),
+    'k_3 @ r3': (97.6, 65.4),
     'k_6 @ r6': (97.6, 42.2),
     'k_13 @ r13': (117.6, 79.9),
     'ehrlich_downstream (k_14) @ r14': (166.4, 71.5),
@@ -437,9 +437,9 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
     _arrow(ax, [glu['bottom'], pyr['top']], lw=1.1)
     _rxn_marker(ax, 86, 87.6, 'r1', enzyme='glycolysis', enz_dxy=(9.5, 0))
     _tag(ax, 80.6, 84.3, '+NADH', ha='right')
-    # r3 PDC
+    # r3 Pdc1
     _arrow(ax, [pyr['bottom'], ald['top']], lw=1.1)
-    _rxn_marker(ax, 86, 65.4, 'r3', enzyme='PDC', enz_dxy=(6.6, 0))
+    _rxn_marker(ax, 86, 65.4, 'r3', enzyme='Pdc1', enz_dxy=(6.9, 0))
     _tag(ax, 81.0, 62.2, 'CO$_2$', ha='right')
     # r6 ADH (reversible)
     _arrow(ax, [ald['bottom'], eth['top']], lw=1.1, reversible=True)
@@ -483,13 +483,13 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
 
     # === engineered pathway reactions ======================================
     _arrow(ax, [pyr['right'], (135, 76)], lw=1.1)
-    _rxn_marker(ax, 113, 76, 'r13', enzyme='ALS', enz_dxy=(0, 3.9))
+    _rxn_marker(ax, 113, 76, 'r13', enzyme='Ilv2', enz_dxy=(0, 3.9))
     _tag(ax, 118.5, 73.2, 'CO$_2$', ha='left', fs=FS_ENZ)
     _arrow(ax, [al['bottom'], dhi['top']], lw=1.1)
-    _rxn_marker(ax, 152, 71.5, 'r14', enzyme='KARI', enz_dxy=(8.6, 0))
+    _rxn_marker(ax, 152, 71.5, 'r14', enzyme='Ilv5', enz_dxy=(8.6, 0))
     _tag(ax, 144.7, 71.5, '–NADPH', ha='right', fs=FS_ENZ)
     _arrow(ax, [dhi['bottom'], kiv['top']], lw=1.1)
-    _rxn_marker(ax, 152, 58.5, 'r15', enzyme='DHAD', enz_dxy=(8.7, 0))
+    _rxn_marker(ax, 152, 58.5, 'r15', enzyme='Ilv3', enz_dxy=(8.6, 0))
     # r16 Aro10 decarboxylase (irreversible), r17 Adh6 reductase (reversible,
     # like r6 -- the two alcohol dehydrogenases are drawn alike on purpose)
     _arrow(ax, [kiv['bottom'], iald['top']], lw=1.1)
