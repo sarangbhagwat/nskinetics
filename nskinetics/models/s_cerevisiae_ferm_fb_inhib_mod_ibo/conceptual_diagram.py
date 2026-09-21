@@ -528,7 +528,7 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
     _tag(ax, 94.2, 36.4, 'acetate·isobutanol', color=C_INHIB, ha='left',
          fs=FS_TAG)
     _tbar(ax, (149.6, 31.1), (145.4, 31.1), C_INHIB)
-    _tag(ax, 144.6, 31.1, 'acetate·ethanol', color=C_INHIB, ha='right',
+    _tag(ax, 144.6, 31.1, 'ethanol·acetate', color=C_INHIB, ha='right',
          fs=FS_TAG)
 
     # product-accelerated decay: above its threshold (P_10e/a/i) each product
