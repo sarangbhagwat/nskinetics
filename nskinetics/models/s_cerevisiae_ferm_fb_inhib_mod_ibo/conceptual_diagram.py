@@ -20,8 +20,7 @@ Arial, 5-7 pt text, vector PDF with editable text plus a 600 dpi PNG).
 
 The network and controls are curated directly from
 ``s_cerevisiae_ferm_fb_inhib_mod_ibo_antimony.txt``; continuous-mode dilution
-terms (``s_glu_in``, ``*_out``; D = 0 in fed-batch use) are noted but not
-drawn as edges.
+terms (``s_glu_in``, ``*_out``; D = 0 in fed-batch use) are not drawn.
 
 Rotary-knob icons mark the tunable strain levers: the strain-side decision
 variables of the isobutanol biorefinery's ``metabolic_split_12d``
@@ -298,9 +297,9 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
     """
     _setup_rcparams()
     # the three badge entries fill column 3, so the legend needs a fourth row
-    # for the closing note whenever the feed entry or the knob entry takes
-    # column 1 / row 3
-    four_legend_rows = show_strain_levers or show_process_controls
+    # only when the feed entry and the knob entry are both present (otherwise
+    # the knob takes the free feed slot)
+    four_legend_rows = show_strain_levers and show_process_controls
     y_floor = -LEGEND_ROW_4_MM if four_legend_rows else 0.
     y_top = Y_TOP_MM if show_process_controls else Y_TOP_NO_CONTROLS_MM
     fig, ax = plt.subplots(figsize=(FIG_W_MM * MM, (y_top - y_floor) * MM))
@@ -583,22 +582,16 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
             fontsize=FS_LEGEND, va='center', zorder=5)
     _badge(ax, 125, y3, 'AcDH', '#FFFFFF', tc='#1F7A5C', ec='#1F7A5C',
            w=8.6)
-    ax.text(131, y3,'requires AcDH machinery ($a\\,X_\\mathrm{AcDH}$)',
+    ax.text(131, y3, 'requires AcDH machinery ($a\\,X_\\mathrm{AcDH}$)',
             fontsize=FS_LEGEND, va='center', zorder=5)
     # the knob entry takes column 3 / row 4, or the freed feed slot (column
-    # 1 / row 3) when the process controls are hidden; the closing note takes
-    # column 1 / row 3 when that is free, else the fourth row
+    # 1 / row 3) when the process controls are hidden
     if show_strain_levers:
         knob_xy, text_x = (((125, y4), 129.5) if show_process_controls
                            else ((9.5, y3), 15))
         _knob(ax, *knob_xy)
         ax.text(text_x, knob_xy[1], 'tunable strain lever',
                 fontsize=FS_LEGEND, va='center', zorder=5)
-    note_xy = (6, y4) if four_legend_rows else (6, y3)
-    ax.text(*note_xy, 'all rates $\\propto$ $a = X_a x$; conc. in '
-                      'g L$^{-1}$; dilution ($D$ = 0) omitted',
-            fontsize=FS_LEGEND - 0.4, va='center', ha='left', zorder=5,
-            color=C_MUTED)
 
     # === save ==============================================================
     if save_dir is None:
