@@ -585,7 +585,7 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
         return x1 - x0
 
     edge_labels = (
-        'product inhibition, $e^{-k_i C}$',
+        'product inhibition',
         'product-accelerated decay',
         'glucose repression',
         'activation',
