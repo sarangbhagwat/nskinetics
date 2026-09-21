@@ -106,9 +106,9 @@ STRAIN_LEVER_MARKS = {
     'inhib_* @ r1 stub': (78.6, 90.0),
     'inhib_* @ r4 stub': (62.4, 48.6),
     'inhib_* @ r7 stub': (14.6, 60.4),
-    'inhib_acetate, inhib_isobutanol @ r6 stub': (104.4, 36.4),
-    'inhib_acetate, inhib_ethanol @ r17 stub': (133.6, 31.1),
-    'inhib_* @ r10 decay edge': (24.6, 34.0),
+    'inhib_acetate, inhib_isobutanol @ r6 stub': (109.8, 36.4),
+    'inhib_acetate, inhib_ethanol @ r17 stub': (131.0, 31.1),
+    'inhib_* @ r10 decay edge': (31.0, 34.4),
 }
 
 
@@ -512,45 +512,48 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
 
     # product inhibition stubs (EtOH, acetate, isobutanol -| r1, r4, r7)
     _tbar(ax, (83.3, 87.6), (74.5, 87.6), C_INHIB)
-    _tag(ax, 73.5, 87.6, 'EtOH·Ace·iBuOH', color=C_INHIB, ha='right',
+    _tag(ax, 73.5, 87.6, 'ethanol·acetate·isobutanol', color=C_INHIB, ha='right',
          fs=FS_TAG)
     _tbar(ax, (65.5, 51.9), (65.5, 45.5), C_INHIB)
-    _tag(ax, 66.5, 43.7, 'EtOH·Ace·iBuOH', color=C_INHIB, fs=FS_TAG)
+    _tag(ax, 68.5, 43.7, 'ethanol·acetate·isobutanol', color=C_INHIB,
+         fs=FS_TAG)
     _tbar(ax, (11.3, 58), (17.5, 58), C_INHIB)
-    _tag(ax, 18.3, 58, 'EtOH·Ace·iBuOH', color=C_INHIB, ha='left',
+    _tag(ax, 18.3, 58, 'ethanol·acetate·\nisobutanol', color=C_INHIB, ha='left',
          fs=FS_TAG)
 
     # the two alcohol dehydrogenases carry only the cross-product
     # exponentials (their own product acts through the reversible law):
     # r6 exp(-k_6ia*Ace)*exp(-k_6ii*iBuOH), r17 exp(-k_17ia*Ace)*exp(-k_17ie*EtOH)
     _tbar(ax, (88.1, 40.5), (93.4, 37.0), C_INHIB)
-    _tag(ax, 94.2, 36.4, 'Ace·iBuOH', color=C_INHIB, ha='left', fs=FS_TAG)
-    _tbar(ax, (149.6, 31.1), (144.4, 31.1), C_INHIB)
-    _tag(ax, 143.6, 31.1, 'Ace·EtOH', color=C_INHIB, ha='right', fs=FS_TAG)
+    _tag(ax, 94.2, 36.4, 'acetate·isobutanol', color=C_INHIB, ha='left',
+         fs=FS_TAG)
+    _tbar(ax, (149.6, 31.1), (145.4, 31.1), C_INHIB)
+    _tag(ax, 144.6, 31.1, 'acetate·ethanol', color=C_INHIB, ha='right',
+         fs=FS_TAG)
 
     # product-accelerated decay: above its threshold (P_10e/a/i) each product
     # multiplies r10 by exp(k_10i*(C - P_10)) -- an activating edge in the
     # product color, routed down the panel margin left of the X_a box
     _arrow(ax, [(10.8, 32.7), (10.8, 23.1), (17.0, 23.1)], color=C_INHIB,
            lw=0.9, ls=(0, (3.2, 1.8)), corner_r=2.5, mutation=5, zorder=5)
-    _tag(ax, 9.6, 34.0, 'EtOH·Ace·iBuOH', color=C_INHIB, ha='left',
+    _tag(ax, 9.6, 34.3, 'ethanol·acetate·isobutanol', color=C_INHIB, ha='left',
          fs=FS_TAG)
 
     # glucose repression stubs (glucose -| r2, r5, r8, r9)
     _tbar(ax, (61.5, 78.2), (64.5, 81.4), C_REPR)
-    _tag(ax, 65.4, 82.6, 'glc', color=C_REPR, ha='left', fs=FS_TAG)
+    _tag(ax, 65.4, 82.6, 'glucose', color=C_REPR, ha='left', fs=FS_TAG)
     _tbar(ax, (41.4, 66.7), (45.5, 69.3), C_REPR)
-    _tag(ax, 46.4, 70.4, 'glc', color=C_REPR, ha='left', fs=FS_TAG)
+    _tag(ax, 46.4, 70.4, 'glucose', color=C_REPR, ha='left', fs=FS_TAG)
     _tbar(ax, (45.3, 46.4), (41.2, 46.4), C_REPR)
-    _tag(ax, 40.2, 46.4, 'glc', color=C_REPR, ha='right', fs=FS_TAG)
+    _tag(ax, 40.2, 46.4, 'glucose', color=C_REPR, ha='right', fs=FS_TAG)
     # r9 is glucose-INDUCED (and EtOH-induced) at low glucose and repressed
     # only at high glucose (the 1/(K_9i*s_glu + 1) factor), so it gets a
     # dual annotation rather than the plain repression stub of r2/r5/r8
     _tbar(ax, (40.2, 27.2), (43.2, 23.8), C_REPR)
-    _tag(ax, 43.8, 22.7, 'glc (high)', color=C_REPR, ha='left', fs=FS_TAG)
+    _tag(ax, 43.8, 22.7, 'glucose (high)', color=C_REPR, ha='left', fs=FS_TAG)
     _arrow(ax, [(34.2, 23.8), (37.2, 27.2)], color=C_ACT, lw=0.9,
            ls=(0, (3.2, 1.8)), mutation=5, zorder=5)
-    _tag(ax, 33.6, 22.7, 'glc · EtOH', color=C_ACT, ha='right', fs=FS_TAG)
+    _tag(ax, 33.6, 22.7, 'glucose ·\nethanol', color=C_ACT, ha='right', fs=FS_TAG)
 
     # === tunable strain levers ============================================
     if show_strain_levers:
@@ -582,11 +585,11 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
     ax.text(xa + 9.5, y2, 'product-accelerated decay above a threshold (r10)',
             fontsize=FS_LEGEND, va='center', zorder=5)
     _tbar(ax, (xa + 7, y3), (xa, y3), C_REPR, lw=1.0)
-    ax.text(xa + 9.5, y3, 'glucose repression (r2, r5, r8; r9 at high glc)',
+    ax.text(xa + 9.5, y3, 'glucose repression (r2, r5, r8; r9 at high glucose)',
             fontsize=FS_LEGEND, va='center', zorder=5)
     _leg_arrow(xa, y4, C_ACT)
     ax.text(xa + 9.5, y4, 'activation (acetaldehyde $\\rightarrow$ r1; '
-                          'glc & EtOH $\\rightarrow$ r9)',
+                          'glucose & ethanol $\\rightarrow$ r9)',
             fontsize=FS_LEGEND, va='center', zorder=5)
 
     _badge(ax, xb, y1, 'O$_2$', C_O2)
