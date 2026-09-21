@@ -56,6 +56,8 @@ Y_TOP_MM = 134.                   # axes top with the process-control row ...
 Y_TOP_NO_CONTROLS_MM = 104.       # ... and without it (glucose box tops at 101.5)
 LEGEND_ROW_4_MM = 5.2             # depth of the legend strip below y = 0
                                   # (full figure 139.2 mm; Nat. Commun. cap 170 mm)
+LEGEND_COL_GAP_MM = 6.            # clear space between legend columns
+LEGEND_PAD_MM = 4.                # legend strip padding left / right of its content
 
 # --- Okabe-Ito palette (colorblind-safe), assigned by control job ----------
 C_FLUX = '#3A3A3A'      # mass/reaction flux
@@ -561,62 +563,92 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
             _knob(ax, x, y)
 
     # === legend strip ======================================================
-    ax.add_patch(FancyBboxPatch((2, 1.5 + y_floor), 176, 12 - y_floor,
-                                boxstyle='round,pad=0,rounding_size=1.5',
-                                fc='#FAFAFA', ec='#CCCCCC', lw=0.7,
-                                zorder=1))
-
+    # three columns: control edges | badges and the knob | the feed entry.
+    # Column widths are measured from the rendered labels, so the columns sit
+    # LEGEND_COL_GAP_MM apart and the strip is centred under the figure
+    # whichever entries are present.
     def _leg_arrow(x, y, color):
         _arrow(ax, [(x, y), (x + 7, y)], color=color, lw=1.0,
                ls=(0, (3, 1.8)), mutation=5.5, zorder=5)
 
-    # three columns: control edges | badges and the knob | the feed entry;
-    # without the feed entry the badge column takes the middle of the strip
+    renderer = fig.canvas.get_renderer()
+
+    def _label_w(label):
+        t = ax.text(0, 0, label, fontsize=FS_LEGEND)
+        bb = t.get_window_extent(renderer)
+        t.remove()
+        (x0, _), (x1, _) = ax.transData.inverted().transform(
+            [(bb.x0, 0), (bb.x1, 0)])
+        return x1 - x0
+
+    edge_labels = (
+        'product inhibition, $e^{-k_i C}$ (r1, r4, r6, r7, r17)',
+        'product-accelerated decay above a threshold (r10)',
+        'glucose repression (r2, r5, r8; r9 at high glucose)',
+        'activation (acetaldehyde $\\rightarrow$ r1; '
+        'glucose & ethanol $\\rightarrow$ r9)',
+    )
+    o2_label = 'O$_2$-dependent (rate × f_O2)'
+    o2_part_label = 'partly O$_2$-dependent (r7; anaerobic share ungated)'
+    acdh_label = 'requires AcDH machinery ($a\\,X_\\mathrm{AcDH}$)'
+    knob_label = 'tunable strain lever'
+    feed_label = 'fed-batch feed; dotted = sensing'
+
+    # offsets within a column: edge glyphs are 7 mm with the label at +9.5;
+    # the badge column is measured from the wide AcDH badge's left edge
+    # (badges centred at +4.3, O2 / knob labels at +8.8, AcDH label at +10.3);
+    # the feed glyph is 7.5 mm with its label at +9
+    widths = [9.5 + max(_label_w(label) for label in edge_labels),
+              max(8.8 + _label_w(o2_label), 8.8 + _label_w(o2_part_label),
+                  10.3 + _label_w(acdh_label),
+                  8.8 + _label_w(knob_label) if show_strain_levers else 0.)]
+    if show_process_controls:
+        widths.append(9. + _label_w(feed_label))
+    total_w = sum(widths) + LEGEND_COL_GAP_MM * (len(widths) - 1)
+    xa = (FIG_W_MM - total_w) / 2
+    xb = xa + widths[0] + LEGEND_COL_GAP_MM + 4.3
+    xc = xb - 4.3 + widths[1] + LEGEND_COL_GAP_MM
+
+    ax.add_patch(FancyBboxPatch((xa - LEGEND_PAD_MM, 1.5 + y_floor),
+                                total_w + 2 * LEGEND_PAD_MM, 12 - y_floor,
+                                boxstyle='round,pad=0,rounding_size=1.5',
+                                fc='#FAFAFA', ec='#CCCCCC', lw=0.7,
+                                zorder=1))
+
     # even 4.2 mm pitch: the badges are 3.4 mm tall, so anything tighter
     # makes the stacked O2 / AcDH badges touch
     y1, y2, y3, y4 = 11.3, 7.1, 2.9, -1.3
-    xa = 6
-    xb = 78 if show_process_controls else 100
-    xc = 134
 
     _tbar(ax, (xa + 7, y1), (xa, y1), C_INHIB, lw=1.0)
-    ax.text(xa + 9.5, y1, 'product inhibition, $e^{-k_i C}$ '
-                          '(r1, r4, r6, r7, r17)',
-            fontsize=FS_LEGEND, va='center', zorder=5)
     _leg_arrow(xa, y2, C_INHIB)
-    ax.text(xa + 9.5, y2, 'product-accelerated decay above a threshold (r10)',
-            fontsize=FS_LEGEND, va='center', zorder=5)
     _tbar(ax, (xa + 7, y3), (xa, y3), C_REPR, lw=1.0)
-    ax.text(xa + 9.5, y3, 'glucose repression (r2, r5, r8; r9 at high glucose)',
-            fontsize=FS_LEGEND, va='center', zorder=5)
     _leg_arrow(xa, y4, C_ACT)
-    ax.text(xa + 9.5, y4, 'activation (acetaldehyde $\\rightarrow$ r1; '
-                          'glucose & ethanol $\\rightarrow$ r9)',
-            fontsize=FS_LEGEND, va='center', zorder=5)
+    for y, label in zip((y1, y2, y3, y4), edge_labels):
+        ax.text(xa + 9.5, y, label, fontsize=FS_LEGEND, va='center',
+                zorder=5)
 
     _badge(ax, xb, y1, 'O$_2$', C_O2)
-    ax.text(xb + 4.5, y1, 'O$_2$-dependent (rate × f_O2)',
-            fontsize=FS_LEGEND, va='center', zorder=5)
+    ax.text(xb + 4.5, y1, o2_label, fontsize=FS_LEGEND, va='center',
+            zorder=5)
     _badge(ax, xb, y2, 'O$_2$', '#FFFFFF', tc=C_O2_TEXT, ec=C_O2)
-    ax.text(xb + 4.5, y2,
-            'partly O$_2$-dependent (r7; anaerobic share ungated)',
-            fontsize=FS_LEGEND, va='center', zorder=5)
+    ax.text(xb + 4.5, y2, o2_part_label, fontsize=FS_LEGEND, va='center',
+            zorder=5)
     _badge(ax, xb, y3, 'AcDH', '#FFFFFF', tc='#1F7A5C', ec='#1F7A5C',
            w=8.6)
-    ax.text(xb + 6, y3, 'requires AcDH machinery ($a\\,X_\\mathrm{AcDH}$)',
-            fontsize=FS_LEGEND, va='center', zorder=5)
+    ax.text(xb + 6, y3, acdh_label, fontsize=FS_LEGEND, va='center',
+            zorder=5)
     if show_strain_levers:
         _knob(ax, xb, y4)
-        ax.text(xb + 4.5, y4, 'tunable strain lever', fontsize=FS_LEGEND,
-                va='center', zorder=5)
+        ax.text(xb + 4.5, y4, knob_label, fontsize=FS_LEGEND, va='center',
+                zorder=5)
 
     if show_process_controls:
         _arrow(ax, [(xc, y1), (xc + 4.5, y1)], color=C_FEED, lw=1.0,
                mutation=5.5, zorder=5)
         ax.add_line(Line2D([xc + 5.3, xc + 7.5], [y1, y1], color=C_FEED,
                            lw=0.9, ls=(0, (1.2, 1.4)), zorder=5))
-        ax.text(xc + 9, y1, 'fed-batch feed; dotted = sensing',
-                fontsize=FS_LEGEND, va='center', zorder=5)
+        ax.text(xc + 9, y1, feed_label, fontsize=FS_LEGEND, va='center',
+                zorder=5)
 
     # === save ==============================================================
     if save_dir is None:
