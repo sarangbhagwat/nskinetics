@@ -23,7 +23,7 @@ The network and controls are curated directly from
 terms (``s_glu_in``, ``*_out``; D = 0 in fed-batch use) are noted but not
 drawn as edges.
 
-Spanner icons mark the engineerable strain levers: the strain-side decision
+Rotary-knob icons mark the engineerable strain levers: the strain-side decision
 variables of the isobutanol biorefinery's ``metabolic_split_12d``
 kinetic-optimization preset (enzyme capacities k_1l/k_1h/k_1e, k_3, k_6,
 k_13, k_14/k_15/k_16, k_17 and the ethanol / isobutanol / acetate
@@ -42,8 +42,7 @@ import matplotlib
 
 matplotlib.use('Agg') if os.environ.get('MPLBACKEND') is None else None
 import matplotlib.pyplot as plt
-from matplotlib.patches import (FancyBboxPatch, FancyArrowPatch, Circle,
-                                PathPatch)
+from matplotlib.patches import FancyBboxPatch, FancyArrowPatch, Circle
 from matplotlib.path import Path
 from matplotlib.lines import Line2D
 
@@ -61,7 +60,7 @@ C_REPR = '#CC79A7'      # glucose repression (reddish purple)
 C_ACT = '#009E73'       # activation / overflow signal (bluish green)
 C_FEED = '#0072B2'      # fed-batch feed & sensing (blue)
 C_O2 = '#56B4E9'        # aerobic gating badge (sky blue)
-C_LEVER = '#E69F00'     # engineerable strain lever spanner (orange)
+C_LEVER = '#E69F00'     # engineerable strain lever knob (orange)
 C_TEXT = '#1A1A1A'
 C_MUTED = '#666666'
 
@@ -83,7 +82,7 @@ FS_NOTE = 5.0
 FS_PANEL = 6.8
 FS_LEGEND = 5.4
 
-# --- engineerable strain levers (spanner positions, mm) --------------------
+# --- engineerable strain levers (knob positions, mm) -----------------------
 # The strain-side decision variables of the isobutanol package's
 # metabolic_split_12d kinetic-optimization preset. Capacity levers sit just
 # after the enzyme name of their reaction; the three product-tolerance groups
@@ -224,28 +223,28 @@ def _tag(ax, x, y, text, color=C_MUTED, ha='center', fs=FS_TAG, zorder=6,
             style=style, zorder=zorder)
 
 
-def _spanner(ax, x, y, size=3.2, angle=45., fc=C_LEVER, ec=C_TEXT, lw=0.35,
-             zorder=8):
-    """Open-ended spanner icon of length `size` centered at (x, y), drawn as
-    a filled vector path (no font glyph, so the PDF text stays editable)."""
-    R, hw, slot, cx = 0.25, 0.085, 0.10, 0.25   # head radius, handle/jaw half-widths
-    a_jaw, a_handle = np.arcsin(slot / R), np.arcsin(hw / R)
-    upper = np.linspace(a_jaw, np.pi - a_handle, 16)
-    end = np.linspace(np.pi / 2, 3 * np.pi / 2, 9)
-    lower = np.linspace(np.pi + a_handle, 2 * np.pi - a_jaw, 16)
-    verts = np.vstack([
-        np.column_stack([cx + R * np.cos(upper), R * np.sin(upper)]),
-        np.column_stack([-0.5 + hw + hw * np.cos(end), hw * np.sin(end)]),
-        np.column_stack([cx + R * np.cos(lower), R * np.sin(lower)]),
-        [[cx - 0.03, -slot], [cx - 0.03, slot]],      # jaw slot
-    ])
-    t = np.deg2rad(angle)
-    rot = np.array([[np.cos(t), -np.sin(t)], [np.sin(t), np.cos(t)]])
-    verts = verts @ rot.T * size + (x, y)
-    verts = np.vstack([verts, verts[:1]])
-    codes = [Path.MOVETO] + [Path.LINETO] * (len(verts) - 2) + [Path.CLOSEPOLY]
-    ax.add_patch(PathPatch(Path(verts, codes), fc=fc, ec=ec, lw=lw,
-                           joinstyle='round', zorder=zorder))
+def _knob(ax, x, y, r=1.05, pointer_angle=45., fc=C_LEVER, ec=C_TEXT, lw=0.35,
+          zorder=8):
+    """Rotary-knob icon centered at (x, y): a filled dial of radius `r` with a
+    pointer, inside a 270-degree range arc (open at the bottom) that ends in
+    min/max stops. Drawn from vector primitives (no font glyph, so the PDF
+    text stays editable); kept smaller than the reaction markers so the two
+    circles read apart."""
+    sweep = np.deg2rad(np.linspace(-45., 225., 40))
+    ax.add_line(Line2D(x + 1.5 * r * np.cos(sweep), y + 1.5 * r * np.sin(sweep),
+                       color=ec, lw=1.3 * lw, solid_capstyle='round',
+                       zorder=zorder))
+    for t in sweep[[0, -1]]:                      # min / max stops
+        ax.add_line(Line2D([x + 1.25 * r * np.cos(t), x + 1.75 * r * np.cos(t)],
+                           [y + 1.25 * r * np.sin(t), y + 1.75 * r * np.sin(t)],
+                           color=ec, lw=1.3 * lw, solid_capstyle='round',
+                           zorder=zorder))
+    ax.add_patch(Circle((x, y), r, fc=fc, ec=ec, lw=lw, zorder=zorder))
+    t = np.deg2rad(pointer_angle)
+    ax.add_line(Line2D([x + 0.15 * r * np.cos(t), x + 0.9 * r * np.cos(t)],
+                       [y + 0.15 * r * np.sin(t), y + 0.9 * r * np.sin(t)],
+                       color=ec, lw=2.0 * lw, solid_capstyle='round',
+                       zorder=zorder + 1))
 
 
 # --- the figure ------------------------------------------------------------
@@ -269,7 +268,7 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
     show_strain_levers : bool, optional
         Mark the engineerable strain levers (``STRAIN_LEVER_MARKS``: the
         strain-side decision variables of the isobutanol package's
-        ``metabolic_split_12d`` kinetic-optimization preset) with spanner
+        ``metabolic_split_12d`` kinetic-optimization preset) with rotary-knob
         icons. Defaults to True.
 
     Returns
@@ -503,7 +502,7 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
     # === engineerable strain levers =======================================
     if show_strain_levers:
         for x, y in STRAIN_LEVER_MARKS.values():
-            _spanner(ax, x, y)
+            _knob(ax, x, y)
 
     # === legend strip ======================================================
     ax.add_patch(FancyBboxPatch((2, -2), 176, 15.5,
@@ -549,7 +548,7 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
     ax.text(131, y2, 'requires AcDH machinery ($a\\,X_\\mathrm{AcDH}$)',
             fontsize=FS_LEGEND, va='center', zorder=5)
     if show_strain_levers:
-        _spanner(ax, 125, y3)
+        _knob(ax, 125, y3)
         ax.text(129.5, y3, 'engineerable strain lever', fontsize=FS_LEGEND,
                 va='center', zorder=5)
     ax.text(6, y4, 'all rates $\\propto$ $a = X_a x$; conc. in '
