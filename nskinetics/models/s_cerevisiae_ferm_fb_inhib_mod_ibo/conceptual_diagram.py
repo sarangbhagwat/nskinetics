@@ -98,7 +98,7 @@ STRAIN_LEVER_MARKS = {
     'glycolysis (k_1l, k_1h, k_1e) @ r1': (101.8, 87.6),
     'k_3 @ r3': (97.6, 65.4),
     'k_6 @ r6': (97.6, 42.2),
-    'k_13 @ r13': (117.6, 79.9),
+    'k_13 @ r13': (119.6, 79.9),
     'ehrlich_downstream (k_14) @ r14': (166.4, 71.5),
     'ehrlich_downstream (k_15) @ r15': (166.4, 58.5),
     'ehrlich_downstream (k_16) @ r16': (166.4, 45.5),
@@ -454,16 +454,16 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
 
     # r4 acetaldehyde -> acetate (needs AcDH machinery)
     _arrow(ax, [ald['left'], ace['right']], lw=1.1)
-    _rxn_marker(ax, 65.5, 54, 'r4', enzyme=None)
+    _rxn_marker(ax, 65.5, 54, 'r4', enzyme='Ald6', enz_dxy=(0, 7.5))
     _badge(ax, 65.5, 58.2, 'AcDH', '#FFFFFF', tc='#1F7A5C',
            ec='#1F7A5C', w=8.6)
     _tag(ax, 70, 49.3, '+NADH', fs=FS_ENZ, ha='left')
 
     # r5 acetate -> TCA
     _arrow(ax, [(44, 57.6), (33, 71.9)], lw=1.1)
-    _rxn_marker(ax, 38.7, 64.6, 'r5', enzyme=None)
+    _rxn_marker(ax, 38.7, 64.6, 'r5', enzyme='Acs2', enz_dxy=(5.7, 0))
     _badge(ax, 33.0, 64.2, 'O$_2$', C_O2)
-    _tag(ax, 44.5, 63.5, '+NADH', fs=FS_ENZ, ha='left')
+    _tag(ax, 42.8, 61.4, '+NADH', fs=FS_ENZ, ha='left')
 
     # r7 glucose -> biomass (left-margin route)
     _arrow(ax, [(74, 98), (8.5, 98), (8.5, 47), (20, 41.7)], lw=1.1,
@@ -483,7 +483,7 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
 
     # === engineered pathway reactions ======================================
     _arrow(ax, [pyr['right'], (135, 76)], lw=1.1)
-    _rxn_marker(ax, 113, 76, 'r13', enzyme='Ilv2', enz_dxy=(0, 3.9))
+    _rxn_marker(ax, 113, 76, 'r13', enzyme='Ilv2+Ilv6', enz_dxy=(0.4, 3.9))
     _tag(ax, 118.5, 73.2, 'CO$_2$', ha='left', fs=FS_ENZ)
     _arrow(ax, [al['bottom'], dhi['top']], lw=1.1)
     _rxn_marker(ax, 152, 71.5, 'r14', enzyme='Ilv5', enz_dxy=(8.6, 0))
