@@ -582,15 +582,14 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
         return x1 - x0
 
     edge_labels = (
-        'product inhibition, $e^{-k_i C}$ (r1, r4, r6, r7, r17)',
-        'product-accelerated decay above a threshold (r10)',
-        'glucose repression (r2, r5, r8; r9 at high glucose)',
-        'activation (acetaldehyde $\\rightarrow$ r1; '
-        'glucose & ethanol $\\rightarrow$ r9)',
+        'product inhibition, $e^{-k_i C}$',
+        'product-accelerated decay above a threshold',
+        'glucose repression',
+        'activation',
     )
-    o2_label = 'O$_2$-dependent (rate × f_O2)'
-    o2_part_label = 'partly O$_2$-dependent (r7; anaerobic share ungated)'
-    acdh_label = 'requires AcDH machinery ($a\\,X_\\mathrm{AcDH}$)'
+    o2_label = 'O$_2$-dependent'
+    o2_part_label = 'partly O$_2$-dependent'
+    acdh_label = 'requires AcDH machinery'
     knob_label = 'tunable strain lever'
     feed_label = 'fed-batch feed; dotted = sensing'
 
