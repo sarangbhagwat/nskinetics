@@ -24,12 +24,12 @@ The network and controls are curated directly from
 ``s_cerevisiae_ferm_fb_inhib_mod_ibo_antimony.txt``; continuous-mode dilution
 terms (``s_glu_in``, ``*_out``; D = 0 in fed-batch use) are not drawn.
 
-Rotary-knob icons mark the tunable strain levers: the strain-side decision
+Rotary-knob icons mark the strain design variables: the strain-side decision
 variables of the isobutanol biorefinery's ``metabolic_split_12d``
 kinetic-optimization preset (enzyme capacities k_1l/k_1h/k_1e, k_3, k_6,
 k_13, k_14/k_15/k_16, k_17 and the ethanol / isobutanol / acetate
 product-inhibition coefficient groups). Its three feeding-policy variables
-are process levers and are not marked.
+are process design variables and are not marked.
 
 Run directly to write ``conceptual_diagram.png`` / ``.pdf`` next to this file::
 
@@ -67,7 +67,7 @@ C_ACT = '#009E73'       # activation / overflow signal (bluish green)
 C_FEED = '#0072B2'      # fed-batch feed & sensing (blue)
 C_O2 = '#56B4E9'        # O2-dependence (f_O2 scaling) badge (sky blue)
 C_O2_TEXT = '#2E7FB0'   # O2 lettering on white (supply tag, partial badge)
-C_LEVER = '#E69F00'     # tunable strain lever knob (orange)
+C_LEVER = '#E69F00'     # strain design variable knob (orange)
 C_TEXT = '#1A1A1A'
 C_MUTED = '#666666'
 
@@ -89,9 +89,9 @@ FS_NOTE = 5.0
 FS_PANEL = 6.8
 FS_LEGEND = 5.4
 
-# --- tunable strain levers (knob positions, mm) ----------------------------
+# --- strain design variables (knob positions, mm) --------------------------
 # The strain-side decision variables of the isobutanol package's
-# metabolic_split_12d kinetic-optimization preset. Capacity levers sit just
+# metabolic_split_12d kinetic-optimization preset. Capacity variables sit just
 # after the enzyme name of their reaction; the three product-tolerance groups
 # (inhib_ethanol / inhib_isobutanol / inhib_acetate) sit on every drawn
 # product edge -- the inhibition stubs of r1/r4/r6/r7/r17 and the decay edge
@@ -279,7 +279,7 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
     show : bool, optional
         Call ``plt.show()`` after saving. Defaults to False.
     show_strain_levers : bool, optional
-        Mark the tunable strain levers (``STRAIN_LEVER_MARKS``: the
+        Mark the strain design variables (``STRAIN_LEVER_MARKS``: the
         strain-side decision variables of the isobutanol package's
         ``metabolic_split_12d`` kinetic-optimization preset) with rotary-knob
         icons. Defaults to True.
@@ -560,7 +560,7 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
            ls=(0, (3.2, 1.8)), mutation=5, zorder=5)
     _tag(ax, 33.6, 22.7, 'glucose ·\nethanol', color=C_ACT, ha='right', fs=FS_TAG)
 
-    # === tunable strain levers ============================================
+    # === strain design variables ===========================================
     if show_strain_levers:
         for x, y in STRAIN_LEVER_MARKS.values():
             _knob(ax, x, y)
@@ -593,7 +593,7 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
     o2_label = 'O$_2$-dependent'
     o2_part_label = 'partly O$_2$-dependent'
     acdh_label = 'requires AcDH machinery'
-    knob_label = 'tunable strain lever'
+    knob_label = 'strain design variable'
     feed_label = 'fed-batch feed; dotted = sensing'
 
     # offsets within a column: edge glyphs are 7 mm with the label at +9.5;
