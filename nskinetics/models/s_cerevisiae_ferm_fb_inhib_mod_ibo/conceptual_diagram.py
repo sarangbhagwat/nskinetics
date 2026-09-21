@@ -13,10 +13,10 @@ pathway, product inhibition, aeration staging, and fed-batch feeding).
 
 The figure shows the reaction network (r1-r11, r13-r17) and the control
 structure — exponential product inhibition, glucose repression, the
-acetaldehyde overflow signal, aerobic gating, the AcDH physiological-state
-machinery, and the fed-batch glucose-spike loop — sized to Nature
-Communications figure specifications (180 mm double-column width, Arial,
-5-7 pt text, vector PDF with editable text plus a 600 dpi PNG).
+acetaldehyde overflow signal, O2 dependence (``f_O2`` scaling), the AcDH
+physiological-state machinery, and the fed-batch glucose-spike loop — sized
+to Nature Communications figure specifications (180 mm double-column width,
+Arial, 5-7 pt text, vector PDF with editable text plus a 600 dpi PNG).
 
 The network and controls are curated directly from
 ``s_cerevisiae_ferm_fb_inhib_mod_ibo_antimony.txt``; continuous-mode dilution
@@ -62,7 +62,8 @@ C_INHIB = '#D55E00'     # product inhibition (vermillion)
 C_REPR = '#CC79A7'      # glucose repression (reddish purple)
 C_ACT = '#009E73'       # activation / overflow signal (bluish green)
 C_FEED = '#0072B2'      # fed-batch feed & sensing (blue)
-C_O2 = '#56B4E9'        # aerobic gating badge (sky blue)
+C_O2 = '#56B4E9'        # O2-dependence (f_O2 scaling) badge (sky blue)
+C_O2_TEXT = '#2E7FB0'   # O2 lettering on white (supply tag, partial badge)
 C_LEVER = '#E69F00'     # tunable strain lever knob (orange)
 C_TEXT = '#1A1A1A'
 C_MUTED = '#666666'
@@ -282,7 +283,9 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
         "Fed-batch bioreactor" frame they cross, and the feed legend entry.
         False gives the reaction network alone, frameless, on a
         correspondingly shorter figure; the O$_2$ badges stay (they mark
-        aerobic-only reactions).
+        the reactions whose rate is scaled by ``f_O2`` -- solid for r2, r5
+        and r8, outlined for r7, whose ``anaerobic_growth_mult`` share runs
+        without O$_2$).
         Defaults to True.
     filename : str, optional
         Output file stem. Defaults to ``'conceptual_diagram'``; pass another
@@ -294,9 +297,10 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
         ``(fig, ax)`` of the drawn figure.
     """
     _setup_rcparams()
-    # the legend needs a fourth row only when the feed entry and the knob
-    # entry are both present (otherwise the knob takes the free feed slot)
-    four_legend_rows = show_strain_levers and show_process_controls
+    # the three badge entries fill column 3, so the legend needs a fourth row
+    # for the closing note whenever the feed entry or the knob entry takes
+    # column 1 / row 3
+    four_legend_rows = show_strain_levers or show_process_controls
     y_floor = -LEGEND_ROW_4_MM if four_legend_rows else 0.
     y_top = Y_TOP_MM if show_process_controls else Y_TOP_NO_CONTROLS_MM
     fig, ax = plt.subplots(figsize=(FIG_W_MM * MM, (y_top - y_floor) * MM))
@@ -363,7 +367,7 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
         # O2 supply drop from the aeration panel (left of the reactor caption)
         _arrow(ax, [(120, 113), (120, 103.5)], color=C_O2, lw=1.0,
                ls=(0, (2.4, 1.6)), mutation=5.5)
-        _tag(ax, 122.3, 108, 'O$_2$', color='#2E7FB0', fs=FS_TAG, ha='left')
+        _tag(ax, 122.3, 108, 'O$_2$', color=C_O2_TEXT, fs=FS_TAG, ha='left')
 
     # === species boxes =====================================================
     glu = _box(ax, 86, 98, 24, 7, ['Glucose'], fc=TINT_SUBSTRATE)
@@ -456,7 +460,7 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
     # r5 acetate -> TCA
     _arrow(ax, [(44, 57.6), (33, 71.9)], lw=1.1)
     _rxn_marker(ax, 38.7, 64.6, 'r5', enzyme=None)
-    _badge(ax, 31.6, 62.6, 'O$_2$', C_O2)
+    _badge(ax, 33.0, 64.2, 'O$_2$', C_O2)
     _tag(ax, 44.5, 63.5, '+NADH', fs=FS_ENZ, ha='left')
 
     # r7 glucose -> biomass (left-margin route)
@@ -465,6 +469,9 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
     _rxn_marker(ax, 8.5, 58, 'r7', enzyme=None)
     _tag(ax, 11.2, 64.5, 'growth', color=C_MUTED, fs=FS_ENZ, ha='left')
     _tag(ax, 11.2, 53.8, '+NADH, CO$_2$', fs=FS_ENZ, ha='left')
+    # only the (1 - anaerobic_growth_mult) share of r7 is scaled by f_O2, so
+    # it gets the outlined (partial) badge rather than the solid one
+    _badge(ax, 14.3, 49.9, 'O$_2$', '#FFFFFF', tc=C_O2_TEXT, ec=C_O2)
 
     # r8 acetate -> biomass
     _arrow(ax, [ace['bottom'], (48, 41.7)], lw=1.1)
@@ -569,21 +576,25 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
             fontsize=FS_LEGEND, va='center', zorder=5)
 
     _badge(ax, 125, y1, 'O$_2$', C_O2)
-    ax.text(129.5, y1, 'aerobic only (f_O2 gate/scaling)',
+    ax.text(129.5, y1, 'O$_2$-dependent (rate × f_O2)',
             fontsize=FS_LEGEND, va='center', zorder=5)
-    _badge(ax, 125, y2, 'AcDH', '#FFFFFF', tc='#1F7A5C', ec='#1F7A5C',
+    _badge(ax, 125, y2, 'O$_2$', '#FFFFFF', tc=C_O2_TEXT, ec=C_O2)
+    ax.text(129.5, y2, 'partly O$_2$-dependent (r7; anaerobic share ungated)',
+            fontsize=FS_LEGEND, va='center', zorder=5)
+    _badge(ax, 125, y3, 'AcDH', '#FFFFFF', tc='#1F7A5C', ec='#1F7A5C',
            w=8.6)
-    ax.text(131, y2, 'requires AcDH machinery ($a\\,X_\\mathrm{AcDH}$)',
+    ax.text(131, y3,'requires AcDH machinery ($a\\,X_\\mathrm{AcDH}$)',
             fontsize=FS_LEGEND, va='center', zorder=5)
-    # the knob entry takes column 3 / row 3, or the freed feed slot (column
+    # the knob entry takes column 3 / row 4, or the freed feed slot (column
     # 1 / row 3) when the process controls are hidden; the closing note takes
-    # column 3 / row 3 whenever that is free, else the fourth row
+    # column 1 / row 3 when that is free, else the fourth row
     if show_strain_levers:
-        knob_x, text_x = (125, 129.5) if show_process_controls else (9.5, 15)
-        _knob(ax, knob_x, y3)
-        ax.text(text_x, y3, 'tunable strain lever', fontsize=FS_LEGEND,
-                va='center', zorder=5)
-    note_xy = (6, y4) if four_legend_rows else (121.5, y3)
+        knob_xy, text_x = (((125, y4), 129.5) if show_process_controls
+                           else ((9.5, y3), 15))
+        _knob(ax, *knob_xy)
+        ax.text(text_x, knob_xy[1], 'tunable strain lever',
+                fontsize=FS_LEGEND, va='center', zorder=5)
+    note_xy = (6, y4) if four_legend_rows else (6, y3)
     ax.text(*note_xy, 'all rates $\\propto$ $a = X_a x$; conc. in '
                       'g L$^{-1}$; dilution ($D$ = 0) omitted',
             fontsize=FS_LEGEND - 0.4, va='center', ha='left', zorder=5,
