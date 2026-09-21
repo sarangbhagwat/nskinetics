@@ -405,11 +405,10 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
             fontsize=FS_PANEL - 0.3, fontweight='bold', color='#B04A00',
             ha='center', va='center', linespacing=1.2, zorder=3)
 
-    al = _box(ax, 146, 78, 34, 6.4, ['AL'])
-    dhi = _box(ax, 146, 65, 34, 6.4, ['DHIV'])
-    kiv = _box(ax, 146, 52, 34, 6.4, ['KIV'])
-    iald = _box(ax, 146, 39, 34, 6.4, ['Isobutyraldehyde'],
-                fs=FS_SPECIES - 0.8)
+    al = _box(ax, 146, 78, 34, 6.4, ['α-Acetolactate'])
+    dhi = _box(ax, 146, 65, 34, 6.4, ['2,3-Dihydroxyisovalerate'])
+    kiv = _box(ax, 146, 52, 34, 6.4, ['α-Ketoisovalerate'])
+    iald = _box(ax, 146, 39, 34, 6.4, ['Isobutyraldehyde'])
     ibo = _box(ax, 146, 26, 34, 6.4, ['Isobutanol'], fc=TINT_PRODUCT)
 
     # === biomass / physiological-state panel (bottom left) =================
