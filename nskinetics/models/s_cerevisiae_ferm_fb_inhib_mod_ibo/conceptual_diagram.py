@@ -23,7 +23,7 @@ The network and controls are curated directly from
 terms (``s_glu_in``, ``*_out``; D = 0 in fed-batch use) are noted but not
 drawn as edges.
 
-Rotary-knob icons mark the engineerable strain levers: the strain-side decision
+Rotary-knob icons mark the tunable strain levers: the strain-side decision
 variables of the isobutanol biorefinery's ``metabolic_split_12d``
 kinetic-optimization preset (enzyme capacities k_1l/k_1h/k_1e, k_3, k_6,
 k_13, k_14/k_15/k_16, k_17 and the ethanol / isobutanol / acetate
@@ -60,7 +60,7 @@ C_REPR = '#CC79A7'      # glucose repression (reddish purple)
 C_ACT = '#009E73'       # activation / overflow signal (bluish green)
 C_FEED = '#0072B2'      # fed-batch feed & sensing (blue)
 C_O2 = '#56B4E9'        # aerobic gating badge (sky blue)
-C_LEVER = '#E69F00'     # engineerable strain lever knob (orange)
+C_LEVER = '#E69F00'     # tunable strain lever knob (orange)
 C_TEXT = '#1A1A1A'
 C_MUTED = '#666666'
 
@@ -82,7 +82,7 @@ FS_NOTE = 5.0
 FS_PANEL = 6.8
 FS_LEGEND = 5.4
 
-# --- engineerable strain levers (knob positions, mm) -----------------------
+# --- tunable strain levers (knob positions, mm) ----------------------------
 # The strain-side decision variables of the isobutanol package's
 # metabolic_split_12d kinetic-optimization preset. Capacity levers sit just
 # after the enzyme name of their reaction; the three product-tolerance groups
@@ -266,7 +266,7 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
     show : bool, optional
         Call ``plt.show()`` after saving. Defaults to False.
     show_strain_levers : bool, optional
-        Mark the engineerable strain levers (``STRAIN_LEVER_MARKS``: the
+        Mark the tunable strain levers (``STRAIN_LEVER_MARKS``: the
         strain-side decision variables of the isobutanol package's
         ``metabolic_split_12d`` kinetic-optimization preset) with rotary-knob
         icons. Defaults to True.
@@ -499,7 +499,7 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
            ls=(0, (3.2, 1.8)), mutation=5, zorder=5)
     _tag(ax, 33.6, 22.7, 'glc · EtOH', color=C_ACT, ha='right', fs=FS_TAG)
 
-    # === engineerable strain levers =======================================
+    # === tunable strain levers ============================================
     if show_strain_levers:
         for x, y in STRAIN_LEVER_MARKS.values():
             _knob(ax, x, y)
@@ -549,7 +549,7 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
             fontsize=FS_LEGEND, va='center', zorder=5)
     if show_strain_levers:
         _knob(ax, 125, y3)
-        ax.text(129.5, y3, 'engineerable strain lever', fontsize=FS_LEGEND,
+        ax.text(129.5, y3, 'tunable strain lever', fontsize=FS_LEGEND,
                 va='center', zorder=5)
     ax.text(6, y4, 'all rates $\\propto$ $a = X_a x$; conc. in '
                        'g L$^{-1}$; dilution ($D$ = 0) omitted',
