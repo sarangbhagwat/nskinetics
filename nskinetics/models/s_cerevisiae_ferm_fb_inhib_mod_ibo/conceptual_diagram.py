@@ -52,7 +52,7 @@ __all__ = ('draw_conceptual_diagram',)
 MM = 1 / 25.4                     # mm -> inch
 FIG_W_MM = 180.                   # double-column width
 Y_TOP_MM = 134.                   # axes top with the process-control row ...
-Y_TOP_NO_CONTROLS_MM = 112.       # ... and without it (reactor frame tops at 110)
+Y_TOP_NO_CONTROLS_MM = 104.       # ... and without it (glucose box tops at 101.5)
 LEGEND_ROW_4_MM = 3.5             # extra depth when the legend needs a fourth row
                                   # (full figure 137.5 mm; Nat. Commun. cap 170 mm)
 
@@ -276,11 +276,13 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
         ``metabolic_split_12d`` kinetic-optimization preset) with rotary-knob
         icons. Defaults to True.
     show_process_controls : bool, optional
-        Draw the process-control row above the reactor (the fed-batch glucose
-        feeding and two-stage aeration panels) with its glucose-spike, glucose
-        sensing and O$_2$ supply connectors and the feed legend entry. False
-        gives the reaction network alone, on a correspondingly shorter
-        figure; the O$_2$ badges stay (they mark aerobic-only reactions).
+        Draw the process context: the process-control row above the reactor
+        (the fed-batch glucose feeding and two-stage aeration panels), its
+        glucose-spike, glucose sensing and O$_2$ supply connectors, the
+        "Fed-batch bioreactor" frame they cross, and the feed legend entry.
+        False gives the reaction network alone, frameless, on a
+        correspondingly shorter figure; the O$_2$ badges stay (they mark
+        aerobic-only reactions).
         Defaults to True.
     filename : str, optional
         Output file stem. Defaults to ``'conceptual_diagram'``; pass another
@@ -337,16 +339,18 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
                 fontsize=FS_NOTE, ha='left', va='center', color=C_TEXT,
                 linespacing=1.35, zorder=3)
 
-    # === bioreactor frame ==================================================
-    ax.add_patch(FancyBboxPatch((2, 16), 176, 94,
-                                boxstyle='round,pad=0,rounding_size=3',
-                                fc='white', ec='#666666', lw=1.1, zorder=1))
-    ax.text(174, 106.3, 'Fed-batch bioreactor',
-            fontsize=FS_PANEL, fontweight='bold', color='#444444',
-            ha='right', va='center', zorder=3)
-
-    # connectors from the process-control row
+    # === bioreactor frame + connectors from the process-control row ========
+    # (the frame is the boundary the feed / sensing / O2 connectors cross, so
+    # it goes with them: the network-only figure is frameless)
     if show_process_controls:
+        ax.add_patch(FancyBboxPatch((2, 16), 176, 94,
+                                    boxstyle='round,pad=0,rounding_size=3',
+                                    fc='white', ec='#666666', lw=1.1,
+                                    zorder=1))
+        ax.text(174, 106.3, 'Fed-batch bioreactor',
+                fontsize=FS_PANEL, fontweight='bold', color='#444444',
+                ha='right', va='center', zorder=3)
+
         # feed arrow into the reactor + sensing line (the fed-batch loop)
         _arrow(ax, [(45, 113), (45, 104), (78, 104), (78, 101.8)],
                color=C_FEED, lw=1.2, corner_r=3)
