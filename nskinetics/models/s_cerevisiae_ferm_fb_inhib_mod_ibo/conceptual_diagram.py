@@ -418,7 +418,7 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
 
     xa = _box(ax, 24, 29, 21, 6, ['$X_a$ (active)'], fs=FS_SPECIES - 0.5)
     xac = _box(ax, 54, 29, 22, 6, ['$X_\\mathrm{AcDH}$'], fs=FS_SPECIES - 0.5)
-    _arrow(ax, [(34.5, 29), (43, 29)], color=C_FLUX, lw=0.9, mutation=5.5)
+    _arrow(ax, [(34.5, 29), (43, 29)], color=C_FLUX, lw=1.1, mutation=5.5)
     _rxn_marker(ax, 38.7, 29, 'r9', enzyme=None)
     # decay r10 / r11 -- angled down-and-outward so the standard marker
     # circles fit on the runs without hiding the arrowheads (the region
@@ -434,15 +434,15 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
 
     # === central catabolic backbone ========================================
     # r1 glycolysis
-    _arrow(ax, [glu['bottom'], pyr['top']], lw=1.3)
+    _arrow(ax, [glu['bottom'], pyr['top']], lw=1.1)
     _rxn_marker(ax, 86, 87.6, 'r1', enzyme='glycolysis', enz_dxy=(9.5, 0))
     _tag(ax, 80.6, 84.3, '+NADH', ha='right')
     # r3 PDC
-    _arrow(ax, [pyr['bottom'], ald['top']], lw=1.3)
+    _arrow(ax, [pyr['bottom'], ald['top']], lw=1.1)
     _rxn_marker(ax, 86, 65.4, 'r3', enzyme='PDC', enz_dxy=(6.6, 0))
     _tag(ax, 81.0, 62.2, 'CO$_2$', ha='right')
     # r6 ADH (reversible)
-    _arrow(ax, [ald['bottom'], eth['top']], lw=1.3, reversible=True)
+    _arrow(ax, [ald['bottom'], eth['top']], lw=1.1, reversible=True)
     _rxn_marker(ax, 86, 42.2, 'r6', enzyme='ADH', enz_dxy=(6.6, 0))
     _tag(ax, 81.0, 39.0, '–NADH', ha='right')
 
@@ -563,55 +563,55 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
                                 fc='#FAFAFA', ec='#CCCCCC', lw=0.7,
                                 zorder=1))
 
-    def _leg_arrow(x, y, color, reversible=False, ls='-', dashed=False):
+    def _leg_arrow(x, y, color):
         _arrow(ax, [(x, y), (x + 7, y)], color=color, lw=1.0,
-               reversible=reversible, ls=(0, (3, 1.8)) if dashed else '-',
-               mutation=5.5, zorder=5)
+               ls=(0, (3, 1.8)), mutation=5.5, zorder=5)
 
+    # three columns: control edges | badges and the knob | the feed entry;
+    # without the feed entry the badge column takes the middle of the strip
     y1, y2, y3, y4 = 11.3, 7.6, 4.3, 0.8
-    _leg_arrow(6, y1, C_FLUX)
-    ax.text(15, y1, 'reaction flux (mass basis)', fontsize=FS_LEGEND,
-            va='center', zorder=5)
-    _leg_arrow(6, y2, C_FLUX, reversible=True)
-    ax.text(15, y2, 'reversible (r6, r17)', fontsize=FS_LEGEND, va='center',
-            zorder=5)
-    if show_process_controls:
-        _arrow(ax, [(6, y3), (10.5, y3)], color=C_FEED, lw=1.0, mutation=5.5,
-               zorder=5)
-        ax.add_line(Line2D([11.3, 13.5], [y3, y3], color=C_FEED, lw=0.9,
-                           ls=(0, (1.2, 1.4)), zorder=5))
-        ax.text(15, y3, 'fed-batch feed; dotted = sensing',
-                fontsize=FS_LEGEND, va='center', zorder=5)
+    xa = 6
+    xb = 78 if show_process_controls else 100
+    xc = 134
 
-    _tbar(ax, (60, y1), (53, y1), C_INHIB, lw=1.0)
-    ax.text(62.5, y1, 'product inhibition, $e^{-k_i C}$ '
-                      '(r1, r4, r6, r7, r17)',
+    _tbar(ax, (xa + 7, y1), (xa, y1), C_INHIB, lw=1.0)
+    ax.text(xa + 9.5, y1, 'product inhibition, $e^{-k_i C}$ '
+                          '(r1, r4, r6, r7, r17)',
             fontsize=FS_LEGEND, va='center', zorder=5)
-    _leg_arrow(53, y2, C_INHIB, dashed=True)
-    ax.text(62.5, y2, 'product-accelerated decay above a threshold (r10)',
+    _leg_arrow(xa, y2, C_INHIB)
+    ax.text(xa + 9.5, y2, 'product-accelerated decay above a threshold (r10)',
             fontsize=FS_LEGEND, va='center', zorder=5)
-    _tbar(ax, (60, y3), (53, y3), C_REPR, lw=1.0)
-    ax.text(62.5, y3, 'glucose repression (r2, r5, r8; r9 at high glc)',
+    _tbar(ax, (xa + 7, y3), (xa, y3), C_REPR, lw=1.0)
+    ax.text(xa + 9.5, y3, 'glucose repression (r2, r5, r8; r9 at high glc)',
             fontsize=FS_LEGEND, va='center', zorder=5)
-    _leg_arrow(53, y4, C_ACT, dashed=True)
-    ax.text(62.5, y4, 'activation (acetaldehyde $\\rightarrow$ r1; '
-                      'glc & EtOH $\\rightarrow$ r9)',
+    _leg_arrow(xa, y4, C_ACT)
+    ax.text(xa + 9.5, y4, 'activation (acetaldehyde $\\rightarrow$ r1; '
+                          'glc & EtOH $\\rightarrow$ r9)',
             fontsize=FS_LEGEND, va='center', zorder=5)
 
-    _badge(ax, 125, y1, 'O$_2$', C_O2)
-    ax.text(129.5, y1, 'O$_2$-dependent (rate × f_O2)',
+    _badge(ax, xb, y1, 'O$_2$', C_O2)
+    ax.text(xb + 4.5, y1, 'O$_2$-dependent (rate × f_O2)',
             fontsize=FS_LEGEND, va='center', zorder=5)
-    _badge(ax, 125, y2, 'O$_2$', '#FFFFFF', tc=C_O2_TEXT, ec=C_O2)
-    ax.text(129.5, y2, 'partly O$_2$-dependent (r7; anaerobic share ungated)',
+    _badge(ax, xb, y2, 'O$_2$', '#FFFFFF', tc=C_O2_TEXT, ec=C_O2)
+    ax.text(xb + 4.5, y2,
+            'partly O$_2$-dependent (r7; anaerobic share ungated)',
             fontsize=FS_LEGEND, va='center', zorder=5)
-    _badge(ax, 125, y3, 'AcDH', '#FFFFFF', tc='#1F7A5C', ec='#1F7A5C',
+    _badge(ax, xb, y3, 'AcDH', '#FFFFFF', tc='#1F7A5C', ec='#1F7A5C',
            w=8.6)
-    ax.text(131, y3, 'requires AcDH machinery ($a\\,X_\\mathrm{AcDH}$)',
+    ax.text(xb + 6, y3, 'requires AcDH machinery ($a\\,X_\\mathrm{AcDH}$)',
             fontsize=FS_LEGEND, va='center', zorder=5)
     if show_strain_levers:
-        _knob(ax, 125, y4)
-        ax.text(129.5, y4, 'tunable strain lever', fontsize=FS_LEGEND,
+        _knob(ax, xb, y4)
+        ax.text(xb + 4.5, y4, 'tunable strain lever', fontsize=FS_LEGEND,
                 va='center', zorder=5)
+
+    if show_process_controls:
+        _arrow(ax, [(xc, y1), (xc + 4.5, y1)], color=C_FEED, lw=1.0,
+               mutation=5.5, zorder=5)
+        ax.add_line(Line2D([xc + 5.3, xc + 7.5], [y1, y1], color=C_FEED,
+                           lw=0.9, ls=(0, (1.2, 1.4)), zorder=5))
+        ax.text(xc + 9, y1, 'fed-batch feed; dotted = sensing',
+                fontsize=FS_LEGEND, va='center', zorder=5)
 
     # === save ==============================================================
     if save_dir is None:
