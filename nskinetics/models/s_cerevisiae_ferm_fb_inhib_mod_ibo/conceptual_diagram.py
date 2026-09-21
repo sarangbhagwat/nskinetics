@@ -100,7 +100,7 @@ STRAIN_LEVER_MARKS = {
     'glycolysis (k_1l, k_1h, k_1e) @ r1': (101.8, 87.6),
     'k_3 @ r3': (97.6, 65.4),
     'k_6 @ r6': (97.6, 42.2),
-    'k_13 @ r13': (119.6, 79.9),
+    'k_13 @ r13': (131.6, 79.9),
     'ehrlich_downstream (k_14) @ r14': (166.4, 71.5),
     'ehrlich_downstream (k_15) @ r15': (166.4, 58.5),
     'ehrlich_downstream (k_16) @ r16': (166.4, 45.5),
@@ -394,11 +394,13 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
     _tag(ax, 27, 90.6, 'CO$_2$', color=C_MUTED, fs=FS_TAG)
 
     # === engineered isobutanol pathway panel (right) =======================
-    ax.add_patch(FancyBboxPatch((128, 22), 48, 68,
+    # (the panel reaches left of the species column so that r13, the
+    # pathway's entry reaction, sits inside it)
+    ax.add_patch(FancyBboxPatch((119, 22), 57, 68,
                                 boxstyle='round,pad=0,rounding_size=2',
                                 fc=TINT_IBO, ec=TINT_IBO_EDGE, lw=0.9,
                                 zorder=2))
-    ax.text(152, 86.0, 'Engineered isobutanol\npathway (r13–r17)',
+    ax.text(147.5, 86.0, 'Engineered isobutanol\npathway (r13–r17)',
             fontsize=FS_PANEL - 0.3, fontweight='bold', color='#B04A00',
             ha='center', va='center', linespacing=1.2, zorder=3)
 
@@ -485,8 +487,8 @@ def draw_conceptual_diagram(save_dir=None, formats=('png', 'pdf'),
 
     # === engineered pathway reactions ======================================
     _arrow(ax, [pyr['right'], (135, 76)], lw=1.1)
-    _rxn_marker(ax, 113, 76, 'r13', enzyme='Ilv2+Ilv6', enz_dxy=(0.4, 3.9))
-    _tag(ax, 118.5, 73.2, 'CO$_2$', ha='left', fs=FS_ENZ)
+    _rxn_marker(ax, 125, 76, 'r13', enzyme='Ilv2+Ilv6', enz_dxy=(0.4, 3.9))
+    _tag(ax, 129.5, 73.2, 'CO$_2$', ha='left', fs=FS_ENZ)
     _arrow(ax, [al['bottom'], dhi['top']], lw=1.1)
     _rxn_marker(ax, 152, 71.5, 'r14', enzyme='Ilv5', enz_dxy=(8.6, 0))
     _tag(ax, 144.7, 71.5, '–NADPH', ha='right', fs=FS_ENZ)
