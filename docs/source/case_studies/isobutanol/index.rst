@@ -318,7 +318,7 @@ uncertainty run (:doc:`enzyme_burden`).
          :target: ../../_static/images/isobutanol/overview/block_flow_diagram.png
          :class: pub-figure
          :width: 100%
-         :alt: Block flow diagram. Panel A, fermentation process: saccharified corn slurry is split into two multi-effect evaporation and dilution trains giving an initial feed and a spike feed to the fed-batch fermentor, which receives compressed air and yeast; vented gases are scrubbed and the recovered alcohols rejoin the broth. Panel B, separation process: beer column, ethanol rectifier, molecular sieves and denaturant mixing give ethanol; stripper, decanter and drying column give isobutanol above 99.9 wt%; stillage goes through centrifugation, evaporation, oil separation and drying to DDGS and corn oil.
+         :alt: Block flow diagram. Panel A, fermentation process: saccharified corn slurry is split into two multi-effect evaporation and dilution trains giving an initial feed and a spike feed to the fed-batch fermentor, which receives compressed air and yeast; vented gases are scrubbed and the recovered alcohols join the beer sent to distillation. Panel B, separation process: beer column, ethanol rectifier, molecular sieves and denaturant mixing give ethanol; stripper, decanter and drying column give isobutanol above 99.9 wt%; stillage goes through centrifugation, evaporation, oil separation and drying to DDGS and corn oil.
 
          Block flow of the biorefinery around the fermentor. **A** — the
          saccharified slurry is split between an initial-feed and a

@@ -54,8 +54,8 @@ each campaign's best design as a reproducible ``opt_*`` scenario.
       :class-card: ibo-stat
       :shadow: sm
 
-      Simulations that two TRY-informed relay campaigns needed to reach
-      PI ≥ 0.75. The successful uninformed campaign needed 939; the other
+      Simulations the two relay campaigns (each preloaded with TRY
+      campaigns' trials) needed to reach PI ≥ 0.75. The successful uninformed campaign needed 939; the other
       never got there.
 
       +++
