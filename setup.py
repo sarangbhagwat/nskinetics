@@ -15,7 +15,7 @@ setup(
     version='0.6.0',
     description='Simulation of Non-Steady state enzyme Kinetics and inhibitory phenomena',
     long_description=open('README.rst', encoding='utf-8').read(),
-    long_description_content_type="text/markdown",
+    long_description_content_type="text/x-rst",
     author='Sarang S. Bhagwat',
     install_requires=['IPython>=7.9.0',
                       # Floors below align with thermosteam 0.53.5 (pulled in
