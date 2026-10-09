@@ -8,9 +8,9 @@
 """
 Per-metric scatter grids against every uncertain parameter, from an
 uncertainty-analysis results workbook (*_1_full_evaluation.xlsx as written by
-uncertainties_IBO_EtOH.py in this folder into the results root; not shipped,
-so it must be regenerated -- or NSKINETICS_IBO_RESULTS_DIR pointed at a
-results folder that has it -- before this script can run).
+uncertainties_IBO_EtOH.py in this folder into the results root). No such
+workbook ships with the package, so run that analysis first and pass the
+path of its workbook (the input is always that explicit path argument).
 
 One figure per metric: a grid of scatter panels (one per uncertain
 parameter), each with density-colored points, a binned-median trend line, a
@@ -359,10 +359,16 @@ def plot_uncertainty_scatters(results_file,
     plt.rcParams['font.family'] = 'sans-serif'
     plt.rcParams['font.sans-serif'] = ['Arial', 'Helvetica', 'DejaVu Sans']
 
-    results_file = paths.require_input(
-        os.path.abspath(results_file),
-        produced_by='the uncertainty analysis '
-                    '(analyses/uncertainty/uncertainties_IBO_EtOH.py)')
+    # The input is the explicit path argument (NSKINETICS_IBO_RESULTS_DIR
+    # plays no part), so raise a message of our own rather than
+    # paths.require_input's, which suggests that variable.
+    results_file = os.path.abspath(results_file)
+    if not os.path.isfile(results_file):
+        raise FileNotFoundError(
+            f'missing input {results_file!r}: an uncertainty-analysis '
+            'workbook (*_1_full_evaluation.xlsx) written by '
+            'analyses/uncertainty/uncertainties_IBO_EtOH.py into the results '
+            'root. Run that analysis first, then pass the path of its workbook.')
     if output_dir is None:
         output_dir = os.path.dirname(results_file)
 

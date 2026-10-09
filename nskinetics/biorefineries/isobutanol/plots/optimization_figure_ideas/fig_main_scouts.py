@@ -108,8 +108,8 @@ STEM = 'kinBO_main_scouts'
 CAPTION_PATH = os.path.join(C.FIGDIR, 'kinBO_main_scouts_caption.md')
 EB_PATH = os.path.join(C.PKG, 'enzyme_burden.py')
 
-# scenario-A IRR under the CURRENT model version (CLAUDE.md "Current
-# baseline", hensmith 6d4776f); the campaigns ran under the 2b5b27d export
+# scenario-A IRR under the CURRENT model version (the baseline re-simulated
+# with hensmith 6d4776f); the campaigns ran under the 2b5b27d export
 START_IRR_CURRENT_MODEL = 0.1279
 SEED = 350                     # the campaigns' optuna seed (_rs350)
 HURDLE_PCT = 15                # PI = NPV at this hurdle rate / TCI

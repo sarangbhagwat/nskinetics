@@ -43,8 +43,8 @@ def _solid(ID, MW=1., rho=1540., Cp=1.):
 
 def create_ethanol_isobutanol_separation_chemicals():
     """
-    Create the chemical set for
-    :func:`create_ethanol_isobutanol_separation_system`.
+    Create the chemical set used by :func:`create_beer_feed` and
+    :func:`create_beer_stripper`.
 
     Contains the volatiles the columns resolve (``Water``, ``Ethanol``,
     ``Isobutanol``, ``AceticAcid``) plus the corn-mash solids the beer

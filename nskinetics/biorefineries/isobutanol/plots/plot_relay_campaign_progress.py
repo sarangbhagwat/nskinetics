@@ -6,9 +6,7 @@
 # https://github.com/sarangbhagwat/nskinetics/blob/main/LICENSE
 # for license details.
 """Progress figure + summary of a RELAY kinetic-optimization campaign
-(2026-09-23; spec
-docs/superpowers/specs/2026-09-23-relay-preload-pi-campaign-design.md, section
-3.5 and amendment A11).
+(introduced 2026-09-23 with the relay-preloaded PI campaigns).
 
 A relay campaign is a fresh `ethanol_isobutanol` x `metabolic_split_12d` GP
 campaign on 'PI (log-tail)' whose optuna store was PRELOADED with N COMPLETE

@@ -70,6 +70,27 @@ def test_results_dir_honours_env(paths, monkeypatch, tmp_path):
     assert paths.results_dir() == paths.DEFAULT_RESULTS_DIR
 
 
+def test_results_dir_relative_env_is_absolute(paths, monkeypatch, tmp_path):
+    """A relative NSKINETICS_IBO_RESULTS_DIR is resolved against the working
+    directory at call time, so a script that builds its paths and then
+    chdir()s into the results root still finds them."""
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv(ENV, os.path.join('rel', 'ibo_results'))
+    root = paths.results_dir()
+    assert os.path.isabs(root)
+    assert _same(root, os.path.join(str(tmp_path), 'rel', 'ibo_results'))
+    made = paths.results_dir('sub', create=True)
+    assert os.path.isabs(made) and os.path.isdir(made)
+    assert _same(made, os.path.join(root, 'sub'))
+    assert _same(paths.publication_dir('Uncertainty'),
+                 os.path.join(root, 'publication', 'Uncertainty'))
+    checkpoint = os.path.join(made, 'x_checkpoint.csv')
+    with open(checkpoint, 'w') as fh:
+        fh.write('x\n')
+    monkeypatch.chdir(root)                 # what the sweeps do mid-run
+    assert os.path.exists(checkpoint)
+
+
 def test_publication_dir(paths, monkeypatch, tmp_path):
     """publication_dir is <results root>/publication and follows the
     override."""

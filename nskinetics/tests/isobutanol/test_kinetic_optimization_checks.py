@@ -11,8 +11,8 @@ The script (~8000 lines, ~100 sequential checks: search spaces, the objective
 registry, trajectory CSVs, the optuna engine on fake handles, the BO driver /
 supervisor source and CLI, output-path budgets) imports
 ``nskinetics.biorefineries.isobutanol``, so it runs in a fresh subprocess --
-never in the pytest process, whose import-guard tests must not see the
-biorefinery. It never simulates the flowsheet, so the child keeps the
+never in the pytest process, which stays free of the biorefinery and the
+upstream ``biorefineries`` package. It never simulates the flowsheet, so the child keeps the
 conftest's ``NUMBA_DISABLE_JIT=1``: the same 103 passing checks, a faster run
 (108 s vs 126 s with JIT on, measured 2026-10-09) and no numba on-disk cache
 writes, so it is not a simulation-class process.

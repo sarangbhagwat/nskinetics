@@ -86,10 +86,10 @@ variants (--variants selects a subset):
 The relay's legend line says what it was seeded with.
 Writes <stem>_<variant>_<stamp>.png and .pdf to --out-dir (default
 paths.publication_dir('Optimization-figures')). The default stem is
-'kinBO_parameter_sets' ('kinBO_enzyme_lever_map' with --pathway) for the
-no---set default sets, else '<first campaign>_parameter_sets': a
-campaign-derived name under the publication folder exceeds Windows' 260-
-character MAX_PATH, so pass --stem (or a shorter --out-dir) with --set.
+'kinBO_parameter_sets' ('kinBO_enzyme_lever_map' with --pathway), with or
+without --set: a campaign-derived name under the publication folder would
+exceed Windows' 260-character MAX_PATH, so name a --set figure with --stem.
+main() checks every output path against MAX_PATH_CHARS before any work.
 """
 import os
 import re
@@ -123,7 +123,7 @@ paths = _load_paths()
 PKG_DIR = paths.PACKAGE_DIR                          # ko / eb live here
 RESULTS_DIR = paths.results_dir()                    # campaign trajectory CSVs
 OUTPUT_DIR = paths.publication_dir('Optimization-figures')
-# file stems of the no---set default figures (a campaign-derived stem under
+# default file stems, with or without --set (a campaign-derived stem under
 # OUTPUT_DIR would exceed MAX_PATH_CHARS)
 DEFAULT_STEM = 'kinBO_parameter_sets'
 DEFAULT_PATHWAY_STEM = 'kinBO_enzyme_lever_map'
@@ -464,9 +464,22 @@ PRELOAD_ZONE_ALPHA = 0.5
 # final-parameters figure (file stems <stem>_<variant>_<stamp>)
 FIGURE_VARIANTS = ('irr', 'process', 'parameters')
 # the longest output path savefig can open on this machine (Windows MAX_PATH
-# 260 incl. the terminating NUL); the default campaign-derived stem leaves
-# only a few characters of headroom, so main() checks before rendering
+# 260 incl. the terminating NUL); a long --stem / --out-dir or results root
+# can exceed it, so main() checks (check_output_paths) before any work
 MAX_PATH_CHARS = 259
+
+
+def check_output_paths(out_stems, ext='.png'):
+    """Raise ValueError if any ``<out_stem><ext>`` is longer than
+    MAX_PATH_CHARS (absolute), so a run fails before building or rendering
+    anything rather than at savefig."""
+    too_long = [p for p in out_stems
+                if len(os.path.abspath(p + ext)) > MAX_PATH_CHARS]
+    if too_long:
+        raise ValueError(
+            f'output path over {MAX_PATH_CHARS} characters '
+            f'({len(os.path.abspath(too_long[0] + ext))}): '
+            f'{too_long[0]}{ext} -- pass a shorter --stem or --out-dir')
 
 FONTS = {'band': 12, 'cell': 10, 'tick': 9, 'callout': 9,
          'legend': 10, 'axis': 11, 'panel': 14}
@@ -508,11 +521,11 @@ def baseline_set():
     # r17 (Adh6) is a NATIVE constitutive step, not an Ehrlich one: it is
     # present in scenario A at its live rate, so it does NOT default to 0. The
     # A workbook has no k_17 row; the live scenario-A value is the antimony
-    # default, corrected 44 -> 0.1077 g/L/h on 2026-09-16 (CLAUDE.md k_17,ref
-    # note; confirmed live off r_te 2026-09-16, matching the enzyme-burden
-    # reference). Its native pool is self-referential (multiplier
-    # k_17/reference == 1), so pool_r17 equals the wild-type value for any
-    # nonzero k_17 -- panel C is unaffected; only the panel-B baseline k_17 bar
+    # default, corrected 44 -> 0.1077 g/L/h on 2026-09-16 (confirmed live
+    # off r_te 2026-09-16, matching the enzyme-burden reference). Its native
+    # pool is self-referential (multiplier k_17/reference == 1), so pool_r17
+    # equals the wild-type value for any nonzero k_17 -- panel C is
+    # unaffected; only the panel-B baseline k_17 bar
     # reads this value. NB the split_12d/14d campaigns' k_17 SEARCH band anchors
     # on the B workbook's still-baked 44.0, so a plotted campaign's k_17 may sit
     # far above this corrected baseline. Re-pin if the antimony k_17 moves.
@@ -2563,9 +2576,8 @@ def main(argv=None):
                          'trials) and the most recent relay campaign')
     ap.add_argument('--out-dir', default=OUTPUT_DIR)
     ap.add_argument('--stem', default=None,
-                    help=f'output file stem (default: {DEFAULT_STEM!r} / '
-                         f'{DEFAULT_PATHWAY_STEM!r} without --set, else '
-                         '<first campaign>_parameter_sets / _enzyme_lever_map)')
+                    help=f'output file stem (default: {DEFAULT_STEM!r}, or '
+                         f'{DEFAULT_PATHWAY_STEM!r} with --pathway)')
     ap.add_argument('--dpi', type=int, default=300)
     args = ap.parse_args(argv)
 
@@ -2615,36 +2627,28 @@ def main(argv=None):
         raise ValueError('--pathway requires metabolic_split_12d campaigns '
                          '(the pathway layout needs the glycolysis / '
                          'ehrlich_downstream decomposition)')
-    sets, band, band_campaign = build_sets(specs, not args.no_baseline)
+    # output paths first, so an over-long one fails before any work
     stamp = datetime.now().strftime('%Y.%m.%d-%H.%M')
+    if args.pathway:
+        stem = args.stem or DEFAULT_PATHWAY_STEM
+        out_stem = os.path.join(args.out_dir, f'{stem}_{stamp}')
+        check_output_paths([out_stem])
+    else:
+        stem = args.stem or DEFAULT_STEM
+        variants = ('parameters',) if args.params_only else tuple(args.variants)
+        out_stems = {v: os.path.join(args.out_dir, f'{stem}_{v}_{stamp}')
+                     for v in FIGURE_VARIANTS if v in variants}
+        check_output_paths(out_stems.values())
+    sets, band, band_campaign = build_sets(specs, not args.no_baseline)
     if args.pathway:
         colors = pathway_colors(sets)
         plm = _load('_pathway_lever_map',
                     os.path.join(HERE, '_pathway_lever_map.py'))
-        stem = args.stem or (DEFAULT_PATHWAY_STEM if not args.sets else
-                             f'{os.path.basename(specs[0][1]).replace(".csv", "")}'
-                             '_enzyme_lever_map')
-        out_stem = os.path.join(args.out_dir, f'{stem}_{stamp}')
         plm.plot_pathway_lever_map(sets, colors, out_stem, ko=ko, eb=eb,
                                    helpers=pathway_helpers(), dpi=args.dpi)
         console_report(sets, band_campaign)
         print(f'wrote {out_stem}.png / .pdf')
         return out_stem
-    stem = args.stem or (DEFAULT_STEM if not args.sets else
-                         f'{os.path.basename(specs[0][1]).replace(".csv", "")}'
-                         '_parameter_sets')
-    variants = ('parameters',) if args.params_only else tuple(args.variants)
-    out_stems = {v: os.path.join(args.out_dir, f'{stem}_{v}_{stamp}')
-                 for v in FIGURE_VARIANTS if v in variants}
-    # fail before rendering, not at savefig, when a path would exceed this
-    # machine's 260-character MAX_PATH (259 usable)
-    too_long = [p for p in out_stems.values()
-                if len(os.path.abspath(p + '.png')) > MAX_PATH_CHARS]
-    if too_long:
-        raise ValueError(
-            f'output path over {MAX_PATH_CHARS} characters '
-            f'({len(os.path.abspath(too_long[0] + ".png"))}): '
-            f'{too_long[0]}.png -- pass a shorter --stem or --out-dir')
     written = []
     for variant, out_stem in out_stems.items():
         if variant == 'parameters':

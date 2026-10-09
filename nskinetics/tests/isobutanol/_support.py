@@ -7,9 +7,11 @@
 # for license details.
 """Shared helpers for the isobutanol biorefinery tests.
 
-Imports nothing heavy: test modules may import this at module level without
-pulling biosteam, the biorefinery or the upstream ``biorefineries`` package
-into the pytest process (the import-guard tests depend on that).
+Stdlib + pytest only: importing this adds neither the biorefinery nor the
+upstream ``biorefineries`` package to the pytest process. (pytest still
+imports the parent ``nskinetics`` package, and with it biosteam, when it
+collects these modules; the import-weight guards therefore probe fresh
+interpreters, see :func:`run_isolated`.)
 """
 import importlib.util
 import os
@@ -20,7 +22,7 @@ import time
 import pytest
 
 __all__ = (
-    'TESTS_DIR', 'SCRIPTS_DIR', 'FIXTURES_DIR', 'REPO_ROOT', 'NSK_DIR', 'PKG_DIR',
+    'TESTS_DIR', 'SCRIPTS_DIR', 'REPO_ROOT', 'NSK_DIR', 'PKG_DIR',
     'load_by_path', 'load_paths', 'missing_modules', 'skip_unless_modules',
     'simulation_deps_missing', 'requires_simulation', 'run_isolated', 'assert_ran_ok',
     'SETTLE_S', 'TIMEOUT_SCALE_ENV', 'timeout_scale',
@@ -30,8 +32,6 @@ __all__ = (
 TESTS_DIR = os.path.dirname(os.path.abspath(__file__))
 #: Script-style checks run in fresh subprocesses (names never match test_*.py).
 SCRIPTS_DIR = os.path.join(TESTS_DIR, 'scripts')
-#: Small committed inputs used by the tests.
-FIXTURES_DIR = os.path.join(TESTS_DIR, 'fixtures')
 #: Repository root (holds setup.py).
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(TESTS_DIR)))
 #: The ``nskinetics`` package folder.
@@ -109,9 +109,10 @@ def skip_unless_modules(*names):
                               reason=f'optional dependencies missing: {missing}')
 
 
-#: Optional dependencies a full biorefinery simulation needs.
+#: Optional dependencies a full biorefinery simulation needs (``contourplots``
+#: is not one: only the plots and the grid-sweep scripts import it).
 SIMULATION_DEPS = ('biosteam', 'thermosteam', 'biorefineries', 'hensmith',
-                   'contourplots', 'openpyxl')
+                   'openpyxl')
 
 
 def simulation_deps_missing():
@@ -203,8 +204,13 @@ def assert_ran_ok(proc, sentinel=None, tail=60):
     last = '\n'.join(out.splitlines()[-tail:])
     if proc.returncode != 0:
         if any(sig in out for sig in _NUMBA_CACHE_SIGNATURES):
-            pytest.fail('numba on-disk cache corruption (NOT a model regression): clear '
-                        'the *.nbc/*.nbi/*.pyc caches (see CLAUDE.md) and re-run.\n' + last)
+            pytest.fail('numba on-disk cache corruption (NOT a model regression). Delete '
+                        'the compiled caches (*.nbc, *.nbi, *.pyc) under this checkout '
+                        f'({REPO_ROOT}), the upstream clones on PYTHONPATH and the Python '
+                        f'environment ({sys.prefix}) -- e.g. run "del /s *.nbc", '
+                        '"del /s *.nbi" and "del /s *.pyc" in each folder from cmd.exe -- '
+                        'then re-run (the first run recompiles the kernels, so it is '
+                        'slower).\n' + last)
         pytest.fail(f'exit code {proc.returncode}\n{last}')
     if sentinel is not None and sentinel not in out:
         pytest.fail(f'sentinel {sentinel!r} not printed\n{last}')

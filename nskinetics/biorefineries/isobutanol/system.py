@@ -1424,8 +1424,9 @@ class SimulationConvergenceError(RuntimeError):
     read afterwards would describe no converged design. model_specification
     retries the sweeps once from where they stopped and then propagates it
     (sweeps / uncertainty -> NaN, kinetic BO -> FAIL row, smoke test ->
-    traceback). 2026-09-13; nskinetics report
-    docs/reports/fed-batch-spike-feed-reconciliation.md section 6.5."""
+    traceback). Added 2026-09-13 with the fermentor's spike-feed
+    reconciliation, so that hitting the sweep cap can no longer pass off an
+    unconverged flowsheet as a result."""
 
 def _spike_feed_residual():
     """V406's spike-feed residual, (implied - delivered)/|delivered| of the
@@ -1453,8 +1454,8 @@ def _simulation_drift_state():
     # ammonia/gluco_amylase flows that V406's specification sets one pass
     # later); ammonia itself; boiler fuel; BT801 utility cost, which
     # catches HXN1001 network flips that barely move process flows; and
-    # (2026-09-13, nskinetics report fed-batch-spike-feed-reconciliation.md
-    # section 6.5) V406's reactor-boundary spike-feed residual, so a sweep
+    # (2026-09-13, added with the fermentor's spike-feed reconciliation)
+    # V406's reactor-boundary spike-feed residual, so a sweep
     # whose reconciled feed/spike split is still moving cannot pass as
     # converged on the flow terms alone. Keep _DRIFT_DENOMINATOR_FLOORS in
     # step with this vector.
@@ -1547,9 +1548,8 @@ def load_simulate(target_conc=None,
         tolerated only while the last drift is <= max_final_drift (nearly
         converged; ``last_convergence['cap_hit']`` flags it, and the kinetic
         BO records n_sims_run / final_drift per trial); beyond it the call
-        raises :class:`SimulationConvergenceError` (2026-09-13; nskinetics
-        report fed-batch-spike-feed-reconciliation.md section 6.5).
-        Default 1e-2.
+        raises :class:`SimulationConvergenceError`, so a TEA is never read
+        off a flowsheet that is still moving. Default 1e-2.
     plot : bool, optional
         If True, call :func:`plot_kinetic_results` afterwards.
 
@@ -2109,8 +2109,10 @@ def optimize_stage_1_time_and_max_n_glu_spikes_for_MPSP(bounds=((5, 40), (0, 40)
     `model_kwargs`) and scores :func:`get_ethanol_MPSP`; a failed point
     scores ``inf``. The brute-force search stops a spike-cap sweep early
     once the realized spike count stops changing, and skips the remaining
-    stage-1 times once a stage-1 time's zero-cap MPSP gets worse. The
-    flowsheet is left simulated at the best point.
+    spike caps of any stage-1 time whose zero-cap MPSP is worse than that of
+    the last stage-1 time whose sweep ran (every stage-1 time is still
+    evaluated at the zero cap). The flowsheet is left simulated at the best
+    point.
 
     Parameters
     ----------

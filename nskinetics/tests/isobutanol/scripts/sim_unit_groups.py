@@ -5,8 +5,7 @@
 # This module is under the MIT open-source license. See
 # https://github.com/sarangbhagwat/nskinetics/blob/main/LICENSE
 # for license details.
-"""Sim-based regression of the unit-group restructure
-(docs/superpowers/isobutanol/specs/2026-09-19-facility-unit-groups-design.md): the
+"""Sim-based regression of the unit-group restructure (2026-09-19): the
 boiler / turbogenerator / cooling-utility groups, the four cost
 pseudo-groups, the 'Material cost' -> 'Operating cost' rename and the shared
 'alcohol recovery' + two purification groups. One load() (default

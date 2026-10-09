@@ -8,8 +8,11 @@
 """Corn-to-ethanol + isobutanol biorefinery built around NSKinetics' fed-batch
 fermentation model.
 
-Importing this package is **build-free**: it imports the modules below but
-builds and simulates nothing. Call :func:`load` once per process to build the
+Importing this package is **build-free**: it imports ``system``, ``models``,
+``scenarios``, ``utils`` and ``process_settings`` (and, through ``system``,
+``separations`` and ``enzyme_burden``) but builds and simulates nothing; the
+submodules marked "not imported here" below must be imported explicitly.
+Call :func:`load` once per process to build the
 flowsheet, simulate it to its baseline state and build the uncertainty
 ``Model``::
 
@@ -29,9 +32,13 @@ scenarios
     The scenario registry (workbooks, feeding strategies, smoke-test pins).
 separations, process_settings, utils
     Separation-train factories, cost/price-year settings, workbook generator.
-enzyme_burden, kinetic_optimization, sensitivity_analysis
-    Proteome-burden constraint, kinetic Bayesian optimization, Sobol'
-    sensitivity analysis (also loadable by file path without importing
+enzyme_burden
+    Proteome-burden constraint (imported through ``system``; also loadable
+    by file path without importing this package).
+kinetic_optimization, sensitivity_analysis
+    Kinetic Bayesian optimization and Sobol' sensitivity analysis; not
+    imported here (``from nskinetics.biorefineries.isobutanol import
+    kinetic_optimization``, or load them by file path without importing
     this package).
 smoke
     The 16 pinned smoke-test cases (``python -m

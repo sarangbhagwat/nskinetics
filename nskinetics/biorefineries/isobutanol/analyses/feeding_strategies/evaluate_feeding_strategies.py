@@ -49,10 +49,7 @@ from biosteam.utils import  colors
 from  matplotlib.colors import LinearSegmentedColormap
 import pandas as pd
 
-from math import floor, ceil
 from datetime import datetime
-
-from math import log
 
 import os
 
@@ -320,14 +317,6 @@ def JBEI_UCB_colormap(N_levels=90, reverse=False):
     if reverse: cmap_colors.reverse()
     return LinearSegmentedColormap.from_list('CABBI', cmap_colors, N_levels)
 
-from nskinetics.biorefineries.isobutanol.sweep_utils import (
-    CABBI_green_colormap)
-
-#%% Tickmark utils (unused)
-
-from nskinetics.biorefineries.isobutanol.sweep_utils import (
-    tickmarks_from_data, tickmarks)
-
 #%%
 minute = '0' + str(dateTimeObj.minute) if len(str(dateTimeObj.minute))==1 else str(dateTimeObj.minute)
 # file_to_save = f'_{steps}_steps_'+'etoh_fbs_%s.%s.%s-%s.%s'%(dateTimeObj.year, dateTimeObj.month, dateTimeObj.day, dateTimeObj.hour, minute)
@@ -495,15 +484,6 @@ print(f'Max HXN Q bal error was {round(max_HXN_qbal_percent_error, 3)} %.')
 #         except:
 #             pass
      
-#%% More plot utils
-
-from math import floor, log
-get_median = np.median
-np_round = np.round
-
-from nskinetics.biorefineries.isobutanol.sweep_utils import (
-    get_OOM, my_round, get_contour_info_from_metric_data)
-
 #%% More plot stuff
 
 fps = 3

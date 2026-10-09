@@ -7,19 +7,28 @@
 # for license details.
 """Figures of the isobutanol biorefinery analyses.
 
-Importing this package imports nothing heavy: the two plotting libraries
-(:mod:`.spearman_matrix` and :mod:`.trajectory_contourplot`, which need the
-optional ``contourplots`` package) are imported lazily, on first access of
-one of their public names or of the submodule itself, e.g.::
+The two plotting libraries (:mod:`.spearman_matrix` and
+:mod:`.trajectory_contourplot`, which need the optional ``contourplots``
+package) are imported lazily, on first access of one of their public names or
+of the submodule itself, so the biorefinery package never pulls in
+``contourplots``. Importing anything under this package is NOT light,
+though: Python first imports the parent ``nskinetics.biorefineries.isobutanol``
+package, whose ``system`` module imports BioSTEAM, ``hensmith`` and the
+upstream ``biorefineries`` package (building and simulating nothing), e.g.::
 
     from nskinetics.biorefineries.isobutanol.plots.spearman_matrix import plot_spearman_matrix
+
+Beside a running simulation, load the library file by path instead
+(``paths.load_by_path('spearman_matrix', <this folder>/spearman_matrix.py)``).
 
 Every other file in this folder is a stand-alone figure script. Run it as a
 file (``python <path>/plot_<name>.py``): the scripts load their siblings,
 ``paths.py``, ``kinetic_optimization.py`` and ``enzyme_burden.py`` BY FILE
-PATH, so they never import ``nskinetics``, BioSTEAM or the biorefinery and are
-safe to run beside a simulation. Default figure outputs go to
-``paths.publication_dir(<theme>)``.
+PATH, so they do not import ``nskinetics``, BioSTEAM or the biorefinery and
+are safe to run beside a simulation. The exception is
+``plot_feeding_strategy_baseline_A.py``, whose stage 1 builds and simulates
+scenario A when its trajectory cache is missing (or with ``--resimulate``).
+Default figure outputs go to ``paths.publication_dir(<theme>)``.
 """
 import importlib
 

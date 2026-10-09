@@ -30,9 +30,10 @@ allocation and writes JSON, then invokes Node (the voronoi-treemaps conda
 env's, see resolve_node) on plots/voronoi/render_treemap.mjs (Stage 2) to
 render PNG/SVG/PDF. Use --no-render to write only the JSON. Outputs go to
 --out-dir, default paths.publication_dir('Optimization-figures'), as
-<stem>_<stamp>.{json,png,pdf}; the default stem is 'kinBO_proteome_voronoi'
-without --set (a campaign-derived stem there would exceed Windows' MAX_PATH),
-else '<first campaign>_proteome_voronoi'.
+<stem>_<stamp>.{json,png,pdf}; the default stem is 'kinBO_proteome_voronoi',
+with or without --set (a campaign-derived stem there would exceed Windows'
+MAX_PATH, so name a --set figure with --stem). main() checks the output path
+against MAX_PATH_CHARS before any work.
 
 Sim-safe: plot_kin_opt_parameter_sets.py (ps) -- and through it ko and eb
 -- are loaded by file path (no biosteam import, no load()); campaign CSVs
@@ -41,7 +42,8 @@ flight. Run:
 
     python plots/plot_proteome_voronoi.py \
         --set "Best IRR" <campaign> best \
-        --set "Best isobutanol titer" <campaign> "best:IBO titer"
+        --set "Best isobutanol titer" <campaign> "best:IBO titer" \
+        --stem <short name>
 
 With no --set arguments it plots the parameter-sets figure's pinned default
 campaigns (ps.DEFAULT_CAMPAIGNS: the seven seed-350 metabolic_split_12d
@@ -73,11 +75,12 @@ paths = _load_paths()
 PKG_DIR = paths.PACKAGE_DIR
 RESULTS_DIR = paths.results_dir()                          # matches ps
 OUTPUT_DIR = paths.publication_dir('Optimization-figures')
-DEFAULT_STEM = 'kinBO_proteome_voronoi'   # the no---set default figure
+DEFAULT_STEM = 'kinBO_proteome_voronoi'   # default stem, with or without --set
 VORONOI_DIR = os.path.join(PLOTS_DIR, 'voronoi')
 # Node of the voronoi-treemaps conda env, a sibling of the running env
-# (<envs>/IBO_2026/python.exe -> <envs>/voronoi-treemaps/node.exe; bin/node on
-# POSIX); override with --node or $VORONOI_NODE (see resolve_node)
+# (<root>/envs/IBO_2026 -> <root>/envs/voronoi-treemaps/node.exe, bin/node on
+# POSIX; from the base env <root>, <root>/envs/voronoi-treemaps); override
+# with --node or $VORONOI_NODE (see resolve_node)
 VORONOI_ENV = 'voronoi-treemaps'
 RENDER_SCRIPT = os.path.join(VORONOI_DIR, 'render_treemap.mjs')
 
@@ -313,8 +316,7 @@ def build_parser():
                     help='drop the scenario-A baseline tile')
     ap.add_argument('--out-dir', default=OUTPUT_DIR)
     ap.add_argument('--stem', default=None,
-                    help=f'output file stem (default: {DEFAULT_STEM!r} without '
-                         '--set, else <first campaign>_proteome_voronoi)')
+                    help=f'output file stem (default: {DEFAULT_STEM!r})')
     ap.add_argument('--cols', type=int, default=None,
                     help='grid columns (default: chosen from the tile count)')
     ap.add_argument('--scale', type=float, default=2.0,
@@ -330,8 +332,16 @@ def build_parser():
 def default_node_candidates():
     """Node executables tried when neither --node nor $VORONOI_NODE is set:
     the voronoi-treemaps conda env next to the running interpreter's env, then
-    `node` on PATH."""
-    envs = os.path.dirname(os.path.dirname(os.path.abspath(sys.executable)))
+    `node` on PATH.
+
+    The env folder comes from ``sys.prefix`` (the env root on every
+    platform; ``sys.executable`` sits in ``bin/`` on POSIX): a named env is
+    ``<root>/envs/<name>``, so its siblings are in ``dirname(sys.prefix)``,
+    while the base env IS ``<root>``, whose envs are in ``<root>/envs``."""
+    prefix = os.path.abspath(sys.prefix)
+    parent = os.path.dirname(prefix)
+    envs = (parent if os.path.basename(parent).lower() == 'envs'
+            else os.path.join(prefix, 'envs'))
     cands = [os.path.join(envs, VORONOI_ENV, 'node.exe'),
              os.path.join(envs, VORONOI_ENV, 'bin', 'node')]
     on_path = shutil.which('node')
@@ -378,12 +388,14 @@ def main(argv=None):
     stems = [os.path.basename(c) for _, c, _ in specs]
     if stems and all('metabolic_split_12d' in st for st in stems):
         ps.use_split_12d_layout()
+    # the output path first, so an over-long one fails before any work
+    # (the .json is the longest of the .json / .png / .pdf outputs)
+    stem = args.stem or DEFAULT_STEM
+    stamp = datetime.now().strftime('%Y.%m.%d-%H.%M')
+    ps.check_output_paths([os.path.join(args.out_dir, f'{stem}_{stamp}')],
+                          ext='.json')
     sets, _band, band_campaign = ps.build_sets(specs, include_baseline)
     doc = build_document(sets, band_campaign)
-    stem = args.stem or (DEFAULT_STEM if not args.sets else
-                         f'{os.path.basename(specs[0][1]).replace(".csv", "")}'
-                         '_proteome_voronoi')
-    stamp = datetime.now().strftime('%Y.%m.%d-%H.%M')
     json_path = write_document(doc, args.out_dir, stem, stamp)
     console_report(doc)
     print(f'wrote {json_path}')

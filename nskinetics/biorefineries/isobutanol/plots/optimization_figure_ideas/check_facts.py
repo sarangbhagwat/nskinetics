@@ -15,8 +15,8 @@ palette (`_style.cvd_check()`) and confirm no simulation package was
 imported. Exit 0 = all checks passed,
 1 = any mismatch.
 
-When the campaign / Sobol' CSVs are absent (only
-analyses/results/publication ships with the repository) the facts are
+When the campaign / Sobol' CSVs are absent (no analysis results ship with
+the package or the repository) the facts are
 SKIPPED with a message naming the missing inputs and the analyses that write
 them; the data-independent checks (data scope, literal scan, palette,
 sim-safety of loading pk / ko / eb) still run, and the exit code is 0 if they

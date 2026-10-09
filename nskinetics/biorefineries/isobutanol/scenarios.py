@@ -11,10 +11,13 @@ truth for every scenario's baseline kinetics + uncertainty distributions
 (from its parameter-distributions workbook), baseline feeding strategy and
 smoke-test pins.
 
-A "scenario" = (workbook: baseline kinetics + distributions)
-             + (feeding strategy: max_n_spikes, threshold_conc, target_conc)
-             + (expected pins for the smoke tests)
-             + (enzyme-burden policy).
+A "scenario" bundles:
+
+- the workbook (baseline kinetics + uncertainty distributions);
+- the feeding strategy (``max_n_spikes``, ``threshold_conc``,
+  ``target_conc``);
+- the expected pins for the smoke tests;
+- the enzyme-burden policy.
 
 :func:`load_scenario` applies a scenario to the ALREADY-BUILT model (call
 ``nskinetics.biorefineries.isobutanol.load(...)`` first, choosing the
@@ -63,7 +66,12 @@ class ScenarioSpec:
         For opt_* scenarios, the ``kinetic_optimization.OBJECTIVE_REGISTRY``
         key of the campaign objective; None otherwise.
     objective_value : float, optional
-        The recorded best-trial value of that objective.
+        The live-model reproduction of the campaign's best-trial value of
+        that objective, which :func:`assert_objective_reproduced` checks. It
+        equals the recorded trial value for the fermentation metrics; for the
+        TEA-based PI of the two PI scenarios it differs from the recorded
+        value (the campaigns ran under an older hensmith export; see the
+        opt_* comment in :data:`SCENARIOS`).
     objective_tol : float, optional
         Relative tolerance of :func:`assert_objective_reproduced`. Default 0.02.
     spike_conc, stage_1_max_x : float, optional
@@ -391,10 +399,10 @@ def assert_MPSPs_stable(reference, current, sim_number, rel_tol=5e-3):
 #: Pin on the fermentor's reactor-boundary spike-feed residual, |(implied -
 #: delivered)/delivered| of the spiked species (nskinetics
 #: NSKBatchReactor.spike_feed_residual): the reconciler's own closure
-#: tolerance (spike_feed_reconciliation_tol = 1e-3). nskinetics report
-#: docs/reports/fed-batch-spike-feed-reconciliation.md section 6.4.4: a
-#: flowsheet-level yield ceiling (ethanol/glucose <= 0.511) lets a 20 %
-#: phantom feed through at a 0.40 g/g yield; a 0.1 % residual pin does not.
+#: tolerance (spike_feed_reconciliation_tol = 1e-3). It is a residual pin
+#: because a flowsheet-level yield ceiling (ethanol/glucose <= 0.511) would
+#: let a 20 % phantom feed through at a 0.40 g/g yield; a 0.1 % residual pin
+#: does not.
 #: Baseline values: A -1.6e-4 (7 spikes), opt_* within +-4e-5 (all fed
 #: batch, 1-15 spikes), the batch B exactly 0.
 SPIKE_FEED_RESIDUAL_TOL = 1e-3

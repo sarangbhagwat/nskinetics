@@ -16,8 +16,9 @@ tests load their dependencies by path precisely so that ``nskinetics``,
 Every analysis output goes under one flat results root,
 ``<package>/analyses/results`` by default. Set the environment variable
 ``NSKINETICS_IBO_RESULTS_DIR`` to put it elsewhere, e.g. to reuse the results
-of an earlier run. Keep that root short: kinetic-optimization file names are
-long and Windows paths are limited to 260 characters.
+of an earlier run (a relative value is made absolute against the working
+directory at the time of the call). Keep that root short: kinetic-optimization
+file names are long and Windows paths are limited to 260 characters.
 """
 import importlib.util
 import os
@@ -72,9 +73,12 @@ def results_dir(*parts, create=False):
     -------
     str
         ``<results root>/<parts...>``, where the root is
-        ``$NSKINETICS_IBO_RESULTS_DIR`` if set, else :data:`DEFAULT_RESULTS_DIR`.
+        ``$NSKINETICS_IBO_RESULTS_DIR`` if set, else :data:`DEFAULT_RESULTS_DIR`,
+        always absolute (a relative environment value is resolved against the
+        current working directory), so the path stays valid after a script
+        changes directory.
     """
-    root = os.environ.get(RESULTS_DIR_ENV) or DEFAULT_RESULTS_DIR
+    root = os.path.abspath(os.environ.get(RESULTS_DIR_ENV) or DEFAULT_RESULTS_DIR)
     path = os.path.join(root, *parts)
     if create:
         os.makedirs(path, exist_ok=True)
@@ -116,9 +120,13 @@ def workbook_path(scenario):
 def require_input(path, produced_by):
     """Return ``path`` if it exists, else raise an informative FileNotFoundError.
 
-    Only ``analyses/results/publication`` ships with the repository; every
-    other analysis output must be regenerated (or ``NSKINETICS_IBO_RESULTS_DIR``
-    pointed at an existing results folder) before scripts that read it can run.
+    No analysis results ship with the package or the repository (the whole
+    ``analyses/results`` folder is local only). Regenerate the input, or point
+    ``NSKINETICS_IBO_RESULTS_DIR`` at an existing results folder that holds
+    it, before a script that reads it can run. The error message suggests
+    that variable, which moves the whole results root, so this check suits
+    inputs read from under the results root; a script whose input is an
+    explicit path argument should raise its own error instead.
 
     Parameters
     ----------
@@ -135,8 +143,8 @@ def require_input(path, produced_by):
     if not os.path.exists(path):
         raise FileNotFoundError(
             f'missing input {path!r}: it is produced by {produced_by}. Run that '
-            f'analysis first, or set {RESULTS_DIR_ENV} to a results folder that '
-            f'already contains it.')
+            f'analysis first, or set {RESULTS_DIR_ENV} to move the whole results '
+            f'root to a folder that already contains it.')
     return path
 
 

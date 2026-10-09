@@ -111,9 +111,8 @@ PARAMETER_LABELS = {
     'Federal corporate tax rate': 'Corporate income tax rate',
 }
 SCALE_PARAMETERS = ('Plant annual operating days', 'Feedstock capacity')
-# short descriptions of the kinetic parameters (roles as in
-# docs/reports/kinetic-parameters-scenario-A.md); unlisted ones show the
-# symbol alone
+# short descriptions of the kinetic parameters' roles in the fermentation
+# model; unlisted ones show the symbol alone
 KINETIC_DESCRIPTIONS = {
     'k_1l': 'Low-affinity glucose uptake',
     'k_1e': 'Acetaldehyde-enhanced glycolysis',

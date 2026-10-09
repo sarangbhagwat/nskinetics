@@ -5,8 +5,7 @@
 # This module is under the MIT open-source license. See
 # https://github.com/sarangbhagwat/nskinetics/blob/main/LICENSE
 # for license details.
-"""Sim-based regression of the DDGS-dryer acid routing
-(docs/superpowers/isobutanol/specs/2026-09-12-ddgs-dryer-acid-split-design.md): the
+"""Sim-based regression of the DDGS-dryer acid routing (2026-09-12): the
 broth acids that reach the DDGS dryer D610 (system.DDGS_DRYER_OVERHEAD_ACIDS,
 acetic acid today) are split 1.0 to the dryer exhaust and burned in the
 thermal oxidizer X611, like ethanol, instead of being sold as DDGS mass.

@@ -6,8 +6,8 @@
 # https://github.com/sarangbhagwat/nskinetics/blob/main/LICENSE
 # for license details.
 """Stage 2 of the TEA-breakdown figure of the metabolic_split_12d campaign
-optima (spec docs/superpowers/specs/2026-09-24-tea-breakdowns-split12d-design.md;
-stage 1, which simulates, is analyses/tea_breakdowns/collect_tea_breakdowns_split12d.py).
+optima (stage 1, which simulates, is
+analyses/tea_breakdowns/collect_tea_breakdowns_split12d.py).
 
 A 3x3 grid of cost & utility breakdowns, one panel per scenario (LAYOUT):
 the scenario-A baseline, the uninformed and TRY-informed (relay) profitability campaigns,
@@ -19,9 +19,8 @@ the metric's POSITIVE total, so credits (the heat-exchanger-network savings,
 sold excess electricity) sit below zero; stage 1's two natural-gas groups
 (steam generation, product drying) are drawn and tabulated as one 'natural
 gas' category (MERGED_GROUPS). The operating-cost bar also carries
-the sales revenue of the four products (ethanol, isobutanol, DDGS, corn oil;
-spec docs/superpowers/specs/2026-09-24-tea-breakdowns-revenue-design.md) as
-credits under the unit groups, on the same scale: a revenue stack deeper than
+the sales revenue of the four products (ethanol, isobutanol, DDGS, corn oil)
+as credits under the unit groups, on the same scale: a revenue stack deeper than
 -100 % means sales exceed the operating cost. Each bar's NET unit-group total
 -- operating cost converted to MM$/y, i.e. the AOC -- is printed above it,
 and the total revenue [MM$/y] under the operating-cost bar's revenue stack.

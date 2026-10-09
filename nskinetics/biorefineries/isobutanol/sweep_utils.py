@@ -8,10 +8,13 @@
 """Plot helpers shared by the 2-D grid sweeps.
 
 The contour-plot colormaps, tick helpers and the colorbar-level heuristic
-used by ``analyses/kinetic_sweeps/evaluate_EtOH_*.py`` and
-``analyses/feeding_strategies/evaluate_feeding_strategies.py``. The function
-bodies are copied verbatim from those scripts (where they were duplicated),
-quirks included, so the figures do not change; in particular
+that ``analyses/kinetic_sweeps/evaluate_EtOH_*.py`` and
+``analyses/feeding_strategies/evaluate_feeding_strategies.py`` duplicated.
+Only :func:`JBEI_UCB_colormap` is called live, by the kinetic sweeps
+(``evaluate_feeding_strategies.py`` keeps its own variant of it); the rest
+back those scripts' commented-out contour-level and tick cells. The function
+bodies are copied verbatim from those scripts, quirks included, so the
+figures do not change; in particular
 :func:`get_contour_info_from_metric_data` rounds its ``median + 0.2 stdev``
 tick with :func:`my_round`'s default base (5), not ``w_ticks_round_to_base``
 like its neighbours.

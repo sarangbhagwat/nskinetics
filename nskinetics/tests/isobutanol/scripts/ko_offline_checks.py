@@ -113,8 +113,8 @@ assert ko.OBJECTIVE_REGISTRY['EtOH MPSP']['direction'] == 'minimize'
 assert ko.OBJECTIVE_REGISTRY['TCI']['direction'] == 'minimize'
 assert ko.OBJECTIVE_REGISTRY['IBO yield']['level'] == 'kinetic'
 assert ko.OBJECTIVE_REGISTRY['IRR']['level'] == 'system'
-# 'PI' (profitability index, NPV at the fixed hurdle IRR / TCI; 2026-09-12,
-# docs/reports/profitability-index-objective.md): maximized, system-level,
+# 'PI' (profitability index, NPV at the fixed hurdle IRR / TCI; 2026-09-12):
+# maximized, system-level,
 # dimensionless, DA energy scale like IRR's.
 assert ko.OBJECTIVE_REGISTRY['PI']['direction'] == 'maximize'
 assert ko.OBJECTIVE_REGISTRY['PI']['level'] == 'system'
@@ -2153,8 +2153,7 @@ file31 = open(os.path.join(KIN_OPT_DIR,
 assert "'--max-empty-attempts'" in file31 and 'max_empty_attempts=args.max_empty_attempts' in file31
 PASS('empty-attempt abort rule: first-draw hang resumes (sidecar present), never-simulated aborts, streak cap; supervisor streak + flag')
 
-#%% 32. feasibility-aware sampling helpers (2026-09-06, spec
-# docs/superpowers/specs/2026-09-06-feasible-tpe-sampler-design.md):
+#%% 32. feasibility-aware sampling helpers (2026-09-06):
 # search_space_distributions reproduces the distributions a real suggest_*
 # trial records; draw_uniform_feasible is uniform in optuna's internal repr
 # (log-uniform for log floats, integer-uniform for ints), in bounds, typed,
@@ -6453,7 +6452,7 @@ PASS('driver: group_references setdefault-ed from the preset and forwarded throu
      'referenced groups marked in the groups print, runner example + docstrings; supervisor example')
 
 #%% 90. Scenario-A antimony rate baselines (2026-09-16): read by file path,
-# the ONLY fitted source valid for anchoring (CLAUDE.md anchoring rule). Drift
+# the ONLY fitted source valid for anchoring (the anchoring rule). Drift
 # guard on the five isobutanol-pathway capacity rates.
 assert {'antimony_file_path', 'antimony_rate_baselines',
         'SCENARIO_A_ANCHORED_RATE_MULTIPLIER_BOUNDS',

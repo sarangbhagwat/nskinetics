@@ -14,7 +14,7 @@ BY FILE PATH (never through the package, so the biorefinery and its
 simulation stack are never imported), and ``SCENARIO_B_EHRLICH`` is read from
 nskinetics' ``models/s_cerevisiae_ferm_fb_inhib_mod_ibo/scenarios.py`` by file
 path. The no-heavy-import guarantee is probed in a fresh interpreter
-(:func:`test_scenario_b_ehrlich_by_path`), since this pytest process has
+(:func:`test_enzyme_burden_import_is_light`), since this pytest process has
 already imported nskinetics.
 
 Converted from the script ``analyses/test_enzyme_burden_offline.py``; each

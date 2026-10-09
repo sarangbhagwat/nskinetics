@@ -41,13 +41,9 @@ get_rounded_str = contourplots.utils.get_rounded_str
 
 from biosteam.utils import  colors
 
-from  matplotlib.colors import LinearSegmentedColormap
 import pandas as pd
 
-from math import floor, ceil
 from datetime import datetime
-
-from math import log
 
 import os
 
@@ -254,13 +250,7 @@ markercolor = (*colors.CABBI_orange.shade(5).RGBn, 1)
 edgecolor = (*colors.CABBI_black.RGBn, 1)
 
 
-from nskinetics.biorefineries.isobutanol.sweep_utils import (
-    JBEI_UCB_colormap, CABBI_green_colormap)
-
-#%% Tickmark utils (unused)
-
-from nskinetics.biorefineries.isobutanol.sweep_utils import (
-    tickmarks_from_data, tickmarks)
+from nskinetics.biorefineries.isobutanol.sweep_utils import JBEI_UCB_colormap
 
 #%%
 minute = '0' + str(dateTimeObj.minute) if len(str(dateTimeObj.minute))==1 else str(dateTimeObj.minute)
@@ -380,15 +370,6 @@ print(f'Max HXN Q bal error was {round(max_HXN_qbal_percent_error, 3)} %.')
 #%% 
 
 chdir(isobutanol_results_filepath)
-
-#%% More plot utils
-
-from math import floor, log
-get_median = np.median
-np_round = np.round
-
-from nskinetics.biorefineries.isobutanol.sweep_utils import (
-    get_OOM, my_round, get_contour_info_from_metric_data)
 
 #%% More plot stuff
 

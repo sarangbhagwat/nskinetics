@@ -290,8 +290,8 @@ _ISO = 'nskinetics.biorefineries.isobutanol'
 #: module of that name and its submodules.
 FORBIDDEN_MODULES = ('biorefineries', 'hensmith', 'optuna', 'biosteam',
                      'thermosteam', f'{_ISO}.system', f'{_ISO}.separations',
-                     f'{_ISO}.units', f'{_ISO}.process_settings',
-                     f'{_ISO}.scenarios', f'{_ISO}.models', f'{_ISO}.smoke')
+                     f'{_ISO}.process_settings', f'{_ISO}.scenarios',
+                     f'{_ISO}.models', f'{_ISO}.smoke')
 
 
 def _forbidden(names):
@@ -398,7 +398,7 @@ def add_derived(df):
 def missing_inputs():
     """[(path, produced_by)] of the campaign trajectory CSVs, the relay
     manifest and the Sobol' trajectory CSVs that compute_facts() reads but
-    that are absent (only analyses/results/publication ships with the
+    that are absent (no analysis results ship with the package or the
     repository); empty when every input is present."""
     need = [(c.csv, CAMPAIGN_PRODUCED_BY) for c in CAMPAIGNS.values()]
     need += [(c.manifest_csv, CAMPAIGN_PRODUCED_BY)
