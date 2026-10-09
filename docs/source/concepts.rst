@@ -96,13 +96,15 @@ Process section factories
 Beyond single units, ``nskinetics.processes`` ships whole flowsheet sections
 as biosteam system factories.
 :obj:`~nskinetics.processes.create_sugar_prep_and_fermentation_system`
-builds the isobutanol biorefinery's sugar-solution preparation and
-fermentation section — a splitter, two evaporator/dilution/heat-exchange
-conditioning trains (initial feed and spike feed), the
+builds the sugar-solution preparation and fermentation section of the
+:doc:`isobutanol biorefinery case study <case_studies/isobutanol/index>` — a
+splitter, two evaporator/dilution/heat-exchange conditioning trains (initial
+feed and spike feed), the
 :class:`~nskinetics.units.FermentationSaccharomycesEthanolIsobutanol`
 fermentor, and its aeration loop — with defaults that match the
-configuration the biorefinery itself uses (its ``system.py`` now builds
-this section by calling this factory). The factory
+configuration the biorefinery itself uses (its flowsheet,
+``nskinetics.biorefineries.isobutanol.system``, builds this section by
+calling this factory). The factory
 constructs a :class:`~nskinetics.units.FedBatchStrategySpecification` from
 its own units and attaches it to the fermentor
 (``V406.fed_batch_strategy_specification``, short alias ``V406.fbs_spec``);

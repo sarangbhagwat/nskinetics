@@ -85,7 +85,7 @@ Simulating through ``km`` and recording ``time``, ``s``, and ``flag``:
    print(res)
    km.plot_simulation_results(labels=['s'], flag_off=5)
 
-prints, in the ``HP_2024`` environment:
+prints:
 
 .. code-block:: text
 

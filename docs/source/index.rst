@@ -9,6 +9,7 @@
 
    tutorial/index
    concepts
+   case_studies/index
    API/api
    contributing/index
 
@@ -61,8 +62,11 @@ spike-feed conditioning trains (multi-effect evaporator, pumps, dilution-water
 mixer, heat exchanger), a
 :class:`~nskinetics.units.FermentationSaccharomycesEthanolIsobutanol` fermentor
 driven by the shipped *S. cerevisiae* kinetic model, and a compressed-air
-aeration loop. The interactive demo below runs it end to end: build, simulate,
-change the fed-batch strategy, and inspect the reactor.
+aeration loop. The complete biorefinery built around this section ships with
+NSKinetics as the :doc:`isobutanol biorefinery case study
+<case_studies/isobutanol/index>`. The interactive demo below runs the section
+end to end: build, simulate, change the fed-batch strategy, and inspect the
+reactor.
 
 .. raw:: html
 
@@ -126,6 +130,25 @@ bridge behind ``V406``.
        The ideas behind NSKinetics
 
 
+    .. grid-item-card:: Case Studies
+       :text-align: center
+       :link: case_studies/index
+       :link-type: doc
+       :padding: 1
+
+       .. image:: _static/images/icons/doe_dark.png
+          :height: 100
+          :class: only-dark
+          :align: center
+
+       .. image:: _static/images/icons/doe_light.png
+          :height: 100
+          :class: only-light
+          :align: center
+
+       Kinetics to TEA in a full biorefinery
+
+
     .. grid-item-card:: API Reference
        :text-align: center
        :link: API/api
@@ -158,7 +181,7 @@ To get the git version, use:
 
 .. code-block:: bash
 
-    $ git clone git://github.com/sarangbhagwat/nskinetics
+    $ git clone https://github.com/sarangbhagwat/nskinetics
 
 Or download directly from the `GitHub page <https://github.com/sarangbhagwat/nskinetics>`__.
 

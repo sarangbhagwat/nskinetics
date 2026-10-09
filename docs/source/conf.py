@@ -68,9 +68,17 @@ autodoc_default_options = {
 # fallback that mocks only modules genuinely missing; it is inert when
 # everything is installed. numpy/pandas are cheap wheels used at import
 # time (e.g. np.inf default args), so they are never mocked.
+# The second group are the optional dependencies of the isobutanol
+# biorefinery case study (the ``isobutanol`` extra) and of the shipped
+# model; Read the Docs does not install them, so they are mocked there and
+# the case-study API page (API/biorefineries.rst) can still be autodoc'd.
+# Importing nskinetics.biorefineries.isobutanol is build-free; never call
+# its load() from this file or from a docs page.
 import importlib.util
 autodoc_mock_imports = [
-    m for m in ('tellurium', 'biosteam', 'thermosteam', 'numba')
+    m for m in ('tellurium', 'biosteam', 'thermosteam', 'numba',
+                'biorefineries', 'hensmith', 'contourplots', 'optuna',
+                'SALib', 'openpyxl', 'sklearn', 'simplesbml', 'torch')
     if importlib.util.find_spec(m) is None
 ]
 

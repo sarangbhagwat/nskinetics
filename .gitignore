@@ -84,6 +84,9 @@ nskinetics/biorefineries/isobutanol/plots/voronoi/node_modules/
 # Binary inputs the package reads at run time ARE tracked (*.xlsx is ignored
 # above; the negation never matches the '~$' Excel lock files).
 !nskinetics/biorefineries/isobutanol/data/parameter_distributions/parameter-distributions_*.xlsx
+# The case-study docs figures ARE tracked (*.png is ignored above); Read the
+# Docs builds from git, so an untracked figure would be missing there.
+!docs/source/_static/images/isobutanol/**/*.png
 
 # Claude Code local working files #
 ###################################

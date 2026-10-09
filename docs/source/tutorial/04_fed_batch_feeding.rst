@@ -118,7 +118,7 @@ fed in. ``s_glu`` will cross the ``threshold`` of 10 g/L repeatedly over
 ``'n_max'``/``'n_spk'`` here, not Python numbers — ``FeedSpike`` folds them
 into the trigger expression as text, so a plain float works equally well.
 
-Running this in the ``HP_2024`` environment prints:
+Running this prints:
 
 .. code-block:: text
 

@@ -52,3 +52,119 @@ p.landing-lede {
 #non-steady-state-kinetics-simulation > h1 {
   text-align: center;
 }
+
+/* Case-study figures (``:class: pub-figure``) are matplotlib PNGs drawn on
+   white. In dark mode, sit them on a light rounded card rather than leaving
+   a raw white box flush against the dark page. Must follow the
+   ``img:not(.only-dark)`` rule above, which has the same specificity.
+   ``filter: none`` overrides the theme's dark-mode image dimming
+   (``img:not(.only-dark,.dark-light)`` gets brightness(.8) contrast(1.2),
+   which outranks the plain ``img`` rule at the top of this file): it would
+   grey the card and shift the figures' colour scales. */
+html[data-theme="dark"] .bd-content img.pub-figure,
+html[data-theme="dark"] .bd-content .ibo-case-card img.sd-card-img-top {
+  background: #fff;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  filter: none;
+}
+
+/* Each case-study figure links to its full-resolution PNG (``:target:``),
+   since dense panels are hard to read at the text-column width. */
+.bd-article a.image-reference img.pub-figure {
+  cursor: zoom-in;
+}
+
+/* The case-study card on the Case Studies landing page: keep its figure
+   to a readable height and centre it on white in both themes. */
+.ibo-case-card img.sd-card-img-top {
+  max-height: 24rem;
+  object-fit: contain;
+  background: #fff;
+}
+
+/* Stat cards on the case-study pages (``grid-item-card`` with
+   ``:class-card: ibo-stat``): the card title is the number, the body says
+   what it measures, the optional footer names its source. */
+.sd-card.ibo-stat .sd-card-title {
+  font-size: 1.45rem;
+  line-height: 1.25;
+  color: var(--pst-color-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Card footers (``+++``; used only by the case-study cards) carry the
+   source or scope line, so set them small and muted like the stat cards'. */
+.bd-article .sd-card .sd-card-footer {
+  font-size: 0.85rem;
+  color: var(--pst-color-text-muted);
+}
+
+.sd-card.ibo-stat .sd-card-body {
+  font-size: 0.92rem;
+}
+
+.sd-card.ibo-stat .sd-card-footer {
+  font-size: 0.8rem;
+  color: var(--pst-color-text-muted);
+}
+
+/* Right-align the numeric MPSP columns of the scenario table. */
+table.ibo-scenarios td:nth-child(4),
+table.ibo-scenarios td:nth-child(5) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Inside tables and API field lists, long literals (script paths, study
+   names, returned file paths) wrap rather than forcing the table or field
+   list wider than the page. Outside them the same is opt-in via
+   ``.. rst-class:: ibo-long-literals`` on a list or paragraph whose literals
+   are longer than the text column (e.g. full study stems), so ordinary
+   inline literals keep Sphinx's no-break rendering. */
+.bd-article table code.literal span.pre,
+.bd-article dl.field-list code.literal span.pre,
+.bd-article .ibo-long-literals code.literal span.pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* API signatures: a fully qualified name such as
+   ``nskinetics.biorefineries.isobutanol.kinetic_optimization.parameter_distributions_workbook(``
+   has no break point before its first parameter. Let the module prefix
+   break (in practice right after its final dot) instead of the signature
+   running under the ``[source]`` link and past the content column. */
+.bd-article dt.sig .sig-prename span.pre {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+/* Narrow screens: let long inline literals (module paths such as
+   ``nskinetics.biorefineries.isobutanol.scenarios.SCENARIOS``), API
+   signatures and long section titles wrap instead of running past the
+   content column, and let wide display math scroll inside its own box. */
+@media (max-width: 767.98px) {
+  .bd-article span.pre {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  .bd-article h2,
+  .bd-article h3 {
+    overflow-wrap: anywhere;
+  }
+
+  /* API field lists are one-column grids whose track would otherwise grow
+     to the longest unbreakable entry (e.g. a bold exception name under
+     "Raises"), pushing every row past the column. */
+  .bd-article dl.field-list > dt,
+  .bd-article dl.field-list > dd {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .bd-article mjx-container[display="true"] {
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+}

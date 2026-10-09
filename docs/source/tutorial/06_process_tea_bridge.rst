@@ -135,8 +135,7 @@ adds no costs itself, so the only effect is a benign, expected
    reactor.show(N=100)
    print(reactor.results())
 
-Running the full snippet above end-to-end in the ``HP_2024`` environment
-prints:
+Running the full snippet above end to end prints:
 
 .. code-block:: text
 
@@ -243,7 +242,8 @@ spike cap if the requested count cannot be reached; and post-simulation
 validators that raise on negative concentrations or yields exceeding the
 theoretical maximum. ``FermentationSaccharomycesEthanolIsobutanol`` is what actually drives the
 *S. cerevisiae* fed-batch model from :doc:`05_real_model` inside a process
-flowsheet: the downstream ``isobutanol`` biorefinery (a real biorefinery
+flowsheet: the isobutanol biorefinery that ships with NSKinetics as a
+case study (``nskinetics.biorefineries.isobutanol``, a full corn biorefinery
 model built on `BioSTEAM <https://biosteam.readthedocs.io/>`_) instantiates
 one ``FermentationSaccharomycesEthanolIsobutanol`` unit wired to that exact kinetic model to drive its
 corn-to-ethanol(-and-isobutanol) fermentation step, feeding sized equipment
@@ -258,3 +258,20 @@ specification to the fermentor as ``V406.fbs_spec``, and can optionally
 activate its own chemical set (``set_thermo=True``). The
 :doc:`quickstart <01_quickstart>` walks through it end to end, and
 :doc:`the API reference </API/processes>` documents every argument.
+
+The next step is the whole biorefinery. With the case study's optional
+dependencies installed (``pip install "nskinetics[isobutanol]"``), one call
+builds the corn-to-ethanol + isobutanol flowsheet around that section and
+simulates its baseline, and a registered scenario plus a TEA solve give the
+plant's selling prices and rate of return:
+
+.. code-block:: python
+
+   from nskinetics.biorefineries import isobutanol
+
+   isobutanol.load()                        # build + baseline simulation
+   bundle = isobutanol.load_scenario('A')   # wild-type ethanol strain
+   print(bundle['solve_TEA']())             # {'IRR': ..., 'MPSPs': {...}}
+
+The :doc:`isobutanol biorefinery case study </case_studies/isobutanol/index>`
+walks through the process, its scenarios and the analyses built on it.
