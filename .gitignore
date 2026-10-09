@@ -68,6 +68,17 @@ Thumbs.db
 surfaces
 CoolPropFluids*.json
 
+# Isobutanol biorefinery (nskinetics/biorefineries/isobutanol) #
+################################################################
+# Analysis outputs stay local, as they did in Bioindustrial-Park
+# (analyses/results/publication/ is kept on disk but not committed).
+nskinetics/biorefineries/isobutanol/analyses/results/
+nskinetics/biorefineries/isobutanol/plots/results/
+nskinetics/biorefineries/isobutanol/plots/voronoi/node_modules/
+~$*
+# Binary inputs the package reads at run time ARE tracked.
+!nskinetics/biorefineries/isobutanol/analyses/full/parameter_distributions/parameter-distributions_*.xlsx
+
 # Claude Code local working files #
 ###################################
 CLAUDE.md
