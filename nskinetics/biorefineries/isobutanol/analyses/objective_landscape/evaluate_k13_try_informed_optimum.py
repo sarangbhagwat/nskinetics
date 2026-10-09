@@ -33,31 +33,50 @@ feeding concentrations, solve_TEA, every TRACKED_METRICS getter; the burden
 derating happens at the load_simulate choke point). An over-cap point is
 logged INFEASIBLE, a raising simulation ERROR.
 
-SIMULATES (one load + the anchor + len(grid) points, ~15-25 min): ask-first
-(approved by the user 2026-09-24). Run it in a fresh process, from this
-directory, with the hensmith pin used for the rs350 / TRY-informed campaigns
-(PYTHONPATH from the session scratchpad's PINNED_PYTHONPATH.txt), ideally
-under the supervisor:
+ASK-FIRST -- SIMULATES (one load + the anchor + len(grid) points, ~15-25
+min; approved once by the user 2026-09-24). Run it in a fresh process with
+the hensmith version the rs350 / TRY-informed campaigns ran under (2b5b27d)
+on PYTHONPATH (the TEA metrics move by ~1-5 % between hensmith versions),
+ideally under the supervisor (from analyses/):
 
-    python supervise_sweep.py evaluate_k13_try_informed_optimum.py
+    python supervise_sweep.py objective_landscape/evaluate_k13_try_informed_optimum.py
+
+Input: the relay campaign's trajectory CSV under the results root
+(paths.results_dir(): analyses/results unless NSKINETICS_IBO_RESULTS_DIR is
+set), written by analyses/kinetic_optimization/optimize_kinetics_BO_supervised.py;
+campaign CSVs are not shipped, so a missing one fails before the build.
 
 Checkpoint + resume (the supervise_sweep.py convention): one flushed row per
-point in results/<stem>_checkpoint.csv; results/<stem>_inflight.json written
+point in <results root>/<stem>_checkpoint.csv; <stem>_inflight.json written
 right before each point's simulation; a relaunch logs the point the previous
 process died in as LOST and resumes after it (the anchor is re-simulated each
 attempt to rebuild the snapshot); the checkpoint's k_13 values are verified
 against the grid; IBO_SWEEP_FRESH=1 discards a leftover one. On completion
-the rows are written sorted by k_13 to results/<stem>.csv (plus
-results/<stem>_anchor.json: the reproduction check, grid and environment) and
-the checkpoint is deleted."""
+the rows are written sorted by k_13 to <results root>/<stem>.csv (plus
+<stem>_anchor.json: the reproduction check, grid and environment) and the
+checkpoint is deleted."""
 import os
 import csv
 import json
 import math
 import time
 import argparse
+import importlib.util
 
 import numpy as np
+
+def _load_paths():
+    """The package's stdlib-only paths.py (two folders up), loaded by file
+    path so this module level never imports nskinetics."""
+    package_dir = os.path.dirname(os.path.dirname(
+        os.path.dirname(os.path.abspath(__file__))))
+    spec = importlib.util.spec_from_file_location(
+        '_ibo_paths', os.path.join(package_dir, 'paths.py'))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+paths = _load_paths()
 
 #%% Settings
 STUDY_NAME = ('kin_opt_ethanol_isobutanol_metabolic_split_12d_pi_log-tail_gp_'
@@ -70,9 +89,8 @@ N_POINTS = 160          # log-spaced; the trial's own k_13 is added on top
 K13_BAND_HIGH = 4.0     # the campaign's k_13 ceiling (marked on the figure)
 ANCHOR_PI_TOL = 0.02    # relative; a larger anchor-PI miss aborts the sweep
 
-_here = os.path.dirname(os.path.abspath(__file__))
 _stem = os.path.splitext(os.path.basename(__file__))[0]
-RESULTS_DIR = os.path.join(_here, 'results')
+RESULTS_DIR = paths.results_dir()   # where supervise_sweep.py polls too
 CHECKPOINT_PATH = os.path.join(RESULTS_DIR, _stem + '_checkpoint.csv')
 INFLIGHT_PATH = os.path.join(RESULTS_DIR, _stem + '_inflight.json')
 OUTPUT_PATH = os.path.join(RESULTS_DIR, _stem + '.csv')
@@ -139,8 +157,13 @@ def main(argv=None):
     os.makedirs(RESULTS_DIR, exist_ok=True)
 
     import nskinetics.biorefineries.isobutanol as isobutanol
-    isobutanol.load()   # default both-trains build (S201 split 1.0), as the driver runs
     from nskinetics.biorefineries.isobutanol import kinetic_optimization as ko
+    # Fail with a clear message BEFORE the ~20 s build if the CSV is missing.
+    paths.require_input(
+        ko.split12d_trajectory_path(args.study_name),
+        produced_by='the relay kinetic-optimization campaign '
+                    '(analyses/kinetic_optimization/optimize_kinetics_BO_supervised.py)')
+    isobutanol.load()   # default both-trains build (S201 split 1.0), as the driver runs
     from nskinetics.biorefineries.isobutanol import scenarios, system
     import hensmith
 

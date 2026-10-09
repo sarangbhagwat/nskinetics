@@ -25,9 +25,14 @@ trains at S201 split 1.0, the campaigns' build):
      metric-by-metric comparison with the RECORDED trial is printed too.
 Exit 0 + "MATCH" = the scenario's baseline IS the reproduced trial.
 
-Run (one fresh process per scenario; several in parallel only on a warm
-numba cache):
-  & "C:/Users/saran/anaconda3/envs/IBO_2026/python.exe" analyses/verify_opt_scenarios.py opt_PI_TRY_informed
+Input: the campaign's trajectory CSV under the results root
+(paths.results_dir(): analyses/results unless NSKINETICS_IBO_RESULTS_DIR is
+set), written by analyses/kinetic_optimization/optimize_kinetics_BO_supervised.py;
+campaign CSVs are not shipped, so a missing one fails before the build.
+
+Run (ASK-FIRST; two simulations, a few minutes; one fresh process per
+scenario, one at a time, never next to another simulation):
+  & "C:/Users/saran/anaconda3/envs/IBO_2026/python.exe" analyses/opt_scenarios/verify_opt_scenarios.py opt_PI_TRY_informed
 """
 import os
 import sys
@@ -37,12 +42,13 @@ import importlib.util
 #: Max relative delta (MPSPs + tracked metrics) scenario vs reproduction.
 TOL = 1e-3
 
-_ANALYSES_DIR = os.path.dirname(os.path.abspath(__file__))
+#: This script's folder; build_opt_split12d_workbooks.py must sit beside it.
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 def _load_generator():
     """build_opt_split12d_workbooks by file path (build-free import)."""
-    path = os.path.join(_ANALYSES_DIR, 'build_opt_split12d_workbooks.py')
+    path = os.path.join(_SCRIPT_DIR, 'build_opt_split12d_workbooks.py')
     spec = importlib.util.spec_from_file_location(
         'build_opt_split12d_workbooks', path)
     module = importlib.util.module_from_spec(spec)
@@ -57,6 +63,13 @@ def main(argv=None):
     parser.add_argument('--tol', type=float, default=TOL)
     args = parser.parse_args(argv)
     objective_name, study_name, trial_number = gen.OPT_SCENARIOS[args.scenario]
+
+    # Fail with a clear message BEFORE the build if the campaign CSV is missing.
+    from nskinetics.biorefineries.isobutanol import kinetic_optimization as ko
+    gen.paths.require_input(
+        ko.split12d_trajectory_path(study_name),
+        produced_by='the kinetic-optimization campaign '
+                    '(analyses/kinetic_optimization/optimize_kinetics_BO_supervised.py)')
 
     from nskinetics.biorefineries import isobutanol
     isobutanol.load(separation_processes=('IBO_EtOH',))

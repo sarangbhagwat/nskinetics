@@ -16,7 +16,12 @@ all other parameters stay at their scenario-B baselines; at each point the
 full biorefinery is simulated and IRR, ethanol MPSP, and isobutanol MPSP are
 recorded via the side-effect-free solve_TEA().
 
-Results go to analyses/results/OAT_kinetics_B/, one CSV per parameter,
+ASK-FIRST -- LONG-RUNNING: ~70 parameters x N_STEPS (20) points, i.e. well
+over a thousand flowsheet simulations (many hours).
+
+Results go to <results root>/OAT_kinetics_B/ (paths.results_dir():
+analyses/results unless NSKINETICS_IBO_RESULTS_DIR is set):
+kinetic_params_baseline_B.csv, baseline_TEA_B.csv and one CSV per parameter,
 written row-by-row so the sweep is resumable: on relaunch, parameters (and
 rows) already on disk are skipped. Failed simulation points are recorded as
 NaN with the error message, matching the convention of the 2-D sweeps.
@@ -51,24 +56,24 @@ N_STEPS = 20
 RANGE_MULT = 10.0  # sweep upper bound = RANGE_MULT * baseline
 
 #%% Filepaths
-isobutanol_filepath = isobutanol.__file__.replace('\\__init__.py', '')
-results_dir = os.path.join(isobutanol_filepath, 'analyses', 'results',
-                           'OAT_kinetics_B')
-os.makedirs(results_dir, exist_ok=True)
+from nskinetics.biorefineries.isobutanol import paths, scenarios
+results_dir = paths.results_dir('OAT_kinetics_B', create=True)
 
 #%% Load scenario B (parameter distributions -> kinetic baselines, then
-#   the scenario-B feeding strategy), mirroring smoke_test_2.load_simulate_baseline
-parameter_distributions_filename = isobutanol_filepath+\
-    '\\data\\parameter_distributions\\'+\
-    'parameter-distributions_corn_IBO_EtOH_B.xlsx'
+#   the scenario-B feeding strategy from the registry). Constants only, NOT
+#   scenarios.load_scenario('B'): this sequence also runs a bare
+#   model_specification() before the feeding strategy is set.
+scenario_B = scenarios.SCENARIOS['B']
+parameter_distributions_filename = scenario_B.workbook_path
 
 model.parameters = ()
 model.load_parameter_distributions(parameter_distributions_filename, namespace_dict)
 baseline_initial = model.metrics_at_baseline()
 
 model_specification()
-fbs_spec.max_n_spikes = 0  # batch: no glucose spikes
-model_specification(threshold_conc=34.25, target_conc=140.0)
+fbs_spec.max_n_spikes = scenario_B.max_n_spikes  # 0 = batch: no glucose spikes
+model_specification(threshold_conc=scenario_B.threshold_conc,
+                    target_conc=scenario_B.target_conc)
 
 #%% Enumerate the non-discrete kinetic parameters (same filter as
 #   utils.generate_save_kinetic_parameter_distributions) and their

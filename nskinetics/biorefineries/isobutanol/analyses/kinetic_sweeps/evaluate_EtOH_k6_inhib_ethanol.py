@@ -6,68 +6,62 @@
 # https://github.com/sarangbhagwat/nskinetics/blob/main/LICENSE
 # for license details.
 """
-2-D kinetic sweep: the grouped ``glycolysis`` CAPACITY family MULTIPLIER
-(x-axis) vs the grouped ``inhib_ethanol`` family MULTIPLIER (y-axis), on the
-scenario-A baseline, WITH the enzyme burden turned ON.
+2-D kinetic sweep: the individual rate capacity ``k_6`` (x-axis) vs the grouped
+``inhib_ethanol`` family MULTIPLIER (y-axis), on the scenario-A baseline, WITH
+the enzyme burden turned ON.
 
-BOTH grouped multipliers are widened well past the study's default bands. The
-x-axis (glycolysis multiplier) spans **1e-3x-4x** the scenario-A baseline
-instead of the study's 0.2x-4x (reaching down to effective glycolysis
-knock-out), and the y-axis (inhib_ethanol multiplier) spans **1e-3x-2x**
-instead of 0.75x-1.5x (reaching down to effectively no ethanol inhibition).
-(This was the both-axes-wide variant
-``evaluate_EtOH_glycolysis_wide_inhib_ethanol_wide.py``; the narrower-band
-siblings -- study bands, and wide inhib band only -- were deleted 2026-09-20 as
-redundant and this script took over their name.) Output filenames carry both an
-``_rb{lo}-{hi}`` glycolysis-band tag and an ``_ib{lo}-{hi}`` inhib-band tag, so
-this run's CSVs / plots coexist with those earlier narrower-band runs' under
-analyses/results/.
+It mirrors the sibling ``evaluate_EtOH_k3_inhib_ethanol.py`` (individual rate on
+x, grouped ``inhib_ethanol`` multiplier on y), swapping ``k_3`` for the
+ethanol-forming alcohol-dehydrogenase (Adh1, r6) rate ``k_6`` and keeping the
+same wider, USER-SPECIFIED axis bounds (NOT the ``metabolic_14d`` study bands
+the k_1e sweep pins to):
 
-* **glycolysis multiplier (x-axis):** the grouped CAPACITY decision variable
-  (``kinetic_optimization.METABOLIC_14D_RATE_GROUPS['glycolysis']`` = k_1l,
-  k_1h, k_1e), here swept over a WIDER **1e-3x-4x** band than the study's
-  0.2x-4x -- 1e-3x is effective glycolysis knock-out. Every member is set to
-  its scenario-A baseline x the multiplier, so intra-family ratios are
-  preserved (exactly ``kinetic_optimization.expand_grouped_values`` for the
-  single glycolysis group). The axis is the dimensionless multiplier.
-* **inhib_ethanol multiplier (y-axis):** the same grouped decision variable
-  the study uses (``METABOLIC_MINIMAL_SUBSET_GROUPS['inhib_ethanol']`` =
-  k_1ie, k_4ie, k_7ie, k_10ie, k_16ie), here swept over a WIDER **1e-3x-2x**
-  band than the study's default 0.75x-1.5x -- 1e-3x is effectively NO ethanol
-  inhibition. Every member is set to its scenario-A baseline x the multiplier,
-  so intra-family ratios are preserved (exactly
-  ``kinetic_optimization.expand_grouped_values`` for a single group).
+* **k_6 (x-axis):** swept over its scenario-A baseline x **[1e-3, 4.0]**. The
+  span matches the split-preset rate band (``kinetic_optimization`` assigns
+  ``capacity``-role rate constants a [1e-3x, 4x] band in the split presets), so
+  the axis reaches an effective knock-out at the low end and 4x the fitted rate
+  at the high end.
+* **inhib_ethanol multiplier (y-axis):** the grouped decision variable
+  (``kinetic_optimization.METABOLIC_MINIMAL_SUBSET_GROUPS['inhib_ethanol']`` =
+  k_1ie, k_4ie, k_7ie, k_10ie, k_16ie), swept over **[1e-3, 1.5]** x each
+  member's scenario-A baseline. The lower bound reaches near-complete
+  de-inhibition (1e-3x the fitted coefficients); the upper bound matches the
+  ``metabolic_14d`` default group band ceiling. Every member is set to its
+  scenario-A baseline x the multiplier, so intra-family ratios are preserved
+  (exactly ``kinetic_optimization.expand_grouped_values`` for a single group).
 
-Both axes are linear grids over the metabolic_14d bounds (the optimizer draws
-them log-uniform; a contour sweep spaces them evenly, matching the sibling
-``evaluate_*`` scripts). ``(glycolysis multiplier = 1.0, inhib_ethanol
-multiplier = 1.0)`` lies on the grid interior and reproduces the scenario-A
-baseline point.
+Both axes are linear grids over these bounds (a contour sweep spaces them
+evenly, matching the sibling ``evaluate_*`` scripts). ``(k_6 = A baseline,
+inhib_ethanol multiplier = 1.0)`` lies on the grid interior and reproduces the
+scenario-A baseline point.
 
 Enzyme burden: installed A-referenced via ``scenarios.load_scenario('A',
 burden=True)`` (``system.set_active_burden``), so the ``load_simulate`` choke
-point derates ``k_7``/``k_8`` (growth) for every simulated point. The
-glycolysis members are rate capacities, so a high glycolysis multiplier raises
-the modeled proteome pool ``Phi_M``; the ``inhib_ethanol`` coefficients are not
-pools, so they do not enter the burden.
-
-Burden feasibility is driven by the x-axis (glycolysis capacity) alone -- the
-``inhib_ethanol`` coefficients are not proteome pools. The glycolysis high end
-is unchanged at 4x, which the 2026-09-20 narrower-band runs found fully feasible in
-scenario A (Phi_M ~0.21 < ``F_flex`` = 0.245 at 4x), and lowering glycolysis
-only shrinks ``Phi_M`` further, so the whole grid is again expected to be
-burden-feasible (0 infeasible cells); the burden only derates growth
-(``k_7``/``k_8``) at every point. The NEW territory is the low-glycolysis edge:
-at 1e-3x (near glycolysis knock-out) glucose uptake all but stops, so those
-points may make little ethanol and/or trip a non-burden physical guard (e.g.
-the fed-batch volume or yield-ceiling checks) -- such points are caught and
-NaN'd, and only non-whitelisted messages are flagged as genuine issues. The
-earlier wide-inhib-band run (glycolysis 0.2x-4x) had 5 such NaN cells, all in the
-high-glycolysis x low-inhibition corner (yield over theoretical maximum).
+point derates ``k_7``/``k_8`` for every simulated point. ``k_6`` is a rate
+capacity, so a high ``k_6`` raises the modeled proteome pool ``Phi_M`` past the
+flexible-sector cap and the point becomes burden-INFEASIBLE
+(``EnzymeBurdenInfeasibleError`` -> caught -> NaN); the ``inhib_ethanol``
+coefficients are not pools, so they do not enter the burden -- expect a roughly
+vertical infeasible (NaN) band at high ``k_6``.
 
 Crash resilience: the grid is checkpointed per point and resumes on relaunch
 (see the 'Checkpoint + resume' cell). Launch through ``supervise_sweep.py
 <this script>`` to have a crashed or hung process relaunched automatically.
+
+Run: ASK-FIRST, LONG-RUNNING -- 40 x 40 = 1600 grid points of full
+flowsheet simulations (~15-25 s each, i.e. about 7-11 h).
+Writes, under the results root (paths.results_dir(): analyses/results
+unless NSKINETICS_IBO_RESULTS_DIR is set): one <file_to_save>_<metric>.csv
+per metric and the contour plots
+<metric>_animated_contourplot_<file_to_save>_frame_0.png (the script changes
+into the results root to plot). Set MPLBACKEND=Agg for an unattended run.
+While it runs it also keeps <script stem>_checkpoint.csv /
+<script stem>_inflight.json there (deleted on completion).
+IBO_SWEEP_REPLOT_FROM_CSV=1 skips every simulation and redraws the plots
+from the CSVs of an earlier run (same `file_to_save` prefix).
+From analyses/, under the crash/stall supervisor:
+
+    python supervise_sweep.py kinetic_sweeps/evaluate_EtOH_k6_inhib_ethanol.py
 """
 
 import numpy as np
@@ -85,16 +79,6 @@ filterwarnings('ignore')
 
 import contourplots
 get_rounded_str = contourplots.utils.get_rounded_str
-
-# contourplots 0.4.0's comparison_range path iterates `cs.collections`, an
-# attribute matplotlib removed in 3.10 (a ContourSet IS a Collection now, so
-# every setter it calls -- set_facecolor/edgecolor/linewidth/zorder/alpha --
-# lives on the object itself). Restore the attribute as a single-element list
-# so the hatched market-price band renders under matplotlib 3.11 without
-# editing the read-only package.
-from matplotlib.contour import ContourSet as _ContourSet
-if not hasattr(_ContourSet, 'collections'):
-    _ContourSet.collections = property(lambda self: [self])
 
 from biosteam.utils import  colors
 
@@ -145,18 +129,14 @@ broth = ferm_reactor.outs[1]
 # part of the recoverable product (a broth-only denominator reads >100 %).
 vent = ferm_reactor.outs[0]
 
-# Ethanol market price range (matches analyses/full/uncertainties_IBO_EtOH.py):
-# Jan 2021 - Dec 2025 5-year low and high, tradingeconomics.com/commodity/ethanol
-# (1.5475 and 3.4500 $/gal / (3.7854 L/gal * 0.789 kg/L)).
-EtOH_market_range=np.array([0.52, 1.15])
+EtOH_market_range=np.array([0.7, 1.0])
 
 #%% Filepaths
-isobutanol_filepath = isobutanol.__file__.replace('\\__init__.py', '')
-
-# ## Change working directory to biorefineries\\HP\\analyses\\results
-# chdir(HP.__file__.replace('\\__init__.py', '')+'\\analyses\\results')
-# ##
-isobutanol_results_filepath = isobutanol_filepath + '\\analyses\\results\\'
+from nskinetics.biorefineries.isobutanol import paths
+# The flat results root (paths.results_dir(): analyses/results unless
+# NSKINETICS_IBO_RESULTS_DIR is set) with a trailing separator -- the file
+# names below are appended to it.
+isobutanol_results_filepath = os.path.join(paths.results_dir(create=True), '')
 
 
 #%% Scenario A baseline + enzyme burden ON
@@ -170,28 +150,16 @@ scenario = 'A'
 bundle = scenarios.load_scenario(scenario, burden=True)
 feeding_kwargs = bundle['feeding_kwargs']
 
-# Snapshot each grouped family's scenario-A baseline off the live model
-# (member lists sourced from kinetic_optimization -- no hardcoding; a member
-# absent from the model is dropped, mirroring expand_grouped_values).
+# Snapshot each inhib_ethanol member's scenario-A baseline off the live
+# model (member list sourced from kinetic_optimization -- no hardcoding; a
+# member absent from the model is dropped, mirroring expand_grouped_values).
 _available = ko.discover_kinetic_parameters(r)
-
-GLYCOLYSIS_MEMBERS = [m for m in ko.METABOLIC_14D_RATE_GROUPS['glycolysis']
-                      if m in _available]
-baseline_glycolysis = {m: _available[m] for m in GLYCOLYSIS_MEMBERS}
-
 INHIB_ETHANOL_MEMBERS = [m for m in ko.METABOLIC_MINIMAL_SUBSET_GROUPS['inhib_ethanol']
                          if m in _available]
 baseline_inhib_ethanol = {m: _available[m] for m in INHIB_ETHANOL_MEMBERS}
-print('\nScenario-A glycolysis baselines: %s' % baseline_glycolysis)
+baseline_k_6 = _available.get('k_6', getattr(r, 'k_6'))
+print('\nScenario-A baseline k_6 = %s' % baseline_k_6)
 print('Scenario-A inhib_ethanol baselines: %s' % baseline_inhib_ethanol)
-
-
-def apply_glycolysis_multiplier(multiplier):
-    """Set every glycolysis member to its scenario-A baseline x `multiplier`
-    (intra-family ratios preserved; == expand_grouped_values for the single
-    glycolysis group)."""
-    for member, base in baseline_glycolysis.items():
-        setattr(r, member, base * multiplier)
 
 
 def apply_inhib_ethanol_multiplier(multiplier):
@@ -279,18 +247,16 @@ results = {i: [] for i in metrics.keys()}
 
 steps = (40, 40, 1)
 
-# WIDE glycolysis band: 1e-3x-4x the scenario-A baseline (vs the study's
-# metabolic_14d group band 0.2x-4x), reaching down to effective glycolysis
-# knock-out. Linear grid (matching the sibling evaluate_* sweeps).
-GLYCOLYSIS_MULTIPLIER_BOUNDS = (1e-3, 4.0)
-spec_1 = glycolysis_multipliers = np.linspace(GLYCOLYSIS_MULTIPLIER_BOUNDS[0],
-                                              GLYCOLYSIS_MULTIPLIER_BOUNDS[1],
-                                              steps[0])
+# USER-SPECIFIED band: k_6 x [1e-3, 4.0] its scenario-A baseline (the
+# split-preset capacity-rate band; effective knock-out at the low end).
+K_6_MULTIPLIER_BOUNDS = (1e-3, 4.0)
+spec_1 = nsk_k_6s = np.linspace(K_6_MULTIPLIER_BOUNDS[0]*baseline_k_6,
+                                K_6_MULTIPLIER_BOUNDS[1]*baseline_k_6,
+                                steps[0])
 
-# WIDE inhib_ethanol band: 1e-3x-2x the scenario-A baseline (vs the study's
-# default 0.75x-1.5x), reaching down to effectively no ethanol inhibition.
-# Linear grid (matching the sibling evaluate_* sweeps).
-INHIB_ETHANOL_MULTIPLIER_BOUNDS = (1e-3, 2.0)
+# USER-SPECIFIED band: inhib_ethanol multiplier x [1e-3, 1.5] (near-complete
+# de-inhibition at the low end; metabolic_14d default group ceiling at the top).
+INHIB_ETHANOL_MULTIPLIER_BOUNDS = (1e-3, 1.5)
 spec_2 = inhib_ethanol_multipliers = np.linspace(INHIB_ETHANOL_MULTIPLIER_BOUNDS[0],
                                                  INHIB_ETHANOL_MULTIPLIER_BOUNDS[1],
                                                  steps[1])
@@ -306,13 +272,14 @@ spec_3 = spike_concs =\
 
 # Parameters analyzed across
 
-x_label = "glycolysis multiplier" # title of the x axis
-x_units = r"" # dimensionless (x scenario-A baseline of each member)
-x_ticks = [0.0, 1.0, 2.0, 3.0, 4.0]
+x_label = "k_6" # title of the x axis
+x_units = r"$\mathrm{g} \cdot \mathrm{L}^{-1} \cdot \mathrm{h}^{-1}$"
+# k_6 range is baseline-dependent (1e-3x-4x baseline); derive round ticks.
+x_ticks = [float(np.round(t, 1)) for t in np.linspace(spec_1[0], spec_1[-1], 5)]
 
 y_label = "inhib_ethanol multiplier" # title of the y axis
 y_units = r"" # dimensionless (x scenario-A baseline of each member)
-y_ticks = [0.0, 0.5, 1.0, 1.5, 2.0]
+y_ticks = [0.0, 0.5, 1.0, 1.5]
 
 z_label = "Spike feed glucose concentration" # title of the x axis
 z_units =r"$\mathrm{g} \cdot \mathrm{L}^{-1}$"
@@ -355,60 +322,23 @@ markercolor = (*colors.CABBI_orange.shade(5).RGBn, 1)
 edgecolor = (*colors.CABBI_black.RGBn, 1)
 
 
-def JBEI_UCB_colormap(N_levels=90, reverse=False):
-    JBEI_orange = (233/255, 83/255, 39/255)
-    UCB_blue = (0/255, 38/255, 118/255)
-    UCB_yellow = (253/255, 181/255, 21/255)
-    cmap_colors = [
-                    UCB_yellow,
-                    JBEI_orange,
-                    UCB_blue,
-                    # colors.CABBI_teal_green.shade(50).RGBn,
-                    colors.grey_dark.RGBn]
-    if reverse: cmap_colors.reverse()
-    return LinearSegmentedColormap.from_list('CABBI', cmap_colors, N_levels)
-
-def CABBI_green_colormap(N_levels=90):
-    """
-    Return a matplotlib.colors.LinearSegmentedColormap object
-    that serves as CABBI's green colormap theme for contour plots.
-
-    """
-    CABBI_colors = (colors.CABBI_orange.RGBn,
-                    colors.CABBI_yellow.RGBn,
-
-                    colors.CABBI_green.RGBn,
-                    # colors.CABBI_teal_green.shade(50).RGBn,
-                    colors.grey_dark.RGBn)
-    return LinearSegmentedColormap.from_list('CABBI', CABBI_colors, N_levels)
+from nskinetics.biorefineries.isobutanol.sweep_utils import (
+    JBEI_UCB_colormap, CABBI_green_colormap)
 
 #%% Tickmark utils (unused)
 
-def tickmarks_from_data(data, accuracy=50, N_points=5):
-    dmin = data.min()
-    dmax = data.max()
-    return tickmarks(dmin, dmax, accuracy, N_points)
-
-def tickmarks(dmin, dmax, accuracy=50, N_points=5):
-    dmin = floor(dmin/accuracy) * accuracy
-    dmax = ceil(dmax/accuracy) * accuracy
-    step = (dmax - dmin) / (N_points - 1)
-    return [dmin + step * i for i in range(N_points)]
+from nskinetics.biorefineries.isobutanol.sweep_utils import (
+    tickmarks_from_data, tickmarks)
 
 #%%
 minute = '0' + str(dateTimeObj.minute) if len(str(dateTimeObj.minute))==1 else str(dateTimeObj.minute)
 # file_to_save = f'_{steps}_steps_'+'etoh_fbs_%s.%s.%s-%s.%s'%(dateTimeObj.year, dateTimeObj.month, dateTimeObj.day, dateTimeObj.hour, minute)
-# `_rb{lo}-{hi}` / `_ib{lo}-{hi}` tag the (wide) glycolysis rate band and the
-# (wide) inhib_ethanol band so this run's CSVs / plots do not collide with the
-# earlier 0.2x-4x-glycolysis runs' (all share the same x/y/z labels).
-_rb_tag = f'_rb{GLYCOLYSIS_MULTIPLIER_BOUNDS[0]:g}-{GLYCOLYSIS_MULTIPLIER_BOUNDS[1]:g}'
-_ib_tag = f'_ib{INHIB_ETHANOL_MULTIPLIER_BOUNDS[0]:g}-{INHIB_ETHANOL_MULTIPLIER_BOUNDS[1]:g}'
-file_to_save = f'ibo_{steps}_{x_label[:5]}_{y_label[:5]}_{z_label[:5]}{_rb_tag}{_ib_tag}_opt={perform_feeding_strategy_opt}_max_n={ferm_reactor.nsk_kinetic_model.default_max_n_glu_spikes}_'
+file_to_save = f'ibo_{steps}_{x_label[:5]}_{y_label[:5]}_{z_label[:5]}_opt={perform_feeding_strategy_opt}_max_n={ferm_reactor.nsk_kinetic_model.default_max_n_glu_spikes}_'
 
 # Set IBO_SWEEP_REPLOT_FROM_CSV=1 to skip the grid simulations and rebuild
 # the contour plots from the per-metric CSVs a previous run of this script
 # (same steps / scenario / feeding settings, i.e. same `file_to_save` prefix)
-# saved under analyses/results/. Only the plot styling below then matters.
+# saved under the results root. Only the plot styling below then matters.
 replot_from_csv = os.environ.get('IBO_SWEEP_REPLOT_FROM_CSV', '') == '1'
 
 #%% Checkpoint + resume (crash resilience)
@@ -432,7 +362,7 @@ replot_from_csv = os.environ.get('IBO_SWEEP_REPLOT_FROM_CSV', '') == '1'
 _script_stem = os.path.splitext(os.path.basename(__file__))[0]
 checkpoint_filepath = isobutanol_results_filepath + _script_stem + '_checkpoint.csv'
 inflight_filepath = isobutanol_results_filepath + _script_stem + '_inflight.json'
-checkpoint_x_column, checkpoint_y_column = 'glycolysis_multiplier', 'inhib_ethanol_multiplier'
+checkpoint_x_column, checkpoint_y_column = 'k_6', 'inhib_ethanol_multiplier'
 checkpoint_fieldnames = ['i_row', 'i_col', checkpoint_x_column, checkpoint_y_column,
                          'state'] + list(metrics.keys())
 
@@ -507,10 +437,7 @@ if not replot_from_csv:
 if not replot_from_csv:
     print('\n\nSimulating the initial point to avoid bugs ...')
     curr_spec = fbs_spec.current_specifications
-    # Warm up on the scenario-A baseline (glycolysis 1.0x, inhib_ethanol 1.0x)
-    # -- a known-good point. The wide 1e-3x lower bound would otherwise put
-    # glycolysis_multipliers[1] at ~0.10x (near knock-out), a fragile warmup.
-    apply_glycolysis_multiplier(1.0)
+    r.k_6 = baseline_k_6  # baseline k_6 (known-good; low grid points are near-knockouts)
     apply_inhib_ethanol_multiplier(1.0)  # baseline inhib_ethanol (known-good)
     model_specification(**curr_spec,
         n_sims=3,
@@ -567,7 +494,7 @@ for s3 in spec_3_to_run:
                 # if round(s1,2)==round(spec_1[1],2) and round(s2,2)==round(spec_2[4],2):
                 #     breakpoint()
                 curr_spec = {k: v for k,v in fbs_spec.current_specifications.items()}
-                apply_glycolysis_multiplier(s1)
+                r.k_6 = s1
                 apply_inhib_ethanol_multiplier(s2)
                 curr_spec.update({'spike_conc':s3,})
 
@@ -590,10 +517,9 @@ for s3 in spec_3_to_run:
                 print('Error in model spec: %s'%str_e)
                 for v in list(results.values()): v[-1][-1].append(np.nan)
                 error_message = str_e
-                # A burden-infeasible point (high glycolysis multiplier over the
-                # proteome cap) is an EXPECTED NaN, not a solver failure -- keep
-                # it out of errors_dict so the console log flags only genuine
-                # issues.
+                # A burden-infeasible point (high k_6 over the proteome cap)
+                # is an EXPECTED NaN, not a solver failure -- keep it out of
+                # errors_dict so the console log flags only genuine issues.
                 if ('specifications do not meet required' not in str_e
                         and 'enzyme' not in str_e
                         and 'proteome' not in str_e
@@ -636,77 +562,8 @@ from math import floor, log
 get_median = np.median
 np_round = np.round
 
-def get_OOM(number):
-    return floor(log(number+1., 10))
-
-def my_round(x, base=5):
-    return base * round(x/base)
-
-def get_contour_info_from_metric_data(
-                                        metric_data, # numpy array
-                                        round_cbar_ticks_to_this_many_OOMs_lower_than_data_OOM=1,
-                                        n_levels_between_cbar_ticks=5,
-                                        n_stdevs_for_bounds=1,
-                                        lb=None,
-                                        ub=None,
-                                        multiply_step_size_by=0.5,
-                                        w_ticks_round_to_base_divisor=2,
-                                        remove_w_ticks_if_greater_than_this_fraction_of_successor=0.8,
-                                      ):
-    if not type(metric_data) == np.ndarray: metric_data = np.array(metric_data)
-    metric_data = metric_data[~np.isnan(metric_data)]
-    median, stdev = get_median(metric_data), metric_data.std()
-    bound_diff = n_stdevs_for_bounds*stdev
-    ub_temp = max(abs(median-bound_diff), abs(median+bound_diff))
-    # breakpoint()
-    OOM = get_OOM(ub_temp)
-    log_ub_temp = log(ub_temp, 10)
-
-    round_to_decimal_place = None
-
-    if log_ub_temp < 1.:
-        round_to_decimal_place = int(round(ub_temp/(10.*round_cbar_ticks_to_this_many_OOMs_lower_than_data_OOM), 0))
-    else:
-        round_to_decimal_place = -OOM -1 + round_cbar_ticks_to_this_many_OOMs_lower_than_data_OOM
-
-    if lb==None: lb = np_round(median - bound_diff, round_to_decimal_place)
-    if ub==None: ub = np_round(median + bound_diff, round_to_decimal_place)
-
-    cbar_ticks_step_size = (10**OOM)/(round_cbar_ticks_to_this_many_OOMs_lower_than_data_OOM) * multiply_step_size_by
-    w_levels_step_size = cbar_ticks_step_size/n_levels_between_cbar_ticks
-    cbar_ticks = np.arange(lb, ub+cbar_ticks_step_size, cbar_ticks_step_size)
-    w_levels = np.arange(lb, ub+w_levels_step_size, w_levels_step_size)
-
-    w_ticks_round_to_base = 10**-round_to_decimal_place / 2
-    w_ticks = [*set([lb,
-               my_round(median-0.6*stdev, w_ticks_round_to_base),
-               my_round(median-0.4*stdev, w_ticks_round_to_base),
-               my_round(median-0.2*stdev, w_ticks_round_to_base),
-               np_round(median, round_to_decimal_place),
-               my_round(median+0.2*stdev, ),
-               my_round(median+0.4*stdev, w_ticks_round_to_base),
-               my_round(median+0.6*stdev, w_ticks_round_to_base),
-               ub])]
-
-    # w_ticks.sort()
-    # w_ticks_to_remove = []
-    # for i in range(len(w_ticks)-1):
-    #     if w_ticks[i]/w_ticks[i+1] > remove_w_ticks_if_greater_than_this_fraction_of_successor:
-    #         w_ticks_to_remove.append(w_ticks[i])
-    # for j in w_ticks_to_remove:
-    #     w_ticks.remove(j)
-    #     w_ticks.append(j-w_levels_step_size)
-
-    w_ticks.sort()
-    w_ticks_to_remove = []
-    for i in range(len(w_ticks)-1):
-        if w_ticks[i]/w_ticks[i+1] > remove_w_ticks_if_greater_than_this_fraction_of_successor:
-            w_ticks_to_remove.append(w_ticks[i])
-    for j in w_ticks_to_remove:
-        w_ticks.remove(j)
-
-    w_ticks.sort()
-    return w_levels, w_ticks, cbar_ticks
+from nskinetics.biorefineries.isobutanol.sweep_utils import (
+    get_OOM, my_round, get_contour_info_from_metric_data)
 
 #%% More plot stuff
 
@@ -756,13 +613,9 @@ if plot:
     #%% MPSP
 
     # MPSP_w_levels, MPSP_w_ticks, MPSP_cbar_ticks = get_contour_info_from_metric_data(results_metric_1, lb=3)
-    # Ethanol-MPSP colormap fixed to 0.8-2.0 $/kg (extend 'max': cells above
-    # 2.0 fill with the over colour; the baseline sits at ~0.86, ~0.1 % of
-    # cells fall below 0.8).
-    MPSP_w_levels = np.arange(0.8, 2.0001, 0.02)
-    MPSP_cbar_ticks = np.arange(0.8, 2.0001, 0.2)
-    # 1.2 dropped: it overlaps the 1.15 market-range comparison line
-    MPSP_w_ticks = [0.9, 1.0, 1.5, 2.0]
+    MPSP_w_levels = np.arange(0.25, 1.0001, 0.01)
+    MPSP_cbar_ticks = np.arange(0.25, 1.0001, 0.05)
+    MPSP_w_ticks = [0.4, 0.6, 0.8]
     # MPSP_w_levels = np.arange(0., 15.5, 0.5)
 
 
@@ -799,11 +652,7 @@ if plot:
                                     clabel_fontsize = clabel_fontsize,
                                     default_fontsize = default_fontsize,
                                     axis_tick_fontsize = axis_tick_fontsize,
-                                    comparison_range=EtOH_market_range,
-                                    # white, half-transparent so the band's
-                                    # boundary lines and hatch read white but
-                                    # sit lightly over the colormap
-                                    comparison_range_rgba=(1, 1, 1, 0.5),
+                                    # comparison_range=EtOH_market_range,
                                     n_minor_ticks = 1,
                                     cbar_n_minor_ticks = 4,
                                     units_on_newline = (False, False, False, False), # x,y,z,w
@@ -815,7 +664,6 @@ if plot:
     for curr_metric, val in metrics.items():
         extend_cmap = 'max'
         cmap_under_color = None
-        curr_comparison_range = []
         lccm = curr_metric.lower()
         if 'spike' in lccm or 'q sugar' in lccm or 'target sugars' in lccm:
             if not perform_feeding_strategy_opt:
@@ -861,26 +709,21 @@ if plot:
                             curr_metric_non_nans.max()]))
         curr_metric_w_ticks.sort(reverse=False)
         if 'mpsp' in lccm: # ethanol and isobutanol MPSPs share the same scale
-            # colormap fixed to 0.8-2.0 $/kg (extend 'max': cells above 2.0
-            # fill with the over colour; the ethanol baseline sits at ~0.86).
-            curr_metric_w_levels = np.arange(0.8, 2.0001, 0.02)
-            curr_metric_cbar_ticks = np.arange(0.8, 2.0001, 0.2)
-            # 1.2 dropped: it overlaps the 1.15 market-range comparison line
-            curr_metric_w_ticks = [0.9, 1.0, 1.5, 2.0]
-            if curr_metric == 'MPSP':
-                # ethanol market price band on the ethanol-MPSP colour axis only
-                # (not IBO MPSP, whose price basis differs)
-                curr_comparison_range = EtOH_market_range
+            # bounds shared with evaluate_EtOH_k13_k7ii.py (fitted to its 20x20
+            # scenario-B grid: EtOH MPSP 0.70-3.49 $/kg, IBO MPSP 1.13-2.43)
+            curr_metric_w_levels = np.arange(0.5, 3.5001, 0.05)
+            curr_metric_cbar_ticks = np.arange(0.5, 3.5001, 0.5)
+            curr_metric_w_ticks = [0.75, 0.9, 1.2, 1.5, 2.0, 3.0]
         elif 'irr' in lccm:
-            # IRR colormap fixed to 0-15%, UNDER color on / over color off:
-            # cells below 0 (money-losing corners, incl. -inf pushed down
-            # below) fill with the under colour; cells above 0.15 render blank.
-            curr_metric_w_levels = np.arange(0.0, 0.15001, 0.005)
-            curr_metric_cbar_ticks = np.arange(0.0, 0.15001, 0.05)
-            curr_metric_w_ticks = [0.0, 0.05, 0.10, 0.15]
-            extend_cmap = 'min'
+            # shared with evaluate_EtOH_k13_k7ii.py (grid IRR -0.12 to 0.19);
+            # the under-color catches anything below -0.1
+            curr_metric_w_levels = np.arange(-0.1, 0.2001, 0.005)
+            curr_metric_cbar_ticks = np.arange(-0.1, 0.2001, 0.05)
+            curr_metric_w_ticks = [0.0, 0.05, 0.10, 0.15, 0.18]
+            # IRR can fall far below the lowest level (money-losing corners);
+            # fill those cells rather than leaving them blank
+            extend_cmap = 'both'
             cmap_under_color = colors.grey_dark.shade(40).RGBn
-            cmap_over_color = None
         # curr_metric_w_levels = np.arange(0., 15.5, 0.5)
 
 
@@ -931,8 +774,7 @@ if plot:
                                         clabel_fontsize = clabel_fontsize,
                                         default_fontsize = default_fontsize,
                                         axis_tick_fontsize = axis_tick_fontsize,
-                                        comparison_range=curr_comparison_range,
-                                        comparison_range_rgba=(1, 1, 1, 0.5),
+                                        # comparison_range=EtOH_market_range,
                                         n_minor_ticks = 1,
                                         cbar_n_minor_ticks = 3,
                                         units_on_newline = (False, False, False, False), # x,y,z,w

@@ -9,10 +9,15 @@
 closed-subset / first-order / total / Shapley indices over the FEASIBLE
 campaign domain -> tables, summary sentence, two figures.
 
-SIM-SAFE: reads <study>_trajectory.csv + <study>_design.json; loads
+SIM-SAFE: reads <study>_trajectory.csv + <study>_design.json (written by
+stage 1, evaluate_sobol_split12d.py in this folder; not shipped, so a missing
+one fails with a message naming it) from the results root (paths.results_dir():
+analyses/results unless NSKINETICS_IBO_RESULTS_DIR is set) and writes its
+<study>_sobol_* tables, summary and figures there; loads paths /
 sensitivity_analysis / kinetic_optimization BY FILE PATH; never imports the
 package, never load()s -- safe alongside a running simulation on any numba
-cache state (also on a partially complete stage-1 CSV).
+cache state (also on a partially complete stage-1 CSV). Minutes; hours when
+GP surrogates are fitted for many metrics (see --gp-metrics).
 
     python analyze_sobol_split12d.py --study-name <STUDY_NAME>
     python analyze_sobol_split12d.py --study-name <STUDY_NAME> --replot   # figures only
@@ -24,8 +29,7 @@ boosting only, because one GP prediction of the design costs ~0.6 s and every
 metric needs 2^d - 2 subsets x n_replicates of them (hours per GP metric),
 while the trees predict in milliseconds at a CV Q2 within ~0.02 of the GP's.
 
-Pre-optimization screening additions (spec
-docs/superpowers/specs/2026-09-21-sobol-screening-measure-design.md): with a
+Pre-optimization screening additions (since 2026-09-21): with a
 threshold (--pi-threshold, default = the design record's meta.baseline_PI =
 the scenario-A PI) the run also reports TARGET indices on the indicator
 'PI > baseline' (what decides whether a design beats A; same base measure)
@@ -47,14 +51,20 @@ import numpy as np
 import pandas as pd
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-PKG_DIR = os.path.dirname(HERE)
-RESULTS = os.path.join(HERE, 'results')
+#: The nskinetics.biorefineries.isobutanol package folder (two levels up).
+PKG_DIR = os.path.dirname(os.path.dirname(HERE))
 
 def _load(name, filename):
     spec = importlib.util.spec_from_file_location(name, os.path.join(PKG_DIR, filename))
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
+
+paths = _load('_ibo_paths', 'paths.py')
+#: The results root stage 1 writes to (ko.default_results_dir()).
+RESULTS = paths.results_dir()
+#: What produces this script's inputs (named by a missing-input error).
+STAGE_1 = "Sobol' stage 1 (analyses/sensitivity/evaluate_sobol_split12d.py)"
 
 sa = _load('sa', 'sensitivity_analysis.py')
 ko = _load('ko', 'kinetic_optimization.py')
@@ -80,8 +90,11 @@ LABELS = {'k_3': 'k$_3$ (Pdc)', 'k_6': 'k$_6$ (Adh1)', 'k_13': 'k$_{13}$ (ALS)',
 #%% Data
 
 def load_inputs(study_name, min_rows):
-    csv_path = os.path.join(RESULTS, study_name + '_trajectory.csv')
-    with open(os.path.join(RESULTS, study_name + '_design.json')) as fh:
+    csv_path = paths.require_input(
+        os.path.join(RESULTS, study_name + '_trajectory.csv'), produced_by=STAGE_1)
+    design_path = paths.require_input(
+        os.path.join(RESULTS, study_name + '_design.json'), produced_by=STAGE_1)
+    with open(design_path) as fh:
         design = json.load(fh)
     df = pd.read_csv(csv_path)
     counts = df['state'].value_counts().to_dict()
@@ -328,7 +341,10 @@ def replot(study_name, heatmap_include_unreliable=False):
     """Redraw the figures from a finished run's <study>_sobol_indices.csv (no
     surrogate refit, no summary rewrite)."""
     out = os.path.join(RESULTS, study_name + '_sobol_')
-    table = pd.read_csv(out + 'indices.csv')
+    table = pd.read_csv(paths.require_input(
+        out + 'indices.csv',
+        produced_by='a full run of analyses/sensitivity/analyze_sobol_split12d.py '
+                    '--study-name <study> (without --replot)'))
     names = list(dict.fromkeys(table.parameter))     # index_table writes them in design order
     t = table[table.metric == HEADLINE]
     plot_bars(table, names, f'{t.surrogate.iloc[0].upper()} surrogate, '

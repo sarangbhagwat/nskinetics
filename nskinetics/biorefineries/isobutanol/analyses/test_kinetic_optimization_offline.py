@@ -22,11 +22,39 @@ import pandas as pd
 
 from nskinetics.biorefineries.isobutanol import kinetic_optimization as ko
 
+#: Folders this test reads by path, one constant per folder: the analysis
+#: scripts it runs / reads as source text (the package's
+#: analyses/kinetic_optimization/, located from ko so the test can move) and
+#: its own data fixtures (beside this file).
+KIN_OPT_DIR = os.path.join(os.path.dirname(os.path.abspath(ko.__file__)),
+                           'analyses', 'kinetic_optimization')
+FIXTURES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'fixtures')
+
 n_pass = 0
 def PASS(msg):
     global n_pass
     n_pass += 1
     print(f'PASS {n_pass}: {msg}')
+
+def _imported_roots(src):
+    """Top-level package of every import statement in the source `src`
+    (ast, any nesting depth; '<relative>' for a package-relative import).
+    Strings are not imports: the child code the supervisor launches in a
+    SEPARATE process may import the package."""
+    import ast as _ast_imports
+    roots = set()
+    for node in _ast_imports.walk(_ast_imports.parse(src)):
+        if isinstance(node, _ast_imports.Import):
+            roots.update(alias.name.split('.')[0] for alias in node.names)
+        elif isinstance(node, _ast_imports.ImportFrom):
+            roots.add('<relative>' if node.level else node.module.split('.')[0])
+    return roots
+#: What the stdlib-only BO supervisor must never import in its OWN process
+#: (any of these pulls a simulation stack or optuna into the process that
+#: only polls the trajectory CSV and relaunches the driver).
+_SUPERVISOR_FORBIDDEN_IMPORTS = {'nskinetics', 'biorefineries', 'biosteam',
+                                 'thermosteam', 'tellurium', 'optuna',
+                                 '<relative>'}
 
 #%% 1. build_search_space: bounds, zero-baseline exclusion, override, feeding vars
 baselines = {'k_1e': 47.1, 'K_1e': 0.12, 'k_13': 0.0, 'k_16': 0.0}
@@ -426,7 +454,7 @@ assert ko.attempt_outcome(1, 5, 5, killed_for_stall=True) == 'abort'
 # study naming MUST mirror the driver's or a resume forks the study).
 import runpy as _runpy
 sup = _runpy.run_path(os.path.join(
-    os.path.dirname(os.path.abspath(__file__)),
+    KIN_OPT_DIR,
     'optimize_kinetics_BO_supervised.py'))
 assert sup['default_study_name']('A', 'IRR', 'B') == 'kin_opt_A_kbB_irr'
 assert sup['default_study_name']('B', 'IRR', None) == 'kin_opt_B_irr'
@@ -1019,7 +1047,7 @@ else:
 
 #%% 23. supervisor: preset flags forwarded to the driver; naming mirrors the engine; legacy switch
 sup23 = _runpy.run_path(os.path.join(
-    os.path.dirname(os.path.abspath(__file__)),
+    KIN_OPT_DIR,
     'optimize_kinetics_BO_supervised.py'))
 # Naming: preset convention when a target-products preset is in force,
 # the legacy convention otherwise (what --legacy-flags selects). Every
@@ -1086,7 +1114,7 @@ assert 'study_target_products' in _c23 and 'study_type' in _c23
 # only under `if __name__ == '__main__':` (runpy.run_path's default
 # run_name is not '__main__', so sup23 has no live parser/args to
 # introspect -- these are pinned as source-text checks instead).
-src23 = open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+src23 = open(os.path.join(KIN_OPT_DIR,
                           'optimize_kinetics_BO_supervised.py')).read()
 assert '--study-target-products' in src23 and '--study-type' in src23
 assert '--legacy-flags' in src23
@@ -1095,7 +1123,7 @@ assert 'choices=tuple(ko.STUDY_TYPE_ROLES)' in src23
 assert "'--study-target-products', default=ko.DEFAULT_STUDY_TARGET_PRODUCTS" in src23
 assert "'--study-type', default=ko.DEFAULT_STUDY_TYPE" in src23
 assert "'--stall-timeout-min', type=float, default=3.0" in src23
-assert 'import biorefineries' not in src23 and 'import optuna' not in src23
+assert not _imported_roots(src23) & _SUPERVISOR_FORBIDDEN_IMPORTS, _imported_roots(src23)
 # Finding 3: --no-restrict-to-workbook without --legacy-flags must fail at
 # argparse time (parser.error), not after a full child load.
 assert 'args = parser.parse_args()' in src23
@@ -1473,7 +1501,7 @@ else:
 
 #%% 26. driver / supervisor: burden default on, --no-burden, naming mirrors the engine, reports printed
 sup26 = _runpy.run_path(os.path.join(
-    os.path.dirname(os.path.abspath(__file__)),
+    KIN_OPT_DIR,
     'optimize_kinetics_BO_supervised.py'))
 # Naming: the suffix on both paths, only when asked; legacy defaults untouched.
 assert sup26['default_study_name']('A', 'IRR', 'B') == 'kin_opt_A_kbB_irr'
@@ -1506,15 +1534,15 @@ _n26 = _inspect.signature(sup26['default_study_name']).parameters
 assert _n26['burden'].default is False
 src26_sup = _inspect.getsource(sup26['supervise'])
 assert 'burden=burden' in src26_sup                       # into default_study_name and child_code
-src26 = open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+src26 = open(os.path.join(KIN_OPT_DIR,
                           'optimize_kinetics_BO_supervised.py')).read()
 assert "'--no-burden'" in src26 and "dest='burden'" in src26
 assert "action='store_false'" in src26 and 'burden=args.burden' in src26
-assert 'import biorefineries' not in src26 and 'import optuna' not in src26
+assert not _imported_roots(src26) & _SUPERVISOR_FORBIDDEN_IMPORTS, _imported_roots(src26)
 assert 'enzyme_burden' not in src26.replace('enzyme_burden.py', '')   # stdlib-only: never imports it
 # The driver cannot be imported offline (it loads the biorefinery): pin its
 # plumbing as source text.
-drv26 = open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+drv26 = open(os.path.join(KIN_OPT_DIR,
                           'optimize_kinetics_BO.py')).read()
 assert 'burden=True,' in drv26                                    # run() kwarg, default on
 assert 'burden_model=burden_model' in drv26                       # forwarded to the engine
@@ -1646,7 +1674,7 @@ assert ko.default_study_name('IBO titer', 'ethanol_only', 'metabolic_protein',
     == 'kin_opt_ethanol_only_metabolic_protein_ibo_titer_scB_rb0.01-10'
 # Supervisor: mirrors the tag, exposes both flags, forwards them to the driver.
 sup27 = _runpy.run_path(os.path.join(
-    os.path.dirname(os.path.abspath(__file__)),
+    KIN_OPT_DIR,
     'optimize_kinetics_BO_supervised.py'))
 assert sup27['default_study_name'](None, 'IRR', None,
                                    study_target_products='ethanol_isobutanol',
@@ -1672,7 +1700,7 @@ assert _s27['enqueue_knockouts'].default is False and _s27['rate_multiplier_boun
 src27_sup = _inspect.getsource(sup27['supervise'])
 assert 'rate_multiplier_bounds=rate_multiplier_bounds' in src27_sup
 assert 'enqueue_knockouts=enqueue_knockouts' in src27_sup
-src27 = open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+src27 = open(os.path.join(KIN_OPT_DIR,
                           'optimize_kinetics_BO_supervised.py')).read()
 assert "'--enqueue-knockouts'" in src27 and "dest='enqueue_knockouts'" in src27   # opt-in since 2026-09-07
 # The flag must be store_true: a regression to store_false with the same
@@ -1681,7 +1709,7 @@ _ekp = src27[src27.index("'--enqueue-knockouts'"):][:300]
 assert "action='store_true'" in _ekp and "store_false" not in _ekp
 assert "'--rate-multiplier-bounds'" in src27 and 'nargs=2' in src27
 assert 'enqueue_knockouts=args.enqueue_knockouts' in src27
-drv27 = open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+drv27 = open(os.path.join(KIN_OPT_DIR,
                           'optimize_kinetics_BO.py')).read()
 assert 'enqueue_knockouts=False,' in drv27                          # run() kwarg, default off since 2026-09-07
 assert 'enqueue_knockouts=enqueue_knockouts' in drv27              # forwarded to the engine
@@ -1796,13 +1824,13 @@ _sig28 = _inspect.signature(ko.run_kinetic_optimization).parameters
 assert 'rate_params' in _sig28 and _sig28['rate_params'].default is None
 # Driver / supervisor plumbing (source text: the driver cannot be
 # imported offline).
-drv28 = open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+drv28 = open(os.path.join(KIN_OPT_DIR,
                           'optimize_kinetics_BO.py')).read()
 assert "'rate_params'" in drv28                                   # preset key forwarded
 assert "rate_params=engine_kwargs.get('rate_params')" in drv28    # workbook bounds by role
 assert 'inhibition_multiplier_bounds=' in drv28                   # preset names tagged
 sup28 = _runpy.run_path(os.path.join(
-    os.path.dirname(os.path.abspath(__file__)),
+    KIN_OPT_DIR,
     'optimize_kinetics_BO_supervised.py'))
 assert 'inhibition_multiplier_bounds=' in _inspect.getsource(sup28['default_study_name'])
 assert sup28['default_study_name']('A', 'IRR', 'B') == 'kin_opt_A_kbB_irr'   # legacy: no tag
@@ -1967,7 +1995,7 @@ assert ko.default_study_name('IRR', 'ethanol_isobutanol', 'metabolic_protein',
                              inhibition_multiplier_bounds=(0.1, 10.0), burden=True) \
     == 'kin_opt_ethanol_isobutanol_metabolic_protein_irr_rb0.001-10_ib0.1-10_burden'
 sup29 = _runpy.run_path(os.path.join(
-    os.path.dirname(os.path.abspath(__file__)),
+    KIN_OPT_DIR,
     'optimize_kinetics_BO_supervised.py'))
 assert sup29['default_study_name'](None, 'IRR', None,
                                    study_target_products='ethanol_isobutanol',
@@ -1979,13 +2007,13 @@ assert sup29['default_study_name'](None, 'IRR', None,
                                    rate_multiplier_bounds=(1e-5, 10.0)) \
     == 'kin_opt_ethanol_isobutanol_metabolic_protein_irr_rb1e-05-10_ib0.1-10_xk10_aA_s1x1-50_burden'
 assert sup29['default_study_name']('A', 'IRR', 'B', burden=True) == 'kin_opt_A_kbB_irr_burden'
-src29_sup = open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+src29_sup = open(os.path.join(KIN_OPT_DIR,
                               'optimize_kinetics_BO_supervised.py')).read()
 assert 'ko.DEFAULT_RATE_MULTIPLIER_BOUNDS' in _inspect.getsource(sup29['default_study_name'])
 assert "1e-5 10" not in src29_sup                          # stale help text
 # Driver: the preset's table is defaulted into engine_kwargs, forwarded to
 # the workbook bounds, and the study name sees the EFFECTIVE rate band.
-drv29 = open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+drv29 = open(os.path.join(KIN_OPT_DIR,
                           'optimize_kinetics_BO.py')).read()
 assert ("'rate_multiplier_bounds', 'rate_params',\n"
         "                    'parameter_multiplier_bounds', 'stage_1_max_x_bounds',\n"
@@ -2037,7 +2065,7 @@ except ValueError as e30:
 else:
     raise AssertionError('negative n_startup_trials did not raise')
 # Driver: explicit run() kwarg (default None), forwarded to the engine.
-drv30 = open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+drv30 = open(os.path.join(KIN_OPT_DIR,
                           'optimize_kinetics_BO.py')).read()
 assert 'n_startup_trials=None,' in drv30
 assert 'n_startup_trials=n_startup_trials' in drv30
@@ -2045,7 +2073,7 @@ assert 'n_startup_trials=n_startup_trials' in drv30
 # child_code() (the kwarg is OMITTED when None, so the driver's default
 # rule applies); no effect on the study name.
 sup30 = _runpy.run_path(os.path.join(
-    os.path.dirname(os.path.abspath(__file__)),
+    KIN_OPT_DIR,
     'optimize_kinetics_BO_supervised.py'))
 _s30 = _inspect.signature(sup30['supervise']).parameters
 _c30 = _inspect.signature(sup30['child_code']).parameters
@@ -2060,7 +2088,7 @@ code30b = sup30['child_code'](None, 'IRR', 200, None, False, 'x',
 assert 'n_startup_trials' not in code30b
 assert 'n_startup_trials=n_startup_trials' in _inspect.getsource(sup30['supervise'])
 assert 'n_startup_trials' not in _inspect.signature(sup30['default_study_name']).parameters
-src30 = open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+src30 = open(os.path.join(KIN_OPT_DIR,
                           'optimize_kinetics_BO_supervised.py')).read()
 assert "'--n-startup-trials'" in src30 and 'n_startup_trials=args.n_startup_trials' in src30
 # Default rule is 25% of the budget floored at 10 (set 2026-09-10; was
@@ -2105,7 +2133,7 @@ else:
 # recovering it (the LOST row still never counts as progress), exposes
 # max_empty_attempts (default 5) on supervise() and --max-empty-attempts.
 sup31 = _runpy.run_path(os.path.join(
-    os.path.dirname(os.path.abspath(__file__)),
+    KIN_OPT_DIR,
     'optimize_kinetics_BO_supervised.py'))
 assert _inspect.signature(sup31['supervise']).parameters['max_empty_attempts'].default == 5
 src31 = _inspect.getsource(sup31['supervise'])
@@ -2113,7 +2141,7 @@ assert 'inflight_lost=' in src31 and 'empty_streak' in src31
 assert 'max_empty_attempts=max_empty_attempts' in src31
 assert src31.index('attempt_outcome(') < src31.rindex('recover_inflight(')     # still decided before recovery
 assert src31.index('os.path.isfile(inflight_path)') < src31.index('attempt_outcome(')
-file31 = open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+file31 = open(os.path.join(KIN_OPT_DIR,
                            'optimize_kinetics_BO_supervised.py')).read()
 assert "'--max-empty-attempts'" in file31 and 'max_empty_attempts=args.max_empty_attempts' in file31
 PASS('empty-attempt abort rule: first-draw hang resumes (sidecar present), never-simulated aborts, streak cap; supervisor streak + flag')
@@ -2440,12 +2468,12 @@ else:
 # --no-feasible-sampling (store_false, default on) forwarded through
 # supervise() and child_code() on every attempt, shown in the settings
 # event; never part of the study name.
-drv36 = open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+drv36 = open(os.path.join(KIN_OPT_DIR,
                           'optimize_kinetics_BO.py')).read()
 assert 'feasible_sampling=True,' in drv36                          # run() kwarg, default on
 assert 'feasible_sampling=feasible_sampling' in drv36              # forwarded to the engine
 sup36 = _runpy.run_path(os.path.join(
-    os.path.dirname(os.path.abspath(__file__)),
+    KIN_OPT_DIR,
     'optimize_kinetics_BO_supervised.py'))
 assert _inspect.signature(sup36['supervise']).parameters['feasible_sampling'].default is True
 assert _inspect.signature(sup36['child_code']).parameters['feasible_sampling'].default is True
@@ -2461,7 +2489,7 @@ src36_sup = _inspect.getsource(sup36['supervise'])
 assert 'feasible_sampling=feasible_sampling' in src36_sup
 assert 'feasible_sampling={feasible_sampling!r}' in src36_sup     # settings event line
 assert 'feasible_sampling' not in _inspect.signature(sup36['default_study_name']).parameters
-src36 = open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+src36 = open(os.path.join(KIN_OPT_DIR,
                           'optimize_kinetics_BO_supervised.py')).read()
 assert "'--no-feasible-sampling'" in src36 and "dest='feasible_sampling'" in src36
 assert 'feasible_sampling=args.feasible_sampling' in src36
@@ -2527,7 +2555,7 @@ if os.path.isfile(wb_A) and os.path.isfile(wb_B):
 # Driver: exclude_params is a preset key defaulted into engine_kwargs and
 # the EFFECTIVE set reaches the study name; the preset print reports the
 # effective (include minus exclude) set.
-drv37 = open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+drv37 = open(os.path.join(KIN_OPT_DIR,
                           'optimize_kinetics_BO.py')).read()
 assert "for key in ('include_params', 'exclude_params', 'multiplier_bounds'," in drv37
 assert "exclude_params=engine_kwargs['exclude_params']," in drv37
@@ -2539,7 +2567,7 @@ assert 'if n not in excluded and n not in grouped]' in drv37
 # mirror (None -> ko.DEFAULT_EXCLUDED_PARAMETERS), shown in the settings
 # event.
 sup37 = _runpy.run_path(os.path.join(
-    os.path.dirname(os.path.abspath(__file__)),
+    KIN_OPT_DIR,
     'optimize_kinetics_BO_supervised.py'))
 assert _inspect.signature(sup37['supervise']).parameters['exclude_params'].default is None
 assert _inspect.signature(sup37['child_code']).parameters['exclude_params'].default is None
@@ -2572,7 +2600,7 @@ src37_sup = _inspect.getsource(sup37['supervise'])
 assert 'exclude_params=exclude_params' in src37_sup
 assert 'exclude_params={exclude_params!r}' in src37_sup                # settings event line
 assert 'ko.study_type_name_defaults(study_type)' in _inspect.getsource(sup37['default_study_name'])
-src37 = open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+src37 = open(os.path.join(KIN_OPT_DIR,
                           'optimize_kinetics_BO_supervised.py')).read()
 assert "'--exclude-params', nargs='*', default=None" in src37
 assert 'else tuple(args.exclude_params)' in src37
@@ -2730,7 +2758,7 @@ else:
     PASS('engine: stage_1_max_x sampled in-band, set on V406 before every simulation, baseline in trial 0 and the probe, restored in the finally; absent/untouched without bounds')
 
 #%% 40. driver + supervisor: stage_1_max_x_bounds preset default, naming, --stage-1-max-x-bounds plumbing
-drv40 = open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+drv40 = open(os.path.join(KIN_OPT_DIR,
                           'optimize_kinetics_BO.py')).read()
 assert ("'parameter_multiplier_bounds', 'stage_1_max_x_bounds',\n"
         "                    'parameter_groups', 'group_multiplier_bounds',\n"
@@ -2738,7 +2766,7 @@ assert ("'parameter_multiplier_bounds', 'stage_1_max_x_bounds',\n"
         "                    'param_bounds_override'):") in drv40
 assert "stage_1_max_x_bounds=engine_kwargs['stage_1_max_x_bounds']," in drv40
 sup40 = _runpy.run_path(os.path.join(
-    os.path.dirname(os.path.abspath(__file__)),
+    KIN_OPT_DIR,
     'optimize_kinetics_BO_supervised.py'))
 UNSET40 = sup40['_UNSET']
 for fn40 in ('supervise', 'child_code', 'default_study_name'):
@@ -2778,7 +2806,7 @@ assert sup40['default_study_name']('A', 'IRR', 'B', stage_1_max_x_bounds=(1.0, 5
 src40_sup = _inspect.getsource(sup40['supervise'])
 assert 'stage_1_max_x_bounds=stage_1_max_x_bounds' in src40_sup
 assert 'stage_1_max_x_bounds={stage_1_max_x_bounds!r}' in src40_sup   # settings event line
-src40 = open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+src40 = open(os.path.join(KIN_OPT_DIR,
                           'optimize_kinetics_BO_supervised.py')).read()
 assert "'--stage-1-max-x-bounds', nargs='*', type=float" in src40
 assert "parser.error('--stage-1-max-x-bounds takes" in src40
@@ -2917,13 +2945,13 @@ else:
         raise AssertionError('missing donor did not raise')
     assert not os.path.exists(os.path.join(outdir41, 'offline_seeded_bad.db'))
 # Driver / supervisor plumbing.
-drv41 = open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+drv41 = open(os.path.join(KIN_OPT_DIR,
                           'optimize_kinetics_BO.py')).read()
 assert 'seed_from=None,' in drv41 and 'seed_from=seed_from,' in drv41
 assert 'n_seeds=n_seeds,' in drv41            # method=method follows on the preset path
 assert "+ ko.seed_points_tag(n_seeds)" in drv41          # legacy-path name
 sup41 = _runpy.run_path(os.path.join(
-    os.path.dirname(os.path.abspath(__file__)),
+    KIN_OPT_DIR,
     'optimize_kinetics_BO_supervised.py'))
 seeds41_cli = [('donor_a', (1553, 1914)), ('donor_b', (1162,))]
 assert sup41['seed_count'](seeds41_cli) == 3 and sup41['seed_count'](None) == 0
@@ -2947,7 +2975,7 @@ assert "seed_from=[('donor_a', (1553, 1914)), ('donor_b', (1162,))]," in code41b
 src41_sup = _inspect.getsource(sup41['supervise'])
 assert 'seed_from=seed_from' in src41_sup
 assert 'seed_from={seed_from!r}' in src41_sup   # settings event line
-src41 = open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+src41 = open(os.path.join(KIN_OPT_DIR,
                           'optimize_kinetics_BO_supervised.py')).read()
 assert "'--seed-from', nargs='+', action='append'" in src41
 assert "parser.error('--seed-from takes STUDY TRIAL [TRIAL ...]')" in src41
@@ -3166,7 +3194,7 @@ assert ko.default_study_name('IRR', 'ethanol_isobutanol', 'metabolic_minimal',
 # Driver: the three new keys are setdefault'ed like the others and the
 # preset summary reports the groups / pinned spike (source-text pins, the
 # driver cannot be imported offline).
-drv43 = open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+drv43 = open(os.path.join(KIN_OPT_DIR,
                           'optimize_kinetics_BO.py')).read()
 assert "'parameter_groups', 'group_multiplier_bounds'," in drv43
 assert ("'spike_delta_bounds', 'group_references',\n"
@@ -3186,7 +3214,7 @@ assert 'metabolic_minimal' in drv43
 # its derived name equals the driver's under metabolic_minimal (it used to
 # hardcode DEFAULT_SATURATION_MULTIPLIER_BOUNDS / DEFAULT_EXCLUDED_PARAMETERS).
 sup43 = _runpy.run_path(os.path.join(
-    os.path.dirname(os.path.abspath(__file__)),
+    KIN_OPT_DIR,
     'optimize_kinetics_BO_supervised.py'))
 assert sup43['default_study_name'](None, 'IRR', None,
                                    study_target_products='ethanol_isobutanol',
@@ -3200,7 +3228,7 @@ assert sup43['default_study_name'](None, 'IRR', None,
                                    study_target_products='ethanol_isobutanol',
                                    study_type='metabolic_protein', burden=True) \
     == 'kin_opt_ethanol_isobutanol_metabolic_protein_irr_rb0.001-4_ib0.1-10_xk10_aA_s1x1-50_burden'
-src43_sup = open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+src43_sup = open(os.path.join(KIN_OPT_DIR,
                               'optimize_kinetics_BO_supervised.py')).read()
 assert 'ko.study_type_name_defaults(study_type)' in src43_sup
 assert 'ko.DEFAULT_SATURATION_MULTIPLIER_BOUNDS' not in _inspect.getsource(sup43['default_study_name'])
@@ -3870,7 +3898,7 @@ else:
 # Driver: no logic change (every returned key is already setdefault'ed,
 # the print reports both pins); its docstring and runner example name
 # the type. Supervisor: help text names it.
-drv45 = open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+drv45 = open(os.path.join(KIN_OPT_DIR,
                           'optimize_kinetics_BO.py')).read()
 assert "ns['run'](objective='IRR', study_type='metabolic_minimal_subset')" in drv45
 assert "'metabolic_minimal_subset'" in drv45 and 'standalone' in drv45.lower()
@@ -3891,7 +3919,7 @@ assert 'if enqueue_baseline:' in _src46_eng
 assert 'baseline_point = baseline_decision_point(' in _src46_eng
 assert 'enqueue_baseline' not in _inspect.getsource(ko.default_study_name)
 # Driver: run() accepts it (default False) and forwards it to the engine.
-drv46 = open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+drv46 = open(os.path.join(KIN_OPT_DIR,
                           'optimize_kinetics_BO.py')).read()
 assert 'enqueue_baseline=False,' in drv46
 assert 'enqueue_knockouts=False,' in drv46
@@ -3901,7 +3929,7 @@ assert 'enqueue_baseline=enqueue_baseline,' in drv46
 # --enqueue-baseline (store_true) parses to dest enqueue_baseline; main
 # forwards args.enqueue_baseline.
 sup46 = _runpy.run_path(os.path.join(
-    os.path.dirname(os.path.abspath(__file__)),
+    KIN_OPT_DIR,
     'optimize_kinetics_BO_supervised.py'))
 assert _inspect.signature(sup46['supervise']).parameters['enqueue_baseline'].default is False
 assert _inspect.signature(sup46['child_code']).parameters['enqueue_baseline'].default is False
@@ -3916,7 +3944,7 @@ code46b = sup46['child_code'](None, 'IRR', 2000, None, False, 'x',
                               study_target_products='ethanol_isobutanol',
                               study_type='metabolic_minimal_subset')
 assert 'enqueue_baseline=False' in code46b and 'enqueue_knockouts=False' in code46b   # the defaults: no baseline, no probes
-src46_sup = open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+src46_sup = open(os.path.join(KIN_OPT_DIR,
                               'optimize_kinetics_BO_supervised.py')).read()
 assert "'--enqueue-baseline'" in src46_sup and "dest='enqueue_baseline'" in src46_sup
 # store_true, not store_false: a regression to store_false with the same
@@ -4245,7 +4273,7 @@ code53l = sup30['child_code'](None, 'IRR', 200, None, False, 'x',
                               study_type='metabolic')
 assert 'startup_sampling' not in code53l
 assert 'startup_sampling=startup_sampling' in _inspect.getsource(sup30['supervise'])
-src53 = open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+src53 = open(os.path.join(KIN_OPT_DIR,
                           'optimize_kinetics_BO_supervised.py')).read()
 assert "'--random-startup'" in src53
 assert "const='random'" in src53 and "dest='startup_sampling'" in src53
@@ -4439,7 +4467,7 @@ else:
          'over-cap baseline pruned INFEASIBLE before simulating; OFF simulates it')
 
 #%% 60. Driver run(): volume_feasibility kwarg (default True) forwarded to the engine.
-_drv60 = open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+_drv60 = open(os.path.join(KIN_OPT_DIR,
                            'optimize_kinetics_BO.py')).read()
 assert 'volume_feasibility=True,' in _drv60           # run() signature default
 assert 'volume_feasibility=volume_feasibility,' in _drv60  # forwarded to the engine
@@ -4461,7 +4489,7 @@ _code61t = sup30['child_code'](None, 'IRR', 200, None, False, 'x',
                                study_type='metabolic')
 assert 'volume_feasibility=True,' in _code61t
 assert 'volume_feasibility=volume_feasibility' in _inspect.getsource(sup30['supervise'])
-_src61 = open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+_src61 = open(os.path.join(KIN_OPT_DIR,
                            'optimize_kinetics_BO_supervised.py')).read()
 assert "'--no-volume-feasibility'" in _src61
 assert "dest='volume_feasibility'" in _src61 and 'action=' in _src61
@@ -4482,8 +4510,8 @@ PASS('supervisor --no-volume-feasibility -> volume_feasibility, emitted into '
 if _optuna is None:
     print('SKIP 62: optuna not installed')
 else:
-    golden62 = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                            'fixtures', 'kin_opt_golden_check17_trajectory.csv')
+    golden62 = os.path.join(FIXTURES_DIR,
+                            'kin_opt_golden_check17_trajectory.csv')
     outdir62 = tempfile.mkdtemp()
     study62 = 'offline_bracket'
     csv62 = os.path.join(outdir62, study62 + '_trajectory.csv')
@@ -4899,7 +4927,7 @@ for kw69 in (dict(enqueue_knockouts=True), dict(seed_from=[('donor', (1, 2))])):
         raise AssertionError(f'{kw69} accepted under dual_annealing')
 assert ko.check_method_kwargs('dual_annealing', seed_from=[]) == note69   # empty list = none
 # driver: method= / annealing_kwargs= plumbed, dispatch, string direction for plots
-drv69 = open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+drv69 = open(os.path.join(KIN_OPT_DIR,
                           'optimize_kinetics_BO.py')).read()
 assert "method='tpe',  #" in drv69 or "method='tpe'," in drv69
 assert 'annealing_kwargs=None,' in drv69
@@ -4918,7 +4946,7 @@ PASS('method naming (_da after the slug on both paths) + check_method_kwargs gua
 # threads both; the CLI exposes --method / --initial-temp / --energy-scale /
 # --max-calls-factor / --local-search.
 sup70 = _runpy.run_path(os.path.join(
-    os.path.dirname(os.path.abspath(__file__)),
+    KIN_OPT_DIR,
     'optimize_kinetics_BO_supervised.py'))
 _n70 = _inspect.signature(sup70['default_study_name']).parameters
 assert _n70['method'].default == 'tpe'
@@ -4960,7 +4988,7 @@ compile(code70, '<child70>', 'exec')        # the emitted program parses
 src70 = _inspect.getsource(sup70['supervise'])
 assert 'method=method' in src70 and 'annealing_kwargs=annealing_kwargs' in src70
 assert 'method={method!r}' in src70          # logged in the settings: event line
-cli70 = open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+cli70 = open(os.path.join(KIN_OPT_DIR,
                           'optimize_kinetics_BO_supervised.py')).read()
 for flag70 in ("'--method'", "'--initial-temp'", "'--energy-scale'",
                "'--max-calls-factor'", "'--local-search'"):
@@ -5092,7 +5120,7 @@ PASS('per-group group_multiplier_bounds: an explicit {inhib_ethanol: (0.3, 2.0)}
 # the pre-9bb9cd61 _ib0.2-2 name -- the 2026-09-07 IRR replicate's reason
 # for --study-name), and refused up front for ungrouped types / legacy flags.
 sup73 = _runpy.run_path(os.path.join(
-    os.path.dirname(os.path.abspath(__file__)),
+    KIN_OPT_DIR,
     'optimize_kinetics_BO_supervised.py'))
 for _fn73 in ('supervise', 'child_code', 'default_study_name'):
     assert _inspect.signature(sup73[_fn73]).parameters['group_multiplier_bounds'].default is None, _fn73
@@ -5129,7 +5157,7 @@ assert not os.path.exists(os.path.join(sup73['RESULTS_DIR'], 'never_launched_73_
 _src73 = _inspect.getsource(sup73['supervise'])
 assert _src73.count('group_multiplier_bounds=group_multiplier_bounds') == 2  # -> default_study_name + child_code
 assert _src73.index('STUDY_TYPE_OPTIONS') < _src73.index('default_study_name(')  # guard runs first
-_file73 = open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+_file73 = open(os.path.join(KIN_OPT_DIR,
                             'optimize_kinetics_BO_supervised.py')).read()
 assert "'--group-multiplier-bounds'" in _file73 and "metavar=('LO', 'HI')" in _file73
 assert 'args.group_multiplier_bounds' in _file73        # forwarded by main
@@ -5173,7 +5201,7 @@ assert ko.default_study_name(
     exclude_params=(), stage_1_max_x_bounds=(1.0, 50.0), burden=True) == NAME74
 # The supervisor derives the SAME name from the study_type alone.
 sup74 = _runpy.run_path(os.path.join(
-    os.path.dirname(os.path.abspath(__file__)),
+    KIN_OPT_DIR,
     'optimize_kinetics_BO_supervised.py'))
 assert sup74['default_study_name'](None, 'IRR', None,
                                    study_target_products='ethanol_isobutanol',
@@ -5680,7 +5708,7 @@ else:
 # under any other method is refused up front, before the preset resolution
 # and the scenario load; the runner docstring documents it. Source-level:
 # the driver load()s the model at import.
-drv80 = open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+drv80 = open(os.path.join(KIN_OPT_DIR,
                           'optimize_kinetics_BO.py')).read()
 assert 'gp_kwargs=None,' in drv80
 assert "if method in ('tpe', 'gp'):" in drv80
@@ -5702,7 +5730,7 @@ PASS('driver: method=gp forwards method=/gp_kwargs= to the engine; gp_kwargs ref
 # and logs it; the CLI exposes --gp-no-learned-constraints /
 # --gp-deterministic, refused without --method gp.
 sup81 = _runpy.run_path(os.path.join(
-    os.path.dirname(os.path.abspath(__file__)),
+    KIN_OPT_DIR,
     'optimize_kinetics_BO_supervised.py'))
 assert sup81['default_study_name'](None, 'IRR', None,
                                    study_target_products='ethanol_isobutanol',
@@ -5734,7 +5762,7 @@ code81t = sup81['child_code'](None, 'IRR', 200, None, False, 'x',
 assert "method='tpe'," in code81t and 'gp_kwargs' not in code81t
 src81 = _inspect.getsource(sup81['supervise'])
 assert 'gp_kwargs=gp_kwargs' in src81 and 'gp_kwargs={gp_kwargs!r}' in src81
-cli81 = open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+cli81 = open(os.path.join(KIN_OPT_DIR,
                           'optimize_kinetics_BO_supervised.py')).read()
 for flag81 in ("'--gp-no-learned-constraints'", "'--gp-deterministic'"):
     assert flag81 in cli81, flag81
@@ -5825,7 +5853,7 @@ assert ko.default_study_name(
     method='dual_annealing') == NAME83.replace('_irr_', '_irr_da_')
 # The supervisor derives the SAME name from the study_type alone, and lists the type.
 sup83 = _runpy.run_path(os.path.join(
-    os.path.dirname(os.path.abspath(__file__)),
+    KIN_OPT_DIR,
     'optimize_kinetics_BO_supervised.py'))
 assert sup83['default_study_name'](None, 'IRR', None,
                                    study_target_products='ethanol_isobutanol',
@@ -6224,7 +6252,7 @@ assert ko.default_study_name('IRR', 'ethanol_isobutanol', 'metabolic_split_12d',
 assert ko.default_study_name('IRR', 'ethanol_isobutanol', 'metabolic_split_12d', method='dual_annealing',
                              **kw88) == NAME88.replace('_irr_', '_irr_da_')
 sup88 = _runpy.run_path(os.path.join(
-    os.path.dirname(os.path.abspath(__file__)),
+    KIN_OPT_DIR,
     'optimize_kinetics_BO_supervised.py'))
 # The supervisor preset name carries the `_aA` anchoring tag (mirroring the
 # driver); the three direct ko.default_study_name(..., **kw88) assertions
@@ -6400,7 +6428,7 @@ PASS('metabolic_split_12d preset: 12/8 vars (k_3, k_6, k_13, k_17 + glycolysis +
 # docstrings document the new type. Source-level (the driver load()s the
 # model at import); the supervisor's --study-type choices come from
 # ko.STUDY_TYPE_ROLES (check 88 covers its default_study_name).
-drv89 = open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+drv89 = open(os.path.join(KIN_OPT_DIR,
                           'optimize_kinetics_BO.py')).read()
 body89 = drv89[drv89.index('def run('):]
 setdefault89 = body89[body89.index("for key in ('include_params',"):body89.index('engine_kwargs.setdefault(key, preset[key])')]
@@ -6410,7 +6438,7 @@ assert "x REFERENCE" in body89                           # the groups print mark
 assert "study_type='metabolic_split_12d'" in drv89       # runner example
 assert 'metabolic_split_12d' in drv89[:drv89.index('def run(')]   # module docstring paragraph
 assert 'ehrlich_downstream' in body89[:body89.index('engine_kwargs.setdefault(key, preset[key])')]   # run() docstring
-sup89 = open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+sup89 = open(os.path.join(KIN_OPT_DIR,
                           'optimize_kinetics_BO_supervised.py')).read()
 assert '--study-type metabolic_split_12d' in sup89        # docstring example
 assert 'choices=tuple(ko.STUDY_TYPE_ROLES)' in sup89   # the new type is a valid --study-type automatically
@@ -6531,7 +6559,7 @@ assert aA93b.endswith('_aA_burden'), aA93b
 PASS('default_study_name: _aA anchoring tag after exclusion, before _s1x; None/legacy inert')
 
 #%% 94. Driver forwards the preset's param_bounds_override and tags _aA.
-drv94 = open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+drv94 = open(os.path.join(KIN_OPT_DIR,
                           'optimize_kinetics_BO.py')).read()
 body94 = drv94[drv94.index('def run('):]
 setdefault94 = body94[body94.index("for key in ('include_params',")
@@ -6545,7 +6573,7 @@ assert "derived.update(engine_kwargs.get('param_bounds_override') or {})" in bod
 PASS('driver: param_bounds_override setdefault-ed and merged over the B bounds; _aA tag passed')
 
 #%% 95. Supervisor passes the anchoring marker on the preset path.
-sup95 = open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+sup95 = open(os.path.join(KIN_OPT_DIR,
                           'optimize_kinetics_BO_supervised.py')).read()
 dsn95 = sup95[sup95.index('def default_study_name('):sup95.index('scenario = scenario or')]
 assert "ibo_pathway_anchoring='scenario_A'" in dsn95, dsn95
@@ -6557,8 +6585,9 @@ PASS('supervisor: _aA on the preset path only; legacy path unchanged')
 #%% 96. Trial reproduction (spec 2026-09-18-reproduce-split12d-trial): the
 # preset guard checks the BASENAME of study_name for both preset tokens
 # (ValueError naming the missing one), a bare study name resolves to
-# {results_dir}/{study_name}_trajectory.csv (default analyses/results next to
-# the module), a *.csv argument is a path; read_trajectory_row selects by
+# {results_dir}/{study_name}_trajectory.csv (default ko.default_results_dir():
+# the package's analyses/results unless NSKINETICS_IBO_RESULTS_DIR is set), a
+# *.csv argument is a path; read_trajectory_row selects by
 # int(float(trial_number)) and a missing number raises KeyError with the
 # available range.
 import csv as _csv96
@@ -6578,8 +6607,10 @@ for bad96, token96 in (
 assert ko.split12d_trajectory_path(NAME96, results_dir='X') == os.path.join(
     'X', NAME96 + '_trajectory.csv')
 default96 = ko.split12d_trajectory_path(NAME96)
-assert default96 == os.path.join(os.path.dirname(os.path.abspath(ko.__file__)),
-                                 'analyses', 'results', NAME96 + '_trajectory.csv')
+assert default96 == os.path.join(ko.default_results_dir(), NAME96 + '_trajectory.csv')
+if not os.environ.get('NSKINETICS_IBO_RESULTS_DIR'):       # the default root
+    assert default96 == os.path.join(os.path.dirname(os.path.abspath(ko.__file__)),
+                                     'analyses', 'results', NAME96 + '_trajectory.csv')
 csv96 = os.path.join(tempfile.mkdtemp(), NAME96 + '_trajectory.csv')
 assert ko.split12d_trajectory_path(csv96, results_dir='ignored') == csv96   # a path passes through
 with open(csv96, 'w', newline='') as f96:
@@ -6790,7 +6821,7 @@ for args99, kw99, exc99, needle99 in (
         assert needle99 in str(e99), (needle99, str(e99))
     else:
         raise AssertionError((args99, kw99))
-run99 = open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+run99 = open(os.path.join(KIN_OPT_DIR,
                           'reproduce_split12d_trial.py')).read()
 assert run99.startswith('# -*- coding: utf-8 -*-\n'
                         '# NSKinetics: simulation of Non-Steady state enzyme Kinetics and inhibitory phenomena\n')
@@ -7584,7 +7615,7 @@ PASS('relay engine (gp): fresh preload of N relay trials then exactly n_trials s
 # name, and the end-of-run PCA marks the enqueued baseline at the
 # trajectory's FIRST trial_number with the best SIMULATED trial printed.
 # Path budget (spec §3.1; 2026-09-23 review fix): ko.longest_output_paths of
-# the production name (254 / 239 characters in this checkout), its suffix
+# the production name (257 / 242 characters in this checkout), its suffix
 # lists pinned to every writer and to the driver's savefig names; the driver
 # prints it on its own line and supervise() appends it to a relay settings
 # line (a non-relay line unchanged); both refuse an over-MAX_PATH run-data
@@ -7592,7 +7623,7 @@ PASS('relay engine (gp): fresh preload of N relay trials then exactly n_trials s
 import ast as _ast103
 import textwrap as _textwrap103
 from datetime import datetime as _datetime103
-HERE103 = os.path.dirname(os.path.abspath(__file__))
+HERE103 = KIN_OPT_DIR
 DRV103_PATH = os.path.join(HERE103, 'optimize_kinetics_BO.py')
 SUP103_PATH = os.path.join(HERE103, 'optimize_kinetics_BO_supervised.py')
 drv103 = open(DRV103_PATH, encoding='utf-8').read()
@@ -7614,10 +7645,17 @@ assert len(NAME103) == 103, len(NAME103)
 # Windows' MAX_PATH is 260 INCLUDING the NUL (long paths disabled here), so the
 # longest file a relay campaign writes must stay SHORTER than 260. The longest
 # is the driver's end-of-run <name>_param_trajectory_ / _best_vs_baseline_
-# <%Y.%m.%d-%H.%M>.png: 254 in this checkout's 112-character results dir (5 to
-# spare); the longest run-data file, _relay_manifest.csv.tmp, is 239. ---
-RD103 = os.path.abspath(os.path.join(HERE103, 'results'))
+# <%Y.%m.%d-%H.%M>.png: 257 in this checkout's 115-character results dir (2 to
+# spare); the longest run-data file, _relay_manifest.csv.tmp, is 242. ---
+# The results root has ONE definition, paths.results_dir(): the engine default
+# and the supervisor's polling directory are both it; without the
+# NSKINETICS_IBO_RESULTS_DIR override it is <package>/analyses/results.
+from nskinetics.biorefineries.isobutanol import paths as _paths103
+RD103 = os.path.abspath(_paths103.results_dir())
 assert RD103 == os.path.abspath(ko.default_results_dir()) == os.path.abspath(sup103['RESULTS_DIR'])
+if not os.environ.get(_paths103.RESULTS_DIR_ENV):
+    assert RD103 == os.path.join(os.path.dirname(os.path.abspath(ko.__file__)),
+                                 'analyses', 'results'), RD103
 data103, plot103 = ko.longest_output_paths(RD103, NAME103)
 assert ko.longest_output_paths(None, NAME103) == (data103, plot103)       # None = the engine default
 assert (len(ko.PLOT_STAMP_PLACEHOLDER)
@@ -7628,8 +7666,8 @@ assert plot103.endswith(('_param_trajectory_YYYY.MM.DD-HH.MM.png',
                          '_best_vs_baseline_YYYY.MM.DD-HH.MM.png')), plot103
 assert len(data103) == len(RD103) + 1 + 103 + len('_relay_manifest.csv.tmp'), data103
 assert data103.endswith('_relay_manifest.csv.tmp'), data103
-if len(RD103) == 112:                                                   # this checkout
-    assert (len(plot103), len(data103)) == (254, 239), (len(plot103), len(data103))
+if len(RD103) == 115:                                  # this checkout's default root
+    assert (len(plot103), len(data103)) == (257, 242), (len(plot103), len(data103))
 assert len(plot103) < ko.WINDOWS_MAX_PATH == 260 and len(data103) < 260, (len(plot103), plot103)
 # the suffix lists cover every writer (engine CSV / sidecar tmp / seed log /
 # store journal / manifest tmp, the supervisor's run log) ...
@@ -7663,7 +7701,7 @@ assert _sup_name103(relay_from=DONORS103, relay_kwargs=KW103) == NAME103 == ko.d
     n_seeds=0, method='gp', ibo_pathway_anchoring='scenario_A', relay_tag=TAG103)
 assert _sup_name103(relay_from=list(reversed(DONORS103)),
                     relay_kwargs=dict(KWR103, max_rows=1000.0)) == NAME103
-assert _sup_name103(relay_from=[os.path.join(HERE103, 'results', d + '_trajectory.csv')
+assert _sup_name103(relay_from=[os.path.join(RD103, d + '_trajectory.csv')
                                 for d in DONORS103], relay_kwargs=KW103) == NAME103
 assert _sup_name103() == _sup_name103(relay_from=None) == _sup_name103(relay_from=[]) == PLAIN103
 assert _sup_name103(relay_from=DONORS103) != NAME103                  # knobs are hashed too
@@ -7779,7 +7817,7 @@ assert 'relay_from=relay_from' in src103_sup and 'relay_kwargs=relay_kwargs' in 
 assert src103_sup.count('relay_from=relay_from') == 3   # check_method_kwargs + default_study_name + child_code
 assert 'relay_from={relay_from!r}' in src103_sup and 'relay_kwargs={relay_kwargs!r}' in src103_sup
 assert src103_sup.index('ko.resolve_relay_kwargs(') < src103_sup.index('default_study_name(scenario')
-assert 'import biorefineries' not in supsrc103 and 'import optuna' not in supsrc103
+assert not _imported_roots(supsrc103) & _SUPERVISOR_FORBIDDEN_IMPORTS, _imported_roots(supsrc103)
 assert "'--relay-from', nargs='+', action='extend'" in supsrc103
 for flag103 in ("'--relay-max-rows', type=int", "'--relay-keep-above', type=float",
                 "'--relay-dedupe-tol', type=float",

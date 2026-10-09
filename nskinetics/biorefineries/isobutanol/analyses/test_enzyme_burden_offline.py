@@ -6,19 +6,26 @@
 # https://github.com/sarangbhagwat/nskinetics/blob/main/LICENSE
 # for license details.
 """Offline verification of enzyme_burden.py -- the proteome-allocation
-(enzyme-burden) constraint of the kinetic Bayesian optimization
-(docs/superpowers/specs/2026-09-05-enzyme-burden-design.md). Pure logic:
-no isobutanol.load(), no simulation; SCENARIO_B_EHRLICH is read from
-nskinetics' scenarios.py by file path (the no-import guarantee is probed
-in a fresh interpreter, check 13). Run in a fresh kernel; exit 0 +
-'ALL ... CHECKS PASSED' = clean."""
+(enzyme-burden) constraint of the kinetic Bayesian optimization and the
+scenario simulations. Pure logic: no isobutanol.load(), no simulation;
+enzyme_burden.py is loaded BY FILE PATH (never through the package, so this
+script imports no simulation stack), and SCENARIO_B_EHRLICH is read from
+nskinetics' models/s_cerevisiae_ferm_fb_inhib_mod_ibo/scenarios.py by file
+path (the no-import guarantee is also probed in a fresh interpreter, check
+13). Run in a fresh kernel; exit 0 + 'ALL ... CHECKS PASSED' = clean."""
+import importlib.util
 import math
 import os
 import subprocess
 import sys
 import types
 
-from nskinetics.biorefineries.isobutanol import enzyme_burden as eb
+#: The isobutanol package folder (this script lives in its analyses/).
+PKG_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_spec = importlib.util.spec_from_file_location(
+    'enzyme_burden', os.path.join(PKG_DIR, 'enzyme_burden.py'))
+eb = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(eb)
 
 n_pass = 0
 def PASS(msg):
@@ -240,10 +247,8 @@ B = eb.scenario_b_ehrlich()
 assert B == {'k_13': 5.81, 'k_14': 4.8, 'k_15': 4.8, 'k_16': 2.82}, B   # 4 keys since nskinetics b61360e (r16 irreversible: no k_16r)
 assert eb.scenario_b_ehrlich(path=path13) == B and eb.scenario_b_ehrlich() is not B
 # The no-heavy-import guarantee is probed in a FRESH interpreter that loads
-# enzyme_burden.py by file path (as the stdlib-only supervisor would): this
-# script imports it through the nskinetics.biorefineries.isobutanol package, whose
-# system.py imports nskinetics at module top, so sys.modules here proves
-# nothing.
+# enzyme_burden.py by file path (as the stdlib-only supervisor would), so the
+# result cannot depend on what this script or its caller has imported.
 probe13 = (
     "import importlib.util, sys\n"
     f"spec = importlib.util.spec_from_file_location('eb_probe', {eb.__file__!r})\n"

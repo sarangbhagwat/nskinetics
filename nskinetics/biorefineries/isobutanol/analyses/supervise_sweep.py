@@ -12,11 +12,15 @@ Crash- and stall-resilient launcher for a CHECKPOINTED ``evaluate_*`` sweep
 
 A native integrator crash (CVODE segfault; exit code 5, no traceback) kills a
 sweep process outright. A checkpointed sweep (e.g.
-``evaluate_EtOH_k13_inhib_isobutanol.py``) logs every evaluated grid point to
-``results/<script stem>_checkpoint.csv`` and writes
-``results/<script stem>_inflight.json`` right before each simulation; on
-relaunch it logs the point the previous process died in as LOST (NaN) and
-resumes after it. This wrapper does the relaunching:
+``kinetic_sweeps/evaluate_EtOH_k13_inhib_isobutanol.py``) logs every evaluated
+grid point to ``<results root>/<script stem>_checkpoint.csv`` and writes
+``<results root>/<script stem>_inflight.json`` right before each simulation;
+on relaunch it logs the point the previous process died in as LOST (NaN) and
+resumes after it. The results root is the package's flat one,
+``paths.results_dir()`` (``analyses/results`` unless
+``NSKINETICS_IBO_RESULTS_DIR`` is set; the child inherits the environment),
+which this wrapper polls by default (``--results-dir`` overrides it). This
+wrapper does the relaunching:
 
 * relaunch while the child exits non-zero, one fresh process per attempt
   (strictly sequential, so it is safe on any numba-cache state);
@@ -27,19 +31,32 @@ resumes after it. This wrapper does the relaunching:
   checkpoint row (a broken load or a failing plot section would otherwise
   relaunch forever), or after ``--max-attempts`` attempts.
 
-Usage::
+Supervising a sweep runs it: the sweep's own run permission applies (the
+long or ask-first ones say so in their docstrings). Usage (from analyses/)::
 
-    python supervise_sweep.py evaluate_EtOH_k13_inhib_isobutanol.py
+    python supervise_sweep.py kinetic_sweeps/evaluate_EtOH_k13_inhib_isobutanol.py
 
-    python supervise_sweep.py evaluate_sobol_split12d.py \
+    python supervise_sweep.py sensitivity/evaluate_sobol_split12d.py \
         --stem <study name> --checkpoint-suffix _trajectory.csv
 """
 
 import argparse
+import importlib.util
 import os
 import subprocess
 import sys
 import time
+
+
+def _load_paths():
+    """The package's stdlib-only paths.py (one folder up), loaded by file path
+    so this supervisor never imports nskinetics or the model."""
+    package_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    spec = importlib.util.spec_from_file_location(
+        '_ibo_paths_sweep_supervisor', os.path.join(package_dir, 'paths.py'))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def n_checkpoint_rows(path):
@@ -90,11 +107,15 @@ def main():
     parser.add_argument('--checkpoint-suffix', default='_checkpoint.csv',
                         help="checkpoint file suffix (the Sobol' sampler logs "
                              "to '<stem>_trajectory.csv')")
+    parser.add_argument('--results-dir', default=None,
+                        help='folder the sweep writes its checkpoint / '
+                             'in-flight files to (default: the results root, '
+                             'paths.results_dir())')
     args = parser.parse_args()
 
     script = os.path.abspath(args.script)
     stem = args.stem or os.path.splitext(os.path.basename(script))[0]
-    results = os.path.join(os.path.dirname(script), 'results')
+    results = args.results_dir or _load_paths().results_dir()
     checkpoint = os.path.join(results, stem + args.checkpoint_suffix)
     inflight = os.path.join(results, stem + '_inflight.json')
 

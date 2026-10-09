@@ -5,7 +5,28 @@
 # This module is under the MIT open-source license. See
 # https://github.com/sarangbhagwat/nskinetics/blob/main/LICENSE
 # for license details.
+"""Uncertainty (Latin-hypercube Monte Carlo) and Spearman sensitivity analysis
+of the isobutanol biorefinery for one scenario (default 'A', burden OFF as
+always -- isobutanol.load() installs no enzyme burden).
 
+ASK-FIRST -- LONG-RUNNING: N_simulations_per_mode = 6000 simulations (~30 h).
+Resumable: the evaluation autosaves every 10 samples to
+<results root>/uncertainties_<mode>_autosave.pickle and resumes from it on a
+relaunch (np.random.seed fixes the samples); the pickle is deleted once the
+raw results are saved.
+
+Writes, under the results root (paths.results_dir(): analyses/results unless
+NSKINETICS_IBO_RESULTS_DIR is set), with the prefix
+_IBO_<stamp>_['<mode>']_<N>sims: <prefix>_<mode>_0_baseline.xlsx,
+<prefix>_<mode>_1_full_evaluation.xlsx, the MPSP box plot, the TEA breakdown
+bar plot and the Spearman figures (*.png), plus
+significant_parameters_from_sensitivity_analysis_IBO_<stamp>_['<mode>']_<N>sims.xlsx.
+The ['<mode>'] in the names is parsed by plot_uncertainty_scatters.py and
+plots/plot_uncertainty_*.py -- keep it.
+
+Run from any folder (it changes into the results root to plot):
+    python analyses/uncertainty/uncertainties_IBO_EtOH.py
+"""
 import pandas as pd
 
 #%%
@@ -25,8 +46,6 @@ import pandas as pd
 import contourplots
 import biosteam as bst
 print('\n\nLoading system ...')
-# from biorefineries
-# from nskinetics.biorefineries import isobutanol
 from nskinetics.biorefineries import isobutanol
 isobutanol.load()
 from nskinetics.biorefineries.isobutanol.models import models_EtOH_IBO_corn as models
@@ -41,8 +60,9 @@ import os
 dateTimeObj = datetime.now()
 
 chdir = os.chdir
-IBO_filepath = isobutanol.__file__.replace('\\__init__.py', '')
-IBO_results_filepath = IBO_filepath + '\\analyses\\results\\'
+from nskinetics.biorefineries.isobutanol import paths, scenarios
+# The results root, with a trailing separator (file names are appended).
+IBO_results_filepath = os.path.join(paths.results_dir(create=True), '')
 model = models.IBO_model
 
 system = IBO_sys = models.IBO_sys
@@ -56,9 +76,6 @@ adjusted_ethanol_MPSP_key = ('Biorefinery', 'Purity-adjusted ethanol MPSP [$/kg]
 # per_kg_KSA_to_per_kg_SA = models.per_kg_KSA_to_per_kg_SA
 
 f = bst.main_flowsheet
-
-#%%
-plot_spearman_matrix = isobutanol.plots.spearman_matrix.plot_spearman_matrix
 
 #%%
 # !!! 
@@ -91,17 +108,18 @@ scenario_names =\
                    'B': 'potential isobutanol production',
                 }
                 
-parameter_distributions_filenames = {i: 'parameter-distributions_corn_IBO_EtOH_' + i + '.xlsx' for i in modes}
+parameter_distributions_filenames = {i: scenarios.SCENARIOS[i].workbook_path for i in modes}
 
 #%%
+# The scenario's baseline feeding strategy from the registry (constants only:
+# scenarios.load_scenario would reorder these steps and, for A, turn the
+# enzyme burden ON).
 V406 = f.V406
-if scenario=='A':
-    V406.fbs_spec.max_n_spikes = 16
-    model.specification(threshold_conc=217.125, target_conc=221.25)
-elif scenario=='B':
-    V406.fbs_spec.max_n_spikes = 0  # batch: no glucose spikes
-    model.specification(threshold_conc=34.25, target_conc=140.0)
-    
+scenario_spec = scenarios.SCENARIOS[scenario]
+V406.fbs_spec.max_n_spikes = scenario_spec.max_n_spikes  # 0 = batch: no glucose spikes
+model.specification(threshold_conc=scenario_spec.threshold_conc,
+                    target_conc=scenario_spec.target_conc)
+
 #%%
 
 timer = Timer('timer')
@@ -113,12 +131,8 @@ np.random.seed(3221) # 3221
 # def load_additional_params():
    
 for i in range(len(modes)):
-    # ## Change working directory to biorefineries\\isobutanol
-    # chdir(isobutanol.__file__.replace('\\__init__.py', ''))
-    # ##
     mode = modes[i]
-    parameter_distributions_filename = IBO_filepath+\
-        '\\data\\parameter_distributions\\'+parameter_distributions_filenames[mode]
+    parameter_distributions_filename = parameter_distributions_filenames[mode]
     print(f'\n\nLoading parameter distributions ({mode}) ...')
     model.parameters = ()
     model.load_parameter_distributions(parameter_distributions_filename, models.namespace_dict)
@@ -141,11 +155,7 @@ for i in range(len(modes)):
     samples = model.sample(N=N_simulations_per_mode, rule='L')
     model.load_samples(samples)
     print('\nLoaded samples.')
-    
-    # ## Change working directory to biorefineries\\isobutanol\\analyses\\results
-    # chdir(isobutanol.__file__.replace('\\__init__.py', '')+'\\analyses\\results')
-    # ##
-    
+
     model.exception_hook = 'warn'
     print('\n\nSimulating baseline ...')
     

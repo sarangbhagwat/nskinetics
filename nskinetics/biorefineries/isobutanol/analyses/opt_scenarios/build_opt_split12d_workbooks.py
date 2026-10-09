@@ -7,9 +7,9 @@
 # for license details.
 """One-shot generator (ASK-FIRST to run; it simulates) of ONE opt_* scenario
 workbook + registry pin from ONE recorded trial of an ethanol_isobutanol x
-metabolic_split_12d kinetic-optimization campaign (spec docs/superpowers/
-specs/2026-09-20-opt-IRR-relocate-to-split12d-optimum-design.md; generalized
-2026-10-08 from build_opt_IRR_split12d_workbook.py to every opt_* scenario).
+metabolic_split_12d kinetic-optimization campaign (first written 2026-09-20
+for the since-removed opt_IRR scenario; generalized 2026-10-08 from
+build_opt_IRR_split12d_workbook.py to every opt_* scenario).
 OPT_SCENARIOS maps each scenario to the best trial (by the campaign's own
 objective) of one of the eight 2026-09-23/24 campaigns: the seven seed-350
 GP campaigns (_rs350) and the PI (log-tail) relay (_rl15c111dc).
@@ -43,25 +43,36 @@ It:
 Trust a FRESH-KERNEL smoke test of the scenario, not this script's
 in-process printout, as the go/no-go.
 
-Every biorefineries import lives inside main(), so importing this module is
-build-free (analyses/test_build_opt_split12d_workbooks_offline.py loads it
-by file path).
+Every nskinetics.biorefineries.isobutanol import lives inside main() / the
+simulation helpers (paths.py, stdlib-only, is loaded by file path), so
+importing this module is build-free (the offline test
+test_build_opt_split12d_workbooks_offline.py and verify_opt_scenarios.py load
+it by file path).
 
-Run (ask first; one fresh process per scenario; several may run in
-parallel only on a warm numba cache):
-  & "C:/Users/saran/anaconda3/envs/IBO_2026/python.exe" analyses/build_opt_split12d_workbooks.py opt_PI_TRY_informed
+Input: the campaign's trajectory CSV under the results root
+(paths.results_dir(): analyses/results unless NSKINETICS_IBO_RESULTS_DIR is
+set), written by analyses/kinetic_optimization/optimize_kinetics_BO_supervised.py;
+campaign CSVs are not shipped, so a missing one fails before the build.
+Writes: data/parameter_distributions/parameter-distributions_corn_IBO_EtOH_
+<scenario>.xlsx (OVERWRITES the tracked package workbook) and
+<results root>/opt_scenario_reproductions/<scenario>.json.
+
+Run (ASK-FIRST; a few minutes; one fresh process per scenario, one at a
+time, never next to another simulation):
+  & "C:/Users/saran/anaconda3/envs/IBO_2026/python.exe" analyses/opt_scenarios/build_opt_split12d_workbooks.py opt_PI_TRY_informed
 """
 import os
 import re
 import json
 import math
 import argparse
+import importlib.util
 
 #%% Settings
 _STEM = 'kin_opt_ethanol_isobutanol_metabolic_split_12d_'
 _TAIL = '_gp_rb0.001-4_ib0.75-1.5_aA_rs350_burden'
 #: scenario -> (OBJECTIVE_REGISTRY key the scenario pins, campaign name
-#: (resolved to analyses/results/<name>_trajectory.csv), trial_number of the
+#: (resolved to <results root>/<name>_trajectory.csv), trial_number of the
 #: campaign's best COMPLETE trial by its own objective). The PI campaigns
 #: optimized PI (log-tail), whose argmax is PI's; the scenarios pin PI.
 OPT_SCENARIOS = {
@@ -91,15 +102,25 @@ RELOAD_VERIFY_TOL = 1e-3
 METRIC_CHECK_TOL = 0.02
 
 #%% Paths and constants
-_ANALYSES_DIR = os.path.dirname(os.path.abspath(__file__))
-WORKBOOK_DIR = os.path.join(os.path.dirname(_ANALYSES_DIR), 'data',
-                            'parameter_distributions')
-B_WORKBOOK = os.path.join(WORKBOOK_DIR,
-                          'parameter-distributions_corn_IBO_EtOH_B.xlsx')
+def _load_paths():
+    """The package's stdlib-only paths.py (two folders up), loaded by file
+    path so importing this module stays build-free."""
+    package_dir = os.path.dirname(os.path.dirname(
+        os.path.dirname(os.path.abspath(__file__))))
+    spec = importlib.util.spec_from_file_location(
+        '_ibo_paths', os.path.join(package_dir, 'paths.py'))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+paths = _load_paths()
+#: The package's parameter-distribution workbooks (data/parameter_distributions).
+WORKBOOK_DIR = paths.workbook_dir()
+B_WORKBOOK = paths.workbook_path('B')
 #: <scenario>.json records of each reproduction (reproduced / reloaded
-#: values, recorded-row comparison), read by verify_opt_scenarios.py.
-REPRODUCTION_DIR = os.path.join(_ANALYSES_DIR, 'results',
-                                'opt_scenario_reproductions')
+#: values, recorded-row comparison), kept for the record under the results
+#: root; verify_opt_scenarios.py re-simulates instead of reading them.
+REPRODUCTION_DIR = paths.results_dir('opt_scenario_reproductions')
 #: Non-kinetic decision entries reproduce_split12d_trial passes through in
 #: result['applied']; the feeding strategy is read from result['feeding'].
 FEEDING_KEYS = ('threshold_conc', 'target_delta', 'max_n_spikes')
@@ -304,6 +325,12 @@ def main(argv=None):
                     else args.trial_number)
     workbook = workbook_filename(args.scenario)
     out_path = os.path.join(WORKBOOK_DIR, workbook)
+    # Fail with a clear message BEFORE the build if the campaign CSV is missing.
+    from nskinetics.biorefineries.isobutanol import kinetic_optimization as ko
+    paths.require_input(
+        ko.split12d_trajectory_path(study_name),
+        produced_by='the kinetic-optimization campaign '
+                    '(analyses/kinetic_optimization/optimize_kinetics_BO_supervised.py)')
 
     # 1. Build (default both-trains == IBO_EtOH-only at S201 split 1.0).
     from nskinetics.biorefineries import isobutanol

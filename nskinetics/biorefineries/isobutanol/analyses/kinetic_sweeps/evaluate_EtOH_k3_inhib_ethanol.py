@@ -6,17 +6,16 @@
 # https://github.com/sarangbhagwat/nskinetics/blob/main/LICENSE
 # for license details.
 """
-2-D kinetic sweep: the individual rate capacity ``k_6`` (x-axis) vs the grouped
+2-D kinetic sweep: the individual rate capacity ``k_3`` (x-axis) vs the grouped
 ``inhib_ethanol`` family MULTIPLIER (y-axis), on the scenario-A baseline, WITH
 the enzyme burden turned ON.
 
-It mirrors the sibling ``evaluate_EtOH_k3_inhib_ethanol.py`` (individual rate on
-x, grouped ``inhib_ethanol`` multiplier on y), swapping ``k_3`` for the
-ethanol-forming alcohol-dehydrogenase (Adh1, r6) rate ``k_6`` and keeping the
-same wider, USER-SPECIFIED axis bounds (NOT the ``metabolic_14d`` study bands
-the k_1e sweep pins to):
+It mirrors the sibling ``evaluate_EtOH_k1e_inhib_ethanol.py`` (individual rate
+on x, grouped ``inhib_ethanol`` multiplier on y), swapping ``k_1e`` for the
+downstream rate ``k_3`` and using wider, USER-SPECIFIED axis bounds (NOT the
+``metabolic_14d`` study bands the k_1e sweep pins to):
 
-* **k_6 (x-axis):** swept over its scenario-A baseline x **[1e-3, 4.0]**. The
+* **k_3 (x-axis):** swept over its scenario-A baseline x **[1e-3, 4.0]**. The
   span matches the split-preset rate band (``kinetic_optimization`` assigns
   ``capacity``-role rate constants a [1e-3x, 4x] band in the split presets), so
   the axis reaches an effective knock-out at the low end and 4x the fitted rate
@@ -31,22 +30,37 @@ the k_1e sweep pins to):
   (exactly ``kinetic_optimization.expand_grouped_values`` for a single group).
 
 Both axes are linear grids over these bounds (a contour sweep spaces them
-evenly, matching the sibling ``evaluate_*`` scripts). ``(k_6 = A baseline,
+evenly, matching the sibling ``evaluate_*`` scripts). ``(k_3 = A baseline,
 inhib_ethanol multiplier = 1.0)`` lies on the grid interior and reproduces the
 scenario-A baseline point.
 
 Enzyme burden: installed A-referenced via ``scenarios.load_scenario('A',
 burden=True)`` (``system.set_active_burden``), so the ``load_simulate`` choke
-point derates ``k_7``/``k_8`` for every simulated point. ``k_6`` is a rate
-capacity, so a high ``k_6`` raises the modeled proteome pool ``Phi_M`` past the
+point derates ``k_7``/``k_8`` for every simulated point. ``k_3`` is a rate
+capacity, so a high ``k_3`` raises the modeled proteome pool ``Phi_M`` past the
 flexible-sector cap and the point becomes burden-INFEASIBLE
 (``EnzymeBurdenInfeasibleError`` -> caught -> NaN); the ``inhib_ethanol``
 coefficients are not pools, so they do not enter the burden -- expect a roughly
-vertical infeasible (NaN) band at high ``k_6``.
+vertical infeasible (NaN) band at high ``k_3``.
 
 Crash resilience: the grid is checkpointed per point and resumes on relaunch
 (see the 'Checkpoint + resume' cell). Launch through ``supervise_sweep.py
 <this script>`` to have a crashed or hung process relaunched automatically.
+
+Run: ASK-FIRST, LONG-RUNNING -- 40 x 40 = 1600 grid points of full
+flowsheet simulations (~15-25 s each, i.e. about 7-11 h).
+Writes, under the results root (paths.results_dir(): analyses/results
+unless NSKINETICS_IBO_RESULTS_DIR is set): one <file_to_save>_<metric>.csv
+per metric and the contour plots
+<metric>_animated_contourplot_<file_to_save>_frame_0.png (the script changes
+into the results root to plot). Set MPLBACKEND=Agg for an unattended run.
+While it runs it also keeps <script stem>_checkpoint.csv /
+<script stem>_inflight.json there (deleted on completion).
+IBO_SWEEP_REPLOT_FROM_CSV=1 skips every simulation and redraws the plots
+from the CSVs of an earlier run (same `file_to_save` prefix).
+From analyses/, under the crash/stall supervisor:
+
+    python supervise_sweep.py kinetic_sweeps/evaluate_EtOH_k3_inhib_ethanol.py
 """
 
 import numpy as np
@@ -117,12 +131,11 @@ vent = ferm_reactor.outs[0]
 EtOH_market_range=np.array([0.7, 1.0])
 
 #%% Filepaths
-isobutanol_filepath = isobutanol.__file__.replace('\\__init__.py', '')
-
-# ## Change working directory to biorefineries\\HP\\analyses\\results
-# chdir(HP.__file__.replace('\\__init__.py', '')+'\\analyses\\results')
-# ##
-isobutanol_results_filepath = isobutanol_filepath + '\\analyses\\results\\'
+from nskinetics.biorefineries.isobutanol import paths
+# The flat results root (paths.results_dir(): analyses/results unless
+# NSKINETICS_IBO_RESULTS_DIR is set) with a trailing separator -- the file
+# names below are appended to it.
+isobutanol_results_filepath = os.path.join(paths.results_dir(create=True), '')
 
 
 #%% Scenario A baseline + enzyme burden ON
@@ -143,8 +156,8 @@ _available = ko.discover_kinetic_parameters(r)
 INHIB_ETHANOL_MEMBERS = [m for m in ko.METABOLIC_MINIMAL_SUBSET_GROUPS['inhib_ethanol']
                          if m in _available]
 baseline_inhib_ethanol = {m: _available[m] for m in INHIB_ETHANOL_MEMBERS}
-baseline_k_6 = _available.get('k_6', getattr(r, 'k_6'))
-print('\nScenario-A baseline k_6 = %s' % baseline_k_6)
+baseline_k_3 = _available.get('k_3', getattr(r, 'k_3'))
+print('\nScenario-A baseline k_3 = %s' % baseline_k_3)
 print('Scenario-A inhib_ethanol baselines: %s' % baseline_inhib_ethanol)
 
 
@@ -233,11 +246,11 @@ results = {i: [] for i in metrics.keys()}
 
 steps = (40, 40, 1)
 
-# USER-SPECIFIED band: k_6 x [1e-3, 4.0] its scenario-A baseline (the
+# USER-SPECIFIED band: k_3 x [1e-3, 4.0] its scenario-A baseline (the
 # split-preset capacity-rate band; effective knock-out at the low end).
-K_6_MULTIPLIER_BOUNDS = (1e-3, 4.0)
-spec_1 = nsk_k_6s = np.linspace(K_6_MULTIPLIER_BOUNDS[0]*baseline_k_6,
-                                K_6_MULTIPLIER_BOUNDS[1]*baseline_k_6,
+K_3_MULTIPLIER_BOUNDS = (1e-3, 4.0)
+spec_1 = nsk_k_3s = np.linspace(K_3_MULTIPLIER_BOUNDS[0]*baseline_k_3,
+                                K_3_MULTIPLIER_BOUNDS[1]*baseline_k_3,
                                 steps[0])
 
 # USER-SPECIFIED band: inhib_ethanol multiplier x [1e-3, 1.5] (near-complete
@@ -258,9 +271,9 @@ spec_3 = spike_concs =\
 
 # Parameters analyzed across
 
-x_label = "k_6" # title of the x axis
+x_label = "k_3" # title of the x axis
 x_units = r"$\mathrm{g} \cdot \mathrm{L}^{-1} \cdot \mathrm{h}^{-1}$"
-# k_6 range is baseline-dependent (1e-3x-4x baseline); derive round ticks.
+# k_3 range is baseline-dependent (1e-3x-4x baseline); derive round ticks.
 x_ticks = [float(np.round(t, 1)) for t in np.linspace(spec_1[0], spec_1[-1], 5)]
 
 y_label = "inhib_ethanol multiplier" # title of the y axis
@@ -308,45 +321,13 @@ markercolor = (*colors.CABBI_orange.shade(5).RGBn, 1)
 edgecolor = (*colors.CABBI_black.RGBn, 1)
 
 
-def JBEI_UCB_colormap(N_levels=90, reverse=False):
-    JBEI_orange = (233/255, 83/255, 39/255)
-    UCB_blue = (0/255, 38/255, 118/255)
-    UCB_yellow = (253/255, 181/255, 21/255)
-    cmap_colors = [
-                    UCB_yellow,
-                    JBEI_orange,
-                    UCB_blue,
-                    # colors.CABBI_teal_green.shade(50).RGBn,
-                    colors.grey_dark.RGBn]
-    if reverse: cmap_colors.reverse()
-    return LinearSegmentedColormap.from_list('CABBI', cmap_colors, N_levels)
-
-def CABBI_green_colormap(N_levels=90):
-    """
-    Return a matplotlib.colors.LinearSegmentedColormap object
-    that serves as CABBI's green colormap theme for contour plots.
-
-    """
-    CABBI_colors = (colors.CABBI_orange.RGBn,
-                    colors.CABBI_yellow.RGBn,
-
-                    colors.CABBI_green.RGBn,
-                    # colors.CABBI_teal_green.shade(50).RGBn,
-                    colors.grey_dark.RGBn)
-    return LinearSegmentedColormap.from_list('CABBI', CABBI_colors, N_levels)
+from nskinetics.biorefineries.isobutanol.sweep_utils import (
+    JBEI_UCB_colormap, CABBI_green_colormap)
 
 #%% Tickmark utils (unused)
 
-def tickmarks_from_data(data, accuracy=50, N_points=5):
-    dmin = data.min()
-    dmax = data.max()
-    return tickmarks(dmin, dmax, accuracy, N_points)
-
-def tickmarks(dmin, dmax, accuracy=50, N_points=5):
-    dmin = floor(dmin/accuracy) * accuracy
-    dmax = ceil(dmax/accuracy) * accuracy
-    step = (dmax - dmin) / (N_points - 1)
-    return [dmin + step * i for i in range(N_points)]
+from nskinetics.biorefineries.isobutanol.sweep_utils import (
+    tickmarks_from_data, tickmarks)
 
 #%%
 minute = '0' + str(dateTimeObj.minute) if len(str(dateTimeObj.minute))==1 else str(dateTimeObj.minute)
@@ -356,7 +337,7 @@ file_to_save = f'ibo_{steps}_{x_label[:5]}_{y_label[:5]}_{z_label[:5]}_opt={perf
 # Set IBO_SWEEP_REPLOT_FROM_CSV=1 to skip the grid simulations and rebuild
 # the contour plots from the per-metric CSVs a previous run of this script
 # (same steps / scenario / feeding settings, i.e. same `file_to_save` prefix)
-# saved under analyses/results/. Only the plot styling below then matters.
+# saved under the results root. Only the plot styling below then matters.
 replot_from_csv = os.environ.get('IBO_SWEEP_REPLOT_FROM_CSV', '') == '1'
 
 #%% Checkpoint + resume (crash resilience)
@@ -380,7 +361,7 @@ replot_from_csv = os.environ.get('IBO_SWEEP_REPLOT_FROM_CSV', '') == '1'
 _script_stem = os.path.splitext(os.path.basename(__file__))[0]
 checkpoint_filepath = isobutanol_results_filepath + _script_stem + '_checkpoint.csv'
 inflight_filepath = isobutanol_results_filepath + _script_stem + '_inflight.json'
-checkpoint_x_column, checkpoint_y_column = 'k_6', 'inhib_ethanol_multiplier'
+checkpoint_x_column, checkpoint_y_column = 'k_3', 'inhib_ethanol_multiplier'
 checkpoint_fieldnames = ['i_row', 'i_col', checkpoint_x_column, checkpoint_y_column,
                          'state'] + list(metrics.keys())
 
@@ -455,7 +436,7 @@ if not replot_from_csv:
 if not replot_from_csv:
     print('\n\nSimulating the initial point to avoid bugs ...')
     curr_spec = fbs_spec.current_specifications
-    r.k_6 = baseline_k_6  # baseline k_6 (known-good; low grid points are near-knockouts)
+    r.k_3 = baseline_k_3  # baseline k_3 (known-good; low grid points are near-knockouts)
     apply_inhib_ethanol_multiplier(1.0)  # baseline inhib_ethanol (known-good)
     model_specification(**curr_spec,
         n_sims=3,
@@ -512,7 +493,7 @@ for s3 in spec_3_to_run:
                 # if round(s1,2)==round(spec_1[1],2) and round(s2,2)==round(spec_2[4],2):
                 #     breakpoint()
                 curr_spec = {k: v for k,v in fbs_spec.current_specifications.items()}
-                r.k_6 = s1
+                r.k_3 = s1
                 apply_inhib_ethanol_multiplier(s2)
                 curr_spec.update({'spike_conc':s3,})
 
@@ -535,7 +516,7 @@ for s3 in spec_3_to_run:
                 print('Error in model spec: %s'%str_e)
                 for v in list(results.values()): v[-1][-1].append(np.nan)
                 error_message = str_e
-                # A burden-infeasible point (high k_6 over the proteome cap)
+                # A burden-infeasible point (high k_3 over the proteome cap)
                 # is an EXPECTED NaN, not a solver failure -- keep it out of
                 # errors_dict so the console log flags only genuine issues.
                 if ('specifications do not meet required' not in str_e
@@ -580,77 +561,8 @@ from math import floor, log
 get_median = np.median
 np_round = np.round
 
-def get_OOM(number):
-    return floor(log(number+1., 10))
-
-def my_round(x, base=5):
-    return base * round(x/base)
-
-def get_contour_info_from_metric_data(
-                                        metric_data, # numpy array
-                                        round_cbar_ticks_to_this_many_OOMs_lower_than_data_OOM=1,
-                                        n_levels_between_cbar_ticks=5,
-                                        n_stdevs_for_bounds=1,
-                                        lb=None,
-                                        ub=None,
-                                        multiply_step_size_by=0.5,
-                                        w_ticks_round_to_base_divisor=2,
-                                        remove_w_ticks_if_greater_than_this_fraction_of_successor=0.8,
-                                      ):
-    if not type(metric_data) == np.ndarray: metric_data = np.array(metric_data)
-    metric_data = metric_data[~np.isnan(metric_data)]
-    median, stdev = get_median(metric_data), metric_data.std()
-    bound_diff = n_stdevs_for_bounds*stdev
-    ub_temp = max(abs(median-bound_diff), abs(median+bound_diff))
-    # breakpoint()
-    OOM = get_OOM(ub_temp)
-    log_ub_temp = log(ub_temp, 10)
-
-    round_to_decimal_place = None
-
-    if log_ub_temp < 1.:
-        round_to_decimal_place = int(round(ub_temp/(10.*round_cbar_ticks_to_this_many_OOMs_lower_than_data_OOM), 0))
-    else:
-        round_to_decimal_place = -OOM -1 + round_cbar_ticks_to_this_many_OOMs_lower_than_data_OOM
-
-    if lb==None: lb = np_round(median - bound_diff, round_to_decimal_place)
-    if ub==None: ub = np_round(median + bound_diff, round_to_decimal_place)
-
-    cbar_ticks_step_size = (10**OOM)/(round_cbar_ticks_to_this_many_OOMs_lower_than_data_OOM) * multiply_step_size_by
-    w_levels_step_size = cbar_ticks_step_size/n_levels_between_cbar_ticks
-    cbar_ticks = np.arange(lb, ub+cbar_ticks_step_size, cbar_ticks_step_size)
-    w_levels = np.arange(lb, ub+w_levels_step_size, w_levels_step_size)
-
-    w_ticks_round_to_base = 10**-round_to_decimal_place / 2
-    w_ticks = [*set([lb,
-               my_round(median-0.6*stdev, w_ticks_round_to_base),
-               my_round(median-0.4*stdev, w_ticks_round_to_base),
-               my_round(median-0.2*stdev, w_ticks_round_to_base),
-               np_round(median, round_to_decimal_place),
-               my_round(median+0.2*stdev, ),
-               my_round(median+0.4*stdev, w_ticks_round_to_base),
-               my_round(median+0.6*stdev, w_ticks_round_to_base),
-               ub])]
-
-    # w_ticks.sort()
-    # w_ticks_to_remove = []
-    # for i in range(len(w_ticks)-1):
-    #     if w_ticks[i]/w_ticks[i+1] > remove_w_ticks_if_greater_than_this_fraction_of_successor:
-    #         w_ticks_to_remove.append(w_ticks[i])
-    # for j in w_ticks_to_remove:
-    #     w_ticks.remove(j)
-    #     w_ticks.append(j-w_levels_step_size)
-
-    w_ticks.sort()
-    w_ticks_to_remove = []
-    for i in range(len(w_ticks)-1):
-        if w_ticks[i]/w_ticks[i+1] > remove_w_ticks_if_greater_than_this_fraction_of_successor:
-            w_ticks_to_remove.append(w_ticks[i])
-    for j in w_ticks_to_remove:
-        w_ticks.remove(j)
-
-    w_ticks.sort()
-    return w_levels, w_ticks, cbar_ticks
+from nskinetics.biorefineries.isobutanol.sweep_utils import (
+    get_OOM, my_round, get_contour_info_from_metric_data)
 
 #%% More plot stuff
 

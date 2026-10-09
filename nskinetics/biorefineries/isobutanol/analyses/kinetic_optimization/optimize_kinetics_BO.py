@@ -10,9 +10,15 @@ feeding sugar concentrations and glucose-spike cap (see
 kinetic_optimization.py), run against a scenario baseline. Smoke-test
 convention: importing this file loads and baseline-simulates the
 biorefinery; the optimization itself runs only when a runner calls
-run(...). Long-running at the default budget (2000 trials) -- NOT on the
-run-without-asking list; rerunning with the same study name resumes a
-crashed/interrupted study and runs only the remaining trials.
+run(...). ASK-FIRST: long-running at the default budget (2000 trials,
+~15-30 s each, i.e. many hours; launch it through
+optimize_kinetics_BO_supervised.py in this folder); rerunning with the same
+study name resumes a crashed/interrupted study and runs only the remaining
+trials. Writes, under the results root (paths.results_dir():
+analyses/results unless NSKINETICS_IBO_RESULTS_DIR is set):
+<study>_trajectory.csv, <study>.db (optuna store), <study>_inflight.json,
+<study>_seeds.txt, <study>_relay_manifest.csv (relay studies) and, at the
+end, <study>_{trajectories,param_trajectory,best_vs_baseline,pca}_<stamp>.png.
 
 Search set and bands come from a named STUDY PRESET (default
 study_target_products='ethanol_isobutanol', study_type='metabolic_split_14d'
@@ -150,10 +156,9 @@ Runner pattern (fresh kernel, one process):
                                  relay_from=['<donor study name>', '<other donor>'],
                                  relay_kwargs={'max_rows': 1000, 'keep_above': -0.12953})
 
-Relay campaigns (relay_from / relay_kwargs, since 2026-09-23; spec
-docs/superpowers/specs/2026-09-23-relay-preload-pi-campaign-design.md) are
-GP-only preset studies on a registry, maximized, tracked-metric objective;
-see run()'s RELAY paragraph.
+Relay campaigns (relay_from / relay_kwargs, since 2026-09-23) are GP-only
+preset studies on a registry, maximized, tracked-metric objective; see
+run()'s RELAY paragraph.
 """
 import os
 from datetime import datetime
@@ -168,7 +173,6 @@ model = isobutanol.models.models_EtOH_IBO_corn.model
 namespace_dict = isobutanol.models.namespace_dict
 fbs_spec = isobutanol.models.fbs_spec
 model_specification = model.specification
-IBO_filepath = isobutanol.__file__.replace('\\__init__.py', '')
 
 
 def kinetic_bounds_from_scenario(bounds_scenario,
@@ -541,9 +545,9 @@ def run(scenario=None,  # 'A' or 'B'; None = the preset's start scenario
     deterministic_objective (True), n_fallback_candidates (2048),
     max_fallback_batches (20).
 
-    RELAY (`relay_from` / `relay_kwargs`, default None; since 2026-09-23,
-    spec docs/superpowers/specs/2026-09-23-relay-preload-pi-campaign-design.md
-    §3.2 + amendments A1 / A6 / A8 / A12). `relay_from` names donor
+    RELAY (`relay_from` / `relay_kwargs`, default None; since 2026-09-23;
+    the unshipped relay design record's §3.2 + amendments A1 / A6 / A8 /
+    A12). `relay_from` names donor
     campaigns of the SAME search space (study names or trajectory-CSV
     paths); the engine (ko.run_kinetic_optimization) selects their COMPLETE
     rows sim-free (ko.select_relay_rows: filters, identity checks, unit-cube

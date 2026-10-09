@@ -5,10 +5,65 @@
 # This module is under the MIT open-source license. See
 # https://github.com/sarangbhagwat/nskinetics/blob/main/LICENSE
 # for license details.
+"""
+2-D kinetic sweep: ethanol-production rate capacity ``k_1e`` (x-axis) vs the
+grouped ``inhib_ethanol`` family MULTIPLIER (y-axis), on the scenario-A
+baseline, WITH the enzyme burden turned ON.
+
+Both axes span the SAME bounds the kinetic optimizer's ``metabolic_14d``
+study uses:
+
+* **k_1e (x-axis):** in ``metabolic_14d`` k_1e is not an individual decision
+  variable -- it belongs to the grouped ``glycolysis`` CAPACITY family
+  (``kinetic_optimization.METABOLIC_14D_RATE_GROUPS['glycolysis']`` = k_1l,
+  k_1h, k_1e) on a **0.2x-4x** multiplier band
+  (``STUDY_TYPE_OPTIONS['metabolic_14d']['group_multiplier_bounds']
+  ['glycolysis']``). Here k_1e alone is swept over its own scenario-A
+  baseline x [0.2, 4.0] (k_1l / k_1h held at baseline), so the axis covers
+  exactly the range k_1e can take in that study.
+* **inhib_ethanol multiplier (y-axis):** the same grouped decision variable
+  the study uses (``METABOLIC_MINIMAL_SUBSET_GROUPS['inhib_ethanol']`` =
+  k_1ie, k_4ie, k_7ie, k_10ie, k_16ie), which in ``metabolic_14d`` takes the
+  default group band **0.75x-1.5x**
+  (``kinetic_optimization.DEFAULT_GROUP_MULTIPLIER_BOUNDS``). Every member is
+  set to its scenario-A baseline x the multiplier, so intra-family ratios are
+  preserved (exactly ``kinetic_optimization.expand_grouped_values`` for a
+  single group).
+
+Both axes are linear grids over the metabolic_14d bounds (the optimizer draws
+them log-uniform; a contour sweep spaces them evenly, matching the sibling
+``evaluate_*`` scripts). ``(k_1e = A baseline, multiplier = 1.0)`` lies on the
+grid interior and reproduces the scenario-A baseline point.
+
+Enzyme burden: installed A-referenced via ``scenarios.load_scenario('A',
+burden=True)`` (``system.set_active_burden``), so the ``load_simulate`` choke
+point derates ``k_7``/``k_8`` for every simulated point. ``k_1e`` is a rate
+capacity, so high ``k_1e`` raises the modeled proteome pool ``Phi_M`` past the
+flexible-sector cap and the point becomes burden-INFEASIBLE
+(``EnzymeBurdenInfeasibleError`` -> caught -> NaN); the ``inhib_ethanol``
+coefficients are not pools, so they do not enter the burden -- expect a roughly
+vertical infeasible (NaN) band at high ``k_1e``.
+
+Run: not ask-first, but LONG-RUNNING -- 40 x 40 = 1600 grid points of full
+flowsheet simulations (~15-25 s each, i.e. about 7-11 h).
+Writes, under the results root (paths.results_dir(): analyses/results
+unless NSKINETICS_IBO_RESULTS_DIR is set): one <file_to_save>_<metric>.csv
+per metric and the contour plots
+<metric>_animated_contourplot_<file_to_save>_frame_0.png (the script changes
+into the results root to plot). Set MPLBACKEND=Agg for an unattended run.
+IBO_SWEEP_REPLOT_FROM_CSV=1 skips every simulation and redraws the plots
+from the CSVs of an earlier run (same `file_to_save` prefix).
+Not checkpointed (a native solver crash loses the run). From analyses/:
+
+    python kinetic_sweeps/evaluate_EtOH_k1e_inhib_ethanol.py
+"""
 
 import numpy as np
 from nskinetics.biorefineries import isobutanol
 isobutanol.load()
+
+from nskinetics.biorefineries.isobutanol import scenarios
+from nskinetics.biorefineries.isobutanol import kinetic_optimization as ko
 
 from matplotlib import pyplot as plt
 
@@ -66,37 +121,49 @@ broth = ferm_reactor.outs[1]
 # part of the recoverable product (a broth-only denominator reads >100 %).
 vent = ferm_reactor.outs[0]
 
-EtOH_market_range=np.array([0.7, 1.0]) 
-                
+EtOH_market_range=np.array([0.7, 1.0])
+
 #%% Filepaths
-isobutanol_filepath = isobutanol.__file__.replace('\\__init__.py', '')
+from nskinetics.biorefineries.isobutanol import paths
+# The flat results root (paths.results_dir(): analyses/results unless
+# NSKINETICS_IBO_RESULTS_DIR is set) with a trailing separator -- the file
+# names below are appended to it.
+isobutanol_results_filepath = os.path.join(paths.results_dir(create=True), '')
 
-# ## Change working directory to biorefineries\\HP\\analyses\\results
-# chdir(HP.__file__.replace('\\__init__.py', '')+'\\analyses\\results')
-# ##
-isobutanol_results_filepath = isobutanol_filepath + '\\analyses\\results\\'
 
-
-#%% Load parameter distributions
-parameter_distributions_filename = isobutanol_filepath+\
-    '\\data\\parameter_distributions\\'+\
-    'parameter-distributions_corn_IBO_EtOH_A.xlsx'
-        
-model.parameters = ()
-model.load_parameter_distributions(parameter_distributions_filename, namespace_dict)
-baseline_initial = model.metrics_at_baseline()
-
-#%% Baseline -- simulate and solve TEA
-
+#%% Scenario A baseline + enzyme burden ON
+# load_scenario('A', burden=True) loads scenario A's workbook (baseline
+# kinetics + distributions), sets A's feeding strategy (16 spikes /
+# 217.125 / 221.25) from scenarios.SCENARIOS, installs the A-referenced
+# active enzyme burden (system.set_active_burden), and runs one baseline
+# model_specification. After it returns, r holds A's baseline kinetics.
 scenario = 'A'
 
-if scenario=='A':
-    fbs_spec.max_n_spikes = 16
-    model_specification(threshold_conc=217.125, target_conc=221.25)
-elif scenario=='B':
-    fbs_spec.max_n_spikes = 0  # batch: no glucose spikes
-    model_specification(threshold_conc=34.25, target_conc=140.0)
-    
+bundle = scenarios.load_scenario(scenario, burden=True)
+feeding_kwargs = bundle['feeding_kwargs']
+
+# Snapshot each inhib_ethanol member's scenario-A baseline off the live
+# model (member list sourced from kinetic_optimization -- no hardcoding; a
+# member absent from the model is dropped, mirroring expand_grouped_values).
+_available = ko.discover_kinetic_parameters(r)
+INHIB_ETHANOL_MEMBERS = [m for m in ko.METABOLIC_MINIMAL_SUBSET_GROUPS['inhib_ethanol']
+                         if m in _available]
+baseline_inhib_ethanol = {m: _available[m] for m in INHIB_ETHANOL_MEMBERS}
+baseline_k_1e = _available.get('k_1e', getattr(r, 'k_1e'))
+print('\nScenario-A baseline k_1e = %s' % baseline_k_1e)
+print('Scenario-A inhib_ethanol baselines: %s' % baseline_inhib_ethanol)
+
+
+def apply_inhib_ethanol_multiplier(multiplier):
+    """Set every inhib_ethanol member to its scenario-A baseline x
+    `multiplier` (intra-family ratios preserved; == expand_grouped_values
+    for the single inhib_ethanol group)."""
+    for member, base in baseline_inhib_ethanol.items():
+        setattr(r, member, base * multiplier)
+
+
+#%% Baseline -- already simulated by load_scenario above
+
 # !!!
 # fbs_spec.max_n_spikes = 0
 perform_feeding_strategy_opt = False
@@ -141,7 +208,7 @@ get_sugar_sol_evap_duty = lambda: sum([sum([i.duty for i in evap.heat_utilities 
 
 get_cell_loading = lambda: ferm_reactor.nsk_results_specific_tau_dict['[x]']
 get_active_cell_loading = lambda: ferm_reactor.nsk_results_specific_tau_dict['curr_a']
-# metrics = [get_product_MPSP, 
+# metrics = [get_product_MPSP,
 #             get_AOC,
 #             get_TCI,
 #             get_yield_nsk,
@@ -170,11 +237,21 @@ metrics = {'MPSP': {'f': get_product_MPSP, 'units': '$/kg'}, # ethanol MPSP
 # results = {i: [] for i in range(len(metrics.values()))}
 results = {i: [] for i in metrics.keys()}
 
-steps = (20, 20, 1)
+steps = (40, 40, 1)
 
-spec_1 = nsk_k_1ees = np.linspace(1., 300., steps[0])
+# metabolic_14d glycolysis-group band (0.2x-4x) x the scenario-A baseline k_1e:
+# the range k_1e spans inside that study's glycolysis capacity multiplier.
+K_1E_GLYCOLYSIS_MULTIPLIER_BOUNDS = ko.STUDY_TYPE_OPTIONS['metabolic_14d'][
+    'group_multiplier_bounds']['glycolysis']  # (0.2, 4.0)
+spec_1 = nsk_k_1ees = np.linspace(K_1E_GLYCOLYSIS_MULTIPLIER_BOUNDS[0]*baseline_k_1e,
+                                  K_1E_GLYCOLYSIS_MULTIPLIER_BOUNDS[1]*baseline_k_1e,
+                                  steps[0])
 
-spec_2 = nsk_k_7iees = np.linspace(0.0001, 0.5, steps[1])
+# metabolic_14d inhibition-family band = the default group band (0.75x-1.5x).
+INHIB_ETHANOL_MULTIPLIER_BOUNDS = ko.DEFAULT_GROUP_MULTIPLIER_BOUNDS  # (0.75, 1.5)
+spec_2 = inhib_ethanol_multipliers = np.linspace(INHIB_ETHANOL_MULTIPLIER_BOUNDS[0],
+                                                 INHIB_ETHANOL_MULTIPLIER_BOUNDS[1],
+                                                 steps[1])
 
 
 spec_3 = spike_concs =\
@@ -189,11 +266,12 @@ spec_3 = spike_concs =\
 
 x_label = "k_1e" # title of the x axis
 x_units = r"$\mathrm{g} \cdot \mathrm{L}^{-1} \cdot \mathrm{h}^{-1}$"
-x_ticks = [0, 100, 200, 300]
+# k_1e range is baseline-dependent (0.2x-4x baseline); derive round ticks.
+x_ticks = [float(np.round(t, 1)) for t in np.linspace(spec_1[0], spec_1[-1], 5)]
 
-y_label = "k_7ie" # title of the y axis
-y_units = r"$\mathrm{g} \cdot \mathrm{L}^{-1} \cdot \mathrm{h}^{-1}$"
-y_ticks = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5]
+y_label = "inhib_ethanol multiplier" # title of the y axis
+y_units = r"" # dimensionless (x scenario-A baseline of each member)
+y_ticks = [0.5, 1.0, 1.5, 2.0]
 
 z_label = "Spike feed glucose concentration" # title of the x axis
 z_units =r"$\mathrm{g} \cdot \mathrm{L}^{-1}$"
@@ -236,45 +314,13 @@ markercolor = (*colors.CABBI_orange.shade(5).RGBn, 1)
 edgecolor = (*colors.CABBI_black.RGBn, 1)
 
 
-def JBEI_UCB_colormap(N_levels=90, reverse=False):
-    JBEI_orange = (233/255, 83/255, 39/255)
-    UCB_blue = (0/255, 38/255, 118/255)
-    UCB_yellow = (253/255, 181/255, 21/255)
-    cmap_colors = [
-                    UCB_yellow,
-                    JBEI_orange,
-                    UCB_blue,
-                    # colors.CABBI_teal_green.shade(50).RGBn,
-                    colors.grey_dark.RGBn]
-    if reverse: cmap_colors.reverse()
-    return LinearSegmentedColormap.from_list('CABBI', cmap_colors, N_levels)
-
-def CABBI_green_colormap(N_levels=90):
-    """
-    Return a matplotlib.colors.LinearSegmentedColormap object
-    that serves as CABBI's green colormap theme for contour plots.
-
-    """
-    CABBI_colors = (colors.CABBI_orange.RGBn,
-                    colors.CABBI_yellow.RGBn,
-
-                    colors.CABBI_green.RGBn,
-                    # colors.CABBI_teal_green.shade(50).RGBn,
-                    colors.grey_dark.RGBn)
-    return LinearSegmentedColormap.from_list('CABBI', CABBI_colors, N_levels)
+from nskinetics.biorefineries.isobutanol.sweep_utils import (
+    JBEI_UCB_colormap, CABBI_green_colormap)
 
 #%% Tickmark utils (unused)
 
-def tickmarks_from_data(data, accuracy=50, N_points=5):
-    dmin = data.min()
-    dmax = data.max()
-    return tickmarks(dmin, dmax, accuracy, N_points)
-
-def tickmarks(dmin, dmax, accuracy=50, N_points=5):
-    dmin = floor(dmin/accuracy) * accuracy
-    dmax = ceil(dmax/accuracy) * accuracy
-    step = (dmax - dmin) / (N_points - 1)
-    return [dmin + step * i for i in range(N_points)]
+from nskinetics.biorefineries.isobutanol.sweep_utils import (
+    tickmarks_from_data, tickmarks)
 
 #%%
 minute = '0' + str(dateTimeObj.minute) if len(str(dateTimeObj.minute))==1 else str(dateTimeObj.minute)
@@ -284,7 +330,7 @@ file_to_save = f'ibo_{steps}_{x_label[:5]}_{y_label[:5]}_{z_label[:5]}_opt={perf
 # Set IBO_SWEEP_REPLOT_FROM_CSV=1 to skip the grid simulations and rebuild
 # the contour plots from the per-metric CSVs a previous run of this script
 # (same steps / scenario / feeding settings, i.e. same `file_to_save` prefix)
-# saved under analyses/results/. Only the plot styling below then matters.
+# saved under the results root. Only the plot styling below then matters.
 replot_from_csv = os.environ.get('IBO_SWEEP_REPLOT_FROM_CSV', '') == '1'
 
 #%% Initial simulation
@@ -293,13 +339,13 @@ if not replot_from_csv:
     print('\n\nSimulating the initial point to avoid bugs ...')
     curr_spec = fbs_spec.current_specifications
     r.k_1e = nsk_k_1ees[1]
-    r.k_7ie = nsk_k_7iees[0]
+    apply_inhib_ethanol_multiplier(1.0)  # baseline inhib_ethanol (known-good)
     model_specification(**curr_spec,
         n_sims=3,
         plot=True,
         )
 
-# %% Run analysis 
+# %% Run analysis
 
 def print_status(curr_no, total_no, s1, s2, s3, HXN_qbal_error, results=None, exception_str=None,):
     print('\n\n')
@@ -333,7 +379,7 @@ else:
 
 for s3 in spec_3_to_run:
     for v in list(results.values()): v.append([])
-    
+
     for s2 in spec_2:
         for v in list(results.values()): v[-1].append([])
         for s1 in spec_1:
@@ -344,42 +390,48 @@ for s3 in spec_3_to_run:
                 #     breakpoint()
                 curr_spec = {k: v for k,v in fbs_spec.current_specifications.items()}
                 r.k_1e = s1
-                r.k_7ie = s2
+                apply_inhib_ethanol_multiplier(s2)
                 curr_spec.update({'spike_conc':s3,})
-                
+
                 if perform_feeding_strategy_opt:
                     optimize_1D_feeding_strategy_for_MPSP(Ns=20, model_kwargs=curr_spec)
                 else:
                     model_specification(**curr_spec)
                 # plot_kinetic_results()
-                
-                
+
+
                 refresh_TEA_solution()
-                for k, v in list(results.items()): 
+                for k, v in list(results.items()):
                     v[-1][-1].append(metrics[k]['f']())
-                
+
                 HXN_qbal_error = HXN.energy_balance_percent_error
                 if abs(max_HXN_qbal_percent_error)<abs(HXN_qbal_error): max_HXN_qbal_percent_error = HXN_qbal_error
-                
+
             except Exception as e:
                 str_e = str(e).lower()
                 print('Error in model spec: %s'%str_e)
                 for v in list(results.values()): v[-1][-1].append(np.nan)
                 error_message = str_e
-                if not 'specifications do not meet required' in str_e:
+                # A burden-infeasible point (high k_1e over the proteome cap)
+                # is an EXPECTED NaN, not a solver failure -- keep it out of
+                # errors_dict so the console log flags only genuine issues.
+                if ('specifications do not meet required' not in str_e
+                        and 'enzyme' not in str_e
+                        and 'proteome' not in str_e
+                        and 'burden' not in str_e):
                     errors_dict[(s1, s2, s3)] = str_e
                     # breakpoint()
                     # raise e
-                    
+
             if curr_no%print_status_every_n_simulations==0 or error_message:
                 print_status(curr_no, total_no,
-                             s1, s2, s3, 
+                             s1, s2, s3,
                              results=[v[-1][-1][-1] for v in list(results.values())],
                              HXN_qbal_error=HXN.energy_balance_percent_error,
                              exception_str=error_message)
 
     # Convert last 2D list to array and transpose
-    for k in results.keys(): 
+    for k in results.keys():
         # results[k][-1] = np.array(results[k][-1]).transpose()
         results[k][-1] = np.array(results[k][-1])
 
@@ -391,7 +443,7 @@ for s3 in spec_3_to_run:
 #%% Report maximum HXN energy balance error
 print(f'Max HXN Q bal error was {round(max_HXN_qbal_percent_error, 3)} %.')
 
-#%% 
+#%%
 
 chdir(isobutanol_results_filepath)
 
@@ -401,77 +453,8 @@ from math import floor, log
 get_median = np.median
 np_round = np.round
 
-def get_OOM(number):
-    return floor(log(number+1., 10))
-
-def my_round(x, base=5):
-    return base * round(x/base)
-
-def get_contour_info_from_metric_data(
-                                        metric_data, # numpy array
-                                        round_cbar_ticks_to_this_many_OOMs_lower_than_data_OOM=1,
-                                        n_levels_between_cbar_ticks=5,
-                                        n_stdevs_for_bounds=1,
-                                        lb=None,
-                                        ub=None,
-                                        multiply_step_size_by=0.5,
-                                        w_ticks_round_to_base_divisor=2,
-                                        remove_w_ticks_if_greater_than_this_fraction_of_successor=0.8,
-                                      ):
-    if not type(metric_data) == np.ndarray: metric_data = np.array(metric_data)
-    metric_data = metric_data[~np.isnan(metric_data)]
-    median, stdev = get_median(metric_data), metric_data.std()
-    bound_diff = n_stdevs_for_bounds*stdev
-    ub_temp = max(abs(median-bound_diff), abs(median+bound_diff))
-    # breakpoint()
-    OOM = get_OOM(ub_temp)
-    log_ub_temp = log(ub_temp, 10)
-    
-    round_to_decimal_place = None
-    
-    if log_ub_temp < 1.: 
-        round_to_decimal_place = int(round(ub_temp/(10.*round_cbar_ticks_to_this_many_OOMs_lower_than_data_OOM), 0))
-    else:
-        round_to_decimal_place = -OOM -1 + round_cbar_ticks_to_this_many_OOMs_lower_than_data_OOM
-    
-    if lb==None: lb = np_round(median - bound_diff, round_to_decimal_place)
-    if ub==None: ub = np_round(median + bound_diff, round_to_decimal_place)
-    
-    cbar_ticks_step_size = (10**OOM)/(round_cbar_ticks_to_this_many_OOMs_lower_than_data_OOM) * multiply_step_size_by
-    w_levels_step_size = cbar_ticks_step_size/n_levels_between_cbar_ticks
-    cbar_ticks = np.arange(lb, ub+cbar_ticks_step_size, cbar_ticks_step_size)
-    w_levels = np.arange(lb, ub+w_levels_step_size, w_levels_step_size)
-    
-    w_ticks_round_to_base = 10**-round_to_decimal_place / 2
-    w_ticks = [*set([lb, 
-               my_round(median-0.6*stdev, w_ticks_round_to_base),
-               my_round(median-0.4*stdev, w_ticks_round_to_base),  
-               my_round(median-0.2*stdev, w_ticks_round_to_base), 
-               np_round(median, round_to_decimal_place),
-               my_round(median+0.2*stdev, ), 
-               my_round(median+0.4*stdev, w_ticks_round_to_base),  
-               my_round(median+0.6*stdev, w_ticks_round_to_base), 
-               ub])]
-    
-    # w_ticks.sort()
-    # w_ticks_to_remove = []
-    # for i in range(len(w_ticks)-1):
-    #     if w_ticks[i]/w_ticks[i+1] > remove_w_ticks_if_greater_than_this_fraction_of_successor:
-    #         w_ticks_to_remove.append(w_ticks[i])
-    # for j in w_ticks_to_remove:
-    #     w_ticks.remove(j)
-    #     w_ticks.append(j-w_levels_step_size)
-        
-    w_ticks.sort()
-    w_ticks_to_remove = []
-    for i in range(len(w_ticks)-1):
-        if w_ticks[i]/w_ticks[i+1] > remove_w_ticks_if_greater_than_this_fraction_of_successor:
-            w_ticks_to_remove.append(w_ticks[i])
-    for j in w_ticks_to_remove:
-        w_ticks.remove(j)
-    
-    w_ticks.sort()
-    return w_levels, w_ticks, cbar_ticks
+from nskinetics.biorefineries.isobutanol.sweep_utils import (
+    get_OOM, my_round, get_contour_info_from_metric_data)
 
 #%% More plot stuff
 
@@ -512,21 +495,21 @@ if smoothing:
                         #     if not np.any(np.isnan(manhattan_neighbors)):
                         #         if not round(arr[i,j,k]/np.mean(manhattan_neighbors),0)==1:
                         #             print(i,j,k)
-                    
+
 #%% Plots
 plot = True
 
-if plot: 
-    
+if plot:
+
     #%% MPSP
-    
+
     # MPSP_w_levels, MPSP_w_ticks, MPSP_cbar_ticks = get_contour_info_from_metric_data(results_metric_1, lb=3)
     MPSP_w_levels = np.arange(0.25, 1.0001, 0.01)
     MPSP_cbar_ticks = np.arange(0.25, 1.0001, 0.05)
     MPSP_w_ticks = [0.4, 0.6, 0.8]
     # MPSP_w_levels = np.arange(0., 15.5, 0.5)
-    
-    
+
+
     contourplots.animated_contourplot(w_data_vs_x_y_at_multiple_z=results['MPSP'], # shape = z * x * y # values of the metric you want to plot on the color axis; e.g., MPSP
                                     x_data=spec_1, # x axis values
                                     # x_data = yields/theoretical_max_g_HP_acid_per_g_glucose,
@@ -567,169 +550,16 @@ if plot:
                                     units_opening_brackets = [" (",] * 4,
                                     units_closing_brackets = [")",] * 4,
                                     )
-    
-    # #%% Yield
-    
-    # # Yield_w_levels, Yield_w_ticks, Yield_cbar_ticks = get_contour_info_from_metric_data(results_metric_1, lb=3)
-    # Yield_w_levels = np.arange(0., 0.501, 0.01)
-    # Yield_cbar_ticks = np.arange(0., 0.501, 0.05)
-    # Yield_w_ticks = [0.1, 0.2, 0.3, 0.4, 0.5, 0.55]
-    # # Yield_w_levels = np.arange(0., 15.5, 0.5)
-    
-    
-    # contourplots.animated_contourplot(w_data_vs_x_y_at_multiple_z=results[3], # shape = z * x * y # values of the metric you want to plot on the color axis; e.g., Yield
-    #                                 x_data=spec_1, # x axis values
-    #                                 # x_data = yields/theoretical_max_g_HP_acid_per_g_glucose,
-    #                                 y_data=spec_2, # y axis values
-    #                                 z_data=spec_3, # z axis values
-    #                                 x_label=x_label, # title of the x axis
-    #                                 y_label=y_label, # title of the y axis
-    #                                 z_label=z_label, # title of the z axis
-    #                                 w_label=Yield_w_label, # title of the color axis
-    #                                 x_ticks=x_ticks,
-    #                                 y_ticks=y_ticks,
-    #                                 z_ticks=z_ticks,
-    #                                 w_levels=Yield_w_levels, # levels for unlabeled, filled contour areas (labeled and ticked only on color bar)
-    #                                 w_ticks=Yield_w_ticks, # labeled, lined contours; a subset of w_levels
-    #                                 x_units=x_units,
-    #                                 y_units=y_units,
-    #                                 z_units=z_units,
-    #                                 w_units=Yield_units,
-    #                                 # fmt_clabel=lambda cvalue: r"$\mathrm{\$}$"+" {:.1f} ".format(cvalue)+r"$\cdot\mathrm{kg}^{-1}$", # format of contour labels
-    #                                 fmt_clabel = lambda cvalue: get_rounded_str(cvalue, 3),
-    #                                 cmap=JBEI_UCB_colormap(reverse=True), # can use 'viridis' or other default matplotlib colormaps
-    #                                 # cmap_over_color = colors.grey_dark.shade(8).RGBn,
-    #                                 cmap_over_color=colors.yellow_tint.RGBn,
-    #                                 extend_cmap='max',
-    #                                 cbar_ticks=Yield_cbar_ticks,
-    #                                 z_marker_color='g', # default matplotlib color names
-    #                                 fps=fps, # animation frames (z values traversed) per second
-    #                                 n_loops='inf', # the number of times the animated contourplot should loop animation over z; infinite by default
-    #                                 animated_contourplot_filename='yield_animated_contourplot_'+file_to_save, # file name to save animated contourplot as (no extensions)
-    #                                 keep_frames=keep_frames, # leaves frame PNG files undeleted after running; False by default
-    #                                 axis_title_fonts=axis_title_fonts,
-    #                                 clabel_fontsize = clabel_fontsize,
-    #                                 default_fontsize = default_fontsize,
-    #                                 axis_tick_fontsize = axis_tick_fontsize,
-    #                                 # comparison_range=EtOH_market_range,
-    #                                 n_minor_ticks = 1,
-    #                                 cbar_n_minor_ticks = 3,
-    #                                 units_on_newline = (False, False, False, False), # x,y,z,w
-    #                                 units_opening_brackets = [" (",] * 4,
-    #                                 units_closing_brackets = [")",] * 4,
-    #                                 )
 
-    # #%% Titer
-    
-    # # Titer_w_levels, Titer_w_ticks, Titer_cbar_ticks = get_contour_info_from_metric_data(results_metric_1, lb=3)
-    # Titer_w_levels = np.arange(80., 150.1, 2.)
-    # Titer_cbar_ticks = np.arange(80., 150.1, 10.)
-    # Titer_w_ticks = []
-    # # Titer_w_levels = np.arange(0., 15.5, 0.5)
-    
-    
-    # contourplots.animated_contourplot(w_data_vs_x_y_at_multiple_z=results[4], # shape = z * x * y # values of the metric you want to plot on the color axis; e.g., Titer
-    #                                 x_data=spec_1, # x axis values
-    #                                 # x_data = Titers/theoretical_max_g_HP_acid_per_g_glucose,
-    #                                 y_data=spec_2, # y axis values
-    #                                 z_data=spec_3, # z axis values
-    #                                 x_label=x_label, # title of the x axis
-    #                                 y_label=y_label, # title of the y axis
-    #                                 z_label=z_label, # title of the z axis
-    #                                 w_label=Titer_w_label, # title of the color axis
-    #                                 x_ticks=x_ticks,
-    #                                 y_ticks=y_ticks,
-    #                                 z_ticks=z_ticks,
-    #                                 w_levels=Titer_w_levels, # levels for unlabeled, filled contour areas (labeled and ticked only on color bar)
-    #                                 w_ticks=Titer_w_ticks, # labeled, lined contours; a subset of w_levels
-    #                                 x_units=x_units,
-    #                                 y_units=y_units,
-    #                                 z_units=z_units,
-    #                                 w_units=Titer_units,
-    #                                 # fmt_clabel=lambda cvalue: r"$\mathrm{\$}$"+" {:.1f} ".format(cvalue)+r"$\cdot\mathrm{kg}^{-1}$", # format of contour labels
-    #                                 fmt_clabel = lambda cvalue: get_rounded_str(cvalue, 3),
-    #                                 cmap=JBEI_UCB_colormap(reverse=True), # can use 'viridis' or other default matplotlib colormaps
-    #                                 # cmap_over_color = colors.grey_dark.shade(8).RGBn,
-    #                                 cmap_over_color=colors.yellow_tint.RGBn,
-    #                                 extend_cmap='max',
-    #                                 cbar_ticks=Titer_cbar_ticks,
-    #                                 z_marker_color='g', # default matplotlib color names
-    #                                 fps=fps, # animation frames (z values traversed) per second
-    #                                 n_loops='inf', # the number of times the animated contourplot should loop animation over z; infinite by default
-    #                                 animated_contourplot_filename='Titer_animated_contourplot_'+file_to_save, # file name to save animated contourplot as (no extensions)
-    #                                 keep_frames=keep_frames, # leaves frame PNG files undeleted after running; False by default
-    #                                 axis_title_fonts=axis_title_fonts,
-    #                                 clabel_fontsize = clabel_fontsize,
-    #                                 default_fontsize = default_fontsize,
-    #                                 axis_tick_fontsize = axis_tick_fontsize,
-    #                                 # comparison_range=EtOH_market_range,
-    #                                 n_minor_ticks = 1,
-    #                                 cbar_n_minor_ticks = 3,
-    #                                 units_on_newline = (False, False, False, False), # x,y,z,w
-    #                                 units_opening_brackets = [" (",] * 4,
-    #                                 units_closing_brackets = [")",] * 4,
-    #                                 )
-    
-    # #%% Productivity
-    
-    # # Productivity_w_levels, Productivity_w_ticks, Productivity_cbar_ticks = get_contour_info_from_metric_data(results_metric_1, lb=3)
-    # Productivity_w_levels = np.arange(0., 5.001, 0.1)
-    # Productivity_cbar_ticks = np.arange(0., 5.001, 0.5)
-    # Productivity_w_ticks = []
-    # # Productivity_w_levels = np.arange(0., 15.5, 0.5)
-    
-    
-    # contourplots.animated_contourplot(w_data_vs_x_y_at_multiple_z=results[5], # shape = z * x * y # values of the metric you want to plot on the color axis; e.g., Productivity
-    #                                 x_data=spec_1, # x axis values
-    #                                 # x_data = Productivitys/theoretical_max_g_HP_acid_per_g_glucose,
-    #                                 y_data=spec_2, # y axis values
-    #                                 z_data=spec_3, # z axis values
-    #                                 x_label=x_label, # title of the x axis
-    #                                 y_label=y_label, # title of the y axis
-    #                                 z_label=z_label, # title of the z axis
-    #                                 w_label=Productivity_w_label, # title of the color axis
-    #                                 x_ticks=x_ticks,
-    #                                 y_ticks=y_ticks,
-    #                                 z_ticks=z_ticks,
-    #                                 w_levels=Productivity_w_levels, # levels for unlabeled, filled contour areas (labeled and ticked only on color bar)
-    #                                 w_ticks=Productivity_w_ticks, # labeled, lined contours; a subset of w_levels
-    #                                 x_units=x_units,
-    #                                 y_units=y_units,
-    #                                 z_units=z_units,
-    #                                 w_units=Productivity_units,
-    #                                 # fmt_clabel=lambda cvalue: r"$\mathrm{\$}$"+" {:.1f} ".format(cvalue)+r"$\cdot\mathrm{kg}^{-1}$", # format of contour labels
-    #                                 fmt_clabel = lambda cvalue: get_rounded_str(cvalue, 3),
-    #                                 cmap=JBEI_UCB_colormap(reverse=True), # can use 'viridis' or other default matplotlib colormaps
-    #                                 # cmap_over_color = colors.grey_dark.shade(8).RGBn,
-    #                                 cmap_over_color=colors.yellow_tint.RGBn,
-    #                                 extend_cmap='max',
-    #                                 cbar_ticks=Productivity_cbar_ticks,
-    #                                 z_marker_color='g', # default matplotlib color names
-    #                                 fps=fps, # animation frames (z values traversed) per second
-    #                                 n_loops='inf', # the number of times the animated contourplot should loop animation over z; infinite by default
-    #                                 animated_contourplot_filename='Productivity_animated_contourplot_'+file_to_save, # file name to save animated contourplot as (no extensions)
-    #                                 keep_frames=keep_frames, # leaves frame PNG files undeleted after running; False by default
-    #                                 axis_title_fonts=axis_title_fonts,
-    #                                 clabel_fontsize = clabel_fontsize,
-    #                                 default_fontsize = default_fontsize,
-    #                                 axis_tick_fontsize = axis_tick_fontsize,
-    #                                 # comparison_range=EtOH_market_range,
-    #                                 n_minor_ticks = 1,
-    #                                 cbar_n_minor_ticks = 3,
-    #                                 units_on_newline = (False, False, False, False), # x,y,z,w
-    #                                 units_opening_brackets = [" (",] * 4,
-    #                                 units_closing_brackets = [")",] * 4,
-    #                                 )
-    
     #%% All metrics
     for curr_metric, val in metrics.items():
         extend_cmap = 'max'
         cmap_under_color = None
         lccm = curr_metric.lower()
         if 'spike' in lccm or 'q sugar' in lccm or 'target sugars' in lccm:
-            if not perform_feeding_strategy_opt: 
+            if not perform_feeding_strategy_opt:
                 continue
-            else: 
+            else:
                 if 'spike' in lccm:
                     if ferm_reactor.nsk_kinetic_model.default_max_n_glu_spikes == 0.:
                         continue
@@ -738,11 +568,11 @@ if plot:
         elif 'yield' in lccm or 'titer' in lccm or 'productivity' in lccm or 'loading' in lccm or 'irr' in lccm:
             cmap = JBEI_UCB_colormap(reverse=True)
             cmap_over_color = colors.yellow_tint.RGBn
-        
+
         else:
             cmap = JBEI_UCB_colormap(reverse=False)
             cmap_over_color = colors.grey_dark.shade(8).RGBn
-            
+
         # curr_metric_w_levels, curr_metric_w_ticks, curr_metric_cbar_ticks = get_contour_info_from_metric_data(results_metric_1, lb=3)
         # Use only FINITE values to derive levels/ticks: solve_TEA reports an
         # unsolvable (money-losing) IRR as -inf, and np.isnan does NOT catch
@@ -754,16 +584,16 @@ if plot:
             # scenario that makes no isobutanol: no range to contour
             print(f'Skipping contour plot for {curr_metric}: all values are NaN or identical.')
             continue
-        
-        curr_metric_w_levels = np.arange(curr_metric_non_nans.min(), 
-                                      curr_metric_non_nans.max()*1.001, 
+
+        curr_metric_w_levels = np.arange(curr_metric_non_nans.min(),
+                                      curr_metric_non_nans.max()*1.001,
                                       (curr_metric_non_nans.max()-curr_metric_non_nans.min())/80
                                       )
-        curr_metric_cbar_ticks = np.arange(curr_metric_non_nans.min(), 
-                                      curr_metric_non_nans.max()*1.001, 
+        curr_metric_cbar_ticks = np.arange(curr_metric_non_nans.min(),
+                                      curr_metric_non_nans.max()*1.001,
                                       (curr_metric_non_nans.max()-curr_metric_non_nans.min())/5
                                       )
-        
+
         curr_metric_w_ticks = list(set([np.percentile(curr_metric_non_nans, 25),
                             np.percentile(curr_metric_non_nans, 50),
                             np.percentile(curr_metric_non_nans, 75),
@@ -786,8 +616,8 @@ if plot:
             extend_cmap = 'both'
             cmap_under_color = colors.grey_dark.shade(40).RGBn
         # curr_metric_w_levels = np.arange(0., 15.5, 0.5)
-        
-        
+
+
         # contourf masks non-finite cells (they render blank). For a metric
         # drawn with an under-color extend (IRR), push -inf (unsolvable,
         # money-losing points) to just below the lowest level so those cells

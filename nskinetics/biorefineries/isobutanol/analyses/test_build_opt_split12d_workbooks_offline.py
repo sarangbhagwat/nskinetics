@@ -6,8 +6,10 @@
 # https://github.com/sarangbhagwat/nskinetics/blob/main/LICENSE
 # for license details.
 """Offline pure-logic test of build_opt_split12d_workbooks (no load, no
-simulation). Loads the generator by file path -- its biorefineries imports
-live inside main(), so the import is build-free -- and checks the
+simulation). Loads the generator (analyses/opt_scenarios/) by file path --
+its nskinetics.biorefineries.isobutanol imports live inside main() and the
+simulation helpers, and it loads the stdlib-only paths.py by file path, so
+the import is build-free -- and checks the
 OPT_SCENARIOS table, the merge, the metric-warning split, the workbook
 writer (on a synthetic template in a temp dir), the reload-verify
 comparison and the ScenarioSpec block formatter.
@@ -30,9 +32,13 @@ def _load(name, path):
     return mod
 
 
+#: The folder of the opt_* scenario tooling (generator + checker).
+OPT_SCENARIOS_DIR = os.path.join(PKG_DIR, 'analyses', 'opt_scenarios')
+
+_modules_before = set(sys.modules)
 gen = _load('build_opt_split12d_workbooks',
-            os.path.join(PKG_DIR, 'analyses',
-                         'build_opt_split12d_workbooks.py'))
+            os.path.join(OPT_SCENARIOS_DIR, 'build_opt_split12d_workbooks.py'))
+_modules_by_generator = set(sys.modules) - _modules_before
 checks = []
 
 
@@ -50,9 +56,23 @@ def raises(exc_type, func, *args, **kwargs):
 
 
 # --- import is build-free ---------------------------------------------------
-check('importing the generator does not import biorefineries',
-      not any(m == 'biorefineries' or m.startswith('biorefineries.')
-              for m in sys.modules))
+check('importing the generator does not import the biorefinery '
+      '(nskinetics.biorefineries.isobutanol.system / upstream biorefineries)',
+      'nskinetics.biorefineries.isobutanol.system' not in sys.modules
+      and not any(m == 'biorefineries' or m.startswith('biorefineries.')
+                  for m in sys.modules))
+check('importing the generator imports no nskinetics / biosteam / '
+      'thermosteam module at all',
+      not any(m.split('.')[0] in ('nskinetics', 'biorefineries', 'biosteam',
+                                  'thermosteam')
+              for m in _modules_by_generator))
+check('the generator resolves the package workbooks and the results root',
+      os.path.isfile(gen.B_WORKBOOK)
+      and os.path.normpath(gen.WORKBOOK_DIR) == os.path.normpath(
+          os.path.join(PKG_DIR, 'data', 'parameter_distributions'))
+      and os.path.basename(gen.REPRODUCTION_DIR) == 'opt_scenario_reproductions'
+      and os.path.normpath(os.path.dirname(gen.REPRODUCTION_DIR))
+          == os.path.normpath(gen.paths.results_dir()))
 OPT_NAMES = ('opt_PI_uninformed', 'opt_PI_TRY_informed', 'opt_IBO_titer',
              'opt_IBO_yield', 'opt_IBO_productivity', 'opt_EtOH_titer',
              'opt_EtOH_yield', 'opt_EtOH_productivity')

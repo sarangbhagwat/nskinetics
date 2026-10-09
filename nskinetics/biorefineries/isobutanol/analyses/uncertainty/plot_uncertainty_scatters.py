@@ -8,7 +8,9 @@
 """
 Per-metric scatter grids against every uncertain parameter, from an
 uncertainty-analysis results workbook (*_1_full_evaluation.xlsx as written by
-analyses/full/uncertainties_IBO_EtOH.py).
+uncertainties_IBO_EtOH.py in this folder into the results root; not shipped,
+so it must be regenerated -- or NSKINETICS_IBO_RESULTS_DIR pointed at a
+results folder that has it -- before this script can run).
 
 One figure per metric: a grid of scatter panels (one per uncertain
 parameter), each with density-colored points, a binned-median trend line, a
@@ -16,8 +18,11 @@ Spearman rho annotation (bold when p < 0.05), and a grey-diamond baseline
 marker when the companion *_0_baseline.xlsx and the scenario's
 parameter-distributions workbook are available.
 
-Pure pandas/matplotlib/scipy -- does NOT import biorefineries, so it runs in
-seconds with no simulation.
+Pure pandas/matplotlib/scipy -- does NOT import nskinetics or the
+biorefinery (the package's stdlib-only paths.py is loaded by file path), so
+it runs in seconds with no simulation. Writes
+<output dir>/<results stem>_scatter_<metric>.<format> (default output dir:
+the results workbook's folder).
 
 Usage:
     python plot_uncertainty_scatters.py <results.xlsx>
@@ -30,6 +35,7 @@ import os
 import re
 import argparse
 import textwrap
+import importlib.util
 from math import ceil
 
 import numpy as np
@@ -40,6 +46,20 @@ from matplotlib.ticker import MaxNLocator, AutoMinorLocator
 from scipy import stats
 
 __all__ = ('plot_uncertainty_scatters', 'DEFAULT_METRICS', 'MetricSpec')
+
+
+def _load_paths():
+    """The package's stdlib-only paths.py (two folders up), loaded by file
+    path so this script never imports nskinetics."""
+    package_dir = os.path.dirname(os.path.dirname(
+        os.path.dirname(os.path.abspath(__file__))))
+    spec = importlib.util.spec_from_file_location(
+        '_ibo_paths', os.path.join(package_dir, 'paths.py'))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+paths = _load_paths()
 
 
 #%% Metric specifications
@@ -339,7 +359,10 @@ def plot_uncertainty_scatters(results_file,
     plt.rcParams['font.family'] = 'sans-serif'
     plt.rcParams['font.sans-serif'] = ['Arial', 'Helvetica', 'DejaVu Sans']
 
-    results_file = os.path.abspath(results_file)
+    results_file = paths.require_input(
+        os.path.abspath(results_file),
+        produced_by='the uncertainty analysis '
+                    '(analyses/uncertainty/uncertainties_IBO_EtOH.py)')
     if output_dir is None:
         output_dir = os.path.dirname(results_file)
 
@@ -379,10 +402,7 @@ def plot_uncertainty_scatters(results_file,
     if distributions_file is None:
         scenario = detect_scenario(results_file)
         if scenario is not None:
-            candidate = os.path.join(
-                os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                'data', 'parameter_distributions',
-                f'parameter-distributions_corn_IBO_EtOH_{scenario}.xlsx')
+            candidate = paths.workbook_path(scenario)
             distributions_file = (candidate if os.path.isfile(candidate)
                                   else None)
     param_baselines = {}

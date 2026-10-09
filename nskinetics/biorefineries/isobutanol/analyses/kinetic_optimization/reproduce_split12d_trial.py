@@ -7,14 +7,21 @@
 # for license details.
 """Reproduce ONE recorded trial of an ethanol_isobutanol x metabolic_split_12d
 kinetic-optimization study on the live model and compare it with the recorded
-trajectory row (kinetic_optimization.reproduce_split12d_trial; spec
-docs/superpowers/specs/2026-09-18-reproduce-split12d-trial-design.md).
+trajectory row (kinetic_optimization.reproduce_split12d_trial).
 
-SIMULATES (one load() + one scenario baseline + the trial): ask-first, run in
-a fresh kernel, never next to another simulation. Read-only with respect to
-the study: no CSV / sidecar / optuna store is written.
+ASK-FIRST -- SIMULATES (one load() + one scenario baseline + the trial; a few
+minutes): run in a fresh process, never next to another simulation.
+Read-only with respect to the study: no CSV / sidecar / optuna store is
+written, nothing else is written either.
 
-Edit the settings cell and run, or pass them on the command line:
+Input: the study's trajectory CSV, <results root>/<study>_trajectory.csv
+(paths.results_dir(), i.e. analyses/results unless NSKINETICS_IBO_RESULTS_DIR
+is set), written by the campaign itself
+(analyses/kinetic_optimization/optimize_kinetics_BO_supervised.py). Campaign
+CSVs are not shipped; a missing one fails before the model is built.
+
+Edit the settings cell and run, or pass them on the command line (from
+analyses/kinetic_optimization/):
     python reproduce_split12d_trial.py --study-name <name or CSV path> --trial-number 1602
 """
 import argparse
@@ -28,7 +35,10 @@ ANCHOR_SCENARIO = 'A'
 STUDY_NAME = ('kin_opt_ethanol_isobutanol_metabolic_split_12d_pi_log-tail_gp_'
               'rb0.001-4_ib0.75-1.5_aA_burden')
 #: Best COMPLETE trial of that study (recorded PI 0.8088, IRR 0.2726,
-#: IBO 41.74 / EtOH 29.21 g/L, tau 28.35 h, 1 spike).
+#: IBO 41.74 / EtOH 29.21 g/L, tau 28.35 h, 1 spike). It was the basis of
+#: the opt_IRR scenario, removed on 2026-10-08; the trials behind the current
+#: opt_* scenarios are listed in scenarios.SCENARIOS (e.g. the relay study
+#: ..._aA_rl15c111dc_burden, trial 1912, for opt_PI_TRY_informed).
 TRIAL_NUMBER = 1602
 MODE = 'both'       # 'rederive' | 'replay' | 'both'
 BURDEN = 'on'       # 'on' (as the studies ran) | 'off' | 'default' (the anchor's policy)
@@ -43,14 +53,22 @@ def main(argv=None):
                         choices=('rederive', 'replay', 'both'))
     parser.add_argument('--burden', default=BURDEN,
                         choices=('on', 'off', 'default'))
-    parser.add_argument('--results-dir', default=None)
+    parser.add_argument('--results-dir', default=None,
+                        help='folder of the study CSV (default: the results '
+                             'root, paths.results_dir())')
     parser.add_argument('--no-restore', dest='restore', action='store_false',
                         help="leave the trial's kinetics live on the model")
     args = parser.parse_args(argv)
 
     import nskinetics.biorefineries.isobutanol as isobutanol
-    isobutanol.load()   # default both-trains build (S201 split 1.0), as the driver runs
     from nskinetics.biorefineries.isobutanol import kinetic_optimization as ko
+    from nskinetics.biorefineries.isobutanol import paths
+    # Fail with a clear message BEFORE the ~20 s build if the CSV is missing.
+    paths.require_input(
+        ko.split12d_trajectory_path(args.study_name, args.results_dir),
+        produced_by='the kinetic-optimization campaign of that study '
+                    '(analyses/kinetic_optimization/optimize_kinetics_BO_supervised.py)')
+    isobutanol.load()   # default both-trains build (S201 split 1.0), as the driver runs
     return ko.reproduce_split12d_trial(
         args.anchor, args.study_name, args.trial_number, mode=args.mode,
         burden={'on': True, 'off': False, 'default': None}[args.burden],

@@ -6,7 +6,7 @@
 # https://github.com/sarangbhagwat/nskinetics/blob/main/LICENSE
 # for license details.
 """Enzyme-burden (proteome-allocation) constraint for the kinetic Bayesian
-optimization (kinetic_optimization.py).
+optimization (``kinetic_optimization``) and every scenario simulation.
 
 Every capacity k_* of the nskinetics fermentation model is a specific
 activity per unit biomass (enzyme amount x turnover), so raising it means
@@ -15,7 +15,7 @@ sampled capacities to enzyme mass fractions (g enzyme / g dry cell weight),
 sums them into the modeled metabolic pool Phi_M, closes the cell's
 FLEXIBLE protein sector F_flex against Phi_M plus the translation sector
 phi_T (which scales with the sampled growth capacities k_7 / k_8), and
-derates growth linearly to zero as the flexible sector fills:
+derates growth linearly to zero as the flexible sector fills::
 
     native steps (r1, r2, r3, r5, r6, r17):
         pool_i = pool_wt,i * max_j(k_ij / k_ij,ref)        (ratio route)
@@ -30,16 +30,20 @@ derates growth linearly to zero as the flexible sector fills:
 
 Exactly inert at the reference the model is built from (d = 1; apply is
 the identity on k_7 / k_8), so a burden-off run and the smoke baselines
-are unchanged. Design record: docs/superpowers/specs/
-2026-09-05-enzyme-burden-design.md; wild-type pools from
-docs/reports/enzyme-abundance-g-per-gDCW.md (both gitignored, so the
-tables are hardcoded here with their sources).
+are unchanged. The design record of this constraint and the internal
+enzyme-abundance survey the wild-type pools were derived from are not
+shipped with the package, so every constant and table is hardcoded below
+with its primary literature sources; the labels "spec 4.x" / "Q10" / "Q11"
+(design-record sections and questions) and "report 1" / "report 3"
+(survey sections) in the comments refer to those two documents. The
+constants are deliberate modeling choices: never change them silently.
 
-Stdlib-only: imports neither numpy, biosteam nor nskinetics, so
-analyses/test_enzyme_burden_offline.py and the stdlib-only BO supervisor
-can load it. SCENARIO_B_EHRLICH is read from nskinetics' scenarios.py BY
-FILE PATH (scenario_b_ehrlich), never by importing the package (which
-pulls tellurium/roadrunner/biosteam).
+Stdlib-only: imports neither numpy, biosteam nor nskinetics, so the offline
+enzyme-burden test and the stdlib-only BO supervisor can load it by file
+path. SCENARIO_B_EHRLICH is read from nskinetics'
+models/s_cerevisiae_ferm_fb_inhib_mod_ibo/scenarios.py BY FILE PATH
+(scenario_b_ehrlich), never by importing the package (which pulls
+tellurium/roadrunner/biosteam).
 """
 from dataclasses import dataclass
 import importlib.util
@@ -297,22 +301,56 @@ class BurdenResult:
 
 
 class BurdenModel:
-    """The burden evaluated against a snapshot of the model's reference
-    capacities `k_ref` ({name: value}; every name of
-    required_capacities() must be present -- the engine passes its
-    kinetic_baselines, i.e. the live values after the scenario workbook
-    was loaded). Native steps are charged by ratio to the reference (so
-    the burden is exactly inert there), Ehrlich steps by kcat + MW at
-    `sigma_eff` (module default SIGMA_EFF).
+    """The enzyme burden evaluated against a snapshot of the model's
+    reference capacities.
 
-    Construction raises KeyError on a missing capacity, ValueError on a
-    non-positive native or growth reference (the ratio route is
-    undefined), on a constant set that makes the wild type itself
-    infeasible (Phi_M,wt + phi_T,wt > F_flex), and on a reference point
-    that is infeasible under the burden (e.g. the scenario-B Ehrlich
-    constants, spec 4.5 / Q11): a burden study must start from a
-    burden-feasible reference -- use burden=False / --no-burden for a
-    burden-free study from such a point."""
+    Native steps are charged by ratio to the reference (so the burden is
+    exactly inert there), Ehrlich steps by kcat + MW at ``sigma_eff``. The
+    scenario simulations build it ALWAYS from scenario A's live kinetics
+    (``BurdenModel.from_reference``); the optimization engines use their
+    ``kinetic_baselines``.
+
+    Parameters
+    ----------
+    k_ref : dict
+        ``{name: value}`` reference capacities; every name of
+        ``required_capacities()`` must be present (the engines pass their
+        ``kinetic_baselines``, i.e. the live values after the scenario
+        workbook was loaded).
+    sigma_eff : float, optional
+        In-vivo saturation of the Ehrlich enzymes (default ``SIGMA_EFF``).
+
+    Attributes
+    ----------
+    reference : dict
+        The required capacities of ``k_ref``, as floats.
+    sigma_eff : float
+        As given.
+    F_flex : float
+        Flexible protein sector, ``F_FLEX`` [g/gDCW].
+    phi_T_wt : float
+        Wild-type translation sector, ``PHI_T_WT`` [g/gDCW].
+    Phi_M_wt : float
+        Sum of the wild-type native pools [g/gDCW].
+    sigma_diagnostic : dict
+        ``anchor_sigma(reference)``: implied saturation of the native
+        single-enzyme steps (a diagnostic, not a calibration).
+    reference_result : BurdenResult
+        The burden at the reference point (feasible by construction).
+
+    Raises
+    ------
+    KeyError
+        If a required capacity is missing from ``k_ref``.
+    ValueError
+        On a non-positive ``sigma_eff``, a non-positive native or growth
+        reference (the ratio route is undefined), a constant set that makes
+        the wild type itself infeasible (Phi_M,wt + phi_T,wt > F_flex), or
+        a reference point that is infeasible under the burden (e.g. the
+        scenario-B Ehrlich constants): a burden study must start from a
+        burden-feasible reference -- use ``burden=False`` / ``--no-burden``
+        for a burden-free study from such a point.
+    """
 
     def __init__(self, k_ref, sigma_eff=SIGMA_EFF):
         self.sigma_eff = float(sigma_eff)
@@ -497,18 +535,21 @@ class BurdenModel:
 #: Path of scenarios.py relative to the nskinetics package directory.
 _SCENARIOS_RELPATH = ('models', 's_cerevisiae_ferm_fb_inhib_mod_ibo',
                       'scenarios.py')
+#: Folder of the nskinetics package that contains this module (isobutanol ->
+#: biorefineries -> nskinetics), located by __file__ because the module is
+#: also loaded by path.
+_NSKINETICS_DIR = os.path.dirname(os.path.dirname(os.path.dirname(
+    os.path.abspath(__file__))))
 
 def scenarios_path():
     """Absolute path of nskinetics' scenarios.py for the shipped
-    S. cerevisiae ethanol/isobutanol model, located via the package's
-    spec WITHOUT importing it (importlib.util.find_spec only resolves
-    the file) -- the kinetic_optimization.kinetic_parameter_roles_path
-    pattern."""
-    spec = importlib.util.find_spec('nskinetics')
-    if spec is None or not spec.origin:
-        raise ImportError('nskinetics is not installed (needed for the '
-                          'scenario-B Ehrlich constants).')
-    return os.path.join(os.path.dirname(spec.origin), *_SCENARIOS_RELPATH)
+    S. cerevisiae ethanol/isobutanol model
+    (``models/s_cerevisiae_ferm_fb_inhib_mod_ibo/scenarios.py``), located
+    relative to this file in the SAME nskinetics checkout -- never via an
+    import or a module-spec lookup, which could resolve another nskinetics
+    on sys.path (the kinetic_optimization.kinetic_parameter_roles_path
+    pattern)."""
+    return os.path.join(_NSKINETICS_DIR, *_SCENARIOS_RELPATH)
 
 def scenario_b_ehrlich(path=None):
     """A copy of nskinetics' SCENARIO_B_EHRLICH ({'k_13': 5.81, 'k_14':

@@ -318,8 +318,9 @@ assert list(cus) == list(space), 'insertion order changed'
 assert cus['max_n_spikes'] == {'low': 0, 'high': 50, 'log': False, 'int': True}, cus['max_n_spikes']
 assert cus['k_3'] == {'low': 0.0, 'high': 4.0*kb['k_3'], 'log': False}, cus['k_3']
 assert space['k_3']['log'] is True, 'the campaign space was mutated'
-# The shipped bands file is this same set (to the file's 4 significant figures).
-with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'sobol_bands',
+# The shipped bands file (package data, data/sobol_bands/) is this same set
+# (to the file's 4 significant figures).
+with open(os.path.join(PKG_DIR, 'data', 'sobol_bands',
                        'linear_0-4x_2026-09-22.json')) as fh:
     shipped = {k: v for k, v in json.load(fh).items() if not k.startswith('_')}
 shipped_space = sa.custom_search_space(space, shipped)

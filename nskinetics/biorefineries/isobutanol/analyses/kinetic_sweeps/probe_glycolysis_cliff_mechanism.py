@@ -6,8 +6,8 @@
 # https://github.com/sarangbhagwat/nskinetics/blob/main/LICENSE
 # for license details.
 """Mechanism probe for the high-glycolysis x low-ethanol-inhibition cliff of
-the glycolysis x inhib_ethanol sweep (analyses/evaluate_EtOH_glycolysis_inhib_ethanol.py,
-scenario A, enzyme burden ON, A's fed-batch strategy).
+the glycolysis x inhib_ethanol sweep (evaluate_EtOH_glycolysis_inhib_ethanol.py
+in this folder, scenario A, enzyme burden ON, A's fed-batch strategy).
 
 In the sweep, below a diagonal (inhib_ethanol ~ 0.5 x glycolysis) the ethanol
 yield collapses and the IRR falls from +12.6 % to -4 % in one grid step (e.g.
@@ -40,8 +40,14 @@ Raising k_3 / k_6 enlarges the modeled proteome pool, which derates growth
 more (a yield-favouring confound), so those counterfactuals and the cliff
 point are also run with the burden OFF.
 
-Writes analyses/results/glycolysis_cliff_probe_<stamp>.csv (one row per case)
-and ..._trajectories.png (diagnostic). One load; ~20 simulations.
+ASK-FIRST -- SIMULATES: one load; ~20 simulations (minutes).
+
+Writes <results root>/glycolysis_cliff_probe_<stamp>.csv (one row per case)
+and ..._trajectories.png (diagnostic), the results root being
+paths.results_dir() (analyses/results unless NSKINETICS_IBO_RESULTS_DIR is
+set). If the glycolysis sweep's per-metric CSVs are there too, the probe's
+burden-ON grid points are cross-checked against them (optional; skipped with
+a note otherwise).
 """
 
 import os
@@ -54,6 +60,7 @@ import pandas as pd
 from nskinetics.biorefineries import isobutanol
 isobutanol.load()
 
+from nskinetics.biorefineries.isobutanol import paths
 from nskinetics.biorefineries.isobutanol import scenarios
 from nskinetics.biorefineries.isobutanol import kinetic_optimization as ko
 from nskinetics.biorefineries.isobutanol import system as isys
@@ -275,7 +282,7 @@ isys.set_active_burden(burden_model)
 #%% Save
 
 stamp = datetime.now().strftime('%Y.%m.%d-%H.%M')
-out_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'results')
+out_dir = paths.results_dir(create=True)
 csv_path = os.path.join(out_dir, f'glycolysis_cliff_probe_{stamp}.csv')
 pd.DataFrame(rows).to_csv(csv_path, index=False)
 print('\nWrote', csv_path)

@@ -5,9 +5,7 @@
 # This module is under the MIT open-source license. See
 # https://github.com/sarangbhagwat/nskinetics/blob/main/LICENSE
 # for license details.
-"""Stage 1 of the Sobol' sensitivity analysis (spec
-docs/superpowers/specs/2026-09-20-sobol-sensitivity-split12d-design.md):
-simulate N_POINTS FEASIBLE scrambled-Sobol' points of the ethanol_isobutanol
+"""Stage 1 of the Sobol' sensitivity analysis: simulate N_POINTS FEASIBLE scrambled-Sobol' points of the ethanol_isobutanol
 x metabolic_split_12d campaign space -- same 12 variables, bands, groups,
 references, scenario-A start, A-referenced enzyme burden ON, volume check ON,
 default both-trains build -- through the campaigns' own evaluation site
@@ -15,15 +13,20 @@ default both-trains build -- through the campaigns' own evaluation site
 flushed trajectory row with all tracked metrics, the in-flight sidecar, LOST
 recovery and reset-after-FAIL.
 
-ASK-FIRST (4,096 simulations). Resumable: rerunning skips the rows already in
-the CSV (every state; a point is never re-simulated); raising N_POINTS extends
-the same nested design. Supervised launch:
+ASK-FIRST (4,096 simulations by default, ~20+ h). Resumable: rerunning skips
+the rows already in the CSV (every state; a point is never re-simulated);
+raising N_POINTS extends the same nested design. No command-line arguments:
+it is configured by the IBO_SOBOL_* environment variables below. Writes,
+under the results root (paths.results_dir(): analyses/results unless
+NSKINETICS_IBO_RESULTS_DIR is set; ko.default_results_dir(), the engines'
+default): <STUDY_NAME>_trajectory.csv (+ the in-flight sidecar),
+<STUDY_NAME>_design.json and <STUDY_NAME>_candidates.csv. Supervised launch
+(from analyses/; the study name is printed as STUDY_NAME=... at start-up):
 
-    python supervise_sweep.py evaluate_sobol_split12d.py \
+    python supervise_sweep.py sensitivity/evaluate_sobol_split12d.py \
         --stem <STUDY_NAME> --checkpoint-suffix _trajectory.csv
 
-IBO_SOBOL_MEASURE selects the input measure (spec
-docs/superpowers/specs/2026-09-21-sobol-screening-measure-design.md):
+IBO_SOBOL_MEASURE selects the input measure (since 2026-09-21):
 'campaign' (default) = the campaign's own log-uniform bands; 'screening' =
 sa.screening_search_space -- k_13 / k_17 / ehrlich_downstream linear-uniform
 on [0, ceiling], k_3 / k_6 / glycolysis on 0.1x-4x -- the pre-optimization
@@ -31,7 +34,9 @@ measure that gives the co-production corner real mass. A screening study
 carries '_screening_rb0.1-4_lin0_' in place of the campaign rate-band tag.
 'custom' (2026-09-22) = sa.custom_search_space with every axis's band read
 from the JSON file IBO_SOBOL_BANDS ({axis: {low, high, log}}, absolute
-units; keys starting with '_' are comments); the study carries
+units; keys starting with '_' are comments; a bare file name that does not
+exist relative to the working directory is looked up in the package's
+data/sobol_bands/, e.g. IBO_SOBOL_BANDS=linear_0-4x_2026-09-22.json); the study carries
 '_custom<sha1-8 of the bands>_' in place of the rate- and group-band tags,
 and every design record stores meta.measure and meta.baseline_PI (the
 scenario-A PI at the 15 % hurdle, stage 2's default target threshold).
@@ -63,6 +68,11 @@ if MEASURE == 'custom':
     bands_path = os.environ.get('IBO_SOBOL_BANDS')
     if not bands_path:
         raise ValueError("IBO_SOBOL_MEASURE='custom' needs IBO_SOBOL_BANDS=<bands JSON path>")
+    if not os.path.isfile(bands_path) and os.path.basename(bands_path) == bands_path:
+        from nskinetics.biorefineries.isobutanol import paths   # stdlib-only, build-free
+        bundled = os.path.join(paths.DATA_DIR, 'sobol_bands', bands_path)
+        if os.path.isfile(bundled):
+            bands_path = bundled
     with open(bands_path) as fh:
         BANDS = {k: v for k, v in json.load(fh).items() if not k.startswith('_')}
 

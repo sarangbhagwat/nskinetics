@@ -6,8 +6,9 @@
 # https://github.com/sarangbhagwat/nskinetics/blob/main/LICENSE
 # for license details.
 """Crash- AND stall-resilient supervisor for the Bayesian kinetic
-optimization (analyses/optimize_kinetics_BO.py). Runs the driver in child
-processes and, until the study's total trial budget completes cleanly:
+optimization (optimize_kinetics_BO.py, beside this script in
+analyses/kinetic_optimization/). Runs the driver in child processes and,
+until the study's total trial budget completes cleanly:
 
 - relaunches after a crash (the known nondeterministic native CVODE
   segfault) exactly like the proven bash-loop recipe;
@@ -48,8 +49,13 @@ never import the nskinetics.biorefineries.isobutanol package itself (the package
 __init__ pulls biosteam -> eager numba compilation, which corrupts the
 shared numba cache when concurrent with the child's own load()).
 
-Long-running, one simulation at a time (children run strictly
-sequentially) -- ask-first, like the unsupervised driver. Examples:
+ASK-FIRST: long-running (many hours at the default 2000 trials), one
+simulation at a time (children run strictly sequentially), like the
+unsupervised driver. Polls and writes the results root (paths.results_dir(),
+loaded by path: analyses/results unless NSKINETICS_IBO_RESULTS_DIR is set,
+which the children inherit): the driver's files (see optimize_kinetics_BO.py)
+plus <study>_run.log (every child's stdout/stderr). Examples, run from
+analyses/kinetic_optimization/:
 
     # default preset (ethanol_isobutanol x metabolic_split_14d since
     # 2026-09-16; start at A: rates k_3, k_6, k_13-k_17 on 1e-3x-4x, the
@@ -113,10 +119,24 @@ import subprocess
 import sys
 import time
 
-ANALYSES_DIR = os.path.dirname(os.path.abspath(__file__))
+#: This script's folder, analyses/kinetic_optimization (holds the driver).
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+#: The analyses folder and the nskinetics.biorefineries.isobutanol package
+#: folder (which holds kinetic_optimization.py and paths.py).
+ANALYSES_DIR = os.path.dirname(SCRIPT_DIR)
 IBO_DIR = os.path.dirname(ANALYSES_DIR)
-DRIVER = os.path.join(ANALYSES_DIR, 'optimize_kinetics_BO.py')
-RESULTS_DIR = os.path.join(ANALYSES_DIR, 'results')
+DRIVER = os.path.join(SCRIPT_DIR, 'optimize_kinetics_BO.py')
+
+# paths.py is stdlib-only: loaded BY FILE PATH, like kinetic_optimization.py
+# below, so this process never imports the package.
+_paths_spec = importlib.util.spec_from_file_location(
+    '_ibo_paths_supervision', os.path.join(IBO_DIR, 'paths.py'))
+paths = importlib.util.module_from_spec(_paths_spec)
+_paths_spec.loader.exec_module(paths)
+#: Where the driver's engine writes (ko.default_results_dir(), i.e.
+#: paths.results_dir(): <package>/analyses/results unless
+#: NSKINETICS_IBO_RESULTS_DIR is set; the child inherits the environment).
+RESULTS_DIR = paths.results_dir()
 
 _spec = importlib.util.spec_from_file_location(
     '_ko_supervision', os.path.join(IBO_DIR, 'kinetic_optimization.py'))

@@ -6,11 +6,10 @@
 # https://github.com/sarangbhagwat/nskinetics/blob/main/LICENSE
 # for license details.
 """Stage 1 of the TEA-breakdown figure of the metabolic_split_12d campaign
-optima (spec docs/superpowers/specs/2026-09-24-tea-breakdowns-split12d-design.md;
-stage 2, the sim-safe figure, is plots/plot_tea_breakdowns_split12d.py).
+optima (stage 2, the sim-safe figure, is plots/plot_tea_breakdowns_split12d.py).
 
-SIMULATES (ask-first; one fresh process, never next to another simulation on
-a cold cache): one load() (default both-trains build, S201 split 1.0, as the
+ASK-FIRST -- SIMULATES (~4 min; one fresh process, never next to another
+simulation): one load() (default both-trains build, S201 split 1.0, as the
 campaigns ran), the scenario-A baseline, then the objective-optimum trial of
 each of the eight most recent ethanol_isobutanol x metabolic_split_12d
 campaigns (CAMPAIGNS: the seven seed-350 `_rs350` campaigns and the
@@ -22,14 +21,19 @@ After every simulation the five metrics of the 19 unit groups are read and
 two closures pinned by analyses/test_unit_groups.py are asserted (the
 installed-cost column sums to tea.installed_equipment_cost, the
 Operating-cost column to tea.AOC / operating_hours); so is the sales revenue
-of the four products (ethanol, isobutanol, DDGS, corn oil; spec
-docs/superpowers/specs/2026-09-24-tea-breakdowns-revenue-design.md), read at
+of the four products (ethanol, isobutanol, DDGS, corn oil), read at
 the prices the panel's IRR was solved with and required to sum to tea.sales /
 operating_hours. A failed simulation or closure aborts. A reproduction
 whose tracked metrics differ from the recorded row by more than 2 % is
 recorded and printed, not fatal.
 
-Writes analyses/results/tea_breakdowns_split12d_<stamp>.json: meta (metric
+Inputs: the eight campaigns' trajectory CSVs under the results root
+(paths.results_dir(): analyses/results unless NSKINETICS_IBO_RESULTS_DIR is
+set; --results-dir overrides it), written by
+analyses/kinetic_optimization/optimize_kinetics_BO_supervised.py; campaign
+CSVs are not shipped, so a missing one fails before the build.
+
+Writes <results root>/tea_breakdowns_split12d_<stamp>.json: meta (metric
 names + units, group order, operating hours, hensmith path) and one record per
 scenario (label, campaign, trial, summary metrics, reproduction check,
 ABSOLUTE metric values per group; operating cost in USD/hr; product revenue
@@ -37,7 +41,7 @@ in USD/hr).
 
 Run (the campaigns ran with hensmith master 2b5b27d pinned via PYTHONPATH;
 use the same pin):
-    python analyses/collect_tea_breakdowns_split12d.py
+    python analyses/tea_breakdowns/collect_tea_breakdowns_split12d.py
 """
 import os
 import csv
@@ -46,11 +50,21 @@ import json
 import math
 import argparse
 import threading
+import importlib.util
 from datetime import datetime
 
 #%% Settings
-PKG_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-RESULTS_DIR = os.path.join(PKG_DIR, 'analyses', 'results')
+#: The nskinetics.biorefineries.isobutanol package folder (two levels up).
+PKG_DIR = os.path.dirname(os.path.dirname(
+    os.path.dirname(os.path.abspath(__file__))))
+# paths.py (stdlib-only) loaded by file path: no package import before the
+# input checks in main().
+_paths_spec = importlib.util.spec_from_file_location(
+    '_ibo_paths', os.path.join(PKG_DIR, 'paths.py'))
+paths = importlib.util.module_from_spec(_paths_spec)
+_paths_spec.loader.exec_module(paths)
+#: The results root (ko.default_results_dir(), where the campaigns write).
+RESULTS_DIR = paths.results_dir()
 OUT_PREFIX = 'tea_breakdowns_split12d'
 ANCHOR_SCENARIO = 'A'
 
@@ -206,12 +220,15 @@ def baseline_record(system, ko, scenarios):
 
 
 def campaign_record(system, ko, key, label, study, objective, trial,
-                    recorded_objective):
+                    recorded_objective, results_dir=None):
     """Reproduce one trial and read its breakdown (raises on a failed
-    simulation; a >2 % tracked-metric deviation is recorded, not raised)."""
+    simulation; a >2 % tracked-metric deviation is recorded, not raised).
+    `results_dir` = the folder of the campaign CSVs (None = the engines'
+    default, ko.default_results_dir())."""
     result = ko.reproduce_split12d_trial(ANCHOR_SCENARIO, study, trial,
                                          mode='both', burden=True,
-                                         restore=True)
+                                         restore=True,
+                                         results_dir=results_dir)
     if result['error'] is not None:
         raise RuntimeError(f'{key}: reproduction of trial {trial} of {study} '
                            f'failed: {result["error"]}')
@@ -261,7 +278,11 @@ def main(argv=None):
     # input errors raise before the ~20 s load
     selected = []
     for key, label, study, objective in CAMPAIGNS:
-        path = os.path.join(args.results_dir, f'{study}_trajectory.csv')
+        path = paths.require_input(
+            os.path.join(args.results_dir, f'{study}_trajectory.csv'),
+            produced_by=f'the {objective} kinetic-optimization campaign '
+                        '(analyses/kinetic_optimization/'
+                        'optimize_kinetics_BO_supervised.py)')
         trial, value = objective_optimum(path)
         selected.append((key, label, study, objective, trial, value))
         print(f'{key:<18} optimum trial #{trial} ({objective} = {value:.6g})',
@@ -285,7 +306,8 @@ def main(argv=None):
     for key, label, study, objective, trial, value in selected:
         print(f'\n=== {key}: trial #{trial} ===', flush=True)
         records[key], units = campaign_record(system, ko, key, label, study,
-                                              objective, trial, value)
+                                              objective, trial, value,
+                                              results_dir=args.results_dir)
 
     tea = system.corn_EtOH_IBO_sys_tea
     doc = dict(

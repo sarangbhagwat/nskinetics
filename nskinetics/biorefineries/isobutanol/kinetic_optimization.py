@@ -33,11 +33,19 @@ engineering target; study-name tag `_xk10`). Roles come from nskinetics'
 parameter_categories table, read by file path.
 
 Import is free of side effects and does not require optuna (imported lazily
-inside run_kinetic_optimization); the pure logic here is exercised by
-analyses/test_kinetic_optimization_offline.py without a biorefinery load.
-The engine itself (run_kinetic_optimization) requires
-nskinetics.biorefineries.isobutanol.load() to have been called first; the canonical
-entry point is analyses/optimize_kinetics_BO.py.
+inside run_kinetic_optimization); the pure logic here is exercised by the
+offline kinetic-optimization test without a biorefinery load. The engine
+itself (run_kinetic_optimization) requires
+nskinetics.biorefineries.isobutanol.load() to have been called first; the
+canonical entry point is the BO driver script optimize_kinetics_BO.py (with
+its crash- and stall-resilient supervisor) among the isobutanol analyses.
+
+This module is also loaded BY FILE PATH (by the stdlib-only supervisor, the
+plotting scripts and the offline tests), so it has no top-level import of
+nskinetics, biosteam or the isobutanol package: files are located relative
+to this module (the package's paths.py, itself loaded by path, and the
+shipped nskinetics model files), and the package is imported lazily inside
+the functions that need a loaded biorefinery.
 
 Every trial runs the FULL system simulation + one side-effect-free TEA
 solve, for kinetic-level and system-level objectives alike (the 'level'
@@ -55,6 +63,25 @@ import re
 import warnings
 
 import numpy as np
+
+#: Folder of this module, i.e. of the nskinetics.biorefineries.isobutanol
+#: package (located by __file__ because the module is also loaded by path).
+_PACKAGE_DIR = os.path.dirname(os.path.abspath(__file__))
+#: Folder of the nskinetics package (isobutanol -> biorefineries ->
+#: nskinetics), which ships the kinetic model files read here by path.
+_NSKINETICS_DIR = os.path.dirname(os.path.dirname(_PACKAGE_DIR))
+
+def _load_paths_module():
+    """The package's paths.py, executed BY FILE PATH under a private module
+    name (it is stdlib-only), so the results root and the workbook location
+    have one definition without importing the isobutanol package."""
+    spec = importlib.util.spec_from_file_location(
+        '_isobutanol_paths', os.path.join(_PACKAGE_DIR, 'paths.py'))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+_paths = _load_paths_module()
 
 __all__ = ('OBJECTIVE_REGISTRY', 'TRACKED_METRICS',
            'discover_kinetic_parameters', 'build_search_space',
@@ -124,7 +151,13 @@ __all__ = ('OBJECTIVE_REGISTRY', 'TRACKED_METRICS',
            'relay_manifest_path', 'default_results_dir',
            'STUDY_OUTPUT_SUFFIXES', 'STUDY_PLOT_SUFFIXES',
            'PLOT_STAMP_PLACEHOLDER', 'WINDOWS_MAX_PATH',
-           'longest_output_paths',)
+           'longest_output_paths',
+           'FEEDING_VARIABLES', 'LEGACY_FEEDING_VARIABLES',
+           'TARGET_CONC_MAX', 'SPIKE_CONC_MIN', 'SPIKE_CONC_MAX',
+           'fed_batch_volume_ratio_bound', 'feasibility_constraints_func',
+           'feasibility_predicate', 'LHSDesign', 'lhs_startup_tpe_sampler',
+           'RELAY_ANCHOR_RTOL', 'RELAY_QUARANTINE_DRIFT',
+           'RELAY_QUARANTINE_N_SIMS',)
 
 FEEDING_VARIABLES = ('threshold_conc', 'target_delta', 'spike_delta',
                      'max_n_spikes')
@@ -221,12 +254,12 @@ def expand_grouped_values(values, parameter_groups, kinetic_baselines,
     2026-09-15), that member's REFERENCE (reference x multiplier), so a
     group whose members are ZERO on the live model (the Ehrlich rates at
     the scenario-A start) can still be sampled on an absolute band -- the
-    metabolic_split_12d preset's ehrlich_downstream group (resolve_study_
-    preset uses EHRLICH_DOWNSTREAM_WEIGHTS themselves as the references, so
-    the band is an absolute one on the anchor). Pure: used by the engine's
-    evaluation site (what reaches the model and the burden), by the
-    feasibility predicate, by the `applied_<member>` trajectory columns
-    and by the offline test. The inverse for the baseline point is
+    metabolic_split_12d preset's ehrlich_downstream group
+    (resolve_study_preset uses EHRLICH_DOWNSTREAM_WEIGHTS themselves as the
+    references, so the band is an absolute one on the anchor). Pure: used
+    by the engine's evaluation site (what reaches the model and the burden),
+    by the feasibility predicate, by the `applied_<member>` trajectory
+    columns and by the offline test. The inverse for the baseline point is
     baseline_decision_point's (1.0 for an un-referenced group, live anchor
     / reference for a referenced one)."""
     if not parameter_groups:
@@ -248,22 +281,24 @@ def expand_grouped_values(values, parameter_groups, kinetic_baselines,
 #: Default log-scale multiplier bands (× the workbook baseline) of the
 #: named study presets (resolve_study_preset), assigned by nskinetics
 #: ROLE (kinetic_parameter_roles) since 2026-09-06:
-#:   1. RATE CONSTANTS (role capacity: k_1h, k_2, ..., k_13-k_16) --
-#:      DEFAULT_RATE_MULTIPLIER_BOUNDS, [1e-3×, 4×] (1e-5× until later
-#:      on 2026-09-06, high 10× until 2026-09-15): an effective
-#:      knock-out is reachable (still log-uniform below and above the
-#:      baseline).
-#:   2. INHIBITION COEFFICIENTS (roles product_inhibition and lethality:
-#:      k_1ie, k_1ii, k_7ii, k_10ie, ...) -- DEFAULT_SATURATION_
-#:      MULTIPLIER_BOUNDS, [0.1×, 10×].
-#:   3. REGULATION, AFFINITY and SELF-INHIBITION TERMS (K_1i, K_2i, ...,
-#:      K_1e, ..., K_6e, K_13-K_16) -- [0.1×, 10×] (a zero saturation
-#:      constant has no engineering meaning). K_16i left the set on
-#:      2026-09-13 (nskinetics b61360e): r16 no longer carries an
-#:      isobutanol product term, so K_16i is inert at a zero baseline and
-#:      a multiplier band around zero is degenerate -- its row was dropped
-#:      from the B / opt_* workbooks (the sweep set IS the workbook set).
-#: Before 2026-09-06 the rate band applied to every lowercase 'k_' name
+#:
+#: 1. RATE CONSTANTS (role capacity: k_1h, k_2, ..., k_13-k_16) --
+#:    DEFAULT_RATE_MULTIPLIER_BOUNDS, [1e-3×, 4×] (1e-5× until later
+#:    on 2026-09-06, high 10× until 2026-09-15): an effective
+#:    knock-out is reachable (still log-uniform below and above the
+#:    baseline).
+#: 2. INHIBITION COEFFICIENTS (roles product_inhibition and lethality:
+#:    k_1ie, k_1ii, k_7ii, k_10ie, ...) --
+#:    DEFAULT_SATURATION_MULTIPLIER_BOUNDS, [0.1×, 10×].
+#: 3. REGULATION, AFFINITY and SELF-INHIBITION TERMS (K_1i, K_2i, ...,
+#:    K_1e, ..., K_6e, K_13-K_16) -- [0.1×, 10×] (a zero saturation
+#:    constant has no engineering meaning). K_16i left the set on
+#:    2026-09-13 (nskinetics b61360e): r16 no longer carries an
+#:    isobutanol product term, so K_16i is inert at a zero baseline and
+#:    a multiplier band around zero is degenerate -- its row was dropped
+#:    from the B / opt_* workbooks (the sweep set IS the workbook set).
+#:
+#: Before 2026-09-06 the rate band applied to every lowercase ``'k_'`` name
 #: (inhibition coefficients included); that prefix rule is what
 #: build_search_space still applies when `rate_params` is None (legacy
 #: and older-study resumes). The legacy single band of
@@ -388,7 +423,7 @@ def _effluent(handles):
     the kinetic model's g/L-water titer (nsk_results_specific_tau_dict) x
     the water-volume fraction x (1 - that vent fraction): what actually
     leaves in the broth, NOT the in-reactor titer re-based per broth volume
-    (analyses/test_kin_opt_effluent_metrics.py pins the identity). None when
+    (the effluent-metrics regression test pins the identity). None when
     the (fake / partial) handles of the offline tests carry no effluent
     stream, so _broth_conc reads NaN there (mirrors the optional convergence
     getters below)."""
@@ -430,14 +465,29 @@ def _pi_log_tail(h):
         return pi
     return pi if pi >= 0 else -np.log1p(-pi)
 
-# 'level' ('kinetic' vs 'system') is metadata only: every trial runs the full
-# system simulation AND one TEA solve regardless (the system-level metrics
-# IRR/TCI/... in TRACKED_METRICS are always recorded), so a 'kinetic' objective
-# costs the same per trial as a 'system' one -- it does not skip the TEA solve.
-# 'energy_scale' (since 2026-09-11) is the dual-annealing engine's objective
-# normalization: the objective difference that becomes ONE annealing energy
-# unit (run_kinetic_dual_annealing; ~1-2 % of each metric's observed campaign
-# range). Not part of any study name.
+#: Named optimization objectives, ``{name: entry}``; each entry is a dict of
+#:
+#: * ``getter`` -- ``callable(handles) -> float`` over the simulation
+#:   handles (``get_handles``);
+#: * ``direction`` -- ``'maximize'`` or ``'minimize'``;
+#: * ``level`` -- ``'kinetic'`` (a fermentation outcome) or ``'system'`` (a
+#:   TEA outcome). Metadata only: every trial runs the full system
+#:   simulation AND one TEA solve regardless (the system-level metrics in
+#:   ``TRACKED_METRICS`` are always recorded), so a kinetic objective costs
+#:   the same per trial as a system one;
+#: * ``units`` -- units label;
+#: * ``energy_scale`` -- the dual-annealing objective normalization (since
+#:   2026-09-11): the objective difference that becomes ONE annealing
+#:   energy unit (``run_kinetic_dual_annealing``; about 1-2 % of each
+#:   metric's observed campaign range). Not part of any study name.
+#:
+#: Yields, titers, productivities and cell density are read from V406's
+#: kinetic results (per litre of water) or, for the ``'(broth)'`` twins,
+#: from its post-vent broth effluent (per litre of broth); IRR and the MPSPs
+#: from the latest TEA solution; TCI, NPV and PI from the TEA after
+#: ``solve_TEA`` (NPV at the fixed 15 % hurdle rate, default prices). The
+#: names are also trajectory-CSV columns and, through ``objective_slug``,
+#: study-name slugs: renaming one orphans every existing study.
 OBJECTIVE_REGISTRY = {
     'IBO yield': dict(
         getter=lambda h: _nsk(h)['y_IBO_glu_added'],
@@ -531,11 +581,11 @@ OBJECTIVE_REGISTRY = {
     'NPV': dict(
         getter=lambda h: h['tea'].NPV/1e6,
         direction='maximize', level='system', units='MM$', energy_scale=2.0),
-    # Profitability index (2026-09-12; docs/reports/profitability-index-
-    # objective.md): NPV at the fixed 15 % hurdle with every product at its
-    # default price, per $ of TCI. Defined for EVERY simulated point (no
-    # root-finding, no NaN at a zero-flow coproduct, no -inf plateau where
-    # IRR rails), continuous and unbounded through the loss region, and
+    # Profitability index (2026-09-12): NPV at the fixed 15 % hurdle with
+    # every product at its default price, per $ of TCI. Defined for EVERY
+    # simulated point (no root-finding, no NaN at a zero-flow coproduct, no
+    # -inf plateau where IRR rails), continuous and unbounded through the
+    # loss region, and
     # scale-invariant: PI > 0 iff IRR > 0.15, and monotone in IRR for the
     # common cash-flow shape every trial of a study shares, so it prefers a
     # small high-IRR plant over a large low-IRR one where plain NPV would
@@ -555,7 +605,8 @@ OBJECTIVE_REGISTRY = {
         direction='maximize', level='system', units='', energy_scale=0.01),
     }
 
-#: Metrics recorded for EVERY trial (spec trajectory (ii)-(vi) + extras).
+#: Metrics recorded for EVERY trial (trajectory-CSV columns after the
+#: decision variables).
 #: The '(broth)' twins and the two acetate titers (2026-09-14) are FIVE new
 #: trajectory-CSV columns, so the header guard REFUSES to resume any study
 #: started before them (start a fresh study name; old CSVs stay plottable).
@@ -576,8 +627,8 @@ TRACKED_METRICS['Acetate titer'] = lambda h: _nsk(h)['[s_acetate]']
 TRACKED_METRICS['Acetate titer (broth)'] = lambda h: _broth_conc(h, 'AceticAcid')
 
 # Convergence diagnostics of the simulation behind each trial (2026-09-13;
-# nskinetics report docs/reports/fed-batch-spike-feed-reconciliation.md
-# section 6.5): V406's reactor-boundary spike-feed residual, (implied -
+# see the fed-batch spike-feed reconciliation of nskinetics' fermentation
+# unit): V406's reactor-boundary spike-feed residual, (implied -
 # delivered)/|delivered| of the accepted kinetic run (NaN when the reactor
 # has none, e.g. the reconciler hook is off), and system.load_simulate's
 # sweep count / last-sweep drift, read from the system.last_convergence
@@ -611,7 +662,7 @@ TRACKED_METRICS['final_drift'] = lambda h: _convergence(h).get('final_drift',
 PENALTY_ENERGY = 1e6
 
 def resolve_energy_scale(objective, energy_scale=None):
-    """The dual-annealing objective normalization (spec §5): an explicit
+    """The dual-annealing objective normalization: an explicit
     `energy_scale` (positive, finite) wins; a registry objective name falls
     back to its OBJECTIVE_REGISTRY['energy_scale']; a custom callable MUST
     pass one (ValueError, like `direction`)."""
@@ -644,9 +695,9 @@ def annealing_energy(state, objective, direction, energy_scale):
 
 def discover_kinetic_parameters(r_te):
     """{name: baseline} for every kinetic parameter of the tellurium model
-    `r_te` -- the k_* rates and K_* constants, selected with the same name
-    rule as utils.generate_save_kinetic_parameter_distributions
-    (name[:2].lower() == 'k_'). Baselines are the CURRENT values, so call
+    `r_te` -- the ``k_*`` rates and ``K_*`` constants, selected with the
+    same name rule as utils.generate_save_kinetic_parameter_distributions
+    (``name[:2].lower() == 'k_'``). Baselines are the CURRENT values, so call
     this only after the scenario's parameter distributions have been
     loaded (model.load_parameter_distributions + metrics_at_baseline)."""
     return {p: float(getattr(r_te, p))
@@ -700,9 +751,9 @@ def build_search_space(kinetic_baselines,
     parameter keeps `multiplier_bounds`. WHICH names are rate constants
     is `rate_params` (an iterable of names; the presets pass the
     capacity-role rows of the workbook, rate_constant_names, so the
-    inhibition coefficients k_*i* stay on `multiplier_bounds`); None
+    inhibition coefficients ``k_*i*`` stay on `multiplier_bounds`); None
     keeps the pre-2026-09-06 rule -- every name starting with lowercase
-    'k_' -- required to resume a study started under it. Either way the
+    ``'k_'`` -- required to resume a study started under it. Either way the
     rate band applies only where a band applies at all (after
     include/exclude/override).
 
@@ -1251,13 +1302,21 @@ _TE_LOAD_STATEMENT = re.compile(
     r'V406\.nsk_kinetic_model\._te\.([A-Za-z0-9_]+)\s*=\s*x')
 
 def parameter_distributions_workbook(scenario):
-    """Absolute path of the scenario's parameter-distributions workbook
-    (data/parameter_distributions/
-    parameter-distributions_corn_IBO_EtOH_{scenario}.xlsx)."""
-    return os.path.join(
-        os.path.dirname(os.path.abspath(__file__)),
-        'data', 'parameter_distributions',
-        f'parameter-distributions_corn_IBO_EtOH_{scenario}.xlsx')
+    """Absolute path of a scenario's parameter-distributions workbook.
+
+    Parameters
+    ----------
+    scenario : str
+        Scenario key, e.g. ``'A'``, ``'B'`` or ``'opt_PI_TRY_informed'``.
+
+    Returns
+    -------
+    str
+        ``<package>/data/parameter_distributions/
+        parameter-distributions_corn_IBO_EtOH_<scenario>.xlsx``
+        (``paths.workbook_path``). The file need not exist.
+    """
+    return _paths.workbook_path(scenario)
 
 def workbook_kinetic_baselines(scenario):
     """Ordered {te parameter name: workbook Baseline} for every kinetic
@@ -1295,9 +1354,9 @@ def workbook_kinetic_bounds(scenario, multiplier_bounds=(0.1, 10.0),
     and in workbook order. Same rule as build_search_space: the RATE
     constants -- the names in `rate_params` when given (the presets pass
     rate_constant_names of the workbook rows), else every name starting
-    with lowercase 'k_' (the pre-2026-09-06 rule) -- use
+    with lowercase ``'k_'`` (the pre-2026-09-06 rule) -- use
     `rate_multiplier_bounds` when it is given, every other name
-    (inhibition coefficients k_*i*, K_*) uses `multiplier_bounds`; a
+    (inhibition coefficients ``k_*i*``, ``K_*``) uses `multiplier_bounds`; a
     name in `parameter_multiplier_bounds` ({name: (m_lo, m_hi)}, the
     presets' DEFAULT_PARAMETER_MULTIPLIER_BOUNDS -- k_10 on 0.1x-10x)
     uses that band instead of either. A plain
@@ -1333,14 +1392,10 @@ def kinetic_parameter_roles_path():
     S. cerevisiae ethanol/isobutanol model (the source of truth for each
     kinetic parameter's role: capacity, affinity, substrate_regulation,
     product_inhibition, product_self_inhibition, lethality,
-    lethality_threshold, initial_state). Located via the package's spec
-    WITHOUT importing it (importlib.util.find_spec only resolves the
-    file)."""
-    spec = importlib.util.find_spec('nskinetics')
-    if spec is None or not spec.origin:
-        raise ImportError('nskinetics is not installed (needed for the '
-                          'kinetic-parameter role table).')
-    return os.path.join(os.path.dirname(spec.origin), *_ROLE_TABLE_RELPATH)
+    lethality_threshold, initial_state). Located relative to this file in
+    the SAME nskinetics checkout (never via an import or a module-spec
+    lookup, which could resolve another nskinetics on sys.path)."""
+    return os.path.join(_NSKINETICS_DIR, *_ROLE_TABLE_RELPATH)
 
 #: Antimony model file (the fitted kinetics; scenario A uses it as-is), beside
 #: the role table.
@@ -1351,7 +1406,8 @@ def antimony_file_path():
     S. cerevisiae ethanol/isobutanol model, beside the role table
     (kinetic_parameter_roles_path). The antimony is the only kinetic source
     fitted on experimental data, so it is the only valid anchor for a new
-    kinetic constant (CLAUDE.md anchoring rule)."""
+    kinetic constant (the anchoring rule: new constants are expressed
+    relative to the fitted values, never pasted in from other sources)."""
     return os.path.join(os.path.dirname(kinetic_parameter_roles_path()),
                         _ANTIMONY_MODEL_FILENAME)
 
@@ -1387,7 +1443,8 @@ def scenario_A_ibo_pathway_rate_bounds(include_params, rate_params, *,
     from the scenario-A workbook (the natives are present in A -- and identical
     in A, B and the antimony -- so their B-anchored bands already equal the A
     ones and are left untouched). For each such rate the band is anchored on
-    the fitted scenario-A antimony value (CLAUDE.md anchoring rule):
+    the fitted scenario-A antimony value (the anchoring rule; see
+    antimony_file_path):
 
     * antimony value a > 0 -> (m_lo*a, m_hi*a), where (m_lo, m_hi) is the
       per-parameter band from SCENARIO_A_ANCHORED_RATE_MULTIPLIER_BOUNDS
@@ -1511,9 +1568,9 @@ def rate_constant_names(names, roles=None):
 #: for. Both presets START at the scenario-A baseline (the current
 #: ethanol strain); the parameter SET comes from the named workbook
 #: (A: native pathways only -- no Ehrlich block, no isobutanol-inhibition
-#: coefficients; B: plus both). Exclusions (k_6r, k_16r, K_2, K_9, P_10*,
-#: docs/reports/kinetic-parameter-exclusions.md) are inherited from the
-#: workbooks and never re-enter.
+#: coefficients; B: plus both). Exclusions (k_6r, k_16r, K_2, K_9, P_10*:
+#: physically constrained or non-kinetic terms the workbooks leave out) are
+#: inherited from the workbooks and never re-enter.
 STUDY_TARGET_PRODUCTS = {
     'ethanol_only': {'scenario': 'A', 'parameter_set_scenario': 'A'},
     'ethanol_isobutanol': {'scenario': 'A', 'parameter_set_scenario': 'B'},
@@ -1597,13 +1654,13 @@ METABOLIC_MINIMAL_SUBSET_GROUPS = {
 #: below; each on the rate band (DEFAULT_RATE_MULTIPLIER_BOUNDS), intersected
 #: with the target's workbook (ethanol_only lacks k_13-k_16).
 METABOLIC_14D_RATES = ('k_3', 'k_6', 'k_13', 'k_14', 'k_15', 'k_16')
-#: Its CAPACITY group (declared under the STUDY_TYPE_OPTIONS rate_parameter_
-#: groups key so resolve_study_preset validates the members as capacity rows,
-#: not inhibition coefficients): ONE log multiplier on (0.2, 4.0) x every
-#: member's LIVE baseline (expand_grouped_values), preserving the glycolysis
-#: family's intra-ratio. Merged glycolysis-FIRST into parameter_groups, so the
-#: search-space / CSV column order after the individual rates is glycolysis,
-#: then the three inhibition groups.
+#: Its CAPACITY group (declared under the STUDY_TYPE_OPTIONS
+#: rate_parameter_groups key so resolve_study_preset validates the members as
+#: capacity rows, not inhibition coefficients): ONE log multiplier on
+#: (0.2, 4.0) x every member's LIVE baseline (expand_grouped_values),
+#: preserving the glycolysis family's intra-ratio. Merged glycolysis-FIRST
+#: into parameter_groups, so the search-space / CSV column order after the
+#: individual rates is glycolysis, then the three inhibition groups.
 METABOLIC_14D_RATE_GROUPS = {'glycolysis': ('k_1l', 'k_1h', 'k_1e')}
 
 #: metabolic_split_14d (2026-09-15): metabolic_14d with the two alcohol
@@ -1626,8 +1683,7 @@ METABOLIC_SPLIT_14D_GROUPS = {
     'inhib_acetate':    ('k_1ia', 'k_4ia', 'k_6ia', 'k_7ia', 'k_10ia', 'k_17ia'),
 }
 
-#: metabolic_split_12d (2026-09-15; spec docs/superpowers/specs/2026-09-15-
-#: metabolic-split-12d-ehrlich-downstream-group-design.md): metabolic_split_14d
+#: metabolic_split_12d (2026-09-15): metabolic_split_14d
 #: with the three Ehrlich rates DOWNSTREAM of the pyruvate split -- k_14
 #: (Ilv5), k_15 (Ilv3), k_16 (Aro10) -- collapsed into ONE log-scale capacity
 #: multiplier, `ehrlich_downstream`, with fixed STOICHIOMETRIC intra-ratios.
@@ -1654,7 +1710,8 @@ METABOLIC_SPLIT_12D_RATES = ('k_3', 'k_6', 'k_13', 'k_17')
 #: weights DIRECTLY as the group's references, so the group's multiplier
 #: band is an ABSOLUTE g/L/h band on k_14 -- IBO_PATHWAY_ZERO_A_RATE_BOUNDS,
 #: the band metabolic_split_14d gives k_14 individually, because k_14 is 0
-#: in the fitted scenario-A antimony (CLAUDE.md anchoring rule). Until then
+#: in the fitted scenario-A antimony (the anchoring rule: only the fitted
+#: antimony is a valid anchor, see antimony_file_path). Until then
 #: the weights were scaled by the anchor's bounds-workbook baseline (B:
 #: k_14 = 4.8 -> references 4.800 / 4.872 / 4.219), which anchored the
 #: group to the arbitrary scenario B. The B workbook's own 4.8 / 4.8 /
@@ -1666,10 +1723,11 @@ EHRLICH_DOWNSTREAM_WEIGHTS = {'k_14': 1.0, 'k_15': 1.015, 'k_16': 1.015*0.866}
 #: then ehrlich_downstream, both ahead of the inhibition groups): glycolysis
 #: on 0.2x-4x of every member's LIVE baseline (unchanged from metabolic_14d),
 #: ehrlich_downstream on the ABSOLUTE band IBO_PATHWAY_ZERO_A_RATE_BOUNDS
-#: (1e-3-4.0 g/L/h) applied to the group's REFERENCES = EHRLICH_DOWNSTREAM_
-#: WEIGHTS themselves (group_references; the anchor k_14 weighs 1.0, so the
-#: multiplier IS k_14 in g/L/h -- the live k_14-k_16 are 0 at the scenario-A
-#: start, so a live-baseline multiplier would be degenerate).
+#: (1e-3-4.0 g/L/h) applied to the group's REFERENCES =
+#: EHRLICH_DOWNSTREAM_WEIGHTS themselves (group_references; the anchor k_14
+#: weighs 1.0, so the multiplier IS k_14 in g/L/h -- the live k_14-k_16 are
+#: 0 at the scenario-A start, so a live-baseline multiplier would be
+#: degenerate).
 METABOLIC_SPLIT_12D_RATE_GROUPS = {
     'glycolysis': ('k_1l', 'k_1h', 'k_1e'),
     'ehrlich_downstream': ('k_14', 'k_15', 'k_16'),
@@ -1854,123 +1912,161 @@ DEFAULT_STUDY_TYPE = 'metabolic_split_14d'
 
 def resolve_study_preset(study_target_products, study_type, roles=None,
                          effectors=None):
-    """The driver run() kwargs of a named study preset (sim-free):
-    dict(scenario='A', kinetic_bounds_scenario=<A|B>,
-    include_params=[workbook rows of that scenario whose role is in
-    STUDY_TYPE_ROLES[study_type], in workbook order],
-    multiplier_bounds=DEFAULT_SATURATION_MULTIPLIER_BOUNDS,
-    rate_multiplier_bounds=DEFAULT_RATE_MULTIPLIER_BOUNDS,
-    rate_params=[the workbook's RATE CONSTANTS -- rate_constant_names,
-    role capacity; 16 in A's workbook, 21 in B's -- the only names the
-    rate band applies to, so the inhibition coefficients k_*i* sample
-    the saturation band like the K_* terms],
-    parameter_multiplier_bounds=a COPY of
-    DEFAULT_PARAMETER_MULTIPLIER_BOUNDS [k_10, the active-biomass decay
-    capacity, on 0.1x-10x instead of the rate band -- in force only when
-    k_10 is re-included],
-    exclude_params=a COPY of DEFAULT_EXCLUDED_PARAMETERS [('k_10',): the
-    decay capacity is NOT a decision variable by default -- it stays at
-    the scenario baseline and gets no knockout probe; the driver tags the
-    effective exclusion into the study name, `_xk10`]).
-    Also stage_1_max_x_bounds=study_type_name_defaults(study_type)
-    ['stage_1_max_x_bounds'] [a tuple COPY of DEFAULT_STAGE_1_MAX_X_BOUNDS,
-    (1.0, 50.0) g/L, log-scale, for every type but
-    metabolic_minimal_subset, which pins it (None): the fermentor's
-    aerobic stage-1 biomass cutoff, an OPERATING variable
-    (OPERATING_VARIABLES) applied via V406.stage_1_max_x; the driver
-    tags a band `_s1x1-50` into the study name, nothing when pinned].
-    Set sizes (include_params, the workbook rows): ethanol_only 29
-    (metabolic) / 40 (metabolic_protein); ethanol_isobutanol 41 / 59
-    (40 / 55 before the 2026-09-15 r16/r17 split added k_17, K_17, k_17r,
-    K_17e; 56 before the 2026-09-13 K_16i drop) --
-    one fewer each in the sampled space after the exclusion. `roles` (default
-    kinetic_parameter_roles()) is the {name: role} table; a workbook row
-    absent from it raises KeyError(name) so a future workbook/model change
-    can never leak a parameter into a set silently. Unknown axis values
-    raise ValueError.
+    """Driver ``run()`` kwargs of a named study preset (sim-free).
 
-    Since 2026-09-07 every preset also returns `parameter_groups`
-    ({group: [members]} for a grouped study_type, None otherwise),
-    `group_multiplier_bounds` and `spike_delta_bounds` (a tuple, or None
-    = spike pinned at the baseline), and its `multiplier_bounds` /
-    `exclude_params` come from study_type_name_defaults(study_type).
-    'metabolic_minimal' (STUDY_TYPE_OPTIONS): include_params = the
-    capacity + product_inhibition + lethality rows (37 for the B
-    workbook since the 2026-09-15 split, 36 before; 25 for A's);
-    exclude_params ('k_10', 'k_7', 'k_8'); the
-    inhibition rows grouped by the role table's effector (`effectors`,
-    default kinetic_parameter_effectors(); a grouped row whose effector
-    is None or not in EFFECTOR_ORDER raises KeyError) into
-    inhib_ethanol / inhib_isobutanol / inhib_acetate in EFFECTOR_ORDER,
-    members in workbook order, effectors without rows omitted; so the
-    sampled space is 18 rates + 3 multipliers (+ 4 feeding/operating)
-    for ethanol_isobutanol (17 before the 2026-09-15 split) and 13 + 2
-    (+ 4) for ethanol_only.
+    A preset is chosen on two axes: which products the strain is engineered
+    for (``STUDY_TARGET_PRODUCTS``) and which kinetic-parameter roles or
+    explicit sets are decision variables (``STUDY_TYPE_ROLES`` /
+    ``STUDY_TYPE_OPTIONS``). Every preset starts at scenario A; its
+    parameter SET is the named workbook's rows (``workbook_kinetic_baselines``
+    of ``kinetic_bounds_scenario``) filtered by role.
+
+    Parameters
+    ----------
+    study_target_products : {'ethanol_only', 'ethanol_isobutanol'}
+        ``'ethanol_only'`` = the scenario-A workbook's rows (native pathways
+        only); ``'ethanol_isobutanol'`` = the scenario-B workbook's rows
+        (plus the Ehrlich block and the isobutanol-inhibition
+        coefficients).
+    study_type : str
+        A key of ``STUDY_TYPE_ROLES``: ``'metabolic'``,
+        ``'metabolic_protein'``, ``'metabolic_minimal'``,
+        ``'metabolic_minimal_subset'``, ``'metabolic_14d'``,
+        ``'metabolic_split_14d'`` or ``'metabolic_split_12d'`` (see Notes).
+    roles : dict, optional
+        ``{name: role}`` table (default ``kinetic_parameter_roles()``). A
+        workbook row absent from it raises KeyError, so a future workbook or
+        model change can never leak a parameter into a set silently.
+    effectors : dict, optional
+        ``{name: effector}`` table used to group the inhibition rows
+        (default ``kinetic_parameter_effectors()``).
+
+    Returns
+    -------
+    dict
+        ``scenario``
+            Always ``'A'`` (both target-product axes start at the scenario-A
+            baseline).
+        ``kinetic_bounds_scenario``
+            ``'A'`` or ``'B'``: the workbook that defines the set and bands.
+        ``include_params``
+            The workbook rows whose role is in the study type's roles (or
+            the explicit set), in workbook order.
+        ``multiplier_bounds``
+            The saturation band of the individually sampled inhibition
+            coefficients / ``K_*`` terms (``study_type_name_defaults``; the
+            default group band under a per-group dict, where it is inert).
+        ``rate_multiplier_bounds``
+            ``DEFAULT_RATE_MULTIPLIER_BOUNDS``.
+        ``rate_params``
+            The workbook's RATE CONSTANTS (``rate_constant_names``, role
+            capacity; 16 in A's workbook, 21 in B's) -- the only names the
+            rate band applies to.
+        ``parameter_multiplier_bounds``
+            A copy of ``DEFAULT_PARAMETER_MULTIPLIER_BOUNDS`` (``k_10`` on
+            0.1x-10x, in force only when ``k_10`` is re-included).
+        ``exclude_params``
+            A copy of ``DEFAULT_EXCLUDED_PARAMETERS`` (``('k_10',)``: the
+            active-biomass decay capacity is not a decision variable by
+            default) or the type's own exclusions.
+        ``stage_1_max_x_bounds``
+            ``DEFAULT_STAGE_1_MAX_X_BOUNDS`` ((1.0, 50.0) g/L, log-scale),
+            or None where the type pins the aerobic stage-1 biomass cutoff.
+        ``parameter_groups``
+            ``{group: [members]}`` for a grouped type, else None.
+        ``group_multiplier_bounds``
+            Band(s) of the group multipliers.
+        ``spike_delta_bounds``
+            A tuple, or None (spike concentration pinned at the baseline).
+        ``group_references``
+            ``{group: {member: reference}}`` for a referenced capacity group
+            (``metabolic_split_12d``), else None.
+        ``param_bounds_override``
+            Scenario-A-anchored bands of the individually sampled
+            isobutanol-pathway rates (``scenario_A_ibo_pathway_rate_bounds``),
+            or None.
+
+    Raises
+    ------
+    ValueError
+        On an unknown ``study_target_products`` or ``study_type``, or an
+        invalid ``rate_group_weights`` entry of a preset.
+    KeyError
+        On a workbook row missing from ``roles``, a listed rate that is not
+        a capacity row, a listed group member that is not a
+        product_inhibition / lethality row, or an inhibition row whose
+        effector is None or not in ``EFFECTOR_ORDER``.
+
+    Notes
+    -----
+    Set sizes (``include_params``): ``ethanol_only`` 29 (``metabolic``) /
+    40 (``metabolic_protein``); ``ethanol_isobutanol`` 41 / 59 (40 / 55
+    before the 2026-09-15 r16/r17 split added ``k_17``, ``K_17``,
+    ``k_17r``, ``K_17e``; 56 before the 2026-09-13 ``K_16i`` drop) -- one
+    fewer each in the sampled space after the ``k_10`` exclusion.
+
     Every group member is scaled from its LIVE baseline -- the model value
     at study start (for a row absent from the scenario-A workbook, the
     nskinetics model default), NOT the workbook value; the engine prints
     each member's baseline next to its name and records the products as
-    the applied_<member> columns.
+    the ``applied_<member>`` columns.
 
-    'metabolic_minimal_subset' (2026-09-07) is the STANDALONE explicit
-    preset: STUDY_TYPE_ROLES has no roles for it (the empty tuple) and
-    its STUDY_TYPE_OPTIONS entry lists the set outright -- rate_params
-    = METABOLIC_MINIMAL_SUBSET_RATES (9), parameter_groups =
-    METABOLIC_MINIMAL_SUBSET_GROUPS (3 effector groups), no exclusions,
-    spike AND stage_1_max_x pinned. Every listed rate must be a
-    capacity row and every member a product_inhibition / lethality row
-    of the role table (KeyError naming the parameter and the preset,
-    checked BEFORE the intersection so a typo can never be dropped
-    silently); then include_params = the listed rates that are rows of
-    the target's workbook (list order) and parameter_groups = the
-    members that are (empty groups omitted; None if all are), so
-    ethanol_isobutanol samples 9 rates + 3 multipliers + 3 feeding
-    variables = 15 and ethanol_only (no k_13-k_16, no isobutanol
-    coefficients in the A workbook) 5 + 2 + 3 = 10. The returned
-    rate_params is still the workbook's every capacity row (the listed
-    rates are a subset); `effectors` is not consulted.
+    ``'metabolic_minimal'``: ``include_params`` = the capacity +
+    product_inhibition + lethality rows (37 for the B workbook since the
+    2026-09-15 split, 25 for A's); ``exclude_params`` = ``('k_10', 'k_7',
+    'k_8')``; the inhibition rows grouped by the role table's effector into
+    ``inhib_ethanol`` / ``inhib_isobutanol`` / ``inhib_acetate`` (in
+    ``EFFECTOR_ORDER``, members in workbook order, effectors without rows
+    omitted). The sampled space is 18 rates + 3 multipliers (+ 4 feeding /
+    operating variables) for ``ethanol_isobutanol`` and 13 + 2 (+ 4) for
+    ``ethanol_only``.
 
-    'metabolic_14d' (2026-09-11) is metabolic_minimal_subset with the
-    glycolysis rate family grouped and stage_1_max_x sampled: its
-    STUDY_TYPE_OPTIONS entry adds a rate_parameter_groups dict
-    ({'glycolysis': ('k_1l', 'k_1h', 'k_1e')}) whose members are validated
-    as CAPACITY rows (KeyError naming the parameter and the preset if not)
-    and merged FIRST into parameter_groups, ahead of the inhibition groups;
-    every member is scaled from its LIVE baseline exactly like an inhibition
-    group's. So ethanol_isobutanol samples 6 rates + 1 glycolysis + 3
-    inhibition multipliers + 3 feeding + stage_1_max_x = 14, and ethanol_only
-    (no k_13-k_16, no isobutanol coefficients) 2 + 1 + 2 + 3 + 1 = 9.
+    ``'metabolic_minimal_subset'`` (2026-09-07) is a STANDALONE explicit
+    preset: ``STUDY_TYPE_ROLES`` has no roles for it and its
+    ``STUDY_TYPE_OPTIONS`` entry lists the set outright -- the rates
+    ``METABOLIC_MINIMAL_SUBSET_RATES`` (9) and the groups
+    ``METABOLIC_MINIMAL_SUBSET_GROUPS`` (3 effector groups), no exclusions,
+    spike AND ``stage_1_max_x`` pinned. The listed names are validated
+    against the role table BEFORE the workbook intersection, so a typo can
+    never be dropped silently; then ``include_params`` = the listed rates
+    that are rows of the target's workbook and ``parameter_groups`` = the
+    members that are (empty groups omitted). ``ethanol_isobutanol``
+    samples 9 rates + 3 multipliers + 3 feeding variables = 15,
+    ``ethanol_only`` 5 + 2 + 3 = 10. The returned ``rate_params`` is still
+    every capacity row of the workbook; ``effectors`` is not consulted.
 
-    'metabolic_split_14d' (2026-09-15) is metabolic_14d with the two
-    alcohol dehydrogenases as independent knobs -- k_6 (Adh1, r6) and the
-    new k_17 (Adh6, r17; nskinetics r16/r17 split) -- the inhibition groups
-    on the live cross-product coefficients k_17ie / k_17ia (the repointed
-    workbook rows; the older presets' k_16ie / k_16ia members are inert
-    names the intersection now drops) and stage_1_max_x PINNED: 7 rates +
-    1 glycolysis + 3 inhibition multipliers + 3 feeding = 14 for
-    ethanol_isobutanol, 2 + 1 + 2 + 3 = 8 for ethanol_only.
+    ``'metabolic_14d'`` (2026-09-11) is ``metabolic_minimal_subset`` with
+    the glycolysis rate family grouped (``rate_parameter_groups``
+    ``{'glycolysis': ('k_1l', 'k_1h', 'k_1e')}``, validated as CAPACITY
+    rows and merged FIRST into ``parameter_groups``, ahead of the
+    inhibition groups) and ``stage_1_max_x`` sampled:
+    ``ethanol_isobutanol`` samples 6 rates + 1 glycolysis + 3 inhibition
+    multipliers + 3 feeding + ``stage_1_max_x`` = 14, ``ethanol_only``
+    2 + 1 + 2 + 3 + 1 = 9.
 
-    'metabolic_split_12d' (2026-09-15) is metabolic_split_14d with k_14 /
-    k_15 / k_16 collapsed into ONE REFERENCED capacity group,
-    ehrlich_downstream (METABOLIC_SPLIT_12D_RATE_GROUPS), sampled on the
-    ABSOLUTE anchor band IBO_PATHWAY_ZERO_A_RATE_BOUNDS (1e-3-4.0 g/L/h,
-    the band metabolic_split_14d gives k_14 individually -- a zero rate in
-    the fitted scenario-A antimony) applied to its REFERENCES: the
-    STUDY_TYPE_OPTIONS key rate_group_weights ({group: {member: weight}},
-    the anchor -- the first member -- at weight 1.0) is returned, AFTER
-    the workbook intersection, as `group_references` = {group: {member:
-    weight}} (1.000 / 1.015 / 0.878990; since 2026-09-16 -- until then the
-    weights were scaled by the anchor's scenario-B workbook baseline 4.8,
-    anchoring the group to arbitrary B), so the engine samples weight x
-    multiplier, i.e. the multiplier IS k_14 in g/L/h, even though the live
-    A-start k_14-k_16 are 0. A group emptied by the intersection gets no
-    entry. The weights dict itself is validated (keys = the group's members in
-    order, anchor weight 1.0, every weight > 0, the group a
-    rate_parameter_groups group; ValueError naming the preset). So
-    ethanol_isobutanol samples 4 rates + glycolysis + ehrlich_downstream
-    + 3 inhibition multipliers + 3 feeding = 12, ethanol_only 2 + 1 + 2 +
-    3 = 8 with `group_references` None. EVERY preset returns the
-    `group_references` key (None for every other preset).
+    ``'metabolic_split_14d'`` (2026-09-15) is ``metabolic_14d`` with the
+    two alcohol dehydrogenases as independent knobs -- ``k_6`` (Adh1, r6)
+    and ``k_17`` (Adh6, r17) -- the inhibition groups on the live
+    cross-product coefficients ``k_17ie`` / ``k_17ia`` and
+    ``stage_1_max_x`` PINNED: 7 rates + 1 glycolysis + 3 inhibition
+    multipliers + 3 feeding = 14 for ``ethanol_isobutanol``,
+    2 + 1 + 2 + 3 = 8 for ``ethanol_only``.
+
+    ``'metabolic_split_12d'`` (2026-09-15) is ``metabolic_split_14d`` with
+    ``k_14`` / ``k_15`` / ``k_16`` collapsed into ONE REFERENCED capacity
+    group, ``ehrlich_downstream`` (``METABOLIC_SPLIT_12D_RATE_GROUPS``),
+    sampled on the ABSOLUTE anchor band ``IBO_PATHWAY_ZERO_A_RATE_BOUNDS``
+    (1e-3 to 4.0 g/L/h, the band ``metabolic_split_14d`` gives ``k_14``
+    individually) applied to its references: the options key
+    ``rate_group_weights`` (``EHRLICH_DOWNSTREAM_WEIGHTS``, the anchor at
+    weight 1.0) is returned, AFTER the workbook intersection, as
+    ``group_references`` (1.000 / 1.015 / 0.878990, since 2026-09-16), so
+    the multiplier IS ``k_14`` in g/L/h even though the live scenario-A
+    ``k_14``-``k_16`` are 0. The weights are validated (keys = the group's
+    members in order, anchor weight 1.0, every weight > 0). So
+    ``ethanol_isobutanol`` samples 4 rates + glycolysis +
+    ehrlich_downstream + 3 inhibition multipliers + 3 feeding = 12 and
+    ``ethanol_only`` 2 + 1 + 2 + 3 = 8 (``group_references`` None).
     """
     if study_target_products not in STUDY_TARGET_PRODUCTS:
         raise ValueError(
@@ -2200,7 +2296,7 @@ def check_method_kwargs(method, *, enqueue_knockouts=False, seed_from=None,
     once. An unknown method raises (method_study_tag).
 
     `relay_from` (a relay campaign's donors, since 2026-09-23; None / empty
-    = off) is GP-ONLY (spec A1): a non-empty value raises ValueError under
+    = off) is GP-ONLY: a non-empty value raises ValueError under
     'tpe' -- optuna's TPE classes a trial without a 'constraints' system
     attr as INFEASIBLE (score +inf) whenever a constraints_func is set,
     which is every production TPE path, so the preload would become TPE's
@@ -2317,124 +2413,103 @@ def default_study_name(objective, study_target_products, study_type,
                        exclude_params=None, stage_1_max_x_bounds=None,
                        n_seeds=None, method='tpe', ibo_pathway_anchoring=None,
                        relay_tag=''):
-    """Stable study name of a preset study:
-    kin_opt_{study_target_products}_{study_type}_{objective slug}
-    (slug = lower-cased, spaces -> '_'), e.g.
-    kin_opt_ethanol_isobutanol_metabolic_protein_irr. New names, so a
-    preset study can never collide with the CSV/SQLite of a legacy
-    kin_opt_{scenario}[_kb{X}]_{slug} study. The driver and the supervisor
-    both derive it from here.
+    """Stable study name of a preset study.
 
-    `scenario` / `kinetic_bounds_scenario` tag the name ONLY when an
-    explicit override differs from the preset's own values -- every
-    preset starts at scenario 'A' and its kinetic_bounds_scenario is
-    STUDY_TARGET_PRODUCTS[study_target_products]['parameter_set_scenario']
-    -- so the tags appear only for a genuine override: `_sc{scenario}`
-    when scenario is given and != 'A', `_kb{kinetic_bounds_scenario}` when
-    it is given and differs from the preset's own workbook scenario.
-    Passing back the preset's own values (or leaving both None) reproduces
-    the base name above exactly, so default preset names are unchanged
-    and still cannot collide with the legacy family. Without this tag, an
-    explicit scenario override under a preset (e.g. run(scenario='B'))
-    silently resumed the default-scenario study instead (same search-space
-    columns, so the CSV header guard could not catch the mix).
+    The base name is ``kin_opt_<study_target_products>_<study_type>_<slug>``
+    (slug = ``objective_slug(objective)``), e.g.
+    ``kin_opt_ethanol_isobutanol_metabolic_protein_irr`` -- new names, so a
+    preset study can never collide with the CSV / SQLite store of a legacy
+    ``kin_opt_<scenario>[_kb<X>]_<slug>`` study. The BO driver and its
+    stdlib-only supervisor both derive names here, so they cannot drift.
 
-    `rate_multiplier_bounds` (the k_* band, (m_lo, m_hi) x baseline) tags
-    the name `_rb{m_lo:g}-{m_hi:g}` (e.g. `_rb0.001-4` at the presets'
-    own DEFAULT_RATE_MULTIPLIER_BOUNDS, `_rb0.1-10`) WHENEVER it is
-    given: a different band samples a different space over the SAME
-    columns, so without the tag a run would silently resume the study
-    of the same objective under another band (the CSV header guard
-    cannot tell them apart). Until the band moved 1e-5x -> 1e-3x later
-    on 2026-09-06 only a band DIFFERING from the default was tagged, so
-    the 1e-5x studies carry no `_rb` tag (e.g.
-    kin_opt_ethanol_isobutanol_metabolic_irr_ib0.1-10_burden); the driver
-    and supervisor now pass the EFFECTIVE band on every preset-derived
-    name, and only an explicit --study-name / study_name can resume
-    those. None (older callers) leaves the name unchanged. The presets'
-    per-parameter bands (DEFAULT_PARAMETER_MULTIPLIER_BOUNDS, k_10) are
-    part of the preset's identity and are NOT tagged.
+    Tags exist because studies that sample a different space over the SAME
+    trajectory-CSV columns cannot be told apart by the CSV header guard;
+    without a tag a run would silently resume the other study. Tag order:
+    objective slug, method tag, ``_sc``, ``_kb``, ``_rb``, ``_ib``, ``_x``,
+    ``_aA``, ``_s1x``, ``_seed<n>``, ``_rl<sha1-8>``, ``_burden``.
 
-    `inhibition_multiplier_bounds` (the band of the inhibition
-    coefficients k_*i*, (m_lo, m_hi) x baseline) tags the name after
-    `_rb` WHENEVER it is given, via _inhibition_bounds_tag. It is
-    polymorphic: a (lo, hi) TUPLE (one band for every inhibition entry)
-    -> `_ib{m_lo:g}-{m_hi:g}` (e.g. `_ib0.1-10`); a
-    {group_name: (lo, hi)} DICT of per-effector-family GROUP bands ->
-    `_ib` then, in EFFECTOR_ORDER, `{effector_code}{lo:g}-{hi:g}` for
-    each group whose band differs from DEFAULT_GROUP_MULTIPLIER_BOUNDS
-    (so {'inhib_ethanol': (0.3, 2.0)} -> `_ibe0.3-2`; an all-default
-    dict collapses to `_ib{default}`). Since 2026-09-06 the presets
-    assign bands by role (rate constants alone on the k_* band;
-    inhibition coefficients on the saturation band, `multiplier_bounds`,
-    or -- under a grouped preset -- the per-group band), and the driver
-    and supervisor pass that band here on every preset-derived name, so
-    a role-band or per-group-floored study never resumes the CSV/SQLite
-    of a study started under the old prefix rule or a different band
-    (same columns, so the header guard cannot tell them apart). None
-    (older callers) leaves the name unchanged.
+    Parameters
+    ----------
+    objective : str
+        Objective name (``OBJECTIVE_REGISTRY`` key or a custom name).
+    study_target_products : str
+        Preset target-products axis (``STUDY_TARGET_PRODUCTS`` key).
+    study_type : str
+        Preset study-type axis (``STUDY_TYPE_ROLES`` key).
+    scenario : str, optional
+        Tags ``_sc<scenario>`` only when given and != ``'A'`` (every preset
+        starts at scenario A), i.e. only for a genuine override.
+    kinetic_bounds_scenario : str, optional
+        Tags ``_kb<scenario>`` only when given and different from the
+        preset's own workbook scenario
+        (``STUDY_TARGET_PRODUCTS[...]['parameter_set_scenario']``). Passing
+        back the preset's own values (or None) reproduces the base name.
+    burden : bool, optional
+        True appends ``BURDEN_STUDY_SUFFIX`` (``'_burden'``) after every
+        other tag, so a burden study never resumes a burden-free study's
+        files, or vice versa (default False).
+    rate_multiplier_bounds : tuple of float, optional
+        The rate-constant band (m_lo, m_hi); tags ``_rb<m_lo>-<m_hi>``
+        (e.g. ``_rb0.001-4``) WHENEVER given. None (older callers) leaves
+        the name unchanged. Studies of the 1e-5x band (before 2026-09-06)
+        carry no ``_rb`` tag and resume only by an explicit study name. The
+        per-parameter bands (``DEFAULT_PARAMETER_MULTIPLIER_BOUNDS``) are
+        part of the preset's identity and are NOT tagged.
+    inhibition_multiplier_bounds : tuple or dict, optional
+        The band of the inhibition coefficients, tagged after ``_rb``
+        WHENEVER given (``_inhibition_bounds_tag``): a ``(lo, hi)`` tuple
+        gives ``_ib<lo>-<hi>`` (e.g. ``_ib0.1-10``); a ``{group: (lo, hi)}``
+        dict of per-effector-family bands gives ``_ib`` followed, in
+        ``EFFECTOR_ORDER``, by ``<effector code><lo>-<hi>`` for each group
+        whose band differs from ``DEFAULT_GROUP_MULTIPLIER_BOUNDS`` (so
+        ``{'inhib_ethanol': (0.3, 2.0)}`` gives ``_ibe0.3-2``; an
+        all-default dict collapses to ``_ib<default>``). None leaves the
+        name unchanged.
+    exclude_params : sequence of str, optional
+        Parameters kept out of the space; tagged by
+        ``excluded_parameters_tag`` after ``_ib`` (``_xk10``) whenever
+        non-empty. An exclusion removes a CSV column, so the header guard
+        already refuses the old set -- the tag lets the default name launch
+        next to those studies at all. None / empty leaves the name
+        unchanged.
+    stage_1_max_x_bounds : tuple of float, optional
+        Band of the operating variable ``stage_1_max_x``; tags
+        ``_s1x<lo>-<hi>`` (``_s1x1-50``) after the exclusion and anchoring
+        tags whenever given. None (pinned) leaves the name unchanged.
+    n_seeds : int, optional
+        Number of seed points enqueued from donor studies
+        (``run_kinetic_optimization(seed_from=...)``); tags ``_seed<n>``
+        (``seed_points_tag``) after ``_s1x`` whenever > 0. Only the count is
+        tagged, so a different panel of the same size needs an explicit
+        study name. None / 0 leaves the name unchanged.
+    method : {'tpe', 'gp', 'dual_annealing'}, optional
+        Inserts ``method_study_tag(method)`` right after the objective slug
+        (``''`` for ``'tpe'``, the default and every pre-2026-09-11 study;
+        ``_gp``; ``_da``): studies of different methods have the same
+        columns, so the tag is the only thing keeping them apart.
+    ibo_pathway_anchoring : str, optional
+        ``'scenario_A'`` (every preset name since 2026-09-16) tags ``_aA``
+        after the exclusion tag and before ``_s1x``: the isobutanol-pathway
+        rate bands moved from the scenario-B workbook to the fitted
+        scenario-A antimony anchor without changing the columns. None or
+        ``'legacy'`` adds nothing.
+    relay_tag : str, optional
+        A relay campaign's ``relay_study_tag(relay_from, relay_kwargs)``
+        (``_rl<sha1-8>`` of the sorted donor stems + the resolved selection
+        kwargs), appended after the seed tag and before ``_burden``;
+        ``''`` (default) = none.
 
-    `exclude_params` (the kinetic parameters kept OUT of the search
-    space; the presets' DEFAULT_EXCLUDED_PARAMETERS, ('k_10',), since
-    2026-09-06 pm) tags the name with excluded_parameters_tag after
-    `_ib` (`_xk10`) whenever it is non-empty. An exclusion removes a
-    trajectory-CSV column, so the header guard already refuses to resume
-    a study of the old set -- the tag is what lets the default name
-    launch next to those studies at all (e.g. the 2026-09-06 production
-    study kin_opt_ethanol_isobutanol_metabolic_irr_rb0.001-10_ib0.1-10_
-    burden, which sampled k_10). None or an empty set (older callers; a
-    run that re-includes k_10 with exclude_params=()) leaves the name
-    unchanged -- same columns, so resuming those studies is legitimate.
+    Returns
+    -------
+    str
+        The study name.
 
-    `stage_1_max_x_bounds` (the (lo, hi) g/L band of the operating
-    variable stage_1_max_x; the presets' DEFAULT_STAGE_1_MAX_X_BOUNDS,
-    since 2026-09-06 pm) tags the name `_s1x{lo:g}-{hi:g}` (`_s1x1-50`)
-    after the exclusion tag whenever it is given. The variable is a new
-    decision COLUMN, so the header guard already refuses to resume a
-    study without it -- the tag is what lets the default name launch
-    next to the existing `..._xk10_burden` studies at all. None (older
-    callers; a run that pins the variable with stage_1_max_x_bounds=None)
-    leaves the name unchanged -- same columns, so resuming those studies
-    is legitimate.
-
-    `n_seeds` (the number of seed points enqueued from donor studies,
-    run_kinetic_optimization(seed_from=...); since 2026-09-07) tags the
-    name `_seed{n}` (seed_points_tag) after `_s1x` whenever it is > 0.
-    Seeds change the trajectory but not the columns, so without the tag
-    a seeded run would silently resume the unseeded study of the same
-    name; the count alone is tagged, so a different panel of the same
-    size needs an explicit study_name. None / 0 leaves the name
-    unchanged.
-
-    `method` ('tpe', the default and every pre-2026-09-11 study; or
-    'dual_annealing') inserts method_study_tag right after the objective
-    slug (`..._irr_da_rb0.001-4_...`): a dual-annealing study has the
-    same columns as the TPE study of the same objective, so the tag is
-    the only thing keeping it off that study's CSV.
-
-    `ibo_pathway_anchoring` ('scenario_A' on every preset name since
-    2026-09-16; None/'legacy' = nothing) tags the name `_aA` after the
-    exclusion tag and before `_s1x`. The IBO-pathway rate bands moved from
-    the arbitrary scenario-B workbook to the fitted scenario-A antimony
-    anchor without changing the trajectory-CSV columns, so the tag is the
-    only thing keeping a new-scheme study off an old B-anchored study's store
-    (the header guard cannot tell them apart -- same columns).
-
-    `relay_tag` (since 2026-09-23; '' = none) is a relay campaign's
-    relay_study_tag(relay_from, relay_kwargs) -- `_rl<sha1-8>` of the sorted
-    donor stems + the resolved selection kwargs -- appended after the seed
-    tag and before `_burden`. A relay campaign has the same columns as the
-    plain study of its objective (the preloaded donor rows live in the
-    optuna store and a manifest, never in the trajectory CSV), so the tag is
-    what keeps it off that study's store; derived from the arguments only,
-    so the driver and the supervisor compute the same name.
-
-    Tag order: objective slug, method tag, `_sc`, `_kb`, `_rb`, `_ib`,
-    `_x`, `_aA`, `_s1x`, `_seed{n}`, `_rl<sha1-8>`, `_burden`.
-
-    `burden=True` appends BURDEN_STUDY_SUFFIX ('_burden') after every
-    other tag: a burden study (enzyme_burden.py; the driver's default)
-    can never resume a burden-free study's CSV/SQLite, or vice versa.
+    Raises
+    ------
+    ValueError
+        On an unknown ``method`` (``method_study_tag``).
+    TypeError
+        If ``relay_tag`` is not a string.
     """
     slug = objective_slug(objective)
     name = (f'kin_opt_{study_target_products}_{study_type}_{slug}'
@@ -2533,7 +2608,7 @@ SIMULATED_STATES = ('COMPLETE', 'FAIL', 'NAN', 'LOST')
 
 def trajectory_resume_state(csv_path, search_space, direction):
     """What a relaunch of a study needs from its trajectory CSV alone
-    (the dual-annealing engine's resume store; spec §4.5): `n_rows`,
+    (the dual-annealing engine's resume store): `n_rows`,
     `n_done_sim` (rows in SIMULATED_STATES), `next_trial_number`
     (max stored + 1, LOST rows included -- optuna's numbering), and the best
     COMPLETE row's `best_trial_number` / `best_value` / `best_values` (its
@@ -2567,7 +2642,7 @@ def trajectory_resume_state(csv_path, search_space, direction):
 
 #%% In-flight sidecar (lost-trial recovery)
 # A trial that hangs inside the native integrator is hard-killed by the
-# supervisor (analyses/optimize_kinetics_BO_supervised.py), or dies in the
+# BO supervisor (optimize_kinetics_BO_supervised.py), or dies in the
 # known CVODE segfault, and can never write its own terminal CSV row. Its
 # trial_number is consumed anyway (optuna leaves the trial RUNNING and the
 # resume numbers the next one afresh), so the trajectory CSV ends up with a
@@ -2840,7 +2915,7 @@ def pca_decision_matrix(df, log_columns=(), decision_columns=None):
     log-sampled kinetic multiplier bands) are log10-transformed; all are
     then z-scored, zero-variance columns dropped (e.g. pinned variables),
     and the PCA computed by SVD (no sklearn). Component signs are
-    stabilized (largest-|loading| entry positive) so successive mid-run
+    stabilized (largest absolute loading positive) so successive mid-run
     figures do not flip axes.
 
     Returns (coords, explained_var_ratio, loadings, kept_columns, valid):
@@ -2896,10 +2971,10 @@ def plot_pca_projection(df, direction, log_columns=(),
     trial_number; None, the default, marks no baseline, since a study run
     with enqueue_baseline=False has no baseline trial and its trial 0 is
     just a sampled draw) and the current best marked; (2) the
-    explained-variance scree of the top 10 PCs; (3) the top-|loading|
-    variables on PC1/PC2; (4) PC1 and PC2 of every sampled point vs trial
-    number (the sampler-contraction diagnostic). Works with zero
-    completed trials (landscape shows only pruned points). Returns
+    explained-variance scree of the top 10 PCs; (3) the variables with the
+    largest absolute loadings on PC1/PC2; (4) PC1 and PC2 of every sampled
+    point vs trial number (the sampler-contraction diagnostic). Works with
+    zero completed trials (landscape shows only pruned points). Returns
     (fig, axes)."""
     import matplotlib.pyplot as plt
     coords, evr, loadings, kept, valid = pca_decision_matrix(
@@ -2998,8 +3073,8 @@ def plot_pca_projection(df, direction, log_columns=(),
 # reliably interrupt that on Windows -- watchdog threads and
 # PyThreadState_SetAsyncExc only act at Python bytecode boundaries -- so
 # the per-trial wall-clock timeout is implemented one level up: a
-# supervisor process (analyses/optimize_kinetics_BO_supervised.py) polls
-# the crash-safe trajectory CSV, kills the run when no trial has been
+# supervisor process (the BO supervisor, optimize_kinetics_BO_supervised.py)
+# polls the crash-safe trajectory CSV, kills the run when no trial has been
 # recorded for the timeout, and relaunches the resumable study (the
 # in-flight trial is lost, exactly as in a segfault crash; its RUNNING
 # optuna record still counts toward the total budget). The decision
@@ -3733,7 +3808,7 @@ def _n_sampler_drawn_consumed(study, current_trial=None):
     sampler-drawn trial (used for diagnostics/tests). Preloaded relay trials
     (system_attrs['relay'], 2026-09-23) are skipped like enqueued ones, so a
     relay campaign with fewer preloaded trials than n_startup takes LHS rows
-    0, 1, ... for its remaining start-up draws (spec A9)."""
+    0, 1, ... for its remaining start-up draws."""
     from optuna.trial import TrialState
     states = (TrialState.COMPLETE, TrialState.PRUNED,
               TrialState.FAIL, TrialState.RUNNING)
@@ -3803,8 +3878,10 @@ def record_seed_used(csv_path, *, method, seed, n_done):
     return path
 
 #%% Relay campaigns (2026-09-23)
-# Spec docs/superpowers/specs/2026-09-23-relay-preload-pi-campaign-design.md
-# (section 6, amendments A1-A14, BINDING over section 3). A RELAY campaign
+# Labels such as "A1"-"A14" and "section 3.1" in the comments and docstrings
+# below refer to the numbered requirements of the relay campaign's design
+# record (not shipped with the package); the code and the offline test
+# checks 100-103 are the authoritative statement of them. A RELAY campaign
 # is a fresh optuna GP study (method='gp' ONLY -- check_method_kwargs) that
 # starts from a MAP of its space built by earlier campaigns of the SAME
 # search space: every trajectory row records every TRACKED_METRICS column,
@@ -3966,7 +4043,7 @@ def relay_donor_path(donor, results_dir=None):
     """Trajectory-CSV path of a relay donor: an explicit path (a name ending
     in '.csv', or an existing file) is returned as given; a study name
     resolves to '<results_dir>/<name>_trajectory.csv' (results_dir None =
-    this package's analyses/results, the engine default). The seed_from
+    default_results_dir(), the engine default). The seed_from
     resolution rule, plus the '.csv' test so a mistyped path fails as a
     missing file instead of silently becoming a study name."""
     donor = os.fspath(donor)
@@ -3999,12 +4076,13 @@ def relay_study_tag(relay_from, relay_kwargs=None):
     read; order-insensitive in the donors, sensitive to every kwarg. The
     Sobol' `_custom<sha1-8>` precedent; 11 characters, placed by
     default_study_name after the seed tag and before `_burden`. Path budget
-    (spec §3.1; longest_output_paths): the production name is 103
-    characters, and its longest write -- the driver's end-of-run
-    `<pkg>/analyses/results/<name>_param_trajectory_<16-char stamp>.png`
-    (or `_best_vs_baseline_`, the same length) -- is 254 of Windows' 260
-    (MAX_PATH incl. the terminating NUL) on this checkout; the longest
-    run-data file (`_relay_manifest.csv.tmp`) is 239 (check 103)."""
+    (longest_output_paths): the production name is 103 characters, and its
+    longest write -- the driver's end-of-run
+    `<results root>/<name>_param_trajectory_<16-char stamp>.png` (or
+    `_best_vs_baseline_`, the same length) -- is 257 of Windows' 260
+    (MAX_PATH incl. the terminating NUL) under the default 115-character
+    results root of the development checkout; the longest run-data file
+    (`_relay_manifest.csv.tmp`) is 242 (offline check 103)."""
     if not _normalize_relay_from(relay_from):
         return ''
     import hashlib
@@ -4013,13 +4091,22 @@ def relay_study_tag(relay_from, relay_kwargs=None):
     return '_rl' + digest[:8]
 
 def default_results_dir():
-    """The engine's default results directory, <this package>/analyses/
-    results -- what run_kinetic_optimization and relay_donor_path use when
-    results_dir is None (and where the supervisor's RESULTS_DIR points)."""
-    return os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                        'analyses', 'results')
+    """The engines' default results directory.
 
-# Output-path budget (spec §3.1, 2026-09-23): Windows' MAX_PATH is 260
+    What run_kinetic_optimization, run_kinetic_dual_annealing,
+    relay_donor_path, longest_output_paths and split12d_trajectory_path use
+    when ``results_dir`` is None, and where the BO supervisor polls.
+
+    Returns
+    -------
+    str
+        ``paths.results_dir()``: ``$NSKINETICS_IBO_RESULTS_DIR`` if that
+        environment variable is set, else ``<package>/analyses/results``.
+        The directory is not created here.
+    """
+    return _paths.results_dir()
+
+# Output-path budget (2026-09-23): Windows' MAX_PATH is 260
 # characters INCLUDING the terminating NUL (long paths are disabled on the
 # production machine), so a path of 260+ characters cannot be created. The
 # relay tag `_rl<sha1-8>` keeps the production name at 103 characters; the
@@ -4678,8 +4765,20 @@ def _relay_store_protocol(study, ctx):
 
 def get_handles():
     """Resolve the live flowsheet objects the getters and engine need.
-    Requires nskinetics.biorefineries.isobutanol.load() to have run in this kernel
-    (the system module raises an informative error otherwise)."""
+
+    Requires ``nskinetics.biorefineries.isobutanol.load()`` to have run in
+    this kernel (the system module raises an informative error otherwise).
+
+    Returns
+    -------
+    dict
+        The simulation handles: ``f`` (flowsheet), ``V406``, ``r_te`` (its
+        tellurium model), ``fbs_spec``, ``tea``, ``HXN``,
+        ``last_convergence``, ``model_specification``, ``solve_TEA``,
+        ``snapshot_flowsheet_state``, ``restore_flowsheet_state`` and
+        ``latest_TEA_solution``. The key names are an API too: the offline
+        tests drive the engines with fake handle dicts.
+    """
     from nskinetics.biorefineries.isobutanol import system as ibo_system
     f = ibo_system.f
     V406 = f.V406
@@ -5116,9 +5215,7 @@ def _prepare_optimization(objective, *, direction, level, objective_units,
                               if 'stage_1_max_x' in search_space else None)
 
     if results_dir is None:
-        results_dir = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)),
-            'analyses', 'results')
+        results_dir = default_results_dir()
     os.makedirs(results_dir, exist_ok=True)
     slug = objective_slug(objective_name)
     if study_name is None:
@@ -5426,262 +5523,327 @@ def run_kinetic_optimization(objective='IRR',
                              relay_from=None,
                              relay_kwargs=None,
                              ):
-    """Run the Bayesian optimization. `objective` is a name in
-    OBJECTIVE_REGISTRY (direction/level/units filled from the entry) or a
-    custom callable(handles)->float (then `direction`, and ideally
-    `objective_name`/`level`/`objective_units`, must be given).
+    """Run a Bayesian (optuna TPE or GP) optimization of the fermentation
+    kinetics and feeding strategy of the loaded biorefinery.
 
-    `n_trials` is the TOTAL budget of the study: rerunning with the same
-    study_name resumes from the on-disk SQLite store and runs only the
-    remainder (crash/segfault recovery). A FRESH study enqueues NO
-    baseline point by default (`enqueue_baseline=False`, the default since
-    2026-09-07): the sampler draws every trial from trial 0 -- an enqueued
-    scenario-A baseline anchored TPE in the pure-ethanol basin in every
-    earlier IRR study. `enqueue_baseline=True` evaluates the scenario
-    baseline configuration as trial 0 instead (see
-    baseline_decision_point; baseline_point is computed either way, since
-    the probes are derived from it). Then -- `enqueue_knockouts=True`
-    (default False since 2026-09-07, so by default NO point at all is
-    enqueued) -- the single-knockout probes of knockout_probe_points
-    (one log-scale rate constant k_* at its band floor, all else at the
-    baseline; a rate already at its floor gets none), enqueued right
-    after the baseline (if any), each
-    tagged with the optuna user attr 'knockout_probe' = its parameter
-    name; optuna stores enqueued trials as WAITING, so a resume finishes
-    any probes a crash interrupted without re-enqueueing (resumes never
-    re-enqueue anything). The probes count toward TPE's random
-    start-up phase, so TPE guidance starts as soon as the lethality map
-    is in.
+    Every trial sets one decision point -- kinetic parameters on V406's
+    tellurium model plus the feeding / operating variables -- runs the FULL
+    system simulation and one side-effect-free TEA solve, and appends one
+    row to the study's trajectory CSV. Requires
+    ``nskinetics.biorefineries.isobutanol.load()`` to have run (or an
+    explicit ``handles`` dict). Kinetic parameters and feeding specs are
+    restored to the scenario baseline in a ``finally``. Dual annealing has
+    its own entry point, ``run_kinetic_dual_annealing``, over the same
+    search space and CSV protocol.
 
-    `n_startup_trials` (default None) is the length of that random
-    start-up phase (optuna TPESampler n_startup_trials: trials drawn
-    uniformly at random, enqueued trials included, before TPE's density
-    guidance begins). None applies the engine default rule
-    max(10, n_trials//4) -- 25 % of the trial budget floored at 10, so
-    500 for a 2000-trial study (set 2026-09-10; was max(10, n_trials//10),
-    200 for 2000 trials, which in the burden-constrained preset space
-    completed 0 of 183 random draws on 2026-09-06). An explicit value
-    (e.g. 20-30) is the way to shorten it; a
-    non-negative integer, ValueError otherwise. It is compared with the
-    number of trials already stored, so a resumed study past the
-    start-up count starts in TPE mode at once, and a resume may change
-    it freely: it is not part of the study's identity (no study-name
-    tag, same columns). Trials execute STRICTLY
-    sequentially (n_jobs=1; one simulation in flight at a time). Every
-    trial appends one row to the trajectory CSV (same stable name as the
-    study, '_trajectory.csv' suffix) whether it completes, fails
-    (state='FAIL', pruned), yields a NaN objective (state='NAN',
-    pruned), or exceeds the enzyme-burden cap (state='INFEASIBLE',
-    pruned before simulating). A trial the PROCESS never finishes (hard-killed by the
-    supervisor on a stall, or a native segfault) cannot write its row;
-    its decision vector is kept in a per-study sidecar
-    ('_inflight.json', written before the simulation starts and removed
-    once the trial's terminal row has been written; an interrupted trial
-    that wrote no row -- e.g. a KeyboardInterrupt during the simulation --
-    leaves it for recovery) and appended as a state='LOST' row --
-    with its own trial_number, so the CSV has no gaps -- by the
-    supervisor as soon as the child ends, or here at the next start of
-    the study (recover_inflight). Kinetic parameters and feeding specs
-    are restored to the scenario baseline in a `finally`.
+    Parameters
+    ----------
+    objective : str or callable, optional
+        A name in ``OBJECTIVE_REGISTRY`` (default ``'IRR'``; direction,
+        level and units are filled from the entry) or a custom
+        ``callable(handles) -> float``, which then needs ``direction`` (and
+        ideally ``objective_name``, ``level`` and ``objective_units``).
+    direction : {'maximize', 'minimize'}, optional
+        Required for a custom objective; overrides a registry entry's.
+    level : str, optional
+        ``'kinetic'`` or ``'system'``; metadata only (every trial runs the
+        full simulation and the TEA solve either way).
+    objective_units : str, optional
+        Units label of the objective (metadata).
+    objective_name : str, optional
+        Name of a custom objective; also sets the study-name slug
+        (``objective_slug``).
+    scenario_label : str, optional
+        Scenario tag of the engine's own default study name (default
+        ``'B'``); the driver passes preset names via ``study_name``.
+    n_trials : int, optional
+        TOTAL budget of the study (default 2000): rerunning with the same
+        ``study_name`` resumes from the on-disk SQLite store and runs only
+        the remainder (crash / segfault recovery).
+    seed : int, optional
+        Base sampler seed; None (default) = ``default_seed_from_datetime()``.
+        The resolved seed is logged in the ``<study>_seeds.txt`` sidecar.
+    multiplier_bounds : tuple of float, optional
+        (m_lo, m_hi) band around each kinetic baseline for every parameter
+        that is not a rate constant (default 0.1x-10x).
+    param_bounds_override : dict, optional
+        ``{name: (low, high)}`` absolute bounds that override every band.
+    exclude_params : sequence of str, optional
+        Kinetic parameters kept OUT of the search space (they stay at the
+        scenario baseline and get no knockout probe).
+    include_params : sequence of str, optional
+        None (default) = every ``k_*`` / ``K_*`` on the model; otherwise the
+        kinetic decision variables are restricted to these names (see
+        ``build_search_space``; the driver passes the scenario workbook's
+        rows, ``kinetic_param_names_from_scenario``). Names not on the model
+        are ignored with a printed warning. A restricted study has a
+        different search space than an unrestricted one of the same
+        ``study_name`` -- the trajectory-CSV header guard raises rather than
+        misaligning columns, so use a fresh ``study_name``.
+    rate_multiplier_bounds : tuple of float, optional
+        Separate band of the RATE constants (None = the single
+        ``multiplier_bounds`` band). The study presets pass
+        ``DEFAULT_RATE_MULTIPLIER_BOUNDS`` (their absolute bands actually
+        arrive via ``param_bounds_override``, see ``workbook_kinetic_bounds``).
+    rate_params : sequence of str, optional
+        The RATE CONSTANTS that band -- and the single-knockout probes --
+        apply to. None = every lowercase ``k_`` name (the pre-2026-09-06
+        rule); the presets pass their workbook's capacity-role rows
+        (``rate_constant_names``), leaving the inhibition coefficients on
+        ``multiplier_bounds`` with no probe.
+    parameter_multiplier_bounds : dict, optional
+        ``{name: (m_lo, m_hi)}`` per-parameter bands of
+        ``build_search_space``, taking precedence over the role band. The
+        presets pass ``DEFAULT_PARAMETER_MULTIPLIER_BOUNDS`` (``k_10`` on
+        0.1x-10x; its probe is then a knock-down at 0.1x) -- in force only
+        when ``k_10`` is in the space: the presets also pass
+        ``exclude_params = DEFAULT_EXCLUDED_PARAMETERS`` (``('k_10',)``,
+        since 2026-09-06), so by default ``k_10`` is not sampled.
+    threshold_conc_bounds : tuple of float, optional
+        Bounds of the glucose threshold concentration [g/L] that triggers a
+        spike (default (0.0, 300.0); ``build_search_space`` keeps it below
+        ``TARGET_CONC_MAX``).
+    target_delta_bounds : tuple of float, optional
+        Bounds of target - threshold [g/L] (default (5.0, 500.0)).
+    spike_delta_bounds : tuple of float or None, optional
+        Bounds of spike - target [g/L] (default
+        ``DEFAULT_SPIKE_DELTA_BOUNDS``). None pins the spike concentration
+        at the scenario-baseline snapshot (``fbs_spec.spike_conc`` at study
+        start; no ``spike_delta`` column).
+    max_n_spikes_bounds : tuple of int or None, optional
+        Bounds of the integer spike cap (default (0, 50)); None pins it at
+        the baseline.
+    stage_1_max_x_bounds : tuple of float, optional
+        None (default) = not sampled. Otherwise the OPERATING variable
+        ``stage_1_max_x`` -- the fermentor's aerobic stage-1 biomass cutoff
+        [g/L], log-scale -- is sampled on this band (the driver passes the
+        preset's ``DEFAULT_STAGE_1_MAX_X_BOUNDS``, (1.0, 50.0)). Its
+        baseline is read off ``handles['V406'].stage_1_max_x`` at study
+        start (5.0 g/L at the nskinetics factory default) and enters trial
+        0; each trial sets ``V406.stage_1_max_x`` (the property mirrors
+        onto the kinetic model and the aeration sizing) right before
+        ``model_specification``, and ``restore_baseline`` puts it back. Not
+        a rate constant (no knockout probe) and not a kinetic name (ignored
+        by the burden model). A new decision column, so a study with it can
+        never resume one without it (header guard); the driver tags
+        ``_s1x<lo>-<hi>`` into the study name.
+    target_conc_bounds, threshold_delta_bounds, spike_conc_bounds : optional
+        Bound tuples of the legacy target-anchored feeding
+        parameterization of studies started before 2026-08-31; giving any
+        of them switches ``build_search_space`` to it.
+    study_name : str, optional
+        Name of the study and stem of its files. None =
+        ``kin_opt_<scenario_label>_<slug>`` plus the method tag
+        (``method_study_tag``), the relay tag (``relay_study_tag``) and
+        ``BURDEN_STUDY_SUFFIX`` as applicable; the driver passes
+        ``default_study_name(...)`` for the preset studies.
+    results_dir : str, optional
+        Folder of the trajectory CSV, the sidecars and the SQLite store;
+        None = ``default_results_dir()``. Created if missing.
+    handles : dict, optional
+        Simulation handles (None = ``get_handles()``); the offline tests
+        drive the engine with fakes.
+    print_status_every : int, optional
+        Print a progress line every this many simulated trials (default 1).
+    burden_model : {'auto', None} or BurdenModel, optional
+        The enzyme-burden (proteome-allocation) constraint of
+        ``enzyme_burden``. ``'auto'`` (default) builds
+        ``BurdenModel.from_reference(kinetic_baselines)`` -- the live
+        values after the scenario workbook load, so the burden is exactly
+        inert at trial 0; None disables it (the legacy burden-free study);
+        a ``BurdenModel`` instance is used as given (the driver builds one
+        to print its reports first). With the burden on, every trial's
+        sampled vector is evaluated BEFORE the sidecar and the simulation:
+        its burden quantities (``enzyme_burden.BURDEN_COLUMNS``) are
+        recorded in the CSV, ``burden_violation`` (= Phi_M - F_flex, <= 0
+        feasible) is set as a trial user attr and fed to the sampler's
+        constraints function, an over-cap point is logged as
+        ``state='INFEASIBLE'`` and pruned without simulating, and a
+        feasible point reaches the model with the DERATED growth capacities
+        ``k_7_eff`` / ``k_8_eff`` while the CSV keeps the sampled ``k_7`` /
+        ``k_8`` as the decision. The default study name gains
+        ``BURDEN_STUDY_SUFFIX``.
+    enqueue_baseline : bool, optional
+        False (default since 2026-09-07): a FRESH study enqueues no
+        baseline, so the sampler draws every trial from trial 0 (an
+        enqueued scenario-A baseline anchored TPE in the pure-ethanol basin
+        in every earlier IRR study). True evaluates the scenario baseline
+        configuration (``baseline_decision_point``) as trial 0.
+    enqueue_knockouts : bool, optional
+        True enqueues the single-knockout probes of
+        ``knockout_probe_points`` (one rate constant at its band floor, all
+        else at the baseline; a rate already at its floor gets none) right
+        after the baseline (if any), each tagged with the optuna user attr
+        ``'knockout_probe'``. Default False (since 2026-09-07), so by
+        default NO point at all is enqueued. Enqueued trials are stored
+        WAITING, so a resume finishes probes a crash interrupted and never
+        re-enqueues; the probes count toward the random start-up phase.
+    n_startup_trials : int, optional
+        Length of the random start-up phase (trials drawn at random,
+        enqueued ones included, before the sampler's model guidance
+        begins). None (default) = ``max(10, n_trials//4)`` under TPE (25 %
+        of the budget floored at 10, since 2026-09-10) and
+        ``max(10, 2*d)`` under GP (d = number of decision variables).
+        Compared with the trials already stored, so a resume past the count
+        starts in model mode at once; a sampler setting, not part of the
+        study identity. A non-negative integer (ValueError otherwise).
+    feasible_sampling : bool, optional
+        True (default) makes the sampler feasibility-aware whenever a burden
+        or volume check is on (``feasible_tpe_sampler`` /
+        ``feasible_gp_sampler``): start-up draws are joint uniform-feasible
+        vectors and every model candidate is checked against
+        ``feasibility_predicate`` before it is scored, so no sampled trial
+        should be INFEASIBLE. The in-objective INFEASIBLE guard and the
+        constraints function stay as the safety net; rejection counters are
+        printed at the end (``unfiltered draws`` > 0 means the feasible
+        region was too small to find). False keeps the plain sampler. A
+        sampler setting: free to change on a resume.
+    volume_feasibility : bool, optional
+        True (default) prunes, before simulating, every point whose
+        closed-form fed-batch volume-ratio upper bound
+        (``fed_batch_volume_ratio_bound``) exceeds ``volume_cap`` (logged
+        INFEASIBLE; the log-space violation is a trial user attr). The
+        runtime volume guard of the system stays authoritative.
+    volume_cap : float, optional
+        Cap of that ratio; None (default) reads the live
+        ``parameters['max_fed_batch_volume_ratio']`` of the system.
+    startup_sampling : {'lhs', 'random'}, optional
+        ``'lhs'`` (default) fills the start-up phase with a Latin hypercube
+        design (``LHSDesign``, stratified in optuna's internal
+        representation): the plain path uses ``lhs_startup_tpe_sampler``,
+        the feasible path takes the LHS rows that satisfy the predicate and
+        falls back to a uniform-feasible draw for any other row. The design
+        seed is persisted as the study system attr ``'lhs_seed'`` (the base
+        seed), so the design is stable across resumes. ``'random'`` restores
+        iid uniform draws and never reads or writes ``'lhs_seed'``. A
+        sampler setting: no name tag, no column, free to change on resume.
+    seed_from : sequence of (str, sequence of int), optional
+        ``(donor, trial_numbers)`` pairs -- ``donor`` a trajectory-CSV path
+        or a study name resolved to ``<results_dir>/<donor>_trajectory.csv``
+        -- whose decision points a FRESH study enqueues right after the
+        knockout probes (``seed_points_from_trajectory``: same columns
+        required, values clipped into this study's bounds; user attr
+        ``'seed'`` = ``'<donor study>#<trial>'``; stored WAITING like the
+        probes). Seeds give the sampler a foothold in a basin another study
+        found and count toward the start-up phase. Resolved before the
+        store is opened, so a bad donor fails before any simulation; the
+        driver tags ``_seed<n>`` into the study name (``seed_points_tag``).
+    parameter_groups : dict, optional
+        ``{group: [members]}`` PARAMETER GROUPS of ``build_search_space``:
+        each group is one log-scale multiplier decision variable whose
+        members (removed from the individual space) receive
+        baseline x multiplier (``expand_grouped_values``) right after
+        sampling. The CSV keeps the multiplier as the DECISION column and
+        adds one derived ``applied_<member>`` column per member after the
+        burden columns. Trial 0 has every multiplier at 1.0; a group gets
+        no knockout probe.
+    group_multiplier_bounds : tuple or dict, optional
+        Band of the group multipliers: one ``(lo, hi)`` for every group, or
+        ``{group: (lo, hi)}`` per group (default
+        ``DEFAULT_GROUP_MULTIPLIER_BOUNDS``).
+    group_references : dict, optional
+        ``{group: {member: reference}}`` (since 2026-09-15) makes a group a
+        REFERENCED capacity group: reference x multiplier instead of live
+        baseline x multiplier, so it builds even when the members are zero
+        on the starting model (the ``metabolic_split_12d`` preset's
+        ``ehrlich_downstream`` group). Validated by ``build_search_space``.
+    method : {'tpe', 'gp'}, optional
+        The optuna sampler. ``'tpe'`` (default) = Tree-structured Parzen
+        Estimator; ``'gp'`` = ``FeasibleGPSampler`` (``feasible_gp_sampler``:
+        optuna's GPSampler -- Matern-5/2 ARD GP, log-EI -- made
+        feasibility-aware with the same predicate as the TPE path; an
+        infeasible proposal is replaced by the best feasible point of a
+        filtered QMC batch). The default study name gains ``_gp`` after the
+        objective slug (``method_study_tag``), so a GP campaign never
+        resumes a TPE study. GP is for compact spaces only: more than
+        ``GP_MAX_DIMENSIONS`` (15) decision variables raise ValueError
+        before the store is opened. FAIL / NAN / INFEASIBLE trials stay
+        PRUNED and invisible to the GP. A GP proposal costs seconds and
+        grows O(n^3) with the COMPLETE trials, so give the supervisor a
+        ``--stall-timeout-min`` of about 10 or more for a GP study expected
+        to pass a few hundred COMPLETE trials (a proposal slower than the
+        stall timeout is killed before the in-flight sidecar exists, which
+        aborts the study).
+    gp_kwargs : dict, optional
+        Only under ``method='gp'`` (ValueError otherwise); keys =
+        ``GP_KWARGS_DEFAULTS`` (``resolve_gp_kwargs``):
+        ``learned_constraints`` (default False; True fits optuna's
+        constraint GP on the burden / volume violations -- ConstrainedLogEI
+        -- on COMPLETE trials only; inert with no active cap; it can be
+        switched OFF on a resume but not back ON for a study whose stored
+        COMPLETE trials carry no constraint values, in which case the
+        engine prints a note and continues with it off),
+        ``deterministic_objective`` (default True),
+        ``n_fallback_candidates`` (2048) and ``max_fallback_batches`` (20).
+    relay_from : sequence of str, optional
+        Makes the study a RELAY campaign (since 2026-09-23; None / empty =
+        off, and nothing of the following runs): the donors -- study names
+        resolved in ``results_dir``, or trajectory-CSV paths -- of the SAME
+        search space recorded this study's objective as a tracked metric;
+        their COMPLETE rows are selected sim-free (``select_relay_rows``:
+        filters, identity checks, unit-cube dedupe, keep set + maximin fill)
+        before the store is opened, and a FRESH store receives them as
+        COMPLETE trials 0..N-1 carrying the donors' recorded values
+        (``relay_frozen_trials``; system attr ``'relay'``, user attr
+        ``'relay_donor'``) with no re-simulation;
+        ``<study>_relay_manifest.csv`` lists them. GP only, a maximized
+        registry objective that is a tracked metric, and
+        ``learned_constraints`` False (the donor rows carry no constraint
+        values) -- all refused with ValueError before any file exists.
+        ``n_trials`` then counts SIMULATED trials only (stored trials minus
+        ``n_relay_trials``), and the trajectory CSV holds only simulated
+        rows, from trial number N. The GP start-up gate counts the
+        preloaded trials while the LHS row index skips them. A resume needs
+        no relay arguments (the stored spec is authoritative); different
+        ones raise; a launch killed mid-preload is completed idempotently
+        by a relaunch with the same arguments.
+    relay_kwargs : dict, optional
+        Relay selection knobs (``RELAY_KWARGS_DEFAULTS``: ``max_rows``,
+        ``keep_above``, ``dedupe_tol``, ``drop_quarantined``); refused
+        without ``relay_from``.
 
-    `include_params` (None = every k_*/K_* on the model) restricts the
-    kinetic decision variables to the named parameters (see
-    build_search_space); the driver passes the scenario workbook's rows
-    (kinetic_param_names_from_scenario). Names not on the model are
-    ignored with a printed warning. A restricted study has a different
-    search space than an unrestricted one of the same study_name -- the
-    trajectory-CSV header guard raises rather than misaligning columns,
-    so use a fresh study_name.
+    Returns
+    -------
+    study : optuna.study.Study
+        The optuna study (SQLite store ``<results_dir>/<study_name>.db``).
+    csv_path : str
+        Path of the trajectory CSV,
+        ``<results_dir>/<study_name>_trajectory.csv``.
+    kinetic_baselines : dict
+        ``{name: value}`` of every kinetic parameter at the scenario
+        baseline the study started from.
 
-    `rate_multiplier_bounds` (None = single band) is the separate k_*
-    band of build_search_space; the study presets pass
-    DEFAULT_RATE_MULTIPLIER_BOUNDS (their absolute bands actually arrive
-    via param_bounds_override, see workbook_kinetic_bounds).
-    `rate_params` (None = every lowercase 'k_' name, the pre-2026-09-06
-    rule) names the RATE CONSTANTS that band -- and the single-knockout
-    probes -- apply to; the presets pass their workbook's capacity-role
-    rows (rate_constant_names), leaving the inhibition coefficients
-    k_*i* on `multiplier_bounds` with no probe.
-    `parameter_multiplier_bounds` ({name: (m_lo, m_hi)}, None = none) is
-    the per-parameter band of build_search_space, taking precedence over
-    the role band; the presets pass DEFAULT_PARAMETER_MULTIPLIER_BOUNDS
-    (k_10 on 0.1x-10x; its probe is then a knock-down at 0.1x) -- in
-    force only when k_10 is in the space: the presets also pass
-    `exclude_params` = DEFAULT_EXCLUDED_PARAMETERS (('k_10',), since
-    2026-09-06 pm), so by default k_10 is not sampled and has no probe.
+    Raises
+    ------
+    ValueError
+        On an unknown ``method`` or ``startup_sampling``, ``gp_kwargs``
+        outside ``'gp'``, a GP space above ``GP_MAX_DIMENSIONS``, an invalid
+        ``n_startup_trials``, a refused relay set-up, or a trajectory CSV
+        whose header does not match the search space.
 
-    `stage_1_max_x_bounds` (None = not sampled; the driver passes the
-    preset's DEFAULT_STAGE_1_MAX_X_BOUNDS, (1.0, 50.0) g/L) adds the
-    OPERATING variable stage_1_max_x -- the fermentor's aerobic stage-1
-    biomass cutoff, log-scale -- to the space (build_search_space). Its
-    baseline is read off handles['V406'].stage_1_max_x at study start
-    (5.0 g/L at the nskinetics factory default) and enters trial 0; each
-    trial sets handles['V406'].stage_1_max_x (the property mirrors onto
-    the kinetic model and the AerationSpec) right before
-    model_specification, and restore_baseline puts it back in the
-    `finally`. Not a rate constant: no knockout probe; not a kinetic
-    name: ignored by the burden model. A new decision column, so a study
-    with it can never resume one without it (header guard); the driver
-    tags `_s1x{lo}-{hi}` into the study name.
+    Notes
+    -----
+    Trials execute STRICTLY sequentially (one simulation in flight at a
+    time). Every trial appends one row to the trajectory CSV whether it
+    completes, fails (``state='FAIL'``, pruned), yields a NaN objective
+    (``state='NAN'``, pruned) or exceeds a feasibility cap
+    (``state='INFEASIBLE'``, pruned before simulating). A trial the PROCESS
+    never finishes (hard-killed by the supervisor on a stall, or a native
+    segfault) cannot write its row: its decision vector is kept in the
+    per-study ``_inflight.json`` sidecar (written before the simulation
+    starts, removed once the trial's terminal row is written) and appended
+    as a ``state='LOST'`` row -- with its own trial number, so the CSV has
+    no gaps -- by the supervisor as soon as the child ends, or here at the
+    next start of the study (``recover_inflight``).
 
-    `burden_model` (default 'auto') is the enzyme-burden (proteome-
-    allocation) constraint of enzyme_burden.py: 'auto' builds
-    BurdenModel.from_reference(kinetic_baselines) -- the live values
-    after the scenario workbook load, so the burden is exactly inert at
-    trial 0 -- None disables it (the legacy burden-free study; older
-    studies), and a BurdenModel instance is used as given (the driver
-    builds one to print its reports first). With the burden on, every
-    trial's sampled vector is evaluated BEFORE the sidecar and the
-    simulation: its burden quantities (enzyme_burden.BURDEN_COLUMNS) are
-    recorded in the CSV, `burden_violation` (= Phi_M - F_flex, <= 0
-    feasible) is set as a trial user attr and fed to the TPE sampler's
-    constraints_func, an over-cap point is logged as state='INFEASIBLE'
-    and pruned without simulating, and a feasible point reaches the
-    model with the DERATED growth capacities k_7_eff/k_8_eff while the
-    CSV keeps the sampled k_7/k_8 as the decision. The default study
-    name gains BURDEN_STUDY_SUFFIX; restore_baseline is unchanged
-    (sampled-space baselines are written back).
-
-    `feasible_sampling` (default True; since 2026-09-06) makes the
-    sampler feasibility-aware when the burden is on: feasible_tpe_sampler
-    binds FeasibleTPESampler to `burden_model.evaluate(values).feasible`
-    (exactly the cap Phi_M < F_flex), so the random start-up draws are
-    joint uniform-feasible vectors and every TPE candidate is filtered
-    before it is scored -- no sampled trial should ever be INFEASIBLE
-    (the 2026-09-06 production study proposed 118 of 200 start-up and
-    261 of 1060 TPE trials over the cap). The in-objective INFEASIBLE
-    guard and the constraints_func stay as the safety net (a resumed
-    study already holds INFEASIBLE rows), and the counters are printed
-    at the end of the run (`unfiltered draws` > 0 means the feasible
-    region was too small for max_uniform_draws to find; expected 0).
-    False (or burden_model=None, where there is no predicate) keeps the
-    plain TPESampler. A sampler setting like n_startup_trials: no
-    column or study-name change, free to change on a resume.
-
-    `startup_sampling` (default 'lhs') controls the random start-up draws.
-    'lhs' fills the search space with a Latin hypercube design (LHSDesign,
-    stratified in optuna's internal repr) instead of iid uniform: the plain
-    path uses LHSStartupTPESampler, the feasible path takes LHS rows that
-    satisfy the burden cap and falls back to a uniform-feasible draw for any
-    infeasible row (so retained-LHS coverage is the feasible fraction of the
-    design; still zero sampled INFEASIBLE trials). 'random' restores the iid
-    draws. The LHS design seed is persisted as the study system-attr
-    'lhs_seed' (the base seed, NOT the +n_done sampler seed) so the design is
-    stable across resumes. It is a sampler setting -- NOT part of study
-    identity: no study-name tag, no CSV column, freely changeable on resume;
-    a 'random' run never reads or writes 'lhs_seed', so existing studies
-    resume unaffected. TPE-phase sampling is unchanged on both paths.
-
-    `seed_from` (default None; since 2026-09-07) is a sequence of
-    (donor, trial_numbers) pairs -- `donor` a trajectory-CSV path or a
-    study name resolved to '{results_dir}/{donor}_trajectory.csv' -- whose
-    decision points a FRESH study enqueues right after the knockout
-    probes (seed_points_from_trajectory: same columns required, values
-    clipped into this study's bounds; optuna user attr 'seed' = the
-    '{donor study}#{trial}' label; stored WAITING like the probes, so a
-    crash mid-seeds resumes them and a resume never re-enqueues). Seeds
-    give TPE a foothold in a basin another study found -- e.g. a
-    high-isobutanol cell from an IBO-objective study in an IRR study
-    whose own sampling never reached that basin (a local optimum) --
-    and count toward the random start-up phase. The seed points are
-    resolved BEFORE the optuna store is opened, so a bad donor fails
-    before any simulation. Same columns as the unseeded study: the
-    driver tags `_seed{n}` into the study name (seed_points_tag).
-
-    `parameter_groups` / `group_multiplier_bounds` (since 2026-09-07;
-    None = none) are build_search_space's PARAMETER GROUPS: each group
-    is one log-scale multiplier decision variable whose members (removed
-    from the individual space) receive baseline x multiplier
-    (expand_grouped_values) right after sampling -- what the burden
-    model evaluates and what is set on the kinetic model. The CSV keeps
-    the group multiplier as the DECISION column and adds one derived
-    `applied_<member>` column per member after the burden columns
-    (before 'error'), so pca_decision_matrix still sees exactly the
-    search space and a seed reader can recover the members. Trial 0 has
-    every multiplier at 1.0; a group is no rate constant, so it gets no
-    knockout probe. `spike_delta_bounds=None` pins the spike
-    concentration at the scenario-baseline snapshot (fbs_spec.spike_conc
-    at study start; no spike_delta column). The metabolic_minimal preset
-    passes all three (resolve_study_preset).
-    `group_references` ({group: {member: reference}}, None = none; since
-    2026-09-15) makes a group a REFERENCED capacity group: reference x
-    multiplier instead of live baseline x multiplier (build_search_space
-    validates it and exempts the members from the positive-live-baseline
-    check; baseline_decision_point starts it at live anchor / reference,
-    clipped) -- the metabolic_split_12d preset's ehrlich_downstream group,
-    whose members are zero on the scenario-A model. Same CSV structure:
-    the multiplier is the decision column, applied_<member> the products.
-
-    `method` ('tpe', the default, or 'gp'; since 2026-09-11 pm; dual
-    annealing has its own entry point, run_kinetic_dual_annealing) selects
-    the optuna sampler. 'gp' = FeasibleGPSampler (feasible_gp_sampler):
-    optuna's GPSampler (Matern-5/2 ARD GP, log-EI) made feasibility-aware
-    with the SAME predicate the feasible TPE path uses (every start-up draw
-    and every GP proposal checked against the active burden / volume caps;
-    an infeasible proposal replaced by the best feasible point of a
-    filtered QMC batch). The derived study name gains `_gp` right after the
-    objective slug (method_study_tag), so a GP campaign never resumes a TPE
-    study; the seeds sidecar logs method=gp. Only for compact spaces:
-    more than GP_MAX_DIMENSIONS (15) decision variables raise ValueError
-    before the store is opened. n_startup_trials=None means max(10, 2*d)
-    under 'gp' (d = decision variables; 30 for the 15-variable preset)
-    instead of TPE's max(10, n_trials//4). Every other optuna concept
-    (enqueue_baseline / enqueue_knockouts / seed_from / feasible_sampling /
-    startup_sampling / resume) works as under TPE; FAIL / NAN / INFEASIBLE
-    trials stay PRUNED and invisible to the GP. `gp_kwargs` (dict; only
-    under 'gp', else ValueError; keys = GP_KWARGS_DEFAULTS):
-    learned_constraints (default False; True: fit optuna's constraint GP on
-    the burden / volume violations, ConstrainedLogEI; False: plain log-EI;
-    inert with no active cap; it can be switched OFF on a resume but not
-    back ON for a study whose stored COMPLETE trials carry no constraint
-    values -- the engine then prints a note and continues with it off),
-    deterministic_objective (default True), n_fallback_candidates (2048) and
-    max_fallback_batches (20). Optuna's constraint GP (when
-    learned_constraints is True) is fit on COMPLETE trials only -- every
-    COMPLETE trial is feasible under the engine's pre-sim INFEASIBLE prune,
-    so it regresses the signed slack of feasible points only; an
-    INFEASIBLE-pruned trial's violation informs the exact feasibility
-    predicate (the start-up/proposal filter), not the constraint GP. A GP
-    proposal costs seconds and grows O(n^3) with the number of COMPLETE
-    trials; proposal time has not been measured on a real campaign. Because
-    a proposal slower than the supervisor's stall timeout (default 3 min,
-    minus the ~18 s reload) is killed before the in-flight sidecar exists
-    -- which ABORTS the study rather than merely slowing it -- pass a
-    `--stall-timeout-min` of about 10 or more to the supervisor for a GP
-    study expected to pass a few hundred COMPLETE trials.
-
-    `relay_from` / `relay_kwargs` (since 2026-09-23; spec
-    docs/superpowers/specs/2026-09-23-relay-preload-pi-campaign-design.md,
-    amendments A1-A11) make the study a RELAY campaign: `relay_from` is a
-    sequence of donor studies (study names resolved in results_dir, or
-    trajectory-CSV paths) of the SAME search space, `relay_kwargs` the
-    selection knobs (RELAY_KWARGS_DEFAULTS: max_rows, keep_above,
-    dedupe_tol, drop_quarantined). The donors' COMPLETE rows -- which
-    recorded this study's objective as a tracked metric -- are selected
-    sim-free (select_relay_rows: filters, identity checks, unit-cube dedupe,
-    keep set + maximin fill) before the store is opened, and a FRESH store
-    receives them as COMPLETE trials 0..N-1 carrying the donors' recorded
-    values (relay_frozen_trials; system attr 'relay', user attr
-    'relay_donor'), with no re-simulation; <study>_relay_manifest.csv lists
-    them. GP only (check_method_kwargs); a registry, maximized objective
-    that is a tracked metric; learned_constraints must stay False (the
-    donor rows carry no constraint values) -- all refused with ValueError
-    before any .db / CSV exists. `n_trials` then counts this campaign's
-    SIMULATED trials only (n_done = stored trials - n_relay_trials, which
-    also drives the seed offset, the seeds sidecar and the fresh-study
-    enqueue branch), so a relay study simulates exactly `n_trials` across
-    any number of resumes; its trajectory CSV holds only simulated rows,
-    from trial_number N. The GP start-up GATE counts the preloaded trials
-    (N >= n_startup -> GP guidance from the first simulated trial) while the
-    LHS row index skips them (design sized n_startup - N). A resume needs
-    no relay args (the stored spec is authoritative); passing different
-    ones raises; a launch killed mid-preload is completed idempotently by a
-    relaunch with the same args (store system attrs 'relay_spec',
-    'relay_rows_sha1', 'relay_n_preloaded', 'relay_preload_complete'). None
-    / empty = off: nothing of this runs (one extra read of the study system
-    attrs), so every non-relay study behaves exactly as before.
-
-    Returns (study, csv_path, kinetic_baselines)."""
+    Sampler settings (``n_startup_trials``, ``feasible_sampling``,
+    ``startup_sampling``, ``volume_feasibility``, the enqueue flags) are
+    not part of a study's identity: no name tag, no CSV column, free to
+    change on a resume. Everything that changes the sampled space without
+    changing the columns is tagged into the default study names instead
+    (``default_study_name``), because the CSV header guard cannot tell such
+    studies apart.
+    """
     import optuna
     if method not in ('tpe', 'gp'):
         raise ValueError("run_kinetic_optimization: method must be 'tpe' or "
@@ -6135,14 +6297,40 @@ def run_kinetic_optimization(objective='IRR',
 
 @dataclasses.dataclass
 class AnnealingResult:
-    """Return value of run_kinetic_dual_annealing (scipy's OptimizeResult is
-    not returned: the engine tracks its own best -- scipy's callback fires
-    only on improvements and its result is lost when the run is stopped by
-    the budget exception). `stop_reason`: 'budget' (n_trials simulated
-    evaluations reached), 'max_calls' (max_calls_factor x remaining objective
-    calls, INFEASIBLE included -- the all-infeasible safety cap), 'scipy'
-    (scipy returned on its own; `message` is its text), or 'complete' (the
-    stored trajectory already met n_trials -- nothing was run)."""
+    """Return value of ``run_kinetic_dual_annealing``.
+
+    scipy's ``OptimizeResult`` is not returned: the engine tracks its own
+    best, because scipy's callback fires only on improvements and its
+    result is lost when the run is stopped by the budget exception.
+
+    Attributes
+    ----------
+    direction : str
+        ``'maximize'`` or ``'minimize'``.
+    best_trial_number : int or None
+        Trial number of the best COMPLETE row of the whole trajectory CSV
+        (the authoritative store, so a fresh run reports exactly what a
+        later resume would); None if there is none.
+    best_value : float or None
+        Its objective value, as stored in the CSV.
+    best_params : dict or None
+        Its decision point.
+    n_simulated : int
+        Simulated evaluations of this launch (0 when nothing ran).
+    n_calls : int
+        Objective calls of this launch, INFEASIBLE included.
+    n_infeasible : int
+        INFEASIBLE (pruned before simulating) calls of this launch.
+    stop_reason : str
+        ``'budget'`` (``n_trials`` simulated evaluations reached),
+        ``'max_calls'`` (``max_calls_factor`` x remaining objective calls,
+        INFEASIBLE included -- the all-infeasible safety cap), ``'scipy'``
+        (scipy returned on its own; ``message`` is its text) or
+        ``'complete'`` (the stored trajectory already met ``n_trials`` --
+        nothing was run).
+    message : str
+        scipy's message when it returned on its own, else ``''``.
+    """
     direction: str
     best_trial_number: object
     best_value: object
@@ -6197,63 +6385,123 @@ def run_kinetic_dual_annealing(objective='IRR',
                                energy_scale=None,
                                max_calls_factor=20,
                                ):
-    """Generalized simulated annealing (scipy.optimize.dual_annealing) over
-    the SAME search space, burden / volume checks, trajectory-CSV protocol
-    and in-flight sidecar as run_kinetic_optimization -- the alternative to
-    the TPE sampler (spec docs/superpowers/specs/2026-09-11-dual-annealing-
-    kinetic-optimization-design.md). The shared kwargs mean exactly what
-    they mean there (search space, bands, groups and group_references, burden_model 'auto'/None/
-    instance, volume_feasibility / volume_cap, enqueue_baseline, handles,
-    results_dir); there are NO n_startup_trials / feasible_sampling /
-    startup_sampling / enqueue_knockouts / seed_from (optuna sampler and
-    enqueue concepts with no annealing counterpart).
+    """Optimize the fermentation kinetics and feeding strategy by
+    generalized simulated annealing (``scipy.optimize.dual_annealing``).
 
-    Coordinates: scipy anneals over the unit cube [0, 1]**d in search-space
-    order (its visiting step is one absolute scale for every coordinate);
-    unit_to_external maps a point to decision values (log-uniform for log
-    floats, uniform bins for ints, linear otherwise -- the LHS start-up
-    measure of the TPE engine), external_to_unit the inverse.
+    The alternative to the optuna samplers of ``run_kinetic_optimization``
+    over the SAME search space, burden / volume checks, trajectory-CSV
+    protocol and in-flight sidecar (both engines share
+    ``_prepare_optimization`` and ``evaluate_decision_point``). Requires
+    ``nskinetics.biorefineries.isobutanol.load()`` to have run (or an
+    explicit ``handles`` dict). Kinetic parameters and feeding specs are
+    restored to the scenario baseline in a nested ``finally``
+    (``restore_baseline``, then ``set_active_burden(None)``), exactly as in
+    the optuna engine.
 
-    Energy: sign * objective / energy_scale (sign -1 to maximize), where
-    `energy_scale` (None = the objective's OBJECTIVE_REGISTRY entry; a
-    custom callable must pass one) is the objective difference worth one
-    annealing energy unit under scipy's default schedule (initial_temp,
-    restart_temp_ratio, visit, accept are passed through). Every
-    non-COMPLETE evaluation (FAIL / NAN / INFEASIBLE) returns the finite
-    PENALTY_ENERGY; the CSV keeps the raw objective. `no_local_search=True`
-    (default) skips scipy's L-BFGS-B polish, whose finite-difference
-    gradients cost ~d simulations each on a non-smooth landscape.
+    Parameters
+    ----------
+    objective, direction, level, objective_units, objective_name : optional
+        As in ``run_kinetic_optimization``.
+    scenario_label, n_trials, seed : optional
+        As in ``run_kinetic_optimization``, except that ``n_trials`` counts
+        SIMULATED evaluations (see Notes).
+    multiplier_bounds, param_bounds_override : optional
+        Search-space kwargs, as in ``run_kinetic_optimization``.
+    exclude_params, include_params : optional
+        Search-space kwargs, as in ``run_kinetic_optimization``.
+    rate_multiplier_bounds, rate_params, parameter_multiplier_bounds : optional
+        Search-space kwargs, as in ``run_kinetic_optimization``.
+    threshold_conc_bounds, target_delta_bounds, spike_delta_bounds : optional
+        Feeding bounds, as in ``run_kinetic_optimization``.
+    max_n_spikes_bounds, stage_1_max_x_bounds : optional
+        As in ``run_kinetic_optimization``.
+    target_conc_bounds, threshold_delta_bounds, spike_conc_bounds : optional
+        Legacy feeding parameterization, as in ``run_kinetic_optimization``.
+    study_name : str, optional
+        None = ``kin_opt_<scenario_label>_<slug>_da`` (+ ``_burden``): the
+        ``_da`` tag keeps a dual-annealing campaign off the CSV of the TPE
+        study of the same objective (same columns, so the header guard
+        could not). No SQLite store is created.
+    results_dir, handles, print_status_every, burden_model : optional
+        As in ``run_kinetic_optimization``.
+    enqueue_baseline : bool, optional
+        A FRESH study starts at the scenario baseline when True (trial 0 is
+        exactly the baseline, as under TPE) and at scipy's uniform draw
+        otherwise (default False).
+    volume_feasibility, volume_cap : optional
+        As in ``run_kinetic_optimization``.
+    parameter_groups, group_multiplier_bounds, group_references : optional
+        Parameter groups, as in ``run_kinetic_optimization``.
+    initial_temp, restart_temp_ratio, visit, accept : float, optional
+        scipy's annealing schedule, passed through (scipy's defaults).
+    no_local_search : bool, optional
+        True (default) skips scipy's L-BFGS-B polish, whose
+        finite-difference gradients cost about d simulations each on a
+        non-smooth landscape.
+    energy_scale : float, optional
+        The objective difference worth one annealing energy unit; None =
+        the objective's ``OBJECTIVE_REGISTRY`` entry (a custom callable must
+        pass one; ``resolve_energy_scale``).
+    max_calls_factor : int, optional
+        ``maxfun = max_calls_factor x remaining budget`` caps the TOTAL
+        objective calls, INFEASIBLE included (default 20), so an
+        all-infeasible region ends the run.
 
-    Budget: `n_trials` counts SIMULATED evaluations (COMPLETE / FAIL / NAN,
-    plus stored LOST rows on a resume); INFEASIBLE rows take a trial number
-    (gap-free CSV, and the supervisor's row-count stall guard sees progress)
-    but no budget. Once the remaining budget is spent the wrapper raises a
-    private exception that ends the scipy call (stop_reason 'budget').
-    `maxfun = max_calls_factor x remaining` caps the TOTAL objective calls,
-    INFEASIBLE included, so an all-infeasible region ends the run
-    ('max_calls', with a printed warning); maxiter is 10**6 so nothing else
-    stops it; scipy returning on its own is 'scipy' with its message.
+    Returns
+    -------
+    result : AnnealingResult
+        Best trial, counts and the stop reason.
+    csv_path : str
+        Path of the trajectory CSV.
+    kinetic_baselines : dict
+        ``{name: value}`` of every kinetic parameter at the scenario
+        baseline.
 
-    Start point and resume (best-so-far restart): a FRESH study (no CSV rows)
-    starts at the scenario baseline when enqueue_baseline=True (trial 0 is
-    exactly the baseline, as in TPE) or at scipy's uniform draw otherwise. A
-    RESUMED study (the CSV exists -- the sole store; there is no scipy state
-    to replay) takes x0 = the best COMPLETE row's decision point (re-evaluated
-    as the attempt's first trial: one simulation, a consistency check), or a
-    uniform draw if no COMPLETE row exists; numbers its trials from
-    max stored + 1 (LOST rows included); anneals the REMAINING budget with a
-    fresh RNG seed (`seed + n_done_sim`; seed None = the launch-datetime
-    default, as in TPE), reheated from initial_temp. A remaining budget <= 0
-    returns at once without annealing (stop_reason 'complete'), so a
-    supervisor relaunch after a clean finish exits 0. The default study name
-    is kin_opt_{scenario_label}_{slug}_da[_burden] -- the `_da` tag keeps a
-    DA campaign off the TPE CSV of the same objective (same columns, so the
-    header guard could not); no SQLite store is created.
+    Raises
+    ------
+    ValueError
+        On a non-positive / non-integer ``n_trials`` or
+        ``max_calls_factor``, a missing ``energy_scale`` for a custom
+        objective, or a set-up error of ``_prepare_optimization``.
 
-    Kinetic parameters and feeding specs are restored to the scenario
-    baseline in a nested `finally` (restore_baseline, then
-    set_active_burden(None)), exactly as in the TPE engine. Returns
-    (AnnealingResult, csv_path, kinetic_baselines)."""
+    Notes
+    -----
+    There are NO ``n_startup_trials`` / ``feasible_sampling`` /
+    ``startup_sampling`` / ``enqueue_knockouts`` / ``seed_from`` arguments
+    (optuna sampler and enqueue concepts with no annealing counterpart).
+
+    Coordinates: scipy anneals over the unit cube ``[0, 1]**d`` in
+    search-space order (its visiting step is one absolute scale for every
+    coordinate); ``unit_to_external`` maps a point to decision values
+    (log-uniform for log floats, uniform bins for ints, linear otherwise --
+    the LHS start-up measure of the TPE engine), ``external_to_unit`` the
+    inverse.
+
+    Energy: ``sign * objective / energy_scale`` (sign -1 to maximize).
+    Every non-COMPLETE evaluation (FAIL / NAN / INFEASIBLE) returns the
+    finite ``PENALTY_ENERGY``; the CSV keeps the raw objective.
+
+    Budget: ``n_trials`` counts SIMULATED evaluations (COMPLETE / FAIL /
+    NAN, plus stored LOST rows on a resume); INFEASIBLE rows take a trial
+    number (gap-free CSV, and the supervisor's row-count stall guard sees
+    progress) but no budget. Once the remaining budget is spent the wrapper
+    raises a private exception that ends the scipy call (stop reason
+    ``'budget'``); hitting ``maxfun`` gives ``'max_calls'`` (with a printed
+    warning); ``maxiter`` is ``10**6`` so nothing else stops it; scipy
+    returning on its own gives ``'scipy'`` with its message.
+
+    Resume (best-so-far restart): the trajectory CSV is the sole store
+    (there is no scipy state to replay). A RESUMED study takes as start
+    point the best COMPLETE row's decision point (re-evaluated as the
+    attempt's first trial: one simulation, a consistency check), or a
+    uniform draw if no COMPLETE row exists; numbers its trials from the
+    maximum stored + 1 (LOST rows included); and anneals the REMAINING
+    budget with a fresh RNG seed (``seed + n_done_sim``; seed None = the
+    launch-datetime default, as under TPE), reheated from
+    ``initial_temp``. A remaining budget <= 0 returns at once without
+    annealing (stop reason ``'complete'``), so a supervisor relaunch after
+    a clean finish exits 0.
+    """
     from scipy.optimize import dual_annealing
     if isinstance(n_trials, bool) or int(n_trials) != n_trials or n_trials < 1:
         raise ValueError(f'n_trials must be a positive integer; got {n_trials!r}')
@@ -6464,8 +6712,7 @@ def run_kinetic_dual_annealing(objective='IRR',
 #%% Trial reproduction (read-only)
 # Re-simulate ONE recorded trial of an ethanol_isobutanol x
 # metabolic_split_12d study on the live model and compare it with the
-# recorded trajectory row (spec docs/superpowers/specs/2026-09-18-reproduce-
-# split12d-trial-design.md). Read-only: nothing here writes a study CSV, a
+# recorded trajectory row. Read-only: nothing here writes a study CSV, a
 # sidecar or an optuna store, and evaluate_decision_point is deliberately
 # NOT reused (it appends rows and prunes / snapshots).
 
@@ -6474,15 +6721,33 @@ SPLIT12D_STUDY_TARGET_PRODUCTS = 'ethanol_isobutanol'
 SPLIT12D_STUDY_TYPE = 'metabolic_split_12d'
 
 def split12d_trajectory_path(study_name, results_dir=None):
-    """Trajectory-CSV path of a split_12d study, after the PRESET GUARD:
-    the BASENAME of `study_name` must contain both
-    SPLIT12D_STUDY_TARGET_PRODUCTS and SPLIT12D_STUDY_TYPE (ValueError
-    naming the missing token(s) otherwise -- the reconstruction below is
-    specific to that preset's referenced ehrlich_downstream group).
-    `study_name` ending in '.csv' is taken as the path itself; otherwise
-    the path is {results_dir}/{study_name}_trajectory.csv, results_dir
-    defaulting to analyses/results next to this module (the engines'
-    default). Pure; the file need not exist."""
+    """Trajectory-CSV path of an ethanol_isobutanol x metabolic_split_12d
+    study, after the preset guard. Pure; the file need not exist.
+
+    Parameters
+    ----------
+    study_name : str
+        A study name, or the path of its trajectory CSV (a name ending in
+        ``'.csv'``, returned unchanged). Its BASENAME must contain both
+        ``SPLIT12D_STUDY_TARGET_PRODUCTS`` and ``SPLIT12D_STUDY_TYPE``: the
+        reconstruction is specific to that preset's referenced
+        ``ehrlich_downstream`` group.
+    results_dir : str, optional
+        Folder of the study's files; None = ``default_results_dir()`` (the
+        engines' default).
+
+    Returns
+    -------
+    str
+        ``<results_dir>/<study_name>_trajectory.csv``, or ``study_name``
+        itself for a CSV path.
+
+    Raises
+    ------
+    ValueError
+        If the basename lacks a preset token (the message names the
+        missing token(s)).
+    """
     study_name = str(study_name)
     basename = os.path.basename(study_name)
     missing = [token for token in (SPLIT12D_STUDY_TARGET_PRODUCTS,
@@ -6496,17 +6761,33 @@ def split12d_trajectory_path(study_name, results_dir=None):
     if study_name.lower().endswith('.csv'):
         return study_name
     if results_dir is None:
-        results_dir = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)),
-            'analyses', 'results')
+        results_dir = default_results_dir()
     return os.path.join(results_dir, f'{study_name}_trajectory.csv')
 
 def read_trajectory_row(csv_path, trial_number):
-    """The RAW row (dict of strings, csv.DictReader) of `csv_path` whose
-    trial_number equals `trial_number` (both compared as int(float(.)), so
-    '7', '7.0' and 7 match). KeyError naming the available range if absent;
-    a missing file raises FileNotFoundError as usual. Raw strings are kept
-    so the caller decides how to parse blanks (NaN) and '-inf'."""
+    """The RAW row of a trajectory CSV for one trial number.
+
+    Parameters
+    ----------
+    csv_path : str
+        Path of the trajectory CSV.
+    trial_number : int, float or str
+        Compared as ``int(float(.))`` with the CSV's ``trial_number``, so
+        ``'7'``, ``'7.0'`` and ``7`` match.
+
+    Returns
+    -------
+    dict
+        The row as read by ``csv.DictReader`` (strings): the caller decides
+        how to parse blanks (NaN) and ``'-inf'``.
+
+    Raises
+    ------
+    KeyError
+        If the trial is absent (the message names the available range).
+    FileNotFoundError
+        If ``csv_path`` does not exist.
+    """
     trial_number = int(float(trial_number))
     with open(csv_path, newline='') as csvfile:
         rows = list(csv.DictReader(csvfile))
@@ -6539,22 +6820,55 @@ def _relative_delta(a, b):
 def reconstruct_trial_kinetics(row, search_space, parameter_groups,
                                kinetic_baselines, group_references=None, *,
                                mode='both', cross_check_tol=1e-6):
-    """(values, applied, cross_check) for one RAW trajectory row
-    (read_trajectory_row). `values` is the decision dict in `search_space`
-    order (int(float(.)) for an 'int' entry -- max_n_spikes -- else float);
-    `applied` is what reaches the model: every non-group entry of `values`
-    passed through plus the group MEMBERS (group keys dropped) -- from
-    expand_grouped_values for mode 'rederive' / 'both', from the recorded
-    applied_<member> columns for 'replay'. 'both' compares the two per
-    member (relative delta > `cross_check_tol` -> an entry in
-    cross_check['mismatches'] and a RuntimeWarning: the expected signal
-    when the study ran under another anchor / reference than the one
-    passed, e.g. a pre-2026-09-16 B-anchored split_12d store) and returns
-    the RE-DERIVED values. cross_check = dict(mode, simulated ('rederive' |
-    'replay'), max_rel_delta (None unless 'both'), mismatches [(member,
-    rederived, replayed, rel_delta)]). ValueError: unknown mode; a blank /
-    missing decision column; (replay / both) a blank / missing
-    applied_<member> column. Pure."""
+    """Decision values and applied kinetics of one recorded trial. Pure.
+
+    Parameters
+    ----------
+    row : dict
+        A RAW trajectory row (``read_trajectory_row``).
+    search_space : dict
+        The study's search space (``build_search_space``); its keys are the
+        decision columns.
+    parameter_groups : dict
+        ``{group: [members]}`` of the preset.
+    kinetic_baselines : dict
+        Live baselines of the anchor scenario (the basis of the
+        un-referenced groups).
+    group_references : dict, optional
+        ``{group: {member: reference}}`` of the referenced groups.
+    mode : {'both', 'rederive', 'replay'}, optional
+        How the group MEMBER values are obtained (``REPRODUCTION_MODES``):
+        ``'rederive'`` = ``expand_grouped_values`` on the recorded
+        multipliers; ``'replay'`` = the recorded ``applied_<member>``
+        columns; ``'both'`` (default) = re-derive, cross-check against the
+        replay, and return the RE-DERIVED values.
+    cross_check_tol : float, optional
+        Relative tolerance of the ``'both'`` cross-check (default 1e-6).
+
+    Returns
+    -------
+    values : dict
+        The decision point in search-space order (``int(float(.))`` for an
+        integer entry such as ``max_n_spikes``, else float).
+    applied : dict
+        What reaches the model: every non-group entry of ``values`` plus
+        the group MEMBERS (group keys dropped).
+    cross_check : dict
+        ``mode``, ``simulated`` (``'rederive'`` or ``'replay'``),
+        ``max_rel_delta`` (None unless ``'both'``) and ``mismatches``, a
+        list of ``(member, rederived, replayed, rel_delta)``. Under
+        ``'both'`` each mismatch above ``cross_check_tol`` also issues a
+        RuntimeWarning -- the expected signal when the study ran under
+        another anchor / reference than the one passed (e.g. a
+        pre-2026-09-16 scenario-B-anchored split_12d store).
+
+    Raises
+    ------
+    ValueError
+        On an unknown ``mode``, a blank or missing decision column, or (for
+        ``'replay'`` / ``'both'``) a blank or missing ``applied_<member>``
+        column.
+    """
     if mode not in REPRODUCTION_MODES:
         raise ValueError(f'mode {mode!r} not in {REPRODUCTION_MODES}')
     groups = {str(group): list(members)
@@ -6621,18 +6935,33 @@ def _csv_float(cell):
     return float(cell)
 
 def compare_tracked_metrics(reproduced_metrics, row, metric_check_tol=0.02):
-    """(metric_check, metric_warnings): every entry of `reproduced_metrics`
-    ({name: value}, TRACKED_METRICS order) whose name is a column of the
-    RAW trajectory `row`, as (name, reproduced, recorded, rel_delta) with
-    Python floats (cast BEFORE any comparison: flexsolve's global
-    np.seterr(invalid='raise') makes a numpy-scalar NaN comparison raise).
-    A finite pair is flagged when its relative delta (_relative_delta)
-    exceeds `metric_check_tol`; a non-finite pair has rel_delta NaN and
-    passes only if both are NaN or both the SAME infinity (finite <->
-    non-finite is flagged). REPRODUCTION_DIAGNOSTIC_METRICS are never
-    flagged. Each flagged name is appended to metric_warnings and raised as
-    a RuntimeWarning. The study's objective is one of the tracked metrics,
-    so it is covered without parsing the study name."""
+    """Compare reproduced tracked metrics with a recorded trajectory row.
+
+    Parameters
+    ----------
+    reproduced_metrics : dict
+        ``{name: value}`` in ``TRACKED_METRICS`` order; names that are not
+        columns of ``row`` are skipped. The study's objective is one of the
+        tracked metrics, so it is covered without parsing the study name.
+    row : dict
+        A RAW trajectory row (``read_trajectory_row``).
+    metric_check_tol : float, optional
+        Relative tolerance (default 0.02).
+
+    Returns
+    -------
+    metric_check : list of tuple
+        ``(name, reproduced, recorded, rel_delta)`` with Python floats
+        (cast BEFORE any comparison: flexsolve's global
+        ``np.seterr(invalid='raise')`` makes a numpy-scalar NaN comparison
+        raise). A finite pair is flagged when its relative delta exceeds
+        ``metric_check_tol``; a non-finite pair has ``rel_delta`` NaN and
+        passes only if both are NaN or both the SAME infinity.
+    metric_warnings : list of str
+        The flagged names; each is also issued as a RuntimeWarning.
+        ``REPRODUCTION_DIAGNOSTIC_METRICS`` (convergence-path diagnostics)
+        are never flagged.
+    """
     metric_check, metric_warnings = [], []
     for name, value in reproduced_metrics.items():
         if name not in row:
@@ -6730,52 +7059,86 @@ def reproduce_split12d_trial(anchor_scenario, study_name, trial_number, *,
                              mode='both', burden=True, results_dir=None,
                              cross_check_tol=1e-6, metric_check_tol=0.02,
                              restore=True, verbose=True):
-    """Re-simulate trial `trial_number` of the ethanol_isobutanol x
-    metabolic_split_12d study `study_name` (a study name, or the path of its
-    trajectory CSV) on the live model, anchored on scenario
-    `anchor_scenario`, and compare it with the recorded row. READ-ONLY: no
-    study CSV / sidecar / optuna store is written. Requires
-    nskinetics.biorefineries.isobutanol.load() to have run in this kernel (the contract
-    of scenarios.load_scenario); analyses/reproduce_split12d_trial.py is the
-    runner.
+    """Re-simulate one recorded trial of a split_12d study and compare it
+    with its trajectory row. READ-ONLY.
+
+    Reproduces trial ``trial_number`` of the ethanol_isobutanol x
+    metabolic_split_12d study ``study_name`` on the live model, anchored on
+    scenario ``anchor_scenario``; no study CSV, sidecar or optuna store is
+    written. Requires ``nskinetics.biorefineries.isobutanol.load()`` to
+    have run in this kernel (the contract of ``scenarios.load_scenario``);
+    the ``reproduce_split12d_trial.py`` analysis script is the runner.
 
     The anchoring scenario supplies every NON-sampled kinetic parameter and
-    the basis of the un-referenced groups (glycolysis, inhib_*: live
-    baseline x multiplier); the referenced ehrlich_downstream group is
+    the basis of the un-referenced groups (glycolysis, ``inhib_*``: live
+    baseline x multiplier); the referenced ``ehrlich_downstream`` group is
     reference x multiplier with the preset's scenario-A-anchored references
-    (resolve_study_preset -> group_references). The split_12d studies ran
-    from anchor 'A'. `mode`: REPRODUCTION_MODES (see
-    reconstruct_trial_kinetics; 'both' simulates the RE-DERIVED values and
-    warns when they disagree with the recorded applied_<member> columns
-    beyond `cross_check_tol`). `burden`: True (default) installs the
-    A-referenced enzyme burden as the studies did, None = the anchor's
-    burden_default, False = burden-free; load_scenario raises ValueError
-    for an anchor whose own baseline is over the cap (scenario B). The
-    decision columns come from build_search_space with the preset's kwargs
-    on the anchor's live kinetics -- the path _prepare_optimization uses.
+    (``resolve_study_preset``). The decision columns come from
+    ``build_search_space`` with the preset's kwargs on the anchor's live
+    kinetics -- the path ``_prepare_optimization`` uses.
 
-    Every input error (unknown mode, preset-guard mismatch, missing CSV,
-    missing trial) raises BEFORE the model is touched. A raising simulation
-    is reported in result['error'] (e.g. an INFEASIBLE / FAIL recorded row
-    reproducing its failure). `restore` (default True) sets every kinetic
-    parameter and fbs_spec.max_n_spikes back to the anchor snapshot in a
-    finally WITHOUT re-simulating (the flowsheet stays at the reproduced
-    trial): the scenario-A workbook has no k_13-k_17 / isobutanol-inhibition
-    rows, so load_scenario alone cannot undo them and a second call in the
-    same kernel would re-derive its groups from contaminated baselines.
-    restore=False leaves the trial's kinetics live for inspection. Either
-    way the flowsheet is NOT re-simulated, so a solve_TEA() in the same
-    kernel after the call reads the reproduced TRIAL's TEA, not the anchor
-    baseline's. load_scenario also leaves its scenario-level active burden
-    installed on return (as any load_scenario call does), so later model
-    work in the same kernel inherits it until the next load_scenario.
+    Parameters
+    ----------
+    anchor_scenario : str
+        Scenario loaded first (``scenarios.load_scenario``); the split_12d
+        studies ran from ``'A'``.
+    study_name : str
+        Study name or trajectory-CSV path (``split12d_trajectory_path``).
+    trial_number : int
+        Trial to reproduce.
+    mode : {'both', 'rederive', 'replay'}, optional
+        See ``reconstruct_trial_kinetics``; ``'both'`` (default) simulates
+        the RE-DERIVED values and warns when they disagree with the
+        recorded ``applied_<member>`` columns beyond ``cross_check_tol``.
+    burden : bool or None, optional
+        True (default) installs the A-referenced enzyme burden as the
+        studies did; None = the anchor's ``burden_default``; False =
+        burden-free. ``load_scenario`` raises ValueError for an anchor whose
+        own baseline is over the cap (scenario B).
+    results_dir : str, optional
+        Folder of the study's CSV; None = ``default_results_dir()``.
+    cross_check_tol : float, optional
+        Tolerance of the re-derive / replay cross-check (default 1e-6).
+    metric_check_tol : float, optional
+        Tolerance of ``compare_tracked_metrics`` (default 0.02).
+    restore : bool, optional
+        True (default) sets every kinetic parameter and
+        ``fbs_spec.max_n_spikes`` back to the anchor snapshot in a
+        ``finally`` WITHOUT re-simulating: the scenario-A workbook has no
+        ``k_13``-``k_17`` / isobutanol-inhibition rows, so ``load_scenario``
+        alone cannot undo them and a second call in the same kernel would
+        re-derive its groups from contaminated baselines. False leaves the
+        trial's kinetics live for inspection.
+    verbose : bool, optional
+        Print a summary of the reproduction (default True).
 
-    Returns dict(anchor_scenario, study_name, trial_number, csv_path,
-    recorded_state, values, applied, feeding, reproduced (MPSPs, IRR,
-    metrics), recorded_row, cross_check, metric_check [(name, reproduced,
-    recorded, rel_delta)], metric_warnings [names], error). Tracked metrics
-    are compared with `metric_check_tol` (compare_tracked_metrics); the
-    study's objective is one of them."""
+    Returns
+    -------
+    dict
+        ``anchor_scenario``, ``study_name``, ``trial_number``,
+        ``csv_path``, ``recorded_state``, ``values``, ``applied``,
+        ``feeding``, ``reproduced`` (``MPSPs``, ``IRR``, ``metrics``),
+        ``recorded_row``, ``cross_check``, ``metric_check`` (list of
+        ``(name, reproduced, recorded, rel_delta)``), ``metric_warnings``
+        (names) and ``error`` (None, or the repr of the exception a raising
+        simulation reported -- e.g. an INFEASIBLE / FAIL recorded row
+        reproducing its failure).
+
+    Raises
+    ------
+    ValueError, FileNotFoundError, KeyError
+        Every input error (unknown mode, preset-guard mismatch, missing
+        CSV, missing trial) raises BEFORE the model is touched.
+
+    Notes
+    -----
+    Either way the flowsheet is NOT re-simulated afterwards, so a
+    ``solve_TEA()`` in the same kernel after the call reads the reproduced
+    TRIAL's TEA, not the anchor baseline's. ``load_scenario`` also leaves
+    its scenario-level active burden installed on return (as any
+    ``load_scenario`` call does), so later model work in the same kernel
+    inherits it until the next ``load_scenario``.
+    """
     if mode not in REPRODUCTION_MODES:
         raise ValueError(f'mode {mode!r} not in {REPRODUCTION_MODES}')
     csv_path = split12d_trajectory_path(study_name, results_dir)

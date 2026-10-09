@@ -8,7 +8,10 @@
 """
 Plots for the scenario-B one-at-a-time kinetic-parameter sweeps produced by
 evaluate_OAT_kinetics_B.py. Reads only the CSVs in
-analyses/results/OAT_kinetics_B/ -- no simulation, safe to rerun anytime.
+<results root>/OAT_kinetics_B/ (paths.results_dir(): analyses/results unless
+NSKINETICS_IBO_RESULTS_DIR is set; the package's stdlib-only paths.py is
+loaded by file path, nskinetics is never imported) -- no simulation, safe to
+rerun anytime. The CSVs are not shipped: run the (ask-first) OAT sweep first.
 
 Outputs (same directory):
 * OAT_B_<param>.png -- per-parameter figure, 3x2 panels: TEA metrics (IRR,
@@ -19,6 +22,7 @@ Outputs (same directory):
 """
 
 import os
+import importlib.util
 import numpy as np
 import pandas as pd
 
@@ -26,13 +30,27 @@ import matplotlib
 matplotlib.use('Agg')
 from matplotlib import pyplot as plt
 
-results_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                           'results', 'OAT_kinetics_B')
+def _load_paths():
+    """The package's stdlib-only paths.py (two folders up), loaded by file
+    path so this script never imports nskinetics."""
+    package_dir = os.path.dirname(os.path.dirname(
+        os.path.dirname(os.path.abspath(__file__))))
+    spec = importlib.util.spec_from_file_location(
+        '_ibo_paths', os.path.join(package_dir, 'paths.py'))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
-baseline_df = pd.read_csv(os.path.join(results_dir,
-                                       'kinetic_params_baseline_B.csv'))
-baseline = pd.read_csv(os.path.join(results_dir,
-                                    'baseline_TEA_B.csv')).iloc[0]
+paths = _load_paths()
+results_dir = paths.results_dir('OAT_kinetics_B')
+_PRODUCED_BY = 'the OAT sweep (analyses/kinetic_sweeps/evaluate_OAT_kinetics_B.py)'
+
+baseline_df = pd.read_csv(paths.require_input(
+    os.path.join(results_dir, 'kinetic_params_baseline_B.csv'),
+    produced_by=_PRODUCED_BY))
+baseline = pd.read_csv(paths.require_input(
+    os.path.join(results_dir, 'baseline_TEA_B.csv'),
+    produced_by=_PRODUCED_BY)).iloc[0]
 
 UNIT_LABELS = {'g_per_l_per_h': r'g L$^{-1}$ h$^{-1}$',
                'g_per_l': r'g L$^{-1}$',
