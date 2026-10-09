@@ -45,9 +45,9 @@ _common.EXPECTED and the figure-local S2_EXPECTED before anything is drawn.
 
 SIM-SAFE: pandas / numpy / matplotlib only; pk is loaded by file path inside
 _common.baseline_record(). Run with
-    "C:/Users/saran/anaconda3/envs/IBO_2026/python.exe" fig_s2_fingerprints.py
+    python fig_s2_fingerprints.py
 Output: analyses/results/publication/Optimization-figures/
-    kinBO_S2_fingerprints_<YYYY.MM.DD-HH.MM>.{png,pdf} (+ _latest copies).
+    kinBO_S2_fingerprints.{png,pdf} (overwritten on every run).
 """
 import os
 import sys

@@ -43,8 +43,19 @@ FONTS = fs.FONTS
 TICK_LEN = fs.TICK_LEN
 USD_PER_KG_TO_USD_PER_GGE = fs.USD_PER_KG_TO_USD_PER_GGE
 
-RESULTS_DIR = os.path.join(os.path.dirname(HERE), 'analyses', 'results')
-OUTPUT_DIR = os.path.join(RESULTS_DIR, 'publication', 'Kinetic-sweeps')
+
+def _load_paths():
+    """The package's stdlib-only paths.py, loaded by file path (sim-safe)."""
+    spec = importlib.util.spec_from_file_location(
+        '_ibo_paths', os.path.join(os.path.dirname(HERE), 'paths.py'))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+paths = _load_paths()
+RESULTS_DIR = paths.results_dir()                     # sweep CSVs (inputs)
+OUTPUT_DIR = paths.publication_dir('Kinetic-sweeps')  # figures
 
 # Default colour scale (MESP, $/GGE): the feeding-strategy figure's levels, so
 # the figures read on one scale; values past the top take the over-colour. A
@@ -151,12 +162,16 @@ class SweepFigure:
     baseline: tuple = None
     baseline_callout: tuple = None
     arrow_relpos: dict = field(default_factory=dict)
+    # the analysis that writes the sweep CSVs (named in the missing-input error)
+    produced_by: str = 'the evaluate_* sweep that writes this csv_prefix (analyses/)'
 
 #%% Sweep data
 
 def load_sweep_metric(figure, metric):
     """(n_y, n_x) array: row = spec_2, column = spec_1."""
-    path = os.path.join(RESULTS_DIR, f'{figure.csv_prefix}_{metric}.csv')
+    path = paths.require_input(
+        os.path.join(RESULTS_DIR, f'{figure.csv_prefix}_{metric}.csv'),
+        figure.produced_by)
     arr = pd.read_csv(path).iloc[:, 1:].to_numpy(dtype=float)
     if arr.shape != (len(figure.spec_2), len(figure.spec_1)):
         raise ValueError(f'{path}: shape {arr.shape} does not match the '

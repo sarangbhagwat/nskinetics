@@ -7,7 +7,7 @@
 # for license details.
 """Stage 2 of the TEA-breakdown figure of the metabolic_split_12d campaign
 optima (spec docs/superpowers/specs/2026-09-24-tea-breakdowns-split12d-design.md;
-stage 1, which simulates, is analyses/collect_tea_breakdowns_split12d.py).
+stage 1, which simulates, is analyses/tea_breakdowns/collect_tea_breakdowns_split12d.py).
 
 A 3x3 grid of cost & utility breakdowns, one panel per scenario (LAYOUT):
 the scenario-A baseline, the uninformed and TRY-informed (relay) profitability campaigns,
@@ -31,8 +31,9 @@ imports the biorefineries package, never load()s. Run:
 
     python plots/plot_tea_breakdowns_split12d.py [--data <json>] [--out-dir DIR]
 
---data defaults to the newest analyses/results/tea_breakdowns_split12d_*.json.
-Writes <stem>_<stamp>.png and .pdf to --out-dir (default analyses/results),
+--data defaults to the newest tea_breakdowns_split12d_*.json in the results
+root (paths.results_dir()). Writes <stem>_<stamp>.png and .pdf to --out-dir
+(default paths.publication_dir('Optimization-figures')),
 and one breakdown CSV per scenario named after the data file,
 <data stem>_<key>[_trial<N>].csv (rows = the unit groups in stack order,
 the four '<product> revenue' credits (negative, operating-cost column
@@ -48,6 +49,7 @@ import glob
 import json
 import math
 import argparse
+import importlib.util
 from datetime import datetime
 
 import numpy as np
@@ -58,8 +60,22 @@ from matplotlib.lines import TICKDOWN, TICKLEFT
 from matplotlib.patches import Patch
 from matplotlib.ticker import FixedLocator, MultipleLocator, NullLocator
 
-PKG_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-RESULTS_DIR = os.path.join(PKG_DIR, 'analyses', 'results')
+HERE = os.path.dirname(os.path.abspath(__file__))
+
+
+def _load_paths():
+    """The package's stdlib-only paths.py, loaded by file path (sim-safe)."""
+    spec = importlib.util.spec_from_file_location(
+        '_ibo_paths', os.path.join(os.path.dirname(HERE), 'paths.py'))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+paths = _load_paths()
+PKG_DIR = paths.PACKAGE_DIR
+RESULTS_DIR = paths.results_dir()                          # stage-1 JSON (input)
+OUTPUT_DIR = paths.publication_dir('Optimization-figures')  # figure + CSVs
 DATA_GLOB = 'tea_breakdowns_split12d_*.json'
 DEFAULT_STEM = 'tea_breakdowns_split12d_figure'
 
@@ -176,12 +192,14 @@ TICK_LEN = {'major': 4.0, 'minor': 2.0}
 
 #%% Data
 def newest_data(results_dir=RESULTS_DIR):
-    paths = sorted(glob.glob(os.path.join(results_dir, DATA_GLOB)),
+    found = sorted(glob.glob(os.path.join(glob.escape(results_dir), DATA_GLOB)),
                    key=os.path.getmtime)
-    if not paths:
-        raise FileNotFoundError(f'no {DATA_GLOB} in {results_dir}: run '
-                                'analyses/collect_tea_breakdowns_split12d.py')
-    return paths[-1]
+    if not found:
+        paths.require_input(
+            os.path.join(results_dir, DATA_GLOB),
+            'stage 1 of this figure (analyses/tea_breakdowns/collect_tea_breakdowns_split12d.py, '
+            'which simulates)')
+    return found[-1]
 
 
 def merge_groups(doc):
@@ -240,7 +258,7 @@ def load_breakdowns(path):
     if 'revenue_products' not in meta or no_revenue:
         raise ValueError(f'{path} has no product revenue '
                          f'({no_revenue or "meta"}): re-run '
-                         'analyses/collect_tea_breakdowns_split12d.py')
+                         'analyses/tea_breakdowns/collect_tea_breakdowns_split12d.py')
     products = list(REVENUE_STYLES)
     wrong = [k for row in LAYOUT for k in row
              if sorted(doc['scenarios'][k]['revenue']) != sorted(products)]
@@ -607,7 +625,7 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
     ap.add_argument('--data', default=None,
                     help=f'stage-1 JSON (default: newest {DATA_GLOB})')
-    ap.add_argument('--out-dir', default=RESULTS_DIR)
+    ap.add_argument('--out-dir', default=OUTPUT_DIR)
     ap.add_argument('--stem', default=DEFAULT_STEM)
     ap.add_argument('--dpi', type=int, default=300)
     args = ap.parse_args(argv)
@@ -617,6 +635,7 @@ def main(argv=None):
     print_summary(doc)
     fig = make_figure(doc)
     stamp = datetime.now().strftime('%Y.%m.%d-%H.%M')
+    os.makedirs(args.out_dir, exist_ok=True)
     base = os.path.join(args.out_dir, f'{args.stem}_{stamp}')
     fig.savefig(base + '.png', dpi=args.dpi)
     fig.savefig(base + '.pdf')

@@ -41,9 +41,12 @@ Run (any Python with matplotlib; headless-safe)::
     python plots/conceptual_feeding_aeration_sugar_prep.py
 
 Outputs ``conceptual_feeding_aeration_sugar_prep.pdf`` (vector, for
-submission) and ``.png`` (600 dpi, for review) under ``plots/results/``.
+submission) and ``.png`` (600 dpi, for review) to
+``paths.publication_dir('Schematics')`` (``--out-dir`` to change).
 """
 
+import argparse
+import importlib.util
 import os
 
 import matplotlib
@@ -499,9 +502,24 @@ def make_figure():
     return fig
 
 
-def main():
-    out_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                           'results')
+def _load_paths():
+    """The package's stdlib-only paths.py, loaded by file path (no package
+    import, so no simulation)."""
+    here = os.path.dirname(os.path.abspath(__file__))
+    spec = importlib.util.spec_from_file_location(
+        '_ibo_paths', os.path.join(os.path.dirname(here), 'paths.py'))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(description='Conceptual diagram of sugar '
+                                 'preparation, fed-batch feeding and aeration.')
+    ap.add_argument('--out-dir', default=None,
+                    help="output folder (default: paths.publication_dir('Schematics'))")
+    args = ap.parse_args(argv)
+    out_dir = args.out_dir or _load_paths().publication_dir('Schematics')
     os.makedirs(out_dir, exist_ok=True)
     fig = make_figure()
     stem = os.path.join(out_dir, 'conceptual_feeding_aeration_sugar_prep')
@@ -509,6 +527,7 @@ def main():
     fig.savefig(stem + '.png', dpi=600, facecolor='white')
     plt.close(fig)
     print(f'Saved {stem}.pdf and {stem}.png')
+    return stem
 
 
 if __name__ == '__main__':

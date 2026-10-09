@@ -20,7 +20,7 @@ sibling figure script with::
     fig = S.new_figure(*S.MAIN_SIZE)       # rcParams applied
     ...
     S.check_figure(fig)                    # draw + overlap / font / glyph
-    S.save(fig, 'kinBO_main_scouts')       # PNG 300 dpi + PDF (+ _latest)
+    S.save(fig, 'kinBO_main_scouts')       # <stem>.png (300 dpi) + .pdf
 
 Public API
 ----------
@@ -109,19 +109,18 @@ Palette checks
                                    renders as on white (fill / edge area
                                    mix, then alpha)
 Saving
-    save(fig, stem, out_dir=OUT_DIR, stamp=None, latest=True,
-         max_pdf_mb=10) -> {'png', 'pdf', 'png_latest', 'pdf_latest',
-         'png_px'}: <stem>_<YYYY.MM.DD-HH.MM>.{png,pdf} at 300 dpi plus a
-         stable copy <stem>_latest.{png,pdf}; never bbox_inches='tight'
+    save(fig, stem, out_dir=None (= OUT_DIR), timestamped=False, stamp=None,
+         max_pdf_mb=10) -> {'png', 'pdf', 'png_px', 'pdf_mb'} (+ 'png_stamped',
+         'pdf_stamped'): <stem>.{png,pdf} at 300 dpi, overwritten on every
+         run; with timestamped=True (or a stamp) also a dated copy
+         <stem>_<YYYY.MM.DD-HH.MM>.{png,pdf}; never bbox_inches='tight'
 """
-import glob
 import importlib.util
 import os
 import re
 import shutil
 import struct
 import sys
-import tempfile
 import time
 
 import numpy as np
@@ -1137,21 +1136,18 @@ DOT_PAIRS = tuple((a, b) for i, a in enumerate(B_DOTS)
 
 
 def _dataviz_validator():
-    """The dataviz skill's validate_palette.py, loaded by file path if it is
-    available ($DATAVIZ_VALIDATOR or the bundled-skills temp folder)."""
-    cands = [os.environ.get('DATAVIZ_VALIDATOR', '')]
-    cands += sorted(glob.glob(os.path.join(
-        tempfile.gettempdir(), 'claude', 'bundled-skills', '*', '*',
-        'dataviz', 'scripts', 'validate_palette.py')), reverse=True)
-    for p in cands:
-        if p and os.path.exists(p):
-            try:
-                spec = importlib.util.spec_from_file_location('dv_validate', p)
-                mod = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(mod)
-                return mod, p
-            except Exception:
-                continue
+    """An optional external palette validator (a validate_palette.py
+    module), loaded by file path from $DATAVIZ_VALIDATOR if that is set and
+    loads; else (None, None)."""
+    p = os.environ.get('DATAVIZ_VALIDATOR', '')
+    if p and os.path.exists(p):
+        try:
+            spec = importlib.util.spec_from_file_location('dv_validate', p)
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            return mod, p
+        except Exception:
+            pass
     return None, None
 
 
@@ -1161,7 +1157,8 @@ def cvd_check(pairs=CVD_PAIRS, min_de=CVD_MIN_DE, gray_pairs=GRAY_PAIRS,
     `min_de` under normal vision and simulated deuteranopia / protanopia /
     tritanopia (Machado 2009, severity 1, linear RGB), and the grayscale
     lightness gaps GRAY_PAIRS (|dL*| >= 15 cyan/teal, >= 20 amber/violet).
-    If the dataviz skill's validator is found, its OKLab pair deltas are
+    If an external validator is set ($DATAVIZ_VALIDATOR, a
+    validate_palette.py), its OKLab pair deltas are
     reported too (ADVISORY: its lightness band / chroma floor target
     categorical series hues, not this palette's tints and greys).
     Returns (ok, report); raises AssertionError on failure unless
@@ -1239,27 +1236,34 @@ def _png_size(path):
     return struct.unpack('>II', head[16:24])
 
 
-def save(fig, stem, out_dir=OUT_DIR, stamp=None, latest=True, max_pdf_mb=10.0):
-    """Write <stem>_<YYYY.MM.DD-HH.MM>.png (300 dpi) and .pdf to `out_dir`,
-    plus stable copies <stem>_latest.png / .pdf (overwritten every run) so
-    reviewers always find the newest render. Asserts every path <= 259
-    characters, the PNG pixel size = canvas x 300 dpi (no cropping), the
-    PDF <= max_pdf_mb and free of Type-3 fonts (fonttype 42). Never uses
-    bbox_inches='tight'. Prints and returns the paths + the PNG size."""
-    stamp = time.strftime('%Y.%m.%d-%H.%M') if stamp is None else stamp
+def save(fig, stem, out_dir=None, timestamped=False, stamp=None,
+         max_pdf_mb=10.0):
+    """Write <stem>.png (300 dpi) and <stem>.pdf to `out_dir` (default
+    OUT_DIR = publication/Optimization-figures under the results root),
+    overwriting the previous render. With timestamped=True, or an explicit
+    `stamp` string, also write dated copies <stem>_<stamp>.png / .pdf
+    (stamp default YYYY.MM.DD-HH.MM) to keep a render history. Asserts every
+    path <= 259 characters, the PNG pixel size = canvas x 300 dpi (no
+    cropping), the PDF <= max_pdf_mb and free of Type-3 fonts (fonttype 42).
+    Never uses bbox_inches='tight'. Prints and returns the paths + the PNG
+    size."""
+    out_dir = OUT_DIR if out_dir is None else out_dir
+    if stamp is None and timestamped:
+        stamp = time.strftime('%Y.%m.%d-%H.%M')
     os.makedirs(out_dir, exist_ok=True)
     out = {}
     for ext in ('png', 'pdf'):
-        p = os.path.abspath(os.path.join(out_dir, f'{stem}_{stamp}.{ext}'))
-        q = os.path.abspath(os.path.join(out_dir, f'{stem}_latest.{ext}'))
+        p = os.path.abspath(os.path.join(out_dir, f'{stem}.{ext}'))
+        q = (os.path.abspath(os.path.join(out_dir, f'{stem}_{stamp}.{ext}'))
+             if stamp is not None else None)
         for path in (p, q):
-            assert len(path) <= MAX_PATH_CHARS, \
+            assert path is None or len(path) <= MAX_PATH_CHARS, \
                 f'path {len(path)} > {MAX_PATH_CHARS} chars: {path}'
         fig.savefig(p, dpi=DPI, format=ext)
         out[ext] = p
-        if latest:
+        if q is not None:
             shutil.copyfile(p, q)
-            out[ext + '_latest'] = q
+            out[ext + '_stamped'] = q
     w, h = _png_size(out['png'])
     W, H = fig.get_size_inches()
     want = (int(round(W * DPI)), int(round(H * DPI)))
@@ -1273,7 +1277,7 @@ def save(fig, stem, out_dir=OUT_DIR, stamp=None, latest=True, max_pdf_mb=10.0):
     out['pdf_mb'] = size_mb
     print(f'saved {out["png"]}  ({w} x {h} px)')
     print(f'saved {out["pdf"]}  ({size_mb:.2f} MB)')
-    if latest:
-        print(f'  latest copies: {os.path.basename(out["png_latest"])}, '
-              f'{os.path.basename(out["pdf_latest"])}')
+    if 'png_stamped' in out:
+        print(f'  dated copies: {os.path.basename(out["png_stamped"])}, '
+              f'{os.path.basename(out["pdf_stamped"])}')
     return out

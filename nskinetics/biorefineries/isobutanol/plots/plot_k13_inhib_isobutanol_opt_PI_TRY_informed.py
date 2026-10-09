@@ -8,7 +8,7 @@
 """k_13 x isobutanol-inhibition sweep figure for the opt_PI_TRY_informed scenario.
 
 IRR at default prices over the k_13 (ALS capacity) x grouped inhib_isobutanol
-multiplier grid of analyses/evaluate_EtOH_k13_inhib_isobutanol.py
+multiplier grid of analyses/kinetic_sweeps/evaluate_EtOH_k13_inhib_isobutanol.py
 (opt_PI_TRY_informed baseline = trial #1912 of the 2026-09-24 TRY-informed PI
 (log-tail) relay campaign _rl15c111dc; enzyme burden ON, the scenario's
 feeding strategy (1-spike cap / 189.19 / 194.19), no feeding-strategy
@@ -42,7 +42,7 @@ ksf = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(ksf)
 
 # Grid of the sweep to read: a 40 x 40 run of
-# analyses/evaluate_EtOH_k13_inhib_isobutanol.py on opt_PI_TRY_informed (NOT
+# analyses/kinetic_sweeps/evaluate_EtOH_k13_inhib_isobutanol.py on opt_PI_TRY_informed (NOT
 # yet generated; the 2026-10-01 run, hensmith 6d4776f, was on the old opt_IRR
 # point), k_13 over 1e-3x-4x the baseline (4.0 g/L/h for both opt_IRR and
 # opt_PI_TRY_informed) and the inhib_isobutanol multiplier over 0.75x-1.5x
@@ -82,6 +82,7 @@ FIGURE = ksf.SweepFigure(
     # max_n=50), so stale opt_IRR CSVs are never read by mistake
     csv_prefix=f'ibo_{SWEEP_STEPS}_k_13_inhib_Spike_opt=False_max_n=1_',
     spec_1=SPEC_1, spec_2=SPEC_2,
+    produced_by='the k_13 x inhib_isobutanol sweep on opt_PI_TRY_informed (analyses/kinetic_sweeps/evaluate_EtOH_k13_inhib_isobutanol.py)',
     xlabel=r'$\bf{ALS\ capacity}$, $k_{\mathrm{13}}$' + f' [{ksf.G_PER_L_PER_H}]',
     ylabel=r'$\bf{Isobutanol\ inhibition}$ [× baseline]',
     optima=OPTIMA,

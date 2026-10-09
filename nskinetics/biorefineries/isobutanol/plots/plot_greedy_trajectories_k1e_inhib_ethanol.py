@@ -13,8 +13,9 @@ to the local maxima of IRR and of the ethanol titer, combined yield and
 ethanol productivity (four trajectories; the metric set is configurable below).
 
 Consumes the per-metric CSVs written by
-analyses/evaluate_EtOH_k1e_inhib_ethanol.py (20 x 20 grid, scenario A, enzyme
-burden ON, no feeding-strategy optimization) and runs no biorefinery
+analyses/kinetic_sweeps/evaluate_EtOH_k1e_inhib_ethanol.py (40 x 40 grid, scenario A, enzyme
+burden ON, no feeding-strategy optimization; the same grid as
+plot_k1e_inhib_ethanol_A.py) and runs no biorefinery
 simulation: the plotting engine (plots/trajectory_contourplot.py) is loaded
 standalone, never via `import nskinetics.biorefineries.isobutanol`.
 
@@ -23,9 +24,9 @@ The high-k_1e region is blank (NaN): those points are enzyme-burden-infeasible
 flexible-sector cap). Unsolvable, money-losing cells (IRR = -inf) are drawn in
 the colormap's under-color; the greedy max-climb never steps onto them.
 
-Run:  & "$py" biorefineries/isobutanol/plots/plot_greedy_trajectories_k1e_inhib_ethanol.py
-Writes the PNG and a CSV of the trajectory points next to the sweep CSVs in
-analyses/results/.
+Run:  python plots/plot_greedy_trajectories_k1e_inhib_ethanol.py
+Writes the PNG and a CSV of the trajectory points to
+paths.publication_dir('Kinetic-sweeps').
 """
 import os
 import importlib.util
@@ -35,24 +36,39 @@ matplotlib.use('Agg')
 from matplotlib.ticker import FuncFormatter
 import numpy as np
 import pandas as pd
-from biosteam.utils import colors
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-RESULTS_DIR = os.path.join(HERE, '..', 'analyses', 'results')
 
-#%% Sweep being plotted (must match analyses/evaluate_EtOH_k1e_inhib_ethanol.py)
+
+def _load_paths():
+    """The package's stdlib-only paths.py, loaded by file path (sim-safe)."""
+    spec = importlib.util.spec_from_file_location(
+        '_ibo_paths', os.path.join(os.path.dirname(HERE), 'paths.py'))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+paths = _load_paths()
+RESULTS_DIR = paths.results_dir()                       # sweep CSVs (inputs)
+OUTPUT_DIR = paths.publication_dir('Kinetic-sweeps')    # figure + trajectory CSV
+
+#%% Sweep being plotted (must match analyses/kinetic_sweeps/evaluate_EtOH_k1e_inhib_ethanol.py)
 
 # `file_to_save` prefix of the sweep run: ibo_{steps}_{x}_{y}_{z}_opt=..._max_n=..._
 # (x_label[:5]='k_1e', y_label[:5]='inhib', z_label[:5]='Spike'; max_n = 16 for
 # scenario A's fed-batch feeding strategy). The loader appends '_<metric>.csv'.
-SWEEP_PREFIX = 'ibo_(20, 20, 1)_k_1e_inhib_Spike_opt=False_max_n=16_'
-STEPS = (20, 20)
-SPEC_1 = np.linspace(1.0, 300.0, STEPS[0])     # k_1e   (x axis, sweep spec_1)
-SPEC_2 = np.linspace(0.2, 2.0, STEPS[1])       # inhib_ethanol multiplier (y, spec_2)
+SWEEP_PREFIX = 'ibo_(40, 40, 1)_k_1e_inhib_Spike_opt=False_max_n=16_'
+STEPS = (40, 40)
+# the sweep's linspaces: k_1e over the metabolic_14d glycolysis band 0.2x-4x of
+# the scenario-A baseline k_1e (47.1 g/L/h), the inhib_ethanol multiplier over
+# the default group band 0.75x-1.5x
+SPEC_1 = np.linspace(0.2 * 47.1, 4.0 * 47.1, STEPS[0])  # k_1e   (x axis, sweep spec_1)
+SPEC_2 = np.linspace(0.75, 1.5, STEPS[1])              # inhib_ethanol multiplier (y, spec_2)
 
 # Trajectory start point, snapped to the nearest grid cell by the plotting
 # function: the scenario-A baseline -- k_1e = 47.1 (Baseline column of
-# analyses/full/parameter_distributions/parameter-distributions_corn_IBO_EtOH_A.xlsx,
+# data/parameter_distributions/parameter-distributions_corn_IBO_EtOH_A.xlsx,
 # read live off the model during the sweep) with the inhib_ethanol family at
 # its baseline (multiplier = 1.0).
 BASELINE_K1E = 47.1
@@ -85,8 +101,8 @@ x_label = r"$\mathbf{k}_{1e}$"
 y_label = r"$\mathbf{inhib_{ethanol}\ multiplier}$"
 x_units = r"$\mathrm{g} \cdot \mathrm{L}^{-1} \cdot \mathrm{h}^{-1}$"
 y_units = r""    # dimensionless (x scenario-A baseline of each member)
-x_ticks = [0, 100, 200, 300]
-y_ticks = [0.2, 0.6, 1.0, 1.4, 1.8]
+x_ticks = [0, 50, 100, 150, 200]     # the grid runs 9.42 -> 188.4
+y_ticks = [0.75, 1.0, 1.25, 1.5]
 
 # IRR is plotted in percent. Colorbar/levels span 0 % (lower bound) to 20 %
 # (upper bound): everything below 0 % falls in the gray under-color, and there
@@ -96,8 +112,11 @@ y_ticks = [0.2, 0.6, 1.0, 1.4, 1.8]
 IRR_w_levels = np.arange(0.0, 20.001, 0.5)
 IRR_cbar_ticks = np.arange(0.0, 20.001, 5.0)       # 0, 5, 10, 15, 20
 IRR_w_ticks = [5.0]                                # black labeled contour line(s)
-IRR_UNDER_GRAY = colors.grey_dark.shade(40).RGBn   # under-color for IRR < 0 %
-#   (the same gray the other kinetic sweep scripts use for the IRR under-color)
+# under-color for IRR < 0 %: biosteam's colors.grey_dark.shade(40).RGBn, held
+# locally so this script never imports biosteam (the same gray the other
+# kinetic sweep scripts use for the IRR under-color)
+IRR_UNDER_GRAY = np.array([0.16862745098039217, 0.16862745098039217,
+                           0.16470588235294117])
 IRR_WHITE_CONTOURS = [0.0, 10.0]                   # white labeled contour lines
 fmt_percent = lambda v, pos=None: f'{v:g}%'
 
@@ -121,11 +140,10 @@ def _load_metric_csv(metric):
     """(1, ny, nx) array from '<SWEEP_PREFIX>_<metric>.csv'; rows are spec_2
     (multiplier) values and columns spec_1 (k_1e) values, as the sweep saves
     them."""
-    path = os.path.join(RESULTS_DIR, f'{SWEEP_PREFIX}_{metric}.csv')
-    if not os.path.isfile(path):
-        raise FileNotFoundError(
-            f'{path}\nRun analyses/evaluate_EtOH_k1e_inhib_ethanol.py first '
-            f'(scenario A, steps {STEPS}).')
+    path = paths.require_input(
+        os.path.join(RESULTS_DIR, f'{SWEEP_PREFIX}_{metric}.csv'),
+        f'the k_1e x inhib_ethanol sweep (analyses/kinetic_sweeps/'
+        f'evaluate_EtOH_k1e_inhib_ethanol.py; scenario A, steps {STEPS})')
     arr = pd.read_csv(path, index_col=0).to_numpy(dtype=float)
     if arr.shape != (STEPS[1], STEPS[0]):
         raise ValueError(f'{metric}: expected shape {(STEPS[1], STEPS[0])}, '
@@ -165,7 +183,7 @@ def main():
         trajectory_marker_sizes=TRAJECTORY_MARKER_SIZES,
         baseline_marker=BASELINE_MARKER,
         # a step must beat the sweep's own convergence tolerance so a plateau
-        # of round-off does not read as a climb (same 1e-4 as the k13_k7ii plot)
+        # of round-off does not read as a climb (sim_rtol = 1e-4)
         min_rel_improvement=1e-4,
         # legend below the axes in one row; the light-grey face keeps both the
         # white and the grey lines visible
@@ -192,7 +210,7 @@ def main():
         axis_tick_fontsize=axis_tick_fontsize,
         n_minor_ticks=1,
         cbar_n_minor_ticks=4,
-        round_yticks_to=1,
+        round_yticks_to=2,
         units_on_newline=(False, False, False, False),
         # x, y, z, w: brackets only around the (present) k_1e units
         units_opening_brackets=[" (", "", "", ""],
@@ -215,7 +233,8 @@ def main():
               fontsize=clabel_fontsize, inline=True, inline_spacing=6, zorder=500)
 
     stem = f'{COLOR_METRIC}_greedy_trajectories_{SWEEP_PREFIX}'
-    png = os.path.join(RESULTS_DIR, stem + '.png')
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    png = os.path.join(OUTPUT_DIR, stem + '.png')
     fig.savefig(png, dpi=300, bbox_inches='tight', facecolor='white')
     print('Saved:', png)
 
@@ -227,7 +246,7 @@ def main():
             rows.append({'metric': m, 'sense': SENSES[m], 'step': step,
                          'k_1e': x, 'inhib_ethanol_multiplier': y,
                          'value': grid[iy, ix]})
-    csv = os.path.join(RESULTS_DIR, stem + '.csv')
+    csv = os.path.join(OUTPUT_DIR, stem + '.csv')
     pd.DataFrame(rows).to_csv(csv, index=False)
     print('Saved:', csv)
 

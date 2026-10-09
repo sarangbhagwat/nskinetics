@@ -10,7 +10,7 @@
 Minimum ethanol selling price (MESP = the sweep's purity-adjusted ethanol MPSP
 at a 15 % IRR, converted from $/kg to $/GGE exactly as in
 plots/plot_uncertainty_MPSP_vs_TCI.py) over the k_1e x inhib_ethanol-multiplier
-grid of analyses/evaluate_EtOH_k1e_inhib_ethanol.py (scenario A, enzyme burden
+grid of analyses/kinetic_sweeps/evaluate_EtOH_k1e_inhib_ethanol.py (scenario A, enzyme burden
 ON, A's fed-batch feeding strategy, no feeding-strategy optimization), with the
 grid optimum of cell density, ethanol titer, productivity, yield, TCI and MESP
 marked and annotated. Format and style follow
@@ -33,7 +33,7 @@ _spec = importlib.util.spec_from_file_location(
 ksf = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(ksf)
 
-# Grid of the sweep to read (analyses/evaluate_EtOH_k1e_inhib_ethanol.py);
+# Grid of the sweep to read (analyses/kinetic_sweeps/evaluate_EtOH_k1e_inhib_ethanol.py);
 # SPEC_1 / SPEC_2 must match that script's linspaces: k_1e over the
 # metabolic_14d glycolysis band 0.2x-4x of scenario A's k_1e (47.1 g/L/h, the
 # nskinetics antimony value), the inhib_ethanol multiplier over the default
@@ -61,6 +61,7 @@ FIGURE = ksf.SweepFigure(
     output_stem='k1e_inhib_ethanol_A',
     csv_prefix=f'ibo_{SWEEP_STEPS}_k_1e_inhib_Spike_opt=False_max_n=16_',
     spec_1=SPEC_1, spec_2=SPEC_2,
+    produced_by='the k_1e x inhib_ethanol sweep (analyses/kinetic_sweeps/evaluate_EtOH_k1e_inhib_ethanol.py)',
     xlabel=r'$\bf{Glycolytic\ capacity}$, $k_{\mathrm{1e}}$' + f' [{ksf.G_PER_L_PER_H}]',
     ylabel=r'$\bf{Ethanol\ inhibition}$ [× baseline]',
     optima=OPTIMA,

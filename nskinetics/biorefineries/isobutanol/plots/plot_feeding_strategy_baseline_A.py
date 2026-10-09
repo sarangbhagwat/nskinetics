@@ -10,7 +10,7 @@
 A  Minimum ethanol selling price (MESP = the sweep's purity-adjusted ethanol
    MPSP at a 15 % IRR, converted from $/kg to $/GGE exactly as in
    plots/plot_uncertainty_MPSP_vs_TCI.py) over the threshold x target
-   glucose-concentration sweep of analyses/evaluate_feeding_strategies.py
+   glucose-concentration sweep of analyses/feeding_strategies/evaluate_feeding_strategies.py
    (spike cap optimized for MPSP at every grid point), with the grid optimum
    of cell density, ethanol titer, productivity, yield, TCI and MESP marked
    and annotated, and the white line = lowest target at which the optimized
@@ -32,6 +32,7 @@ Output: analyses/results/publication/Feed-strat/feeding_strategy_baseline_A.{png
 """
 
 import argparse
+import importlib.util
 import json
 import os
 
@@ -50,9 +51,22 @@ import matplotlib.patheffects as pe
 
 #%% Paths and settings
 
-PACKAGE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-RESULTS_DIR = os.path.join(PACKAGE_DIR, 'analyses', 'results')
-OUTPUT_DIR = os.path.join(RESULTS_DIR, 'publication', 'Feed-strat')
+HERE = os.path.dirname(os.path.abspath(__file__))
+
+
+def _load_paths():
+    """The package's stdlib-only paths.py, loaded by file path (sim-safe)."""
+    spec = importlib.util.spec_from_file_location(
+        '_ibo_paths', os.path.join(os.path.dirname(HERE), 'paths.py'))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+paths = _load_paths()
+PACKAGE_DIR = paths.PACKAGE_DIR
+RESULTS_DIR = paths.results_dir()                 # sweep CSVs + trajectory cache
+OUTPUT_DIR = paths.publication_dir('Feed-strat')  # the figure
 OUTPUT_STEM = 'feeding_strategy_baseline_A'
 TRAJECTORY_STEM = os.path.join(RESULTS_DIR, 'feeding_strategy_baseline_A_trajectory')
 
@@ -117,7 +131,7 @@ TRAJECTORY_SERIES = [
 TIME_LIM = (0., 80.)
 CONC_LIM = (0., 250.)
 
-#%% Formatting (see plots/across_feed_strat_multipanel_global_with_optima_summary.py)
+#%% Formatting (the house style of the retired across_feed_strat multipanel figure)
 
 FONT_FAMILY = 'Arial'
 FONTS = {'tick': 12, 'axis_title': 13, 'annotation': 12, 'legend': 12,
@@ -158,15 +172,17 @@ def style_ticks(ax):
             tick.tick2line.set_markersize(L)
 
 
+#: biosteam's ``colors.grey_dark.RGBn`` (thermosteam.utils.colors: grey
+#: (0.565, 0.569, 0.557) shaded 50 %), held locally so stage 2 never imports
+#: biosteam
+GREY_DARK_RGBN = np.array([0.2823529411764706, 0.2823529411764706,
+                           0.2784313725490196])
+
+
 def JBEI_UCB_colormap(N_levels=90):
     # low = UCB yellow -> JBEI orange -> UCB blue -> dark grey = high
-    try:
-        from biosteam.utils import colors
-        grey_dark = colors.grey_dark.RGBn
-    except Exception:  # keep stage 2 importable without biosteam
-        grey_dark = (0.28, 0.28, 0.28)
     cmap_colors = [(253/255, 181/255, 21/255), (233/255, 83/255, 39/255),
-                   (0/255, 38/255, 118/255), grey_dark]
+                   (0/255, 38/255, 118/255), GREY_DARK_RGBN]
     return LinearSegmentedColormap.from_list('JBEI_UCB', cmap_colors, N_levels)
 
 #%% Stage 1: baseline fermentation time course (simulation)
@@ -215,10 +231,24 @@ def load_baseline_trajectory(resimulate=False):
 
 #%% Stage 2: sweep data
 
+SWEEP_PRODUCED_BY = ('the scenario-A feeding-strategy sweep (analyses/feeding_strategies/'
+                     'evaluate_feeding_strategies.py)')
+
+
+def require_sweep_inputs():
+    """Raise the informative FileNotFoundError of paths.require_input if a
+    sweep CSV panel A reads is missing (checked before any stage-1
+    simulation)."""
+    for metric in dict.fromkeys(['MPSP', 'Number of glucose spikes',
+                                 *(row[0] for row in OPTIMA)]):
+        paths.require_input(SWEEP_CSV.format(metric=metric), SWEEP_PRODUCED_BY)
+
+
 def load_sweep_metric(metric):
     """(n_target, n_threshold) array: row = target (SPEC_2), column =
     threshold (SPEC_1); NaN where threshold > target (not simulated)."""
-    path = SWEEP_CSV.format(metric=metric)
+    path = paths.require_input(SWEEP_CSV.format(metric=metric),
+                               SWEEP_PRODUCED_BY)
     arr = pd.read_csv(path).iloc[:, 1:].to_numpy(dtype=float)
     if arr.shape != (len(SPEC_2), len(SPEC_1)):
         raise ValueError(f'{path}: shape {arr.shape} does not match the '
@@ -408,6 +438,7 @@ def main():
                              'if the trajectory cache exists')
     args = parser.parse_args()
 
+    require_sweep_inputs()   # fail fast, before a stage-1 simulation
     df, meta = load_baseline_trajectory(args.resimulate)
     fig, optima = make_figure(df, meta)
     os.makedirs(OUTPUT_DIR, exist_ok=True)

@@ -7,7 +7,7 @@
 # for license details.
 """
 Spearman tornado figure from an uncertainty-analysis results workbook
-(*_1_full_evaluation.xlsx as written by analyses/full/uncertainties_IBO_EtOH.py):
+(*_1_full_evaluation.xlsx as written by analyses/uncertainty/uncertainties_IBO_EtOH.py):
 Spearman's rank correlation coefficient (rho) of five outcomes with the
 uncertain parameters that matter to each, one tornado per outcome:
 
@@ -42,6 +42,7 @@ import os
 import re
 import glob
 import argparse
+import importlib.util
 
 import numpy as np
 import pandas as pd
@@ -56,8 +57,20 @@ from scipy import stats
 __all__ = ('plot_uncertainty_spearman_tornado',)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-RESULTS_DIR = os.path.join(os.path.dirname(HERE), 'analyses', 'results')
-DEFAULT_OUT_DIR = os.path.join(RESULTS_DIR, 'publication', 'Uncertainty')
+
+
+def _load_paths():
+    """The package's stdlib-only paths.py, loaded by file path (sim-safe)."""
+    spec = importlib.util.spec_from_file_location(
+        '_ibo_paths', os.path.join(os.path.dirname(HERE), 'paths.py'))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+paths = _load_paths()
+RESULTS_DIR = paths.results_dir()                     # the uncertainty workbooks
+DEFAULT_OUT_DIR = paths.publication_dir('Uncertainty')
 
 RHO_MIN = 0.10 # |rho| at or above it ...
 P_MAX = 0.05   # ... and p below it -> shown
@@ -164,7 +177,10 @@ def newest_results_file(scenario='A'):
     files = [f for f in glob.glob(os.path.join(glob.escape(RESULTS_DIR), '*_1_full_evaluation.xlsx'))
              if f"['{scenario}']" in os.path.basename(f)]
     if not files:
-        raise FileNotFoundError(f'no scenario-{scenario} *_1_full_evaluation.xlsx in {RESULTS_DIR}')
+        paths.require_input(
+            os.path.join(RESULTS_DIR, f"*['{scenario}']*_1_full_evaluation.xlsx"),
+            f'the scenario-{scenario} uncertainty analysis (analyses/uncertainty/'
+            'uncertainties_IBO_EtOH.py)')
     return max(files, key=os.path.getmtime)
 
 

@@ -12,10 +12,12 @@ campaigns are not used. Every statement in the figures and captions is about the
 runs.
 
 Everything here is **sim-safe**. It reads the campaign CSVs with pandas. It never imports
-`biorefineries.*`, nskinetics, biosteam, thermosteam or optuna, and it never calls `load()`.
-`plots/plot_kin_opt_parameter_sets.py` (pk) is loaded by file path, and only lazily, for
-the scenario-A baseline. That means any script here can run on any numba-cache state,
-alongside a running simulation.
+the upstream `biorefineries` package, nskinetics, biosteam, thermosteam, hensmith or optuna,
+and it never calls `load()`. The package's `paths.py` and `plots/plot_kin_opt_parameter_sets.py`
+(pk; only lazily, for the scenario-A baseline) are loaded by file path. That means any script
+here can run on any numba-cache state, alongside a running simulation. `_common.FORBIDDEN_MODULES`
+lists what must never be imported; `assert_sim_safe()` checks the whole process (strict when run
+as a script) and `sim_safe_block()` checks one block (robust in a shared process such as pytest).
 
 ## Files
 
@@ -23,20 +25,22 @@ alongside a running simulation.
 |---|---|
 | `_common.py` | Data layer. It holds the paths and the campaign registry, the cached loaders, and the one set of definitions. It also holds the proteome sectors, the decision bands, `compute_facts()`, `EXPECTED` and `check_facts()`. The public API is documented at the top of the file. |
 | `_style.py` | Style layer. It holds the palette, rcParams, `style_ticks` and inch-based placement. It provides the IRR / log-trial / logit axes, the loss band, plateau and tint helpers, and `inline_key`. It also holds the render checks (`text_overlaps`, `tick_label_collisions`, `min_font_check`, `glyph_check`, `marker_text_hits`, `check_figure`), the palette check (`cvd_check`) and `save()`. The public API is documented at the top of the file. |
-| `check_facts.py` | The folder's offline test. It prints every computed-vs-expected fact, the data-scope check (the eight registered campaigns only), the hard-coded-literal scan of the two figure scripts, the palette check and the sim-safety check. It exits 1 on any mismatch. |
+| `check_facts.py` | The folder's offline test. It prints every computed-vs-expected fact, the data-scope check (the eight registered campaigns only), the hard-coded-literal scan of the two figure scripts, the palette check and the sim-safety check. It exits 1 on any mismatch. Without the campaign / Sobol' CSVs it skips the facts with a message naming the missing inputs and still runs the other checks. |
 | `fig_main_scouts.py` | Main figure (panels a–f), stem `kinBO_main_scouts`. |
 | `fig_s2_fingerprints.py` | Fig. S2, the design-fingerprint heatmap, stem `kinBO_S2_fingerprints`. |
 
-The full figure specification is in `figwork/figure_spec.md` in the session scratchpad. It
+The full figure specification (`figwork/figure_spec.md`) lived in a session scratchpad and
 is not tracked.
 
 ## Running
 
 ```powershell
-$py = "C:\Users\saran\anaconda3\envs\IBO_2026\python.exe"
-& $py plots\optimization_figure_ideas\check_facts.py        # exit 0 = ALL CHECKS PASSED
-& $py plots\optimization_figure_ideas\fig_main_scouts.py
+python plots\optimization_figure_ideas\check_facts.py        # exit 0 = ALL CHECKS PASSED
+python plots\optimization_figure_ideas\fig_main_scouts.py
 ```
+
+Inputs are read from the results root (`paths.results_dir()`; set
+`NSKINETICS_IBO_RESULTS_DIR` to read an earlier run's results).
 
 Optional flags for `check_facts.py`:
 
@@ -82,13 +86,14 @@ C.assert_sim_safe()
 
 ## Outputs
 
-Outputs go to `analyses/results/publication/Optimization-figures/`, which is gitignored with
+Outputs go to `paths.publication_dir('Optimization-figures')`
+(`analyses/results/publication/Optimization-figures/` by default), which is gitignored with
 the rest of `results/`.
 
-* `save()` writes `<stem>_<YYYY.MM.DD-HH.MM>.png` (300 dpi) and `.pdf`. It never uses
-  `bbox_inches='tight'`, because the layout is fixed in inches.
-* It also writes stable copies `<stem>_latest.png` / `.pdf`, overwritten on every run, so
-  reviewers can always find the newest render.
+* `save()` writes `<stem>.png` (300 dpi) and `<stem>.pdf`, overwritten on every run. It never
+  uses `bbox_inches='tight'`, because the layout is fixed in inches.
+* With `timestamped=True` (`fig_main_scouts.py --timestamped`) it also writes dated copies
+  `<stem>_<YYYY.MM.DD-HH.MM>.png` / `.pdf`, to keep a render history.
 * It asserts the following:
   * every path is at most 259 characters (LongPathsEnabled is off on this machine);
   * the PNG is exactly the canvas size × 300 dpi (main figure: 3000 × 2370 px);
@@ -98,7 +103,7 @@ the rest of `results/`.
 
 ## Data sources
 
-All files are in `analyses/results/`. Study stems have the form
+All files are in the results root (`analyses/results/` by default). Study stems have the form
 `kin_opt_ethanol_isobutanol_metabolic_split_12d_<slug>_gp_rb0.001-4_ib0.75-1.5_aA<tag>_burden`.
 
 | key | slug / tag | figure label |

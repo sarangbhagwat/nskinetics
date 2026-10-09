@@ -34,7 +34,7 @@ Two modes:
   since the screen picked the slice for the PI-rough / isobutanol-smooth
   contrast.
 
-Data: written by analyses/evaluate_axis_try_informed_optimum.py (the simulation
+Data: written by analyses/objective_landscape/evaluate_axis_try_informed_optimum.py (the simulation
 stage, ask-first). Sim-safe: reads CSV / JSON only; reuses the typeface and
 tick helpers of plot_k13_try_informed_sweep.py by file path; never imports the
 biorefineries package.
@@ -64,10 +64,13 @@ _spec = importlib.util.spec_from_file_location(
 k13p = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(k13p)
 
-RESULTS_DIR = k13p.RESULTS_DIR
+paths = k13p.paths                  # the package's paths.py (loaded by k13p)
+RESULTS_DIR = k13p.RESULTS_DIR      # sweep CSVs + anchors (inputs), screen ranking
 SWEEP_STEM = 'evaluate_axis_try_informed_optimum'
+PRODUCED_BY = ('the one-axis slices through the TRY-informed optimum '
+               '(analyses/objective_landscape/evaluate_axis_try_informed_optimum.py)')
 K13_SWEEP_CSV = os.path.join(RESULTS_DIR, 'evaluate_k13_try_informed_optimum.csv')
-OUT_DIR = os.path.join(RESULTS_DIR, 'publication', 'Objective-landscape')
+OUT_DIR = k13p.OUTPUT_DIR           # publication/Objective-landscape
 FONTS = k13p.FONTS
 PI_COLOR, YIELD_COLOR = k13p.PI_COLOR, k13p.YIELD_COLOR
 RATE = r'[$\mathrm{g·L}^{-1}·\mathrm{h}^{-1}$]'
@@ -205,8 +208,10 @@ def k13_reference(n_points):
 # --screen: ranking table + small-multiples overview
 # -----------------------------------------------------------------------------
 def screen(dpi):
-    path = os.path.join(RESULTS_DIR, f'{SWEEP_STEM}_screen.csv')
-    with open(path[:-len('.csv')] + '_anchor.json') as fh:
+    path = paths.require_input(
+        os.path.join(RESULTS_DIR, f'{SWEEP_STEM}_screen.csv'), PRODUCED_BY)
+    with open(paths.require_input(path[:-len('.csv')] + '_anchor.json',
+                                  PRODUCED_BY)) as fh:
         anchor = json.load(fh)
     frame = pd.read_csv(path)
     params = list(dict.fromkeys(frame['param']))
@@ -294,8 +299,10 @@ def screen(dpi):
 # -----------------------------------------------------------------------------
 def plot_param(param, dpi, stem=None, irr=True):
     yield_column, yield_label, stem_suffix = FIGURE_YIELD
-    path = os.path.join(RESULTS_DIR, f'{SWEEP_STEM}_{param}.csv')
-    with open(path[:-len('.csv')] + '_anchor.json') as fh:
+    path = paths.require_input(
+        os.path.join(RESULTS_DIR, f'{SWEEP_STEM}_{param}.csv'), PRODUCED_BY)
+    with open(paths.require_input(path[:-len('.csv')] + '_anchor.json',
+                                  PRODUCED_BY)) as fh:
         anchor = json.load(fh)
     frame = pd.read_csv(path).sort_values('value').reset_index(drop=True)
     band = anchor['bands'][param]

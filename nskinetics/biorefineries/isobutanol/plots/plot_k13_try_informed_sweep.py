@@ -19,7 +19,7 @@ and are counted in the legend. The console prints a roughness summary of both
 curves along the sweep (normalized total variation, number of local maxima).
 
 Data: results/evaluate_k13_try_informed_optimum.csv + _anchor.json, written by
-analyses/evaluate_k13_try_informed_optimum.py (the simulation stage, ask-first).
+analyses/objective_landscape/evaluate_k13_try_informed_optimum.py (the simulation stage, ask-first).
 Sim-safe: reads the CSV / JSON only; never imports the biorefineries package.
 
 Usage:
@@ -29,6 +29,7 @@ Usage:
 import os
 import json
 import argparse
+import importlib.util
 
 import numpy as np
 import pandas as pd
@@ -38,9 +39,25 @@ from matplotlib import pyplot as plt
 from matplotlib.lines import Line2D, TICKDOWN
 from matplotlib.patches import Patch
 
-PKG_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-RESULTS_DIR = os.path.join(PKG_DIR, 'analyses', 'results')
+HERE = os.path.dirname(os.path.abspath(__file__))
+
+
+def _load_paths():
+    """The package's stdlib-only paths.py, loaded by file path (sim-safe)."""
+    spec = importlib.util.spec_from_file_location(
+        '_ibo_paths', os.path.join(os.path.dirname(HERE), 'paths.py'))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+paths = _load_paths()
+PKG_DIR = paths.PACKAGE_DIR
+RESULTS_DIR = paths.results_dir()                          # sweep CSV + anchor
+OUTPUT_DIR = paths.publication_dir('Objective-landscape')  # default figure folder
 SWEEP_STEM = 'evaluate_k13_try_informed_optimum'
+PRODUCED_BY = ('the k_13 slice through the TRY-informed optimum (analyses/objective_landscape/'
+               'evaluate_k13_try_informed_optimum.py)')
 
 # -----------------------------------------------------------------------------
 # Typeface, font sizes, tick style (the package's publication conventions)
@@ -114,8 +131,10 @@ def roughness(x, y):
 
 
 def load(csv_path):
+    paths.require_input(csv_path, PRODUCED_BY)
     frame = pd.read_csv(csv_path).sort_values('k_13').reset_index(drop=True)
-    anchor_path = csv_path[:-len('.csv')] + '_anchor.json'
+    anchor_path = paths.require_input(csv_path[:-len('.csv')] + '_anchor.json',
+                                      PRODUCED_BY)
     with open(anchor_path) as fh:
         anchor = json.load(fh)
     return frame, anchor
@@ -230,8 +249,7 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
     ap.add_argument('--csv', default=os.path.join(RESULTS_DIR,
                                                   SWEEP_STEM + '.csv'))
-    ap.add_argument('--out-dir', default=os.path.join(
-        RESULTS_DIR, 'publication', 'Objective-landscape'))
+    ap.add_argument('--out-dir', default=OUTPUT_DIR)
     ap.add_argument('--stem', default='k13_try_informed_sweep')
     ap.add_argument('--dpi', type=int, default=300)
     args = ap.parse_args(argv)

@@ -15,10 +15,16 @@ palette (`_style.cvd_check()`) and confirm no simulation package was
 imported. Exit 0 = all checks passed,
 1 = any mismatch.
 
+When the campaign / Sobol' CSVs are absent (only
+analyses/results/publication ships with the repository) the facts are
+SKIPPED with a message naming the missing inputs and the analyses that write
+them; the data-independent checks (data scope, literal scan, palette,
+sim-safety of loading pk / ko / eb) still run, and the exit code is 0 if they
+pass.
+
 Usage::
 
-    "C:/Users/saran/anaconda3/envs/IBO_2026/python.exe" check_facts.py
-        [--failures-only] [--no-literal-scan] [--no-palette]
+    python check_facts.py [--failures-only] [--no-literal-scan] [--no-palette]
 """
 import argparse
 import os
@@ -44,26 +50,39 @@ def main(argv=None):
                     help='skip the colour-vision / grayscale palette check')
     args = ap.parse_args(argv)
 
+    # a fresh process (script) gets the strict process-wide sim-safety check;
+    # a shared one (e.g. pytest) checks only what this run imports
+    before = None if not C._PRELOADED else frozenset(sys.modules)
     t0 = time.time()
-    facts = C.compute_facts()
-    rows = C.fact_table(facts)
-    n_bad = 0
-    print(f'{"":4s} {"fact":60s} {"computed":>14s} {"expected":>14s}  tol')
-    for r in rows:
-        if not r.ok:
-            n_bad += 1
-        if args.failures_only and r.ok:
-            continue
-        flag = 'ok  ' if r.ok else 'FAIL'
-        note = f'  [{r.note}]' if r.note else ''
-        print(f'{flag} {r.path:60s} {_fmt(r.computed):>14s} '
-              f'{_fmt(r.expected):>14s}  {r.tol:.2g}{note}')
-    print(f'\nfacts: {len(rows) - n_bad} of {len(rows)} match EXPECTED '
-          f'({time.time() - t0:.1f} s)')
-
     failures = []
-    if n_bad:
-        failures.append(f'{n_bad} fact mismatch(es)')
+    missing = C.missing_inputs()
+    if missing:
+        print(f'facts: SKIPPED -- {len(missing)} input file(s) missing:')
+        for path, produced_by in missing:
+            print(f'  {path}\n      (produced by {produced_by})')
+        print(f'  run those analyses first, or set {C._paths.RESULTS_DIR_ENV} '
+              'to a results folder that has them')
+        with C.sim_safe_block('loading pk / ko / eb'):
+            C._pk()
+    else:
+        with C.sim_safe_block('compute_facts()'):
+            facts = C.compute_facts()
+        rows = C.fact_table(facts)
+        n_bad = 0
+        print(f'{"":4s} {"fact":60s} {"computed":>14s} {"expected":>14s}  tol')
+        for r in rows:
+            if not r.ok:
+                n_bad += 1
+            if args.failures_only and r.ok:
+                continue
+            flag = 'ok  ' if r.ok else 'FAIL'
+            note = f'  [{r.note}]' if r.note else ''
+            print(f'{flag} {r.path:60s} {_fmt(r.computed):>14s} '
+                  f'{_fmt(r.expected):>14s}  {r.tol:.2g}{note}')
+        print(f'\nfacts: {len(rows) - n_bad} of {len(rows)} match EXPECTED '
+              f'({time.time() - t0:.1f} s)')
+        if n_bad:
+            failures.append(f'{n_bad} fact mismatch(es)')
 
     # data scope: only this work's eight campaigns (run 2026-09-23/24; the
     # seed-350 uninformed + six scouts and the _rl15c111dc relay)
@@ -95,15 +114,20 @@ def main(argv=None):
             failures.append('palette check')
 
     try:
-        C.assert_sim_safe()
-        print('\nsim-safety: no biorefineries / nskinetics / biosteam / '
-              'thermosteam / optuna module imported')
+        C.assert_sim_safe(since=before)
+        print('\nsim-safety: no forbidden module imported '
+              f'({", ".join(C.FORBIDDEN_MODULES[:5])}, the isobutanol '
+              'build modules)' + ('' if before is None else
+                                  ' by this run (shared process)'))
     except RuntimeError as e:
         failures.append(str(e))
 
     if failures:
         print('\nCHECK FACTS FAILED: ' + '; '.join(failures))
         return 1
+    if missing:
+        print('\nCHECKS PASSED (facts SKIPPED: campaign / Sobol\' CSVs absent)')
+        return 0
     print('\nALL CHECKS PASSED')
     return 0
 

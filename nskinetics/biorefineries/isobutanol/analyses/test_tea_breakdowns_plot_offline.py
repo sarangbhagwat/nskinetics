@@ -35,8 +35,21 @@ import importlib.util
 import numpy as np
 
 PKG_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def _load_paths():
+    """The package's stdlib-only paths.py, loaded by file path (no package
+    import, so no simulation)."""
+    spec = importlib.util.spec_from_file_location(
+        '_ibo_paths', os.path.join(PKG_DIR, 'paths.py'))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+PLOTS_DIR = _load_paths().PLOTS_DIR
 _spec = importlib.util.spec_from_file_location(
-    'ptb', os.path.join(PKG_DIR, 'plots', 'plot_tea_breakdowns_split12d.py'))
+    'ptb', os.path.join(PLOTS_DIR, 'plot_tea_breakdowns_split12d.py'))
 ptb = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(ptb)
 

@@ -84,7 +84,12 @@ variants (--variants selects a subset):
   parameters     the final kinetic and process parameters of every set, the
                  relay campaign included.
 The relay's legend line says what it was seeded with.
-Writes <stem>_<variant>_<stamp>.png and .pdf to --out-dir.
+Writes <stem>_<variant>_<stamp>.png and .pdf to --out-dir (default
+paths.publication_dir('Optimization-figures')). The default stem is
+'kinBO_parameter_sets' ('kinBO_enzyme_lever_map' with --pathway) for the
+no---set default sets, else '<first campaign>_parameter_sets': a
+campaign-derived name under the publication folder exceeds Windows' 260-
+character MAX_PATH, so pass --stem (or a shorter --out-dir) with --set.
 """
 import os
 import re
@@ -102,8 +107,27 @@ from matplotlib.ticker import (AutoMinorLocator, FixedLocator, FuncFormatter,
                                NullLocator, PercentFormatter)
 
 # --- sim-safe module loads (by file path; never import the package) ----------
-PKG_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-RESULTS_DIR = os.path.join(PKG_DIR, 'analyses', 'results')
+HERE = os.path.dirname(os.path.abspath(__file__))
+
+
+def _load_paths():
+    """The package's stdlib-only paths.py, loaded by file path (sim-safe)."""
+    spec = importlib.util.spec_from_file_location(
+        '_ibo_paths', os.path.join(os.path.dirname(HERE), 'paths.py'))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+paths = _load_paths()
+PKG_DIR = paths.PACKAGE_DIR                          # ko / eb live here
+RESULTS_DIR = paths.results_dir()                    # campaign trajectory CSVs
+OUTPUT_DIR = paths.publication_dir('Optimization-figures')
+# file stems of the no---set default figures (a campaign-derived stem under
+# OUTPUT_DIR would exceed MAX_PATH_CHARS)
+DEFAULT_STEM = 'kinBO_parameter_sets'
+DEFAULT_PATHWAY_STEM = 'kinBO_enzyme_lever_map'
+CAMPAIGN_PRODUCED_BY = 'the kinetic-BO campaign runs (analyses/kinetic_optimization/optimize_kinetics_BO.py)'
 # The no-argument default plots seven metabolic_split_12d campaigns -- one per
 # objective below, in this order (which also fixes the HUE_COLORS assignment:
 # cyan financial, then the three isobutanol campaigns, then the three ethanol
@@ -548,9 +572,7 @@ def resolve_campaign_csv(campaign):
         path = campaign
     else:
         path = os.path.join(RESULTS_DIR, f'{campaign}_trajectory.csv')
-    if not os.path.isfile(path):
-        raise FileNotFoundError(f'campaign trajectory CSV not found: {path}')
-    return path
+    return paths.require_input(path, CAMPAIGN_PRODUCED_BY)
 
 
 def campaign_objective(campaign):
@@ -868,14 +890,14 @@ def campaign_band(campaign):
       real run (which discovers every parameter off the LIVE model,
       still 0 there) supplies a `param_bounds_override` derived from the
       scenario-B workbook instead (`kinetic_bounds_from_scenario` in
-      analyses/optimize_kinetics_BO.py, ko.workbook_kinetic_bounds here)
+      analyses/kinetic_optimization/optimize_kinetics_BO.py, ko.workbook_kinetic_bounds here)
       so those rates still get a positive, B-baseline-derived band.
     - the inhibition-coefficient group members (k_1ie, k_4ie, ...) are
       likewise absent from the A workbook, but -- unlike the Ehrlich
       rates -- they are NOT zero in the live A model: A's workbook simply
       doesn't curate them, so they carry the shipped Antimony default,
-      which is numerically the scenario-B workbook value (see
-      plot_kin_opt_best_vs_baseline_heatmap.py's `build_rows`, same
+      which is numerically the scenario-B workbook value (the retired
+      minimal_subset best-vs-baseline heatmap's `build_rows` used the same
       fallback). A group member needs that positive value in
       `kinetic_baselines` itself, not just an override.
     Every name shared by both workbooks (k_1l, k_1h, k_1e, k_3, k_6) has
@@ -2485,9 +2507,10 @@ def pinned_relay_spec(label=DEFAULT_RELAY_LABEL, results_dir=RESULTS_DIR):
 def _require_trajectory(study, results_dir):
     path = os.path.join(results_dir, f'{study}_trajectory.csv')
     if not os.path.isfile(path):
-        raise FileNotFoundError(
-            f'pinned default campaign not found: {path} (pass --latest to pick '
-            'the most recent campaigns, or --set)')
+        paths.require_input(
+            path, f'the pinned default kinetic-BO campaign {study!r} (analyses/kinetic_optimization/'
+                  'optimize_kinetics_BO.py); or pass --latest to pick the most '
+                  'recent campaigns, or --set')
 
 
 def _insert_relay(specs, relay):
@@ -2538,8 +2561,11 @@ def main(argv=None):
                          'DEFAULT_RELAY_CAMPAIGN, pick the most recent '
                          'metabolic_split_12d campaign per objective (>= 2000 '
                          'trials) and the most recent relay campaign')
-    ap.add_argument('--out-dir', default=RESULTS_DIR)
-    ap.add_argument('--stem', default=None)
+    ap.add_argument('--out-dir', default=OUTPUT_DIR)
+    ap.add_argument('--stem', default=None,
+                    help=f'output file stem (default: {DEFAULT_STEM!r} / '
+                         f'{DEFAULT_PATHWAY_STEM!r} without --set, else '
+                         '<first campaign>_parameter_sets / _enzyme_lever_map)')
     ap.add_argument('--dpi', type=int, default=300)
     args = ap.parse_args(argv)
 
@@ -2594,8 +2620,9 @@ def main(argv=None):
     if args.pathway:
         colors = pathway_colors(sets)
         plm = _load('_pathway_lever_map',
-                    os.path.join('plots', '_pathway_lever_map.py'))
-        stem = args.stem or (f'{os.path.basename(specs[0][1]).replace(".csv", "")}'
+                    os.path.join(HERE, '_pathway_lever_map.py'))
+        stem = args.stem or (DEFAULT_PATHWAY_STEM if not args.sets else
+                             f'{os.path.basename(specs[0][1]).replace(".csv", "")}'
                              '_enzyme_lever_map')
         out_stem = os.path.join(args.out_dir, f'{stem}_{stamp}')
         plm.plot_pathway_lever_map(sets, colors, out_stem, ko=ko, eb=eb,
@@ -2603,8 +2630,9 @@ def main(argv=None):
         console_report(sets, band_campaign)
         print(f'wrote {out_stem}.png / .pdf')
         return out_stem
-    stem = args.stem or f'{os.path.basename(specs[0][1]).replace(".csv", "")}' \
-                        '_parameter_sets'
+    stem = args.stem or (DEFAULT_STEM if not args.sets else
+                         f'{os.path.basename(specs[0][1]).replace(".csv", "")}'
+                         '_parameter_sets')
     variants = ('parameters',) if args.params_only else tuple(args.variants)
     out_stems = {v: os.path.join(args.out_dir, f'{stem}_{v}_{stamp}')
                  for v in FIGURE_VARIANTS if v in variants}

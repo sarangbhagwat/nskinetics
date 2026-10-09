@@ -18,9 +18,17 @@ import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 from matplotlib.colors import LinearSegmentedColormap
 import contourplots
-from biosteam.utils import colors
 
 __all__ = ('plot_metric_with_trajectories', 'JBEI_UCB_colormap')
+
+#: biosteam's ``colors.grey_dark.RGBn`` (thermosteam.utils.colors: grey
+#: (0.565, 0.569, 0.557) shaded 50 %), held locally so this module never
+#: imports biosteam
+GREY_DARK_RGBN = np.array([0.2823529411764706, 0.2823529411764706,
+                           0.2784313725490196])
+#: biosteam's ``colors.grey_dark.shade(8).RGBn``: the default over-color
+GREY_DARK_SHADE8_RGBN = np.array([0.25882352941176473, 0.25882352941176473,
+                                  0.2549019607843137])
 
 #: default trajectory line/marker colors, cycled across trajectory metrics
 _DEFAULT_TRAJECTORY_COLORS = (
@@ -34,7 +42,7 @@ def JBEI_UCB_colormap(N_levels=90, reverse=False):
     JBEI_orange = (233 / 255, 83 / 255, 39 / 255)
     UCB_blue = (0 / 255, 38 / 255, 118 / 255)
     UCB_yellow = (253 / 255, 181 / 255, 21 / 255)
-    cmap_colors = [UCB_yellow, JBEI_orange, UCB_blue, colors.grey_dark.RGBn]
+    cmap_colors = [UCB_yellow, JBEI_orange, UCB_blue, GREY_DARK_RGBN]
     if reverse:
         cmap_colors = cmap_colors[::-1]
     return LinearSegmentedColormap.from_list('CABBI', cmap_colors, N_levels)
@@ -207,7 +215,7 @@ def plot_metric_with_trajectories(
     if cmap is None:
         cmap = JBEI_UCB_colormap()
     if cmap_over_color is None:
-        cmap_over_color = colors.grey_dark.shade(8).RGBn
+        cmap_over_color = GREY_DARK_SHADE8_RGBN
     if x_ticks is None:
         x_ticks = [float(spec_1[0]), float(spec_1[-1])]
     if y_ticks is None:

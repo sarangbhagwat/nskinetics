@@ -26,9 +26,13 @@ from ps.BURDEN_CATEGORIES), not by per-cell labels or leader-line
 callouts.
 
 Two stages: this script (Stage 1, IBO_2026, sim-safe) computes the
-allocation and writes JSON, then invokes the voronoi-treemaps conda env's
-node on plots/voronoi/render_treemap.mjs (Stage 2) to render PNG/SVG/PDF.
-Use --no-render to write only the JSON.
+allocation and writes JSON, then invokes Node (the voronoi-treemaps conda
+env's, see resolve_node) on plots/voronoi/render_treemap.mjs (Stage 2) to
+render PNG/SVG/PDF. Use --no-render to write only the JSON. Outputs go to
+--out-dir, default paths.publication_dir('Optimization-figures'), as
+<stem>_<stamp>.{json,png,pdf}; the default stem is 'kinBO_proteome_voronoi'
+without --set (a campaign-derived stem there would exceed Windows' MAX_PATH),
+else '<first campaign>_proteome_voronoi'.
 
 Sim-safe: plot_kin_opt_parameter_sets.py (ps) -- and through it ko and eb
 -- are loaded by file path (no biosteam import, no load()); campaign CSVs
@@ -39,24 +43,42 @@ flight. Run:
         --set "Best IRR" <campaign> best \
         --set "Best isobutanol titer" <campaign> "best:IBO titer"
 
-With no --set arguments it plots the same five-study default as the
-parameter-sets figure (one optimum per objective) against the baseline
--> 6 tiles.
+With no --set arguments it plots the parameter-sets figure's pinned default
+campaigns (ps.DEFAULT_CAMPAIGNS: the seven seed-350 metabolic_split_12d
+campaigns, one optimum per objective; the relay is not drawn) against the
+baseline -> 8 tiles.
 """
 import os
+import sys
 import json
+import shutil
 import argparse
 import importlib.util
 import subprocess
 from datetime import datetime
 
-PKG_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-PLOTS_DIR = os.path.join(PKG_DIR, 'plots')
-RESULTS_DIR = os.path.join(PKG_DIR, 'analyses', 'results')  # matches ps
+PLOTS_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
+def _load_paths():
+    """The package's stdlib-only paths.py, loaded by file path (sim-safe)."""
+    spec = importlib.util.spec_from_file_location(
+        '_ibo_paths', os.path.join(os.path.dirname(PLOTS_DIR), 'paths.py'))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+paths = _load_paths()
+PKG_DIR = paths.PACKAGE_DIR
+RESULTS_DIR = paths.results_dir()                          # matches ps
+OUTPUT_DIR = paths.publication_dir('Optimization-figures')
+DEFAULT_STEM = 'kinBO_proteome_voronoi'   # the no---set default figure
 VORONOI_DIR = os.path.join(PLOTS_DIR, 'voronoi')
-# the voronoi-treemaps conda env's node; override with --node or $VORONOI_NODE
-DEFAULT_VORONOI_NODE = (r'C:\Users\saran\anaconda3\envs\voronoi-treemaps'
-                        r'\node.exe')
+# Node of the voronoi-treemaps conda env, a sibling of the running env
+# (<envs>/IBO_2026/python.exe -> <envs>/voronoi-treemaps/node.exe; bin/node on
+# POSIX); override with --node or $VORONOI_NODE (see resolve_node)
+VORONOI_ENV = 'voronoi-treemaps'
 RENDER_SCRIPT = os.path.join(VORONOI_DIR, 'render_treemap.mjs')
 
 TOL = 1e-6
@@ -230,13 +252,11 @@ def build_document(sets, band_campaign):
 
 
 # --- default studies (mirror the parameter-sets figure) ---------------------
-DEFAULT_SPECS = (
-    ('Financial attractiveness', ps.DEFAULT_STUDY, 'best'),
-    ('Isobutanol titer', ps.IBO_TITER_STUDY, 'best'),
-    ('Ethanol titer', ps.ETOH_TITER_STUDY, 'best'),
-    ('Isobutanol yield', ps.IBO_YIELD_STUDY, 'best'),
-    ('Ethanol yield', ps.ETOH_YIELD_STUDY, 'best'),
-)
+# the "best" trial of each pinned default campaign, in ps.DEFAULT_OBJECTIVES
+# order and with its labels (so the tiles take the parameter-sets figure's
+# hue order): 7 campaigns + the baseline = ps.MAX_SETS tiles
+DEFAULT_SPECS = tuple((label, ps.DEFAULT_CAMPAIGNS[objective], 'best')
+                      for label, objective in ps.DEFAULT_OBJECTIVES)
 
 
 def _norm_trial(t):
@@ -291,8 +311,10 @@ def build_parser():
                          'baseline. TRIAL is an int, "best", or "best:COL".')
     ap.add_argument('--no-baseline', action='store_true',
                     help='drop the scenario-A baseline tile')
-    ap.add_argument('--out-dir', default=RESULTS_DIR)
-    ap.add_argument('--stem', default=None)
+    ap.add_argument('--out-dir', default=OUTPUT_DIR)
+    ap.add_argument('--stem', default=None,
+                    help=f'output file stem (default: {DEFAULT_STEM!r} without '
+                         '--set, else <first campaign>_proteome_voronoi)')
     ap.add_argument('--cols', type=int, default=None,
                     help='grid columns (default: chosen from the tile count)')
     ap.add_argument('--scale', type=float, default=2.0,
@@ -305,17 +327,33 @@ def build_parser():
     return ap
 
 
+def default_node_candidates():
+    """Node executables tried when neither --node nor $VORONOI_NODE is set:
+    the voronoi-treemaps conda env next to the running interpreter's env, then
+    `node` on PATH."""
+    envs = os.path.dirname(os.path.dirname(os.path.abspath(sys.executable)))
+    cands = [os.path.join(envs, VORONOI_ENV, 'node.exe'),
+             os.path.join(envs, VORONOI_ENV, 'bin', 'node')]
+    on_path = shutil.which('node')
+    if on_path:
+        cands.append(on_path)
+    return cands
+
+
 def resolve_node(cli_node=None):
-    """Path to the voronoi-treemaps node.exe: --node, else $VORONOI_NODE,
-    else DEFAULT_VORONOI_NODE. Errors clearly if it does not exist."""
-    node = cli_node or os.environ.get('VORONOI_NODE') or DEFAULT_VORONOI_NODE
-    if not os.path.isfile(node):
-        raise FileNotFoundError(
-            f'voronoi-treemaps node not found at {node!r}. Create the env '
-            '(conda create -n voronoi-treemaps -c conda-forge nodejs; '
-            'npm --prefix plots/voronoi install) or pass --node / set '
-            '$VORONOI_NODE. Use --no-render to write only the JSON.')
-    return node
+    """Path to the Node executable of Stage 2: --node, else $VORONOI_NODE,
+    else the first existing default_node_candidates(). Errors clearly if
+    none exists."""
+    explicit = cli_node or os.environ.get('VORONOI_NODE')
+    cands = [explicit] if explicit else default_node_candidates()
+    for node in cands:
+        if os.path.isfile(node):
+            return node
+    raise FileNotFoundError(
+        f'voronoi-treemaps node not found (tried {cands!r}). Create the env '
+        '(conda create -n voronoi-treemaps -c conda-forge nodejs; '
+        'npm --prefix plots/voronoi install) or pass --node / set '
+        '$VORONOI_NODE. Use --no-render to write only the JSON.')
 
 
 def render(json_path, args):
@@ -335,10 +373,16 @@ def render(json_path, args):
 def main(argv=None):
     args = build_parser().parse_args(argv)
     specs, include_baseline = resolve_specs(args)
+    # metabolic_split_12d campaigns (the default) need ps's split_12d panel-B
+    # layout, exactly as plot_kin_opt_parameter_sets.main switches to it
+    stems = [os.path.basename(c) for _, c, _ in specs]
+    if stems and all('metabolic_split_12d' in st for st in stems):
+        ps.use_split_12d_layout()
     sets, _band, band_campaign = ps.build_sets(specs, include_baseline)
     doc = build_document(sets, band_campaign)
-    stem = args.stem or (
-        f'{os.path.basename(specs[0][1]).replace(".csv", "")}_proteome_voronoi')
+    stem = args.stem or (DEFAULT_STEM if not args.sets else
+                         f'{os.path.basename(specs[0][1]).replace(".csv", "")}'
+                         '_proteome_voronoi')
     stamp = datetime.now().strftime('%Y.%m.%d-%H.%M')
     json_path = write_document(doc, args.out_dir, stem, stamp)
     console_report(doc)

@@ -100,8 +100,8 @@ def _load_by_path(name, filename):
 old = _load_by_path('_objective_landscape_data', '_objective_landscape_data.py')
 
 # -----------------------------------------------------------------------------
-# Typeface, font sizes, tick style (after
-# across_feed_strat_multipanel_global_with_optima_summary.py)
+# Typeface, font sizes, tick style (after the house style of the retired
+# across_feed_strat multipanel figure)
 # -----------------------------------------------------------------------------
 FONT_FAMILY = 'Arial'
 FONTS = {'tick': 12, 'axis_title': 12, 'panel_label': 12, 'cbar_title': 12,
@@ -376,8 +376,7 @@ def draw_figure(data, Y, info, stats, out_dir, stem, dpi):
 # -----------------------------------------------------------------------------
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
-    p.add_argument('--out-dir', default=os.path.join(
-        old.RESULTS_DIR, 'publication', 'Objective-landscape'))
+    p.add_argument('--out-dir', default=old.OUTPUT_DIR)
     p.add_argument('--stem', default='objective_landscape_embedding')
     p.add_argument('--dpi', type=int, default=300)
     p.add_argument('--perplexity', type=float,

@@ -15,6 +15,19 @@ import importlib.util
 PKG_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
+def _load_paths():
+    """The package's stdlib-only paths.py, loaded by file path (no package
+    import, so no simulation)."""
+    spec = importlib.util.spec_from_file_location(
+        '_ibo_paths', os.path.join(PKG_DIR, 'paths.py'))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+PLOTS_DIR = _load_paths().PLOTS_DIR
+
+
 def _load(name, path):
     spec = importlib.util.spec_from_file_location(name, path)
     mod = importlib.util.module_from_spec(spec)
@@ -23,7 +36,7 @@ def _load(name, path):
 
 
 pv = _load('plot_proteome_voronoi',
-           os.path.join(PKG_DIR, 'plots', 'plot_proteome_voronoi.py'))
+           os.path.join(PLOTS_DIR, 'plot_proteome_voronoi.py'))
 eb = pv.eb
 checks = []
 

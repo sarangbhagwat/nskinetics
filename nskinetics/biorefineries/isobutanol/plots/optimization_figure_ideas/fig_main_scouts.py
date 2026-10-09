@@ -7,8 +7,8 @@
 # for license details.
 """Main figure of the kinetic-BO campaigns, "Scouts explore, profit
 selects" -> analyses/results/publication/Optimization-figures/
-kinBO_main_scouts_<stamp>.{png,pdf} (+ _latest copies) and the caption draft
-kinBO_main_scouts_caption.md next to this script.
+kinBO_main_scouts.{png,pdf} (+ dated copies with --timestamped) and the
+caption draft kinBO_main_scouts_caption.md next to this script.
 
 Panels (figwork/figure_spec.md section 3; take-aways T1-T5):
     a  when: IRR of the best design so far vs simulated trials (log x),
@@ -83,8 +83,7 @@ labels (`inset_clearance`), on top of `_style.check_figure` (which includes
 `marker_text_hits`: no scatter / marker centre under any annotation unless
 an opaque backing box hides it).
 
-Run:  "C:/Users/saran/anaconda3/envs/IBO_2026/python.exe" fig_main_scouts.py
-      [--out-dir DIR] [--no-latest] [--no-caption]
+Run:  python fig_main_scouts.py [--out-dir DIR] [--timestamped] [--no-caption]
 """
 import argparse
 import importlib.util
@@ -2004,8 +2003,9 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     ap.add_argument('--out-dir', default=C.OUT_DIR,
                     help='output folder (default: the publication folder)')
-    ap.add_argument('--no-latest', action='store_true',
-                    help='do not write the _latest copies')
+    ap.add_argument('--timestamped', action='store_true',
+                    help='also write dated copies <stem>_<YYYY.MM.DD-HH.MM>'
+                         '.{png,pdf}')
     ap.add_argument('--no-caption', action='store_true',
                     help='do not (re)write the caption draft')
     ap.add_argument('--draft', action='store_true',
@@ -2021,7 +2021,7 @@ def main(argv=None):
 
     fig, axes = build(F)
     n_bad = run_checks(fig, axes, raise_on_fail=not args.draft)
-    out = S.save(fig, STEM, out_dir=args.out_dir, latest=not args.no_latest)
+    out = S.save(fig, STEM, out_dir=args.out_dir, timestamped=args.timestamped)
     if n_bad:
         print(f'DRAFT: {n_bad} render-check problem(s); not a release render')
         sys.exit(1)

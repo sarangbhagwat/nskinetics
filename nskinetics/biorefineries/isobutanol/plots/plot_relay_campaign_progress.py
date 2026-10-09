@@ -26,7 +26,9 @@ PI campaign and the donors, whose index is therefore trial_number + 1). The
 speed comparison is always made on this index, so a relay campaign is charged
 only for the trials it simulated; the donor simulations are SUNK COST.
 
-Outputs (in --out-dir, default analyses/results):
+Outputs (in --out-dir, default --results-dir = paths.results_dir(), next to
+the campaign data -- not the publication folder, where the relay-derived
+names would exceed Windows' 260-character MAX_PATH):
 
   <study>_relay_progress.png / .pdf
       (a) best-so-far PI vs simulated-trial index for the relay campaign, the
@@ -58,8 +60,8 @@ load()s -- safe alongside a running campaign on any numba-cache state. Run:
 Every study argument is a study name (resolved to
 <results-dir>/<name>_trajectory.csv) or an explicit CSV path. Output names
 carry no timestamp (a re-run overwrites them) so the longest output path stays
-short: for the production relay name (~103 characters) under the 112-character
-results directory it is ~235 of Windows' 260 (MAX_PATH); the script prints the
+short: for the production relay name (~103 characters) under the 115-character
+default results directory it is ~238 of Windows' 260 (MAX_PATH); the script prints the
 longest path it wrote and warns at >= 260. Long INPUT/OUTPUT paths (e.g. a
 scratch results directory) are still read and written through the Windows
 extended-length prefix, since LongPathsEnabled is off on this machine.
@@ -69,6 +71,7 @@ import re
 import sys
 import json
 import math
+import importlib.util
 import shutil
 import sqlite3
 import argparse
@@ -88,8 +91,21 @@ __all__ = ('main', 'resolve_csv', 'read_trajectory', 'read_manifest',
            'best_so_far', 'first_reaching', 'read_bounds', 'to_unit_cube',
            'decision_columns', 'build_summary', 'plot_progress')
 
-PKG_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-RESULTS_DIR = os.path.join(PKG_DIR, 'analyses', 'results')
+HERE = os.path.dirname(os.path.abspath(__file__))
+
+
+def _load_paths():
+    """The package's stdlib-only paths.py, loaded by file path (sim-safe)."""
+    spec = importlib.util.spec_from_file_location(
+        '_ibo_paths', os.path.join(os.path.dirname(HERE), 'paths.py'))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+paths = _load_paths()
+PKG_DIR = paths.PACKAGE_DIR
+RESULTS_DIR = paths.results_dir()      # campaign CSVs, manifests, stores; outputs
 
 #%% Campaigns and constants
 
@@ -883,7 +899,10 @@ def main(argv=None):
     relay_path = resolve_csv(args.study, results_dir)
     study = study_stem(relay_path)
     if not _exists(relay_path):
-        sys.exit(f'no trajectory CSV for the relay campaign: {relay_path}')
+        sys.exit(f'no trajectory CSV for the relay campaign: {relay_path} -- it '
+                 'is produced by the relay kinetic-BO campaign (analyses/kinetic_optimization/'
+                 'optimize_kinetics_BO.py); run it first, or point --results-dir '
+                 f'(or {paths.RESULTS_DIR_ENV}) at a results folder that has it')
     relay = read_trajectory(relay_path)
     relay_dir = os.path.dirname(relay_path)
     manifest_path = os.path.join(relay_dir, study + MANIFEST_SUFFIX)

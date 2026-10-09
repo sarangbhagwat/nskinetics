@@ -23,17 +23,32 @@ biorefineries package, never load()s. Load it BY FILE PATH
 executed."""
 import os
 import json
+import importlib.util
 from dataclasses import dataclass
 
 import numpy as np
 import pandas as pd
 
-__all__ = ('PKG_DIR', 'RESULTS_DIR', 'CAMPAIGN_FMT', 'OBJECTIVES',
+__all__ = ('PKG_DIR', 'RESULTS_DIR', 'OUTPUT_DIR', 'CAMPAIGN_FMT', 'OBJECTIVES',
            'SPLIT_12D_SPACE', 'DECISION_VARS', 'PI_A', 'PROCESS_EXAMPLE',
            'LandscapeData', 'campaign_path', 'to_unit', 'load_landscape')
 
-PKG_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-RESULTS_DIR = os.path.join(PKG_DIR, 'analyses', 'results')
+HERE = os.path.dirname(os.path.abspath(__file__))
+
+
+def _load_paths():
+    """The package's stdlib-only paths.py, loaded by file path (sim-safe)."""
+    spec = importlib.util.spec_from_file_location(
+        '_ibo_paths', os.path.join(os.path.dirname(HERE), 'paths.py'))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+paths = _load_paths()
+PKG_DIR = paths.PACKAGE_DIR
+RESULTS_DIR = paths.results_dir()                          # campaign CSVs
+OUTPUT_DIR = paths.publication_dir('Objective-landscape')  # default figure folder
 
 CAMPAIGN_FMT = ('kin_opt_ethanol_isobutanol_metabolic_split_12d_{slug}_gp'
                 '_rb0.001-4_ib0.75-1.5_aA_rs350_burden')
@@ -156,9 +171,10 @@ def load_landscape(results_dir=RESULTS_DIR, slugs=tuple(OBJECTIVES)):
     _check_space_against_design(results_dir)
     frames = []
     for slug in slugs:
-        path = campaign_path(slug, results_dir)
-        if not os.path.isfile(path):
-            raise FileNotFoundError(f'campaign trajectory not found: {path}')
+        path = paths.require_input(
+            campaign_path(slug, results_dir),
+            'the seven seed-350 metabolic_split_12d kinetic-BO campaigns '
+            '(analyses/kinetic_optimization/optimize_kinetics_BO.py)')
         d = pd.read_csv(path)
         d = d[d['state'] == 'COMPLETE'].copy()
         d.insert(0, 'campaign', slug)

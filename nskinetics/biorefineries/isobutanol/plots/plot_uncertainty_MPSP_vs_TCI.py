@@ -8,7 +8,7 @@
 """
 Multi-panel bivariate uncertainty figure (2 x 3 grid)
 from an uncertainty-analysis results workbook (*_1_full_evaluation.xlsx as
-written by analyses/full/uncertainties_IBO_EtOH.py). MESP = the
+written by analyses/uncertainty/uncertainties_IBO_EtOH.py). MESP = the
 purity-adjusted ethanol MPSP, converted from the workbook's $/kg to $/GGE (see
 USD_PER_KG_TO_USD_PER_GGE):
 
@@ -69,6 +69,7 @@ analyses/results is used.
 import os
 import glob
 import argparse
+import importlib.util
 
 import numpy as np
 import pandas as pd
@@ -84,8 +85,20 @@ from scipy import stats
 __all__ = ('plot_uncertainty_MPSP_vs_TCI',)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-RESULTS_DIR = os.path.join(os.path.dirname(HERE), 'analyses', 'results')
-DEFAULT_OUT_DIR = os.path.join(RESULTS_DIR, 'publication', 'Uncertainty')
+
+
+def _load_paths():
+    """The package's stdlib-only paths.py, loaded by file path (sim-safe)."""
+    spec = importlib.util.spec_from_file_location(
+        '_ibo_paths', os.path.join(os.path.dirname(HERE), 'paths.py'))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+paths = _load_paths()
+RESULTS_DIR = paths.results_dir()                     # the uncertainty workbooks
+DEFAULT_OUT_DIR = paths.publication_dir('Uncertainty')
 
 MPSP_COL = ('Biorefinery', 'Purity-adjusted ethanol MPSP [$/kg]')
 TCI_COL = ('Biorefinery', 'Total capital investment [10^6 $]')
@@ -146,7 +159,7 @@ INK = '#0b0b0b'
 
 # MPSP is plotted per gasoline gallon equivalent: $/GGE = $/kg * KG_PER_GAL
 # / GGE_PER_GAL. kg per gal from ethanol's density at 20 C, 0.789 kg/L (the
-# value analyses/full/uncertainties_IBO_EtOH.py uses to put the market range
+# value analyses/uncertainty/uncertainties_IBO_EtOH.py uses to put the market range
 # in $/kg) x 3.785411784 L/gal = 2.987 kg/gal; 1 gal ethanol = 0.67 GGE from
 # the AFDC fuel properties comparison, https://afdc.energy.gov/fuels/properties
 ETHANOL_DENSITY_KG_PER_L = 0.789
@@ -389,7 +402,10 @@ def newest_results_file(scenario='A'):
     files = [f for f in glob.glob(os.path.join(glob.escape(RESULTS_DIR), '*_1_full_evaluation.xlsx'))
              if f"['{scenario}']" in os.path.basename(f)]
     if not files:
-        raise FileNotFoundError(f'no scenario-{scenario} *_1_full_evaluation.xlsx in {RESULTS_DIR}')
+        paths.require_input(
+            os.path.join(RESULTS_DIR, f"*['{scenario}']*_1_full_evaluation.xlsx"),
+            f'the scenario-{scenario} uncertainty analysis (analyses/uncertainty/'
+            'uncertainties_IBO_EtOH.py)')
     return max(files, key=os.path.getmtime)
 
 

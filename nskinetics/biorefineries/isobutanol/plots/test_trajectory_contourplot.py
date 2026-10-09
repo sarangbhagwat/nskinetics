@@ -7,9 +7,10 @@
 # for license details.
 """Standalone tests for plots/trajectory_contourplot.py.
 
-Run:  & "$py" biorefineries/isobutanol/plots/test_trajectory_contourplot.py
+Run:  python -m pytest <this file>   (or python <this file>)
 Loads the module directly via importlib so it never imports the biorefinery
-package (no import-time simulation, no numba cache). Uses the Agg backend.
+package or biosteam (no import-time simulation, no numba cache); needs the
+optional `contourplots` package. Uses the Agg backend.
 """
 import os
 import importlib.util

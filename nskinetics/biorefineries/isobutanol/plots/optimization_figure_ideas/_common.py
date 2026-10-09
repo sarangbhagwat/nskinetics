@@ -10,10 +10,12 @@ profit selects"): paths, the campaign registry, loaders, the ONE set of
 definitions every figure / panel / caption uses, proteome sectors, the
 computed facts, the EXPECTED facts and `check_facts()`.
 
-SIM-SAFE: pandas / numpy / stdlib only. `plots/plot_kin_opt_parameter_sets.py`
-(= pk) is loaded BY FILE PATH and lazily, only inside `baseline_record()` /
-`baseline_A()`; this module never imports `biorefineries.*`, nskinetics,
-biosteam, thermosteam or optuna (`assert_sim_safe()` checks it).
+SIM-SAFE: pandas / numpy / stdlib only. The package's `paths.py` and
+`plots/plot_kin_opt_parameter_sets.py` (= pk, lazily, only inside
+`baseline_record()` / `baseline_A()`) are loaded BY FILE PATH; this module
+never imports the upstream `biorefineries` package, nskinetics, biosteam,
+thermosteam, hensmith or optuna (`assert_sim_safe()` / `sim_safe_block()`
+check it; see FORBIDDEN_MODULES).
 
 Import from a sibling figure script with::
 
@@ -24,8 +26,10 @@ Import from a sibling figure script with::
 
 Public API
 ----------
-Paths
+Paths (via the package's paths.py; NSKINETICS_IBO_RESULTS_DIR moves RESULTS)
     PKG, RESULTS, FIGDIR, OUT_DIR, MAX_PATH_CHARS (259)
+    missing_inputs() -> [(path, produced_by)] of the absent campaign / Sobol'
+        CSVs (empty = compute_facts() can run)
 Registry
     Campaign (frozen dataclass: key, stem, label, long_label, family, role,
         marker, is_relay, n_trials)
@@ -93,7 +97,10 @@ Formatting (build ALL annotation text from facts with these)
     figure and caption); fmt_phi(v, budget) Phi_M at 3 decimals, 4 when
     within BUDGET_CLOSE of the budget (so it never reads as equal to it)
 Safety
-    assert_sim_safe() raises if a forbidden simulation package is imported
+    FORBIDDEN_MODULES, sim_safety_violations(since=None),
+    assert_sim_safe(since=None) raises if a forbidden module was imported
+        (strict in a fresh script process), sim_safe_block(what) raises if the
+        block imports one (robust in a shared process such as pytest)
 
 DERIVED COLUMNS (add_derived; trajectory CSVs and the manifest alike)
     sim            trial_number - min(trial_number) + 1 (1-based simulated
@@ -109,6 +116,7 @@ DERIVED COLUMNS (add_derived; trajectory CSVs and the manifest alike)
     sec_<key>      the six proteome sectors (SECTORS)
 """
 import ast
+import contextlib
 import functools
 import itertools
 import importlib.util
@@ -139,15 +147,35 @@ __all__ = [
     'fmt_pct', 'fmt_irr', 'fmt_int', 'fmt_num', 'fmt_trial', 'fmt_budget',
     'fmt_phi', 'BUDGET_CLOSE',
     'assert_sim_safe', 'FORBIDDEN_MODULES', 'SOBOL_STEMS',
-    'sobol_reference',
+    'sobol_reference', 'sim_safe_block', 'sim_safety_violations',
+    'missing_inputs',
 ]
 
 # %% Paths ---------------------------------------------------------------------
 FIGDIR = os.path.dirname(os.path.abspath(__file__))
-PKG = os.path.dirname(os.path.dirname(FIGDIR))      # .../biorefineries/isobutanol
-RESULTS = os.path.join(PKG, 'analyses', 'results')
-OUT_DIR = os.path.join(RESULTS, 'publication', 'Optimization-figures')
-PK_PATH = os.path.join(PKG, 'plots', 'plot_kin_opt_parameter_sets.py')
+
+
+def _load_paths():
+    """The package's stdlib-only paths.py (two levels up), loaded by file
+    path so no package is imported."""
+    spec = importlib.util.spec_from_file_location(
+        '_ibo_paths', os.path.join(os.path.dirname(os.path.dirname(FIGDIR)),
+                                   'paths.py'))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+_paths = _load_paths()
+PKG = _paths.PACKAGE_DIR                    # .../biorefineries/isobutanol
+RESULTS = _paths.results_dir()              # campaign / Sobol' CSVs
+OUT_DIR = _paths.publication_dir('Optimization-figures')
+PK_PATH = os.path.join(_paths.PLOTS_DIR, 'plot_kin_opt_parameter_sets.py')
+#: what writes the campaign trajectory CSVs / relay manifest (error messages)
+CAMPAIGN_PRODUCED_BY = ('the eight 2026-09-23/24 metabolic_split_12d kinetic-BO '
+                        'campaigns (analyses/kinetic_optimization/optimize_kinetics_BO.py)')
+SOBOL_PRODUCED_BY = ("the two metabolic_split_12d Sobol' designs (analyses/sensitivity/"
+                     'evaluate_sobol_split12d.py)')
 # Windows MAX_PATH 260 incl. the terminating NUL; LongPathsEnabled is OFF
 MAX_PATH_CHARS = 259
 
@@ -251,8 +279,31 @@ ABOVE_EPS = 1e-9              # "above the plateau" = IRR > U + 1e-9
 RELAY_KEEP_ABOVE = -0.12953
 CLASS_LABEL = {'coprod': 'co-production', 'ibo': 'IBO-only',
                'etoh': 'EtOH-only', 'none': 'neither'}
-FORBIDDEN_MODULES = ('biorefineries', 'nskinetics', 'biosteam', 'thermosteam',
-                     'optuna')
+_ISO = 'nskinetics.biorefineries.isobutanol'
+#: modules whose import would make a figure process unsafe to run beside a
+#: simulation (they import the simulation stack or build / simulate the
+#: biorefinery, writing the shared numba cache): the upstream Bioindustrial-
+#: Park `biorefineries` package (NOT `nskinetics.biorefineries`, a different
+#: sys.modules key), hensmith, optuna, BioSTEAM / thermosteam and the
+#: isobutanol modules that build or simulate. `nskinetics` itself is not
+#: listed -- its import pulls in biosteam, which is. An entry matches the
+#: module of that name and its submodules.
+FORBIDDEN_MODULES = ('biorefineries', 'hensmith', 'optuna', 'biosteam',
+                     'thermosteam', f'{_ISO}.system', f'{_ISO}.separations',
+                     f'{_ISO}.units', f'{_ISO}.process_settings',
+                     f'{_ISO}.scenarios', f'{_ISO}.models', f'{_ISO}.smoke')
+
+
+def _forbidden(names):
+    """Sorted FORBIDDEN_MODULES entries matched by module names `names`."""
+    return sorted({f for m in names for f in FORBIDDEN_MODULES
+                   if m == f or m.startswith(f + '.')})
+
+
+#: forbidden modules already imported when this module was first loaded (e.g.
+#: by a test runner whose `import nskinetics` pulled in biosteam): not caused
+#: by figure code, so the checks below ignore them. Empty in a fresh script.
+_PRELOADED = frozenset(m for m in list(sys.modules) if _forbidden((m,)))
 
 
 def _arr(x):
@@ -344,12 +395,26 @@ def add_derived(df):
 
 
 # %% Loaders -------------------------------------------------------------------
+def missing_inputs():
+    """[(path, produced_by)] of the campaign trajectory CSVs, the relay
+    manifest and the Sobol' trajectory CSVs that compute_facts() reads but
+    that are absent (only analyses/results/publication ships with the
+    repository); empty when every input is present."""
+    need = [(c.csv, CAMPAIGN_PRODUCED_BY) for c in CAMPAIGNS.values()]
+    need += [(c.manifest_csv, CAMPAIGN_PRODUCED_BY)
+             for c in CAMPAIGNS.values() if c.is_relay]
+    need += [(os.path.join(RESULTS, stem + '_trajectory.csv'), SOBOL_PRODUCED_BY)
+             for stem in SOBOL_STEMS.values()]
+    return [(path, by) for path, by in need if not os.path.exists(path)]
+
+
 @functools.lru_cache(maxsize=None)
 def load_trajectory(key):
     """Every row of a campaign's trajectory CSV (sorted by trial_number) with
     the derived columns. Cached: do not mutate (use .copy())."""
     c = campaign(key)
-    df = pd.read_csv(c.csv, low_memory=False)
+    df = pd.read_csv(_paths.require_input(c.csv, CAMPAIGN_PRODUCED_BY),
+                     low_memory=False)
     df = df.sort_values('trial_number').reset_index(drop=True)
     return add_derived(df)
 
@@ -369,7 +434,8 @@ def load_manifest(key='relay'):
     c = campaign(key)
     if not c.is_relay:
         raise ValueError(f'{key} is not a relay campaign')
-    m = pd.read_csv(c.manifest_csv, low_memory=False)
+    m = pd.read_csv(_paths.require_input(c.manifest_csv, CAMPAIGN_PRODUCED_BY),
+                    low_memory=False)
     stems = m['donor'].map(lambda d: os.path.basename(str(d)).replace(
         '_trajectory.csv', ''))
     # every donor must be one of this work's campaigns (no older campaign)
@@ -552,21 +618,44 @@ def bound_hits(row, rel=1e-6):
 
 
 # %% Baseline (scenario A; pk loaded by file path, lazily) -------------------------
-def assert_sim_safe():
-    """Raise if a simulation package was imported into this process."""
-    bad = sorted({m.split('.')[0] for m in sys.modules
-                  if m.split('.')[0] in FORBIDDEN_MODULES})
+def sim_safety_violations(since=None):
+    """FORBIDDEN_MODULES entries imported into this process after this
+    module was loaded (since=None; the modules already imported then are
+    ignored) or after `since`, a snapshot of sys.modules names."""
+    base = _PRELOADED if since is None else since
+    return _forbidden(m for m in list(sys.modules) if m not in base)
+
+
+def assert_sim_safe(since=None):
+    """Raise RuntimeError if a FORBIDDEN_MODULES module was imported (see
+    sim_safety_violations). With since=None this is the strict check of a
+    fresh script process; in a shared process (pytest), where other code may
+    import the simulation stack at any time, pass a sys.modules snapshot or
+    use sim_safe_block()."""
+    bad = sim_safety_violations(since)
     if bad:
         raise RuntimeError(f'sim-safety violated: {bad} imported')
 
 
+@contextlib.contextmanager
+def sim_safe_block(what='this block'):
+    """Context manager: raise RuntimeError if the block imports a
+    FORBIDDEN_MODULES module (attributed by the sys.modules delta, so it
+    holds in a shared process too)."""
+    before = frozenset(sys.modules)
+    yield
+    bad = sim_safety_violations(since=before)
+    if bad:
+        raise RuntimeError(f'sim-safety violated: {what} imported {bad}')
+
+
 @functools.lru_cache(maxsize=None)
 def _pk():
-    spec = importlib.util.spec_from_file_location('pkps', PK_PATH)
-    pk = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(pk)
-    pk.use_split_12d_layout()
-    assert_sim_safe()
+    with sim_safe_block('loading plot_kin_opt_parameter_sets.py (pk)'):
+        spec = importlib.util.spec_from_file_location('pkps', PK_PATH)
+        pk = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(pk)
+        pk.use_split_12d_layout()
     return pk
 
 
@@ -579,8 +668,9 @@ def baseline_A():
 @functools.lru_cache(maxsize=None)
 def _baseline_record():
     pk = _pk()
-    rec = pk.baseline_set()
-    A = pk.ko.workbook_kinetic_baselines('A')
+    with sim_safe_block('the scenario-A baseline record (pk / ko / eb)'):
+        rec = pk.baseline_set()
+        A = pk.ko.workbook_kinetic_baselines('A')
     out = {k: v for k, v in rec.items()
            if isinstance(v, (int, float, str, bool, np.floating, np.integer))}
     out['k_3'] = float(A['k_3'])
@@ -589,7 +679,6 @@ def _baseline_record():
     out['ehrlich_downstream'] = 0.0
     out['sectors'] = sectors(rec)
     out['decision'] = {v: float(out[v]) for v in DECISION_VARS}
-    assert_sim_safe()
     return out
 
 
@@ -1037,8 +1126,9 @@ def sobol_reference():
     U = plateau()
     out = {}
     for m, stem in SOBOL_STEMS.items():
-        d = pd.read_csv(os.path.join(RESULTS, stem + '_trajectory.csv'),
-                        low_memory=False)
+        d = pd.read_csv(_paths.require_input(
+            os.path.join(RESULTS, stem + '_trajectory.csv'), SOBOL_PRODUCED_BY),
+            low_memory=False)
         d = d[d['state'] == 'COMPLETE']
         irr = d['IRR'].to_numpy(float)
         fin = irr[np.isfinite(irr)]
@@ -1370,8 +1460,10 @@ def check_facts(verbose=False, raise_on_fail=True):
     precision: IRR to the printed decimals, counts exact, pools 1e-4) and
     the section-6.A invariants. Returns the facts dict. On any mismatch
     prints the failing rows and raises FactsMismatch (unless
-    raise_on_fail=False). Also asserts the process is sim-safe."""
-    facts = compute_facts()
+    raise_on_fail=False). Also asserts that computing the facts imported no
+    FORBIDDEN_MODULES module (sim_safe_block)."""
+    with sim_safe_block('compute_facts()'):
+        facts = compute_facts()
     rows = fact_table(facts)
     bad = [r for r in rows if not r.ok]
     if verbose or bad:
@@ -1379,7 +1471,6 @@ def check_facts(verbose=False, raise_on_fail=True):
             flag = 'ok  ' if r.ok else 'FAIL'
             print(f'{flag} {r.path:58s} computed={_fmt_val(r.computed):>14s}'
                   f'  expected={_fmt_val(r.expected):>12s}  tol={r.tol:.2g}')
-    assert_sim_safe()
     if bad and raise_on_fail:
         raise FactsMismatch(f'{len(bad)} of {len(rows)} facts differ from '
                             'EXPECTED: ' + ', '.join(r.path for r in bad[:12]))

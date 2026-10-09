@@ -55,9 +55,12 @@ Run::
 
     python plots/plot_block_flow_diagram.py
 
-Writes ``block_flow_diagram.{pdf,svg,png}`` under ``plots/results/``.
+Writes ``block_flow_diagram.{pdf,svg,png}`` to
+``paths.publication_dir('Schematics')`` (``--out-dir`` to change).
 """
 
+import argparse
+import importlib.util
 import os
 
 import matplotlib
@@ -492,9 +495,24 @@ def make_figure():
     return fig
 
 
-def main():
+def _load_paths():
+    """The package's stdlib-only paths.py, loaded by file path (no package
+    import, so no simulation)."""
     here = os.path.dirname(os.path.abspath(__file__))
-    out_dir = os.path.join(here, 'results')
+    spec = importlib.util.spec_from_file_location(
+        '_ibo_paths', os.path.join(os.path.dirname(here), 'paths.py'))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(description='Block flow diagram of the corn '
+                                 'ethanol-isobutanol biorefinery.')
+    ap.add_argument('--out-dir', default=None,
+                    help="output folder (default: paths.publication_dir('Schematics'))")
+    args = ap.parse_args(argv)
+    out_dir = args.out_dir or _load_paths().publication_dir('Schematics')
     os.makedirs(out_dir, exist_ok=True)
     fig = make_figure()
     stem = os.path.join(out_dir, 'block_flow_diagram')
@@ -503,6 +521,7 @@ def main():
     fig.savefig(stem + '.png', dpi=600)
     plt.close(fig)
     print('wrote', stem + '.{pdf,svg,png}')
+    return stem
 
 
 if __name__ == '__main__':

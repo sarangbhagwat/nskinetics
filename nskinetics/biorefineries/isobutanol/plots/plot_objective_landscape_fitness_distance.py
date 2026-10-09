@@ -126,8 +126,8 @@ def _load_data_layer():
 old = _load_data_layer()
 
 # -----------------------------------------------------------------------------
-# Typeface, font sizes, tick style (from
-# across_feed_strat_multipanel_global_with_optima_summary.py)
+# Typeface, font sizes, tick style (from the house style of the retired
+# across_feed_strat multipanel figure)
 # -----------------------------------------------------------------------------
 FONT_FAMILY = 'Arial'
 FONTS = {'tick': 12, 'axis_title': 12, 'panel_label': 12, 'legend': 9,
@@ -548,8 +548,7 @@ def print_summary(data, s, args):
 
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
-    p.add_argument('--out-dir', default=os.path.join(
-        old.RESULTS_DIR, 'publication', 'Objective-landscape'))
+    p.add_argument('--out-dir', default=old.OUTPUT_DIR)
     p.add_argument('--stem', default='objective_landscape_fitness_distance')
     p.add_argument('--dpi', type=int, default=300)
     p.add_argument('--seed', type=int, default=20260924,

@@ -18,16 +18,29 @@ import numpy as np
 PKG_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
-def _load(name, relpath):
-    path = os.path.join(PKG_DIR, relpath)
+def _load_paths():
+    """The package's stdlib-only paths.py, loaded by file path (no package
+    import, so no simulation)."""
+    spec = importlib.util.spec_from_file_location(
+        '_ibo_paths', os.path.join(PKG_DIR, 'paths.py'))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+PLOTS_DIR = _load_paths().PLOTS_DIR
+
+
+def _load(name, filename):
+    path = os.path.join(PLOTS_DIR, filename)
     spec = importlib.util.spec_from_file_location(name, path)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
 
 
-ps = _load('ps', os.path.join('plots', 'plot_kin_opt_parameter_sets.py'))
-plm = _load('_pathway_lever_map', os.path.join('plots', '_pathway_lever_map.py'))
+ps = _load('ps', 'plot_kin_opt_parameter_sets.py')
+plm = _load('_pathway_lever_map', '_pathway_lever_map.py')
 eb = ps.eb
 ps.use_split_12d_layout()   # populate the split_12d panel-B globals
 checks = []
