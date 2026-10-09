@@ -1014,8 +1014,12 @@ if __name__ == '__main__':
                         action='store_false', default=True,
                         help="method gp: do NOT fit optuna's learned constraint "
                              'GP on the burden / volume violations (plain '
-                             'log-EI; the default fits it, ConstrainedLogEI; '
-                             'that constraint GP is fit on COMPLETE (hence '
+                             'log-EI). This is already the engine default '
+                             '(kinetic_optimization.GP_KWARGS_DEFAULTS, '
+                             'learned_constraints=False); the flag only makes it '
+                             'explicit. ConstrainedLogEI is opt-in through the '
+                             "driver's gp_kwargs; that constraint GP is fit on "
+                             'COMPLETE (hence '
                              'feasible, under the pre-sim INFEASIBLE prune) '
                              'trials only). '
                              'The exact feasibility filter is unaffected. '
@@ -1023,8 +1027,10 @@ if __name__ == '__main__':
                              'stored trials ran without it')
     parser.add_argument('--gp-deterministic', action='store_true',
                         help='method gp: tell the GP the objective is '
-                             'noise-free (optuna deterministic_objective=True; '
-                             'default False)')
+                             'noise-free (optuna deterministic_objective=True). '
+                             'This is already the engine default '
+                             '(kinetic_optimization.GP_KWARGS_DEFAULTS); the flag '
+                             'only makes it explicit')
     # Relay campaign flags (2026-09-23; spec 2026-09-23-relay-preload-pi-
     # campaign-design §3.3 + A12). --relay-from EXTENDS (repeatable and
     # multi-valued: two --relay-from groups concatenate); the knobs are
