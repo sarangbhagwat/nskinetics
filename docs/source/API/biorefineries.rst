@@ -5,9 +5,10 @@ Isobutanol biorefinery (case study)
 isobutanol biorefinery of the :doc:`/case_studies/isobutanol/index`: a
 BioSTEAM flowsheet whose fermentor runs the shipped *S. cerevisiae* kinetic
 model, with its scenarios, TEA and the engines behind the analyses. It
-needs the optional ``isobutanol`` dependencies and an NSKinetics version
-that ships ``nskinetics.biorefineries``; until such a release is on PyPI,
-install it from source (see :ref:`isobutanol-installation`).
+needs the optional ``isobutanol`` dependencies and NSKinetics 0.7.0 or
+later, the first release that ships ``nskinetics.biorefineries``; until
+0.7.0 is on PyPI, install it from source (see
+:ref:`isobutanol-installation`).
 
 Importing the package is **build-free**: it imports the modules below but
 builds and simulates nothing, and ``import nskinetics`` never imports it.

@@ -260,12 +260,12 @@ activate its own chemical set (``set_thermo=True``). The
 :doc:`the API reference </API/processes>` documents every argument.
 
 The next step is the whole biorefinery. With the case study and its
-optional dependencies installed (it needs an NSKinetics version that ships
-``nskinetics.biorefineries``; until such a release is on PyPI, install from
-source as described in :ref:`isobutanol-installation`), one call
-builds the corn-to-ethanol + isobutanol flowsheet around that section and
-simulates its baseline, and a registered scenario plus a TEA solve give the
-plant's selling prices and rate of return:
+optional dependencies installed (it needs NSKinetics 0.7.0 or later, the
+first release that ships ``nskinetics.biorefineries``; until 0.7.0 is on
+PyPI, install from source as described in :ref:`isobutanol-installation`),
+one call builds the corn-to-ethanol + isobutanol flowsheet around that
+section and simulates its baseline, and a registered scenario plus a TEA
+solve give the plant's selling prices and rate of return:
 
 .. code-block:: python
 

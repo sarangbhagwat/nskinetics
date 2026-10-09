@@ -451,12 +451,12 @@ flagship co-producer ``opt_PI_TRY_informed``.
 Run it
 ------
 
-The case study needs the first NSKinetics release that ships
-``nskinetics.biorefineries``, which is not on PyPI yet, plus optional
-dependencies that plain NSKinetics does not (the Bioindustrial-Park
-``biorefineries`` package, ``hensmith`` and a few analysis libraries). Until
-that release is out, install it from source with the ``isobutanol`` extra,
-then check the installation against scenario A's pins.
+The case study needs NSKinetics 0.7.0 or later, the first release that
+ships ``nskinetics.biorefineries``, plus optional dependencies that plain
+NSKinetics does not (the Bioindustrial-Park ``biorefineries`` package,
+``hensmith`` and a few analysis libraries). Until 0.7.0 is on PyPI, install
+it from source with the ``isobutanol`` extra, then check the installation
+against scenario A's pins.
 :ref:`isobutanol-installation` has the full instructions and the validated
 dependency versions.
 

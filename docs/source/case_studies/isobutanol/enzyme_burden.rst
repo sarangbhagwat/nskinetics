@@ -600,9 +600,9 @@ Reproduce it
 ------------
 
 The burden module itself needs no simulation and no results files. Importing
-it through the package needs the case study and its optional ``isobutanol``
-dependencies (see :ref:`isobutanol-installation`; until a release that
-ships the case study is on PyPI, install from source), but builds nothing:
+it through the package needs the case study (NSKinetics 0.7.0 or later) and
+its optional ``isobutanol`` dependencies (see :ref:`isobutanol-installation`;
+until 0.7.0 is on PyPI, install from source), but builds nothing:
 
 .. code-block:: python
 

@@ -70,7 +70,7 @@ Case study: isobutanol biorefinery
 
 NSKinetics ships a complete corn dry-grind biorefinery as a case study, ``nskinetics.biorefineries.isobutanol``: a `BioSTEAM <https://biosteam.readthedocs.io/en/latest/>`__ flowsheet whose fermentor runs the shipped *S. cerevisiae* fed-batch model with an engineered isobutanol pathway, so titer, rate and yield are outputs of the strain kinetics and the feeding policy rather than inputs to the techno-economic analysis. It comes with ten scenarios (the wild-type ethanol plant, an engineered ethanol + isobutanol co-producer and eight strain-design optima), its TEA, and the scripts behind its feeding-strategy and kinetic sweeps, Bayesian strain-design optimization, objective-landscape, enzyme-burden (proteome allocation), global sensitivity and uncertainty analyses.
 
-The case study needs the first NSKinetics release that ships ``nskinetics.biorefineries``; the releases published on PyPI so far do not include it. Until that release is out, install it from source, with its optional ``isobutanol`` dependencies, and check the installation with a pinned smoke case (a few minutes):
+The case study needs NSKinetics 0.7.0 or later, the first release that ships ``nskinetics.biorefineries``; earlier releases do not include it. Until 0.7.0 is on PyPI, install it from source, with its optional ``isobutanol`` dependencies, and check the installation with a pinned smoke case (a few minutes):
 
 .. code-block:: bash
 
@@ -80,7 +80,7 @@ The case study needs the first NSKinetics release that ships ``nskinetics.bioref
     $ pip install -e ".[isobutanol]"
     $ python -m nskinetics.biorefineries.isobutanol.smoke 1
 
-Once that release is on PyPI, ``pip install "nskinetics[isobutanol]"`` installs the same package and dependencies. `Running the analyses <https://nskinetics.readthedocs.io/en/latest/case_studies/isobutanol/running_analyses.html>`__ has the full installation instructions (including the validated dependency versions) and lists every analysis script, its runtime and its outputs; the `case study documentation <https://nskinetics.readthedocs.io/en/latest/case_studies/isobutanol/index.html>`__ presents the findings.
+Once 0.7.0 is on PyPI, ``pip install "nskinetics[isobutanol]>=0.7.0"`` installs the same package and dependencies. `Running the analyses <https://nskinetics.readthedocs.io/en/latest/case_studies/isobutanol/running_analyses.html>`__ has the full installation instructions (including the validated dependency versions) and lists every analysis script, its runtime and its outputs; the `case study documentation <https://nskinetics.readthedocs.io/en/latest/case_studies/isobutanol/index.html>`__ presents the findings.
 
 
 Bug reports

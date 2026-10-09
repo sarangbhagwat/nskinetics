@@ -41,14 +41,13 @@ Installation
 .. admonition:: Which NSKinetics version has the case study
    :class: important
 
-   The case study needs the first NSKinetics release that ships
-   ``nskinetics.biorefineries``. The releases published on PyPI so far do
-   not include it: with them, ``pip install "nskinetics[isobutanol]"`` only
+   The case study needs NSKinetics 0.7.0 or later, the first release that
+   ships ``nskinetics.biorefineries``. Earlier versions (up to 0.6.0) do not
+   include it: with them, ``pip install "nskinetics[isobutanol]"`` only
    warns that the ``isobutanol`` extra does not exist, and the smoke command
-   below fails with ``ModuleNotFoundError``. Until that release is out,
-   install from source. These pages are built from the ``dev`` branch,
-   which carries the case study; the ``main`` branch, also numbered 0.6.0,
-   does not.
+   below fails with ``ModuleNotFoundError``. Until 0.7.0 is on PyPI, install
+   from source: the ``dev`` branch carries the case study, and ``main``
+   carries it from version 0.7.0 on (``main`` at 0.6.0 does not).
 
 **From source (works now).** Clone the repository, check out the ``dev``
 branch, which carries the case study, and install it in editable mode with
@@ -64,8 +63,8 @@ the ``isobutanol`` extra:
 Instead of the extra you can install ``requirements_isobutanol.txt`` on top
 of ``requirements_install.txt``.
 
-**From PyPI (once that release is out).** ``pip install
-"nskinetics[isobutanol]"`` will install the same package and optional
+**From PyPI (once 0.7.0 is released).** ``pip install
+"nskinetics[isobutanol]>=0.7.0"`` installs the same package and optional
 dependencies.
 
 The ``isobutanol`` extra adds the dependencies that plain NSKinetics does not
