@@ -185,6 +185,11 @@ To get the git version, use:
 
 Or download directly from the `GitHub page <https://github.com/sarangbhagwat/nskinetics>`__.
 
+The isobutanol biorefinery case study needs its optional dependencies (the
+``isobutanol`` extra) and, until a release ships
+``nskinetics.biorefineries``, a source install; see
+:ref:`isobutanol-installation`.
+
 Common Issues
 -------------
 

@@ -46,7 +46,9 @@ Installation
    not include it: with them, ``pip install "nskinetics[isobutanol]"`` only
    warns that the ``isobutanol`` extra does not exist, and the smoke command
    below fails with ``ModuleNotFoundError``. Until that release is out,
-   install from source.
+   install from source. These pages are built from the ``dev`` branch,
+   which carries the case study; the ``main`` branch, also numbered 0.6.0,
+   does not.
 
 **From source (works now).** Clone the repository, check out the ``dev``
 branch, which carries the case study, and install it in editable mode with
@@ -85,14 +87,48 @@ minutes; see `Check an installation: the smoke cases`_):
    2.35.1) and a hensmith clone (0.1.2, which requires
    ``biosteam>=2.54.0``). The PyPI releases resolve the same imports but
    can move TEA results by a few percent; heat-exchanger-network synthesis
-   in particular shifts with the hensmith version (the *build tags* in
-   :ref:`isobutanol-conventions`). To reproduce a pinned number exactly,
-   use the versions it was pinned on.
+   in particular shifts with the hensmith version. The *build tags* in
+   :ref:`isobutanol-conventions` (``2b5b27d``, ``6d4776f``, ``95e9362``) are
+   commits of the `hensmith repository
+   <https://github.com/BioSTEAMDevelopmentGroup/hensmith>`__, and the
+   validated hensmith clone is at ``95e9362``. To reproduce a number
+   recorded on another build exactly, switch hensmith to that commit
+   (`Re-running on a recorded build`_).
 
 Importing the package is build-free: ``from nskinetics.biorefineries import
 isobutanol`` imports its modules (and with them BioSTEAM and the optional
 dependencies) but builds and simulates nothing. ``import nskinetics`` alone
 never imports the case study.
+
+.. _isobutanol-switch-build:
+
+Re-running on a recorded build
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Every analysis runs on the validated stack (hensmith ``95e9362``, the build
+of the ``opt_*`` pins), but a number recorded on another build then differs
+by the TEA shift between builds, up to a few percent. To reproduce it
+exactly, check out the build's tag in a hensmith clone that is installed in
+editable mode (or placed first on ``PYTHONPATH``), run the analysis in a
+fresh process, and restore the clone afterwards:
+
+.. code-block:: bash
+
+   $ git -C <hensmith clone> checkout 2b5b27d   # e.g. the campaigns' build
+   $ python <analysis script>                   # fresh process
+   $ git -C <hensmith clone> checkout -         # back to the previous commit
+
+- **Required for the two 1-D slice scripts** of :doc:`objective_landscape`,
+  ``evaluate_axis_try_informed_optimum.py`` and
+  ``evaluate_k13_try_informed_optimum.py``. Each first re-simulates the
+  flagship design #1912 and aborts with ``anchor PI off by … (> 0.02)``
+  unless the live PI is within 2 % of the recorded 0.808. That holds only
+  on 2b5b27d; on 95e9362 the same design reads PI 0.8559 (+5.9 %).
+- **Optional elsewhere.** The campaigns, the TEA breakdowns, the sweeps and
+  the Sobol' runs complete on any build; only their TEA numbers shift.
+- **Restore before running the smoke cases.** The ``opt_*`` pins were
+  computed on 95e9362, and on another build the TEA shift can exceed the
+  smoke cases' 1 % tolerance.
 
 
 Build, load a scenario, solve the TEA
@@ -128,7 +164,11 @@ distributions, shipped under the package's
 enzyme-burden policy and the pinned MPSPs. The ten registered scenarios are
 listed on :doc:`index`.
 :func:`~nskinetics.biorefineries.isobutanol.scenarios.load_scenario` applies
-one to the built model and runs one baseline simulation. It returns a
+one to the built model: the workbook's baseline column is applied by one
+baseline ``Model`` evaluation, and one baseline ``model_specification``
+follows. The first call in a process with the enzyme burden on also
+evaluates scenario A once, to calibrate the burden, so a first
+``load_scenario('A')`` simulates the flowsheet three times. It returns a
 *bundle* dict with ``model_specification`` (the entry point to simulate at a
 feeding strategy), ``solve_TEA``, ``V406``, ``fbs_spec``, ``tea``,
 ``model``, ``namespace_dict`` (the namespace the workbook's load
@@ -271,18 +311,27 @@ agree on it. Publication figures go to ``<results root>/publication/<theme>``
 **No analysis results are distributed.** The PyPI package and the git
 repository ship the scripts, the parameter workbooks and the Sobol' band
 file, but no outputs. The figures on
-these pages come from the authors' publication set, kept locally under
-``analyses/results/publication`` and excluded from version control. A
+these pages come from the authors' own runs of these scripts, kept locally
+under ``analyses/results/publication`` and excluded from version control. A
 script whose input is another analysis's output stops at once with a
 ``FileNotFoundError`` that names the analysis producing it; run that
 analysis first, or point ``NSKINETICS_IBO_RESULTS_DIR`` at a results folder
 that already holds its output.
+
+Caches count as outputs too: for example,
+``plots/plot_feeding_strategy_baseline_A.py`` keeps its simulated time course
+as ``feeding_strategy_baseline_A_trajectory.csv`` and ``.json`` directly
+under the results root.
 
 .. tip::
 
    Keep the results root short on Windows. Kinetic-optimization file names
    are long, and Windows paths are limited to 260 characters; the default
    location in a typical checkout leaves only a few characters to spare.
+   For a regular (non-editable) install, set ``NSKINETICS_IBO_RESULTS_DIR``
+   to a short, writable folder in any case: the default then sits inside
+   ``site-packages``, which may not be writable, is replaced on upgrade and,
+   in a conda environment, makes the path longer still.
 
 
 Running the scripts
@@ -389,8 +438,11 @@ supervised: a crash restarts them from the beginning.
      - Checkpointed sweeps: discard a leftover checkpoint and start over.
    * - ``IBO_AXIS_SWEEP``, ``IBO_AXIS_N_POINTS``, ``IBO_AXIS_LOW``,
        ``IBO_AXIS_HIGH``
-     - 1-D sweeps through the TRY-informed optimum: mode (``screen`` or a
-       variable name), resolution and bounds.
+     - 1-D sweeps through the TRY-informed optimum: mode (``screen``, the
+       default, or a variable name), points per variable (default 30 in
+       screen mode, 160 for a single variable) and the bounds of a
+       single-variable sweep. Run directly, the script also takes them as
+       ``--sweep``, ``--n-points``, ``--low`` and ``--high``.
    * - ``IBO_SOBOL_MEASURE``, ``IBO_SOBOL_N_POINTS``, ``IBO_SOBOL_SEED``,
        ``IBO_SOBOL_BANDS``
      - Sobol' stage 1: sampling measure (``campaign``, ``screening`` or
@@ -511,7 +563,10 @@ Kinetic optimization and the ``opt_*`` scenarios
    * - ``analyses/kinetic_optimization/optimize_kinetics_BO_supervised.py``
      - Launches and supervises one Bayesian-optimization campaign
        (``--objective``, ``--study-type``, ``--method``, ``--seed``,
-       ``--relay-from``, ...).
+       ``--relay-from``, ...). Most launcher defaults differ from the
+       publication campaigns' settings; :ref:`ibo-opt-reproduce` gives the
+       exact flags. The campaigns ran on hensmith 2b5b27d; on another build
+       they still run, but the TEA numbers shift.
      - hours (~8–17 h per 2,000-trial campaign)
      - ``<study>_trajectory.csv``, optuna store · :doc:`kinetic_optimization`
    * - ``.../optimize_kinetics_BO.py``
@@ -564,11 +619,14 @@ Objective landscape
    * - ``analyses/objective_landscape/evaluate_axis_try_informed_optimum.py``
      - 1-D sweeps through the TRY-informed optimum: a coarse screen of 11
        variables or one variable at full resolution (``IBO_AXIS_SWEEP``).
-       Checkpointed.
+       Checkpointed. **Requires hensmith 2b5b27d**; on any other build the
+       anchor check aborts with ``anchor PI off by … (> 0.02)`` (see
+       `Re-running on a recorded build`_).
      - hours
      - ``evaluate_axis_try_informed_optimum_<name>.csv`` · :doc:`objective_landscape`
    * - ``.../evaluate_k13_try_informed_optimum.py``
      - 161-point ``k_13`` sweep through the same optimum. Checkpointed.
+       **Requires hensmith 2b5b27d**, with the same anchor check.
      - minutes (~15–25 min)
      - CSV · :doc:`objective_landscape`
    * - ``plots/plot_objective_landscape_{fitness_distance,needle_plateau,embedding}.py``,
@@ -614,6 +672,9 @@ TEA breakdowns
    * - ``analyses/tea_breakdowns/collect_tea_breakdowns_split12d.py``
      - Re-simulates scenario A and the eight campaign optima and records
        their unit-group cost and utility breakdowns, checking the closures.
+       The published breakdowns are on hensmith 2b5b27d; on another build
+       it still runs, but the TEA numbers shift (`Re-running on a recorded
+       build`_).
      - minutes (~4 min)
      - ``tea_breakdowns_split12d_<stamp>.json`` · :doc:`process_and_tea`
    * - ``plots/plot_tea_breakdowns_split12d.py``

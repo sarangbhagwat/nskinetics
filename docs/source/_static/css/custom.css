@@ -100,6 +100,16 @@ html[data-theme="dark"] .bd-content .ibo-case-card img.sd-card-img-top {
   color: var(--pst-color-text-muted);
 }
 
+/* A linked card (``:link:``) is covered by sphinx-design's stretched-link
+   overlay (``.sd-stretched-link::after``: absolutely positioned, z-index 1).
+   Lift the ordinary links inside such a card above it, so an inline link
+   (the "scope" link on the Case Studies landing card) opens its own target;
+   the rest of the card still opens the card's page. */
+.bd-article .sd-card a.reference:not(.sd-stretched-link) {
+  position: relative;
+  z-index: 2;
+}
+
 .sd-card.ibo-stat .sd-card-body {
   font-size: 0.92rem;
 }
@@ -158,6 +168,29 @@ table.ibo-scenarios td:nth-child(5) {
   padding: 0.35rem 0.5rem;
 }
 
+/* ...and every column after the first (the row label) is right-aligned,
+   header included, so the digits of a column line up. */
+.bd-article table.ibo-num :is(td, th):not(:first-child) {
+  text-align: right;
+}
+
+/* Small numeric tables (``:class: ibo-num ibo-compact``; two or three
+   short columns) take their natural width instead of stretching across
+   the full column, which left labels and values 500 px apart, and sit
+   flush left with the text. */
+.bd-article table.ibo-compact {
+  width: auto;
+  min-width: min(100%, 24rem);
+  margin-left: 0;
+  margin-right: auto;
+}
+
+/* Numeric ranges ("~7–11 h", "0.75–1.5"), wrapped by conf.py: never break
+   after the en dash. */
+.bd-article .ibo-nobr {
+  white-space: nowrap;
+}
+
 /* Figure captions: the theme sets them in its light (300) caption weight,
    which reads faintly at the length of the case-study captions. */
 .bd-article figure figcaption {
@@ -171,17 +204,30 @@ table.ibo-scenarios td:nth-child(5) {
 }
 
 /* "On this page" lists: long code entries (API function names) wrap
-   instead of running past the sidebar edge. */
+   instead of running past the sidebar edge, and read as plain sidebar
+   text rather than bordered literal boxes, which a wrap splits into
+   orphaned fragments ("assert_objective_reproduced(" / ")"). */
 .bd-sidebar-secondary .toc-entry code.literal span.pre,
 .bd-sidebar-primary .toc-entry code.literal span.pre {
   white-space: normal;
   overflow-wrap: anywhere;
 }
 
+.bd-sidebar-secondary .toc-entry code.literal,
+.bd-sidebar-primary .toc-entry code.literal {
+  background: none;
+  border: 0;
+  padding: 0;
+  font-size: 0.85em;
+}
+
 /* Case-study pages put "On this page" in the left sidebar, under the
    section navigation (html_sidebars in conf.py), so their figures and
-   tables get the full content width. Separate the two lists, and collapse
-   nested levels exactly as the theme does in the right-hand sidebar. */
+   tables get the full content width. Separate the two lists. Below the
+   ten-entry section navigation there is room for the h2 entries only, so
+   collapse the h3 entries to the section being read: ``show_toc_level: 2``
+   marks every h3 list ``.visible``, which is hidden here too, and the
+   theme's scrollspy marks the current h2 entry ``.active``. */
 .bd-sidebar-primary .page-toc.onthispage {
   margin-top: 0.75rem;
   padding-top: 1rem;
@@ -189,12 +235,12 @@ table.ibo-scenarios td:nth-child(5) {
   font-size: var(--pst-sidebar-header-font-size);
 }
 
-.bd-sidebar-primary .bd-toc-nav .nav .nav {
+.bd-sidebar-primary .bd-toc-nav .nav .nav,
+.bd-sidebar-primary .bd-toc-nav .nav .nav.visible {
   display: none;
 }
 
-.bd-sidebar-primary .bd-toc-nav .nav .nav.visible,
-.bd-sidebar-primary .bd-toc-nav .nav > .active > ul {
+.bd-sidebar-primary .bd-toc-nav .nav > li.active > ul.nav {
   display: block;
 }
 
@@ -210,6 +256,67 @@ table.ibo-scenarios td:nth-child(5) {
 /* Case Studies landing card: set the case-study title above body size. */
 .ibo-case-card .sd-card-title {
   font-size: 1.25rem;
+}
+
+/* Text measure on the case-study pages. They have no right sidebar
+   (conf.py), so their column is about 870 px wide at 1280 px: right for
+   the publication figures and wide tables, too wide for prose (115-130
+   characters per line). Hold running text -- paragraphs, lists, figure
+   captions, and admonitions and dropdowns that contain only text -- to
+   about 80 characters per line, the measure of the tutorial and API
+   pages, flush with the left edge of the column. Figures, tables, tab
+   sets, card grids, code and display math keep the full column, and a
+   dropdown or admonition that holds one of them stays full width too
+   (its own paragraphs are still held to the measure). The ``:has()``
+   scope picks exactly the pages without a secondary sidebar; a browser
+   without ``:has()`` keeps the full-width text. */
+.bd-main:not(:has(.bd-sidebar-secondary)) .bd-article {
+  --ibo-measure: 38rem;
+}
+
+.bd-main:not(:has(.bd-sidebar-secondary)) .bd-article
+  :is(p, ul, ol, dl, blockquote, div.line-block):not(:is(.sd-container-fluid, .sd-card, table, figure) *) {
+  max-width: var(--ibo-measure);
+}
+
+.bd-main:not(:has(.bd-sidebar-secondary)) .bd-article
+  :is(div.admonition, details.sd-dropdown):not(:has(table, figure, img, .sd-container-fluid, .sd-tab-set, div.highlight, div.math)) {
+  max-width: var(--ibo-measure);
+  margin-left: 0;
+  margin-right: auto;
+}
+
+.bd-main:not(:has(.bd-sidebar-secondary)) .bd-article figure figcaption {
+  max-width: var(--ibo-measure);
+  margin-left: 0;
+  margin-right: auto;
+  text-align: left;
+}
+
+/* ...and keep the text, cards and admonitions off the scrollbar: without
+   the right sidebar the column otherwise ends 16 px from the window edge. */
+@media (min-width: 960px) {
+  .bd-main:not(:has(.bd-sidebar-secondary)) .bd-article-container {
+    padding-right: 2rem;
+  }
+}
+
+/* Figures drawn with large type (``:figclass: ibo-fig-measure``, image at
+   ``:width: 100%``): show them at the text measure, so their axis labels
+   come out near body size, flush with the text column. */
+.bd-article figure.ibo-fig-measure {
+  max-width: var(--ibo-measure, 38rem);
+  margin-left: 0;
+  margin-right: auto;
+}
+
+/* API page in-article contents (``.. contents::``): hide it where the
+   right-hand "On this page" sidebar is showing the same list; keep it
+   below 1200 px, where that sidebar is collapsed. */
+@media (min-width: 1200px) {
+  .bd-main:has(.bd-sidebar-secondary) .bd-article nav.contents.local {
+    display: none;
+  }
 }
 
 /* API signatures: a fully qualified name such as

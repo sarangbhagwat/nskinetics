@@ -22,6 +22,7 @@ in ``plots/`` are importable and documented under
 .. contents:: On this page
    :local:
    :depth: 1
+   :backlinks: none
 
 
 Package

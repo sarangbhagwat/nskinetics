@@ -192,7 +192,8 @@ wired to the shipped *S. cerevisiae* model (``te_r`` from
 .. figure:: /_static/images/isobutanol/overview/baseline_A_fermentation_trajectory.png
    :target: ../../_static/images/isobutanol/overview/baseline_A_fermentation_trajectory.png
    :class: pub-figure
-   :width: 75%
+   :width: 100%
+   :figclass: ibo-fig-measure
    :alt: Concentration versus time for the scenario A baseline fermentation over 80 hours: glucose starts near 221 g/L with small ripples from seven feed spikes between 9 and 11.5 hours, then falls to near zero by about 60 hours; ethanol rises to about 115 g/L; cell density plateaus near 13 g/L; acetate and isobutanol stay near zero. Dashed lines mark the end of aeration near 12 hours and the end of fermentation near 62 hours.
 
    The scenario-A baseline fermentation inside ``V406`` (threshold 217.125 /
@@ -727,8 +728,10 @@ relative to the package folder; :doc:`running_analyses` lists every script.
    * - ``analyses/tea_breakdowns/collect_tea_breakdowns_split12d.py``
      - Re-simulates scenario A and the eight campaign optima, checks the
        unit-group closures, and records the TEA breakdowns. Needs the
-       campaign trajectory CSVs; use the campaigns' model version
-       (``2b5b27d``) to reproduce the table above.
+       campaign trajectory CSVs. To reproduce the table above, switch
+       hensmith to the campaigns' build, commit ``2b5b27d``
+       (:ref:`isobutanol-switch-build`); on another build the script still
+       runs, but the TEA numbers shift.
      - ``tea_breakdowns_split12d_<stamp>.json``; ~4 min
    * - ``plots/plot_tea_breakdowns_split12d.py``
      - Draws the 3 × 3 breakdown figure from the newest JSON (never
@@ -748,3 +751,6 @@ relative to the package folder; :doc:`running_analyses` lists every script.
        CSVs; panel B simulates scenario A once if its trajectory cache is
        missing.
      - ``publication/Feed-strat``; seconds with cached data
+
+Next: :doc:`feeding_strategies` asks which feeding policy minimizes MESP
+for the baseline strain.

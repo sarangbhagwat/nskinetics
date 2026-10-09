@@ -94,8 +94,16 @@ each campaign's best design as a reproducible ``opt_*`` scenario.
    - **Seeds and donor trials.** On this page a *seed* is always a random
      seed (seed 350, seed 33960). The 1,000 rows preloaded into a relay
      campaign are *donor trials*. The two figures, however, label those
-     preloaded donor trials "seeds": in the figures, "seeds" means the 1,000
-     donor trials, not random seeds.
+     preloaded donor trials "seeds": in the figures, "seeds" and "seeded
+     run" refer to the 1,000 donor trials and the relay that used them, not
+     random seeds.
+   - **Process-level campaigns.** The campaigns that maximize a fermentation
+     objective instead of profitability: the six TRY campaigns of each seed
+     (also called the TRY *scouts*) and, for seed 33960 only, one
+     price-weighted-yield campaign.
+   - **The two relays.** The *TRY-informed relay* ``_rl15c111dc`` (seed-350
+     donors) is the one in the figures and the source of #1912. The *first
+     relay* ``_rlba1b2315`` (seed-33960 donors) is the replicate.
    - **Reproducibility margin.** The objective is deterministic, but it drifts
      slightly with the converged state each simulation starts from
      (load-path drift). This page treats PI differences below
@@ -165,7 +173,10 @@ or ``FAIL`` row in the trajectory CSV. Infeasible proposals are logged as
       ``GP_MAX_DIMENSIONS = 15`` decision variables, so it runs only on the
       compact presets (``metabolic_minimal_subset``, ``metabolic_14d`` and the
       split presets). The publication campaigns used a 50-point LHS start-up,
-      a deterministic objective and **no learned constraints**.
+      a deterministic objective and **no learned constraints**
+      (``--n-startup-trials 50 --gp-deterministic
+      --gp-no-learned-constraints``; the full commands are under
+      :ref:`ibo-opt-reproduce`).
 
    .. tab-item:: TPE (the default)
 
@@ -187,9 +198,9 @@ The decision space
 Search spaces come from named **presets** on two axes:
 
 - ``study_target_products`` ∈ {``ethanol_only``, ``ethanol_isobutanol``};
-- ``study_type`` ∈ {``metabolic``, ``metabolic_protein`` (default),
+- ``study_type`` ∈ {``metabolic``, ``metabolic_protein``,
   ``metabolic_minimal``, ``metabolic_minimal_subset``, ``metabolic_14d``,
-  ``metabolic_split_14d``, ``metabolic_split_12d``}.
+  ``metabolic_split_14d`` (default), ``metabolic_split_12d``}.
 
 Every preset starts at the scenario-A (wild-type) kinetics. The publication
 campaigns use ``ethanol_isobutanol`` × ``metabolic_split_12d``, anchored on
@@ -312,7 +323,7 @@ The campaigns
        (log-tail), and isobutanol and ethanol yield, titer and productivity.
        The 50-point LHS start-up is shared by the seven campaigns of one seed.
    * - Relay ``_rl15c111dc`` (2026-09-24)
-     - TRY-informed
+     - TRY-informed relay (seed-350 donors)
      - A fresh GP study maximizing PI (log-tail), seed 350. It was preloaded
        with 1,000 of the six scouts' 12,000 trials, which were not
        re-simulated, and then ran 1,000 simulated trials. The preload exceeded
@@ -322,10 +333,10 @@ The campaigns
      - The same seven objectives plus a price-weighted-yield campaign, on a
        different seed. Its PI campaign is the second uninformed campaign
        (best #1602).
-   * - First relay ``_rlba1b2315`` (2026-09-23)
-     - TRY-informed (2)
-     - Seed 20260923, preloaded from the seven seed-33960 process-level
-       campaigns.
+   * - Relay ``_rlba1b2315`` (2026-09-23)
+     - first relay (seed-33960 donors)
+     - The replicate relay: seed 20260923, preloaded from the seven
+       seed-33960 process-level campaigns.
 
 .. dropdown:: How a relay is preloaded
 
@@ -390,42 +401,47 @@ claim needs them.
    of the uninformed profitability campaign but return low-IRR designs.
    Preloaded with their trials, a profitability search co-produces above that
    plateau on trial 2, beats every donor trial by trial 13 and reaches
-   27.3 %.** In the figure, "seeds" means the 1,000 preloaded donor trials,
-   not random seeds.
-   Eight GP campaigns (random seed 350) searched the same 12-d space. Two
-   maximized profitability (PI, plotted as IRR): **uninformed** (cyan, 2,000
-   trials) and **TRY-informed** (teal, 1,000 simulated trials after 1,000
-   preloaded donor trials). Six TRY scouts each maximized one titer, rate or
-   yield of ethanol (amber) or isobutanol (violet). Their 12,000 simulations
-   supplied the 1,000 donor trials: 327 scout trials at least as profitable
-   as the starting strain, plus 673 space-filling ones. Trials are 1-based
-   simulated indices. Dashed cyan: the uninformed plateau (tinted above).
-   Dotted grey: the starting strain, 12.6 %. Dotted violet: the best donor
-   trial (#842, trial 843 in the figure), 22.9 %. "Loss": IRR < 0 or no
-   IRR. "Making isobutanol" means ≥ 5 g/L; "co-production" means ≥ 5 g/L of
-   each alcohol.
-   **(a)** Best IRR so far; the left strip shows the donor trials. In the TRY-informed
-   campaign every improvement from trial 7 on co-produced. It reached 25.3 % on
-   trial 18 and refined 26.2 % (trial 25) to 27.3 % (trial 913 = #1912). The
-   uninformed campaign stayed at 15.8 % (ethanol only) from trial 104 (#103)
-   to the end of its budget.
-   **(b)** IRR against the isobutanol share of alcohol titer, for every design
-   making ≥ 1 g/L alcohol. No design making < 5 g/L isobutanol exceeds 15.8 %.
-   All 296 designs above 22.9 % are TRY-informed co-producers.
-   **(c)** Each campaign's trials (strip), its highest-IRR visit (open marker)
-   and the design it returned (filled; the argmax of its own objective). The
-   isobutanol scouts visited 110, 1 and 1 designs above 15.8 % but returned
-   1.7 % and two with no IRR. The ethanol scouts never exceeded 15.4 % and
-   returned 8.1–12.7 %. **Look at the long horizontal gaps:** each one is a
-   design that was visited but not returned.
-   **(d, e)** Titers and metabolic proteome of the returned designs. Dotted:
-   the penalty-free budget, 0.1347 g/(g DCW). ×: growth factor beyond it.
-   Hatched: Adh1, Adh6.
-   **(f)** Share of trials making isobutanol against best-visit (open) and
-   returned (filled) IRR. The uninformed campaign made isobutanol in 4.9 % of
-   its trials; the TRY-informed one in 65.9 %. The hexagon marks the donor
-   trials.
-   IRRs are at default prices under build 2b5b27d.
+   27.3 %.** Eight GP campaigns (random seed 350); IRRs at default prices
+   under build 2b5b27d. In the figure, "seeds" and "seeded run" refer to the
+   1,000 preloaded donor trials and the relay that used them, not random
+   seeds. Click the figure to open it at full resolution.
+
+.. dropdown:: How to read this figure
+
+   - **Campaigns and colours.** Two campaigns maximized profitability (PI,
+     plotted as IRR): **uninformed** (cyan, 2,000 trials) and
+     **TRY-informed** (teal, 1,000 simulated trials after 1,000 preloaded
+     donor trials). Six TRY scouts each maximized one titer, rate or yield of
+     ethanol (amber) or isobutanol (violet). Their 12,000 simulations
+     supplied the 1,000 donor trials: 327 scout trials at least as
+     profitable as the starting strain, plus 673 space-filling ones.
+   - **Lines and terms.** Trials are 1-based simulated indices. Dashed cyan:
+     the uninformed plateau (tinted above). Dotted grey: the starting
+     strain, 12.6 %. Dotted violet: the best donor trial (#842, trial 843 in
+     the figure), 22.9 %. "Loss": IRR < 0 or no IRR. "Making isobutanol"
+     means ≥ 5 g/L; "co-production" means ≥ 5 g/L of each alcohol.
+   - **(a)** Best IRR so far; the left strip shows the donor trials. In the
+     TRY-informed campaign every improvement from trial 7 on co-produced. It
+     reached 25.3 % on trial 18 and refined 26.2 % (trial 25) to 27.3 %
+     (trial 913 = #1912). The uninformed campaign stayed at 15.8 % (ethanol
+     only) from trial 104 (#103) to the end of its budget.
+   - **(b)** IRR against the isobutanol share of alcohol titer, for every
+     design making ≥ 1 g/L alcohol. No design making < 5 g/L isobutanol
+     exceeds 15.8 %. All 296 designs above 22.9 % are TRY-informed
+     co-producers.
+   - **(c)** Each campaign's trials (strip), its highest-IRR visit (open
+     marker) and the design it returned (filled; the argmax of its own
+     objective). The isobutanol scouts visited 110, 1 and 1 designs above
+     15.8 % but returned 1.7 % and two with no IRR. The ethanol scouts never
+     exceeded 15.4 % and returned 8.1–12.7 %. **Look at the long horizontal
+     gaps:** each one is a design that was visited but not returned.
+   - **(d, e)** Titers and metabolic proteome of the returned designs.
+     Dotted: the penalty-free budget, 0.1347 g/(g DCW). ×: growth factor
+     beyond it. Hatched: Adh1, Adh6.
+   - **(f)** Share of trials making isobutanol against best-visit (open) and
+     returned (filled) IRR. The uninformed campaign made isobutanol in 4.9 %
+     of its trials; the TRY-informed one in 65.9 %. The hexagon marks the
+     donor trials.
 
 TRY optima miss the profit optimum
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -517,6 +533,7 @@ The sharpest case is a pair of consecutive trials:
 .. list-table:: Isobutanol-yield campaign, consecutive trials
    :header-rows: 1
    :widths: 40 30 30
+   :class: ibo-num ibo-compact
 
    * - Outcome
      - #841 (returned)
@@ -606,8 +623,8 @@ proposals reached each level, starting from simulation 1 (PI −3.63 and
    :widths: 16 21 21 21 21
 
    * - PI
-     - TRY-informed relay
-     - First relay
+     - TRY-informed relay (seed-350 donors)
+     - First relay (seed-33960 donors)
      - Uninformed, seed 33960
      - Uninformed, seed 350
    * - 0.65
@@ -643,18 +660,19 @@ proposals reached each level, starting from simulation 1 (PI −3.63 and
   13.7 %). Under a linear engineering prior 19 did, the best at 21.5 %, which
   is below the best donor trial (#842, 22.9 %; :doc:`sensitivity`).
 
-The ceiling was set by the bounds, not the search
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+The best designs sit at the search bounds
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-All **48** designs with PI ≥ 0.75 sit at four search bounds: the ALS cap
+All **48** designs with PI ≥ 0.75 sit at four search bounds, so the ceiling
+probably reflects the chosen bands rather than the search, though no run
+beyond the bands has tested this. The four bounds are the ALS cap
 (4.0 g/L/h), the Adh6 cap (2.154 = 20× native), the isobutanol-inhibition floor
 (0.75) and the target − threshold floor (5 g/L). #1912 sits at five bounds and
 #1602 at six, so higher IRR may exist outside the searched ranges. Sitting
 at a bound does not prove that the bound binds, though. In the screening
 Sobol' samples isobutanol titer stops rising once Adh6 exceeds about 2×
 native (:doc:`sensitivity`), so the Adh6 cap may be inert; the ALS cap and
-the isobutanol-tolerance floor are the likelier binding limits. No run
-beyond the bands has tested this. Wide-band ``metabolic_14d`` campaigns
+the isobutanol-tolerance floor are the likelier binding limits. Wide-band ``metabolic_14d`` campaigns
 reached PI 0.99, but in a different decision space that is not comparable.
 
 The flagship design inverts the textbook isobutanol strain
@@ -787,34 +805,45 @@ unchanged (TCI 137.7 vs 139.3 MM$).
    :width: 100%
 
    **Design fingerprints of the returned designs and of the isobutanol
-   scouts' best visits.** Rows: the starting strain (scenario A); the design
-   each campaign returned (filled markers); and, in italics with open markers,
-   each isobutanol scout's highest-IRR trial. Trial numbers are 1-based
-   simulated indices. **Native capacities** are fold change against the
-   starting strain (Pdc ``k_3`` 5.81, Adh1 ``k_6`` 2.82 and Adh6 ``k_17``
-   0.1077 g/L/h; glycolysis multiplier 1). Blue is lower and red higher, with
-   the colour clipped at 1/16× and 16×. **Isobutanol-pathway capacities** (ALS
-   ``k_13`` and the Ilv5/Ilv3/Aro10 group) are absolute, in g/L/h (purple).
-   **Inhibition multipliers** run 0.75–1.5, where lower means a more tolerant
-   strain (green). **Feeding** is shaded grey within its search range; spikes
-   are shown as actual/cap. Cells with a black outer and white inner outline
-   sit at a search bound. **Right:** IRR (bold = above the 15.8 % plateau),
-   the campaign's own objective, Φ\ :sub:`M` (dark = above the 0.1347 budget)
-   and the growth factor.
-   **What to look at:** the TRY-informed row throttles the entry to the
-   ethanol branch (Pdc 0.33×, Adh1 2.6×) at baseline-like glycolysis (0.98×).
-   It puts ALS and Adh6 at their caps and stays within the proteome budget
-   (Φ\ :sub:`M` 0.130, growth ×1.00). The uninformed design instead puts Pdc
-   at its 4.0× bound and switches the isobutanol pathway off (Φ\ :sub:`M`
-   0.153, growth ×0.84). The isobutanol-yield scout's returned design
-   (trial 842 = #841) and best visit (trial 843 = #842) are consecutive
-   trials. The 7.6 % higher yield it was rewarded for cost 21 IRR points
-   (1.68 % vs 22.90 %): TCI 316 vs 183 MM$, batch 102 vs 31 h, growth ×0.30
-   vs ×0.65. The inhibition multipliers carry no proteome cost, so the searches
-   use them freely: 12 of the 24 in returned designs sit at the 0.75 floor. A
-   multiplier on a product the design does not make is inert, so this block
-   says less about strain design than the capacity columns do. IRRs are under
-   build 2b5b27d (starting strain 12.6 %).
+   scouts' best visits.** The TRY-informed design throttles the entry to the
+   ethanol branch (Pdc 0.33×, Adh1 2.6×), puts ALS and Adh6 at their caps and
+   stays within the proteome budget; the uninformed design puts Pdc at its
+   4.0× bound and switches the isobutanol pathway off. Outlined cells sit at
+   a search bound; IRRs under build 2b5b27d (starting strain 12.6 %). Click
+   the figure to open it at full resolution.
+
+.. dropdown:: How to read this figure
+
+   - **Rows.** The starting strain (scenario A); the design each campaign
+     returned (filled markers); and, in italics with open markers, each
+     isobutanol scout's highest-IRR trial. Trial numbers are 1-based
+     simulated indices.
+   - **Native capacities** are fold change against the starting strain (Pdc
+     ``k_3`` 5.81, Adh1 ``k_6`` 2.82 and Adh6 ``k_17`` 0.1077 g/L/h;
+     glycolysis multiplier 1). Blue is lower and red higher, with the colour
+     clipped at 1/16× and 16×.
+   - **Isobutanol-pathway capacities** (ALS ``k_13`` and the
+     Ilv5/Ilv3/Aro10 group) are absolute, in g/L/h (purple).
+   - **Inhibition multipliers** run 0.75–1.5, where lower means a more
+     tolerant strain (green). **Feeding** is shaded grey within its search
+     range; spikes are shown as actual/cap.
+   - **Outlines.** Cells with a black outer and white inner outline sit at a
+     search bound.
+   - **Right-hand columns.** IRR (bold = above the 15.8 % plateau), the
+     campaign's own objective, Φ\ :sub:`M` (dark = above the 0.1347 budget)
+     and the growth factor.
+   - **What to look at.** The TRY-informed row keeps baseline-like
+     glycolysis (0.98×) and stays within the proteome budget (Φ\ :sub:`M`
+     0.130, growth ×1.00); the uninformed design runs at Φ\ :sub:`M` 0.153,
+     growth ×0.84. The isobutanol-yield scout's returned design (trial 842
+     = #841) and best visit (trial 843 = #842) are consecutive trials. The
+     7.6 % higher yield it was rewarded for cost 21 IRR points (1.68 % vs
+     22.90 %): TCI 316 vs 183 MM$, batch 102 vs 31 h, growth ×0.30 vs
+     ×0.65.
+   - **The inhibition block says less than the capacity columns.** The
+     multipliers carry no proteome cost, so the searches use them freely:
+     12 of the 24 in returned designs sit at the 0.75 floor. A multiplier on
+     a product the design does not make is inert.
 
 .. _ibo-opt-scope:
 
@@ -842,9 +871,13 @@ unchanged (TCI 137.7 vs 139.3 MM$).
      the speed of the relays come from single runs per setting. They are an
      existence proof, not a rate.
 
-The economically optimal strain was neither the most productive, the most
-tolerant nor the highest-yielding. It was the one that spent its proteome
-where the facility earned the most per unit of sugar.
+The economically optimal strain was neither the most productive nor the
+highest-yielding. It was the one that spent its proteome where the facility
+earned the most per unit of sugar. Tolerance cuts both ways: on the
+ethanol-only plane of :doc:`kinetic_sweeps`, full ethanol tolerance raised
+MESP by 21 %, whereas here the search pushed both tolerance multipliers to
+the most tolerant setting allowed (0.75×), and the isobutanol one is part
+of why this design is prospective.
 
 .. _ibo-opt-scenarios:
 
@@ -992,7 +1025,8 @@ Caveats and limitations
   under the sampler settings used (deterministic objective, no learned
   constraints).
 - **No compute-matched control.** No warm start from the single best donor,
-  no random-seed preload and no single-donor ablation were run.
+  no random-design preload (a random-search control) and no single-donor
+  ablation were run.
 - **Reproducibility margin.** This page uses 0.0105 PI. The caption notes
   shipped with the figure scripts (``plots/optimization_figure_ideas``)
   compute a stricter, design-pair-based margin (0.0075 PI, from 49 pairs of
@@ -1002,6 +1036,8 @@ Caveats and limitations
   scenario built on #1602, are superseded and not reported here; the
   registered co-production scenario is ``opt_PI_TRY_informed``.
 - **Basis.** Titers and productivities are per litre of water, not broth.
+
+.. _ibo-opt-reproduce:
 
 Reproduce it
 ------------
@@ -1013,8 +1049,9 @@ Reproduce it
    regenerated, or the ``NSKINETICS_IBO_RESULTS_DIR`` environment variable
    pointed at a results folder that already holds them. The campaigns are long-running, simulating
    scripts and are **opt-in**. Exact campaign numbers reproduce only under
-   the hensmith build the campaigns used (2b5b27d); under the current build,
-   TEA metrics shift by 1–5 %.
+   the hensmith build the campaigns used (commit 2b5b27d; see
+   :ref:`isobutanol-switch-build`); under the current build, TEA metrics
+   shift by 1–5 %.
 
 .. list-table::
    :header-rows: 1
@@ -1031,10 +1068,10 @@ Reproduce it
        baseline-simulates the biorefinery.
      - Long: 2,000 simulated trials per campaign (~8–17 h)
    * - ``analyses/kinetic_optimization/optimize_kinetics_BO_supervised.py``
-     - The production launcher. Flags include ``--method gp``,
-       ``--study-target-products``, ``--study-type``, ``--objective``,
-       ``--seed``, ``--n-startup-trials`` and, for relays, ``--relay-from``.
-       ``--help`` lists them all.
+     - The production launcher. Its defaults (objective ``IRR``,
+       ``metabolic_split_14d``, TPE, a launch-time seed) are **not** the
+       publication campaigns' settings; the dropdown below gives their exact
+       flags. ``--help`` lists them all.
      - As above; survives crashes and stalls
    * - ``analyses/kinetic_optimization/reproduce_split12d_trial.py``
      - Re-simulates one recorded trial and compares it, metric by metric,
@@ -1052,11 +1089,69 @@ Reproduce it
      - Sim-safe (pandas only). They check every figure number against the
        campaign CSVs, then draw the two figures above as
        ``kinBO_main_scouts`` / ``kinBO_S2_fingerprints`` (``.png`` +
-       ``.pdf``; dated copies only with ``--timestamped``) and write the
-       caption files.
+       ``.pdf``; dated copies only with ``fig_main_scouts.py --timestamped``)
+       and write the caption files.
      - Seconds, but they need the eight campaign CSVs
 
-Related pages: :doc:`objective_landscape` explains *why* profitability search
-is seed-dependent; :doc:`enzyme_burden` gives the proteome constraint behind
-the growth factors; :doc:`sensitivity` ranks the same 12 decisions by variance
-share.
+.. dropdown:: Exact settings of the eight seed-350 campaigns
+
+   Run from ``analyses/kinetic_optimization/`` in the package folder, one
+   campaign at a time, on hensmith 2b5b27d. Some flags restate a launcher
+   or engine default; they are spelled out so that the commands do not
+   depend on those defaults.
+
+   **The seven** ``_rs350`` **campaigns** (2,000 simulated trials each). The
+   uninformed profitability campaign:
+
+   .. code-block:: bash
+
+      python optimize_kinetics_BO_supervised.py \
+          --objective "PI (log-tail)" \
+          --study-target-products ethanol_isobutanol \
+          --study-type metabolic_split_12d \
+          --method gp --gp-deterministic --gp-no-learned-constraints \
+          --seed 350 --n-startup-trials 50 --n-trials 2000 \
+          --study-name kin_opt_ethanol_isobutanol_metabolic_split_12d_pi_log-tail_gp_rb0.001-4_ib0.75-1.5_aA_rs350_burden
+
+   The six TRY scouts use the same command with ``--objective`` set to
+   ``"IBO yield"``, ``"IBO titer"``, ``"IBO productivity"``,
+   ``"EtOH yield"``, ``"EtOH titer"`` or ``"EtOH productivity"``, and the
+   matching slug (``ibo_yield``, ``ibo_titer``, ``ibo_productivity``,
+   ``etoh_yield``, ``etoh_titer``, ``etoh_productivity``) in place of
+   ``pi_log-tail`` in the study name. The ``_rs350`` tag is not derived
+   from ``--seed``; it comes from ``--study-name``, which also keeps a new
+   campaign from resuming an older study of the default name.
+
+   **The TRY-informed relay** (1,000 preloaded donor trials, then 1,000
+   simulated trials), run after the six scouts finish:
+
+   .. code-block:: bash
+
+      P=kin_opt_ethanol_isobutanol_metabolic_split_12d
+      S=gp_rb0.001-4_ib0.75-1.5_aA_rs350_burden
+      python optimize_kinetics_BO_supervised.py \
+          --objective "PI (log-tail)" \
+          --study-target-products ethanol_isobutanol \
+          --study-type metabolic_split_12d \
+          --method gp --gp-deterministic --gp-no-learned-constraints \
+          --seed 350 --n-trials 1000 \
+          --relay-from ${P}_ibo_yield_${S} ${P}_ibo_titer_${S} \
+                       ${P}_ibo_productivity_${S} ${P}_etoh_yield_${S} \
+                       ${P}_etoh_titer_${S} ${P}_etoh_productivity_${S} \
+          --relay-max-rows 1000 --relay-keep-above -0.12953
+
+   - ``--relay-keep-above -0.12953`` is the starting strain's PI,
+     PI\ :sub:`A` = −0.1383, on the log-tail scale (−ln(1 + 0.1383)).
+   - The derived study name ends in ``_rl15c111dc_burden``. The tag hashes
+     the six donor names and the relay settings, so these exact donor names
+     and settings give exactly that tag.
+   - The relay keeps the remaining relay settings at their defaults
+     (de-duplication tolerance 10\ :sup:`−3`, quarantined rows dropped).
+     The 1,000 preloaded trials exceed the start-up count, so the relay has
+     no LHS phase.
+
+Next: :doc:`objective_landscape` explains *why* TRY campaigns pass through
+profitable designs without returning them and why profitability search is
+seed-dependent; :doc:`enzyme_burden` then gives the proteome constraint
+behind the growth factors, and :doc:`sensitivity` ranks the same 12
+decisions by variance share.

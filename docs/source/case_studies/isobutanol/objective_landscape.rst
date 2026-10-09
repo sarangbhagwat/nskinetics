@@ -8,8 +8,8 @@ depending on its random seed. This
 page looks at the *shape* of the objectives over the 12-d strain-design and
 feeding space to explain both, and compares the profitability index (PI)
 with the titer, rate and yield (TRY) objectives. The answer is about
-**topology, not roughness**. Locally, PI is not intrinsically rougher than the
-TRY objectives. What sets it apart is that its profitable region is tiny and
+**topology, not roughness**. On unbiased (uniform) samples, PI is no rougher
+than the TRY objectives. What sets it apart is that its profitable region is tiny and
 split into **separated islands**. One-dimensional slices through the best
 design show what each island is made of.
 
@@ -198,6 +198,7 @@ all with PI ≤ 0.049, and every trial with PI > 0.05 makes isobutanol (yield
       .. list-table:: Fitness–distance correlation in the optimizer pool
          :header-rows: 1
          :widths: 60 40
+         :class: ibo-num ibo-compact
 
          * - Objective
            - FDC
@@ -222,6 +223,7 @@ all with PI ≤ 0.049, and every trial with PI > 0.05 makes isobutanol (yield
       .. list-table:: Normalized rank semivariance γ(h), optimizer pool
          :header-rows: 1
          :widths: 30 35 35
+         :class: ibo-num ibo-compact
 
          * - Pair distance h
            - PI
@@ -247,6 +249,7 @@ all with PI ≤ 0.049, and every trial with PI > 0.05 makes isobutanol (yield
       .. list-table:: Fitness–distance correlation on uniform-feasible samples
          :header-rows: 1
          :widths: 40 30 30
+         :class: ibo-num ibo-compact
 
          * - Sampling measure
            - PI
@@ -285,21 +288,25 @@ read with this in mind.
    :width: 100%
 
    **Fitness–distance structure of the optimizer-sampled pool** (13,622
-   unique trials of the seven seed-350 campaigns). **(a)** PI of every trial
-   against its unit-cube distance from the most profitable pooled trial (#842,
-   star). The axis is linear above 0 and log-tail compressed below 0, with
-   ticks in raw PI; no trial is dropped. **(b)** Isobutanol yield against the
-   distance from the highest-yield trial (#841, diamond). Trials with PI > 0
-   are red; the 40 ethanol-only ones sit at zero yield. **(c)** Normalized
-   rank semivariance against pair distance (h ≤ 1.6) for PI (red) and the six
-   TRY objectives, computed over all pairs. The FDC values above (a) and (b)
-   are each objective's Spearman correlation with distance from its own best.
-   **How to read it:** in *this pool* PI has a near-zero FDC and the highest
-   semivariance at every distance. That is a property of where the
-   optimizers sampled, not of PI. On uniform Sobol' samples, PI's FDC
-   (−0.39) matches the TRY objectives' (−0.35 to −0.48). What the figure shows
-   robustly is that the profitable (red) trials sit in separate groups, not on
-   one hill.
+   unique trials of the seven seed-350 campaigns). In *this pool* PI has a
+   near-zero FDC and the highest semivariance at every distance, a property
+   of where the optimizers sampled, not of PI: on uniform Sobol' samples,
+   PI's FDC (−0.39) matches the TRY objectives' (−0.35 to −0.48). What the
+   figure shows robustly is that the profitable (red) trials sit in separate
+   groups, not on one hill. Click the figure to open it at full resolution.
+
+.. dropdown:: How to read this figure
+
+   - **(a)** PI of every trial against its unit-cube distance from the most
+     profitable pooled trial (#842, star). The axis is linear above 0 and
+     log-tail compressed below 0, with ticks in raw PI; no trial is dropped.
+   - **(b)** Isobutanol yield against the distance from the highest-yield
+     trial (#841, diamond). Trials with PI > 0 are red; the 40 ethanol-only
+     ones sit at zero yield.
+   - **(c)** Normalized rank semivariance against pair distance (h ≤ 1.6)
+     for PI (red) and the six TRY objectives, computed over all pairs.
+   - The FDC values above (a) and (b) are each objective's Spearman
+     correlation with distance from its own best.
 
 .. figure:: /_static/images/isobutanol/landscape/distance_profiles_around_842.png
    :target: ../../_static/images/isobutanol/landscape/distance_profiles_around_842.png
@@ -312,19 +319,25 @@ read with this in mind.
    :width: 100%
 
    **Distance profiles around the most profitable pooled trial (#842).**
-   Same anchor and same trials in both panels. **(a)** PI and **(b)**
-   isobutanol yield against unit-cube distance from #842, with the binned
-   median (0.1-wide bins, n ≥ 10) and interquartile range. Solid line:
-   break-even, PI = 0. Dashed: the scenario-A strain (PI −0.14). Ringed: the
-   neighbour #1882 at d = 0.135, which has a *higher* yield than #842 (0.379
-   vs 0.354 g/g) but PI −0.43 instead of +0.50. Trials with PI < −3.5
-   (n = 295) are drawn below the dotted floor; 11,010 trials beyond d = 1.5
-   (44 with PI > 0) are not shown. **How to read it:** around this anchor,
-   PI's median collapses by d ≈ 0.2 while yield stays on its plateau to
-   d ≈ 0.8. Along the isobutanol-yield plateau (0.37–0.38 g/g), PI runs from
-   +0.50 to −0.68. This explains why a yield campaign can step off a
+   Around this anchor, PI's median collapses by d ≈ 0.2 while isobutanol
+   yield stays on its plateau to d ≈ 0.8; along that plateau (0.37–0.38 g/g)
+   PI runs from +0.50 to −0.68. This is why a yield campaign can step off a
    profitable design without noticing. It does **not** show that PI is
-   intrinsically rougher than yield (see the Sobol' control above).
+   intrinsically rougher than yield (see the Sobol' control above). Click
+   the figure to open it at full resolution.
+
+.. dropdown:: How to read this figure
+
+   - **(a)** PI and **(b)** isobutanol yield of the same trials against
+     unit-cube distance from #842, with the binned median (0.1-wide bins,
+     n ≥ 10) and interquartile range.
+   - **Lines.** Solid: break-even, PI = 0. Dashed: the scenario-A strain
+     (PI −0.14).
+   - **Ringed:** the neighbour #1882 at d = 0.135, which has a *higher*
+     yield than #842 (0.379 vs 0.354 g/g) but PI −0.43 instead of +0.50.
+   - **Not shown or clipped.** Trials with PI < −3.5 (n = 295) are drawn
+     below the dotted floor; 11,010 trials beyond d = 1.5 (44 with PI > 0)
+     are not shown.
 
 .. figure:: /_static/images/isobutanol/landscape/tsne_embedding_optimizer_pool.png
    :target: ../../_static/images/isobutanol/landscape/tsne_embedding_optimizer_pool.png
@@ -338,19 +351,25 @@ read with this in mind.
    :width: 100%
 
    **t-SNE map of the optimizer pool,** coloured by PI **(a)** and by
-   isobutanol yield **(b)**, with identical coordinates (perplexity 40;
-   trustworthiness 0.99 at k = 10). t-SNE preserves *neighbourhoods*, not
-   distances: map distances and cluster sizes are not metric, and the axes
-   have no units. The ρ above each panel is the 12-d nearest-neighbour rank
-   correlation (PI 0.75, isobutanol yield 0.89). Two caveats temper that
-   contrast. The yield ρ is lifted by the split between the two-thirds of
-   trials that make no isobutanol (a flat zero floor) and the co-production
-   third. Within co-production trials alone, the 12-d ρ is 0.59 for PI and
-   0.67 for yield. Also, 40 of the 166 PI > 0 trials (rings) are ethanol-only
-   designs with PI ≤ 0.05, which sit on the zero-yield region. PI colours are
-   clipped at −1 (NPV = −TCI); 60 % of trials lie below. **How to read it:**
-   as topology. Profitable designs occupy small, separate patches, most of
-   them on the high-yield arm.
+   isobutanol yield **(b)**, with identical coordinates. Read it as
+   topology: profitable designs occupy small, separate patches, most of
+   them on the high-yield arm. t-SNE preserves *neighbourhoods*, not
+   distances, so map distances, cluster sizes and axes carry no units.
+   Click the figure to open it at full resolution.
+
+.. dropdown:: How to read this figure
+
+   - **Settings.** Perplexity 40; trustworthiness 0.99 at k = 10.
+   - **The ρ above each panel** is the 12-d nearest-neighbour rank
+     correlation (PI 0.75, isobutanol yield 0.89). Two caveats temper that
+     contrast. The yield ρ is lifted by the split between the two-thirds of
+     trials that make no isobutanol (a flat zero floor) and the
+     co-production third; within co-production trials alone, the 12-d ρ is
+     0.59 for PI and 0.67 for yield. And 40 of the 166 PI > 0 trials
+     (rings) are ethanol-only designs with PI ≤ 0.05, which sit on the
+     zero-yield region.
+   - **Colour scale.** PI colours are clipped at −1 (NPV = −TCI); 60 % of
+     trials lie below.
 
 What is robust: islands
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -372,7 +391,8 @@ the TRY-informed optimum #1912:
      - ≤ 0.05
      - 2.0 unit-cube units from #1912
    * - Pdc-null, pure-isobutanol island
-     - ≤ 0.50
+     - ≤ 0.50 in the seed-350 pool (#842); 0.52 across all 31,905 pooled
+       designs
      - 1.15 units from #1912 (contains #842)
    * - Co-production island
      - ≈ 0.81
@@ -389,8 +409,9 @@ seen in :doc:`kinetic_optimization`.
 Yield and profit co-locate, except along Pdc
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Locally, the picture differs from the global pool, where high yield does
-not imply profit (PI runs from +0.50 to −0.68 along the yield plateau). The
+Locally, around #1912, the picture differs from the global pool, where high
+yield does not imply profit (PI runs from +0.50 to −0.68 along the yield
+plateau). The
 1-D slices below run through #1912, where ALS, Adh6 and both tolerances
 already sit at their bounds. Along them the isobutanol-yield maximum and
 the PI maximum coincide, to within one grid step, along **10 of the 11
@@ -420,26 +441,33 @@ The Pdc slice
          (purple) tracks PI on an outer axis. Ethanol yield (blue) rises
          monotonically from zero to about 0.32 g/g. A dotted vertical line
          near 4.85 marks the onset of burden derating.
-   :width: 85%
-   :align: center
+   :width: 100%
+   :figclass: ibo-fig-measure
 
    **PI (red, left axis), ethanol yield (blue, right axis) and IRR (purple,
-   outer axis) along Pdc capacity** ``k_3`` **through #1912.** The sweep has
-   219 points over the campaign band, 0.00581–23.24 g/L/h (10\ :sup:`−3`\ × to
-   4× wild type, where wild type is 5.81). The other eleven decisions stay at
-   #1912, with the burden on. Dotted: growth derated by enzyme burden from
-   ``k_3`` 4.85 (0.835× wild type). **What to look at:** the peak, PI 0.8086
-   (IRR 27.3 %) at ``k_3`` 1.865–1.906 (0.32–0.33× wild type). PI ≥ 0.75 only
-   at 0.31–0.37× wild type, and wild-type Pdc still gives PI 0.653
-   (IRR 25.1 %). The **flat-bottomed drop between** ``k_3`` **≈ 0.031 and
-   0.098 g/L/h** is a *trace-ethanol recovery regime*. There, broth ethanol is
-   0.003–2.3 g/L, enough to switch on the ethanol recovery train (boiler
-   +25.7 MM$, TCI +33 MM$). The model always recovers trace ethanol and never
-   weighs recovery against purging, so this is a separation-design regime,
-   not biology, and not evidence of objective roughness. The small sawtooth
-   follows the discrete fermentation-time selection (PI vs τ Spearman 0.93 on
-   the Pdc-null plateau). Ethanol yield, a single-product metric, is trivially
-   monotone here.
+   outer axis) along Pdc capacity** ``k_3`` **through #1912.** PI peaks at
+   0.8086 (IRR 27.3 %) at 0.32–0.33× wild-type Pdc, and wild-type Pdc still
+   gives PI 0.653. The flat-bottomed drop at ``k_3`` ≈ 0.031–0.098 g/L/h is
+   a trace-ethanol recovery regime of the separation design, not biology and
+   not objective roughness. Click the figure to open it at full resolution.
+
+.. dropdown:: How to read this figure
+
+   - **The sweep.** 219 points over the campaign band, 0.00581–23.24 g/L/h
+     (10\ :sup:`−3`\ × to 4× wild type, where wild type is 5.81). The other
+     eleven decisions stay at #1912, with the burden on. Dotted: growth
+     derated by enzyme burden from ``k_3`` 4.85 (0.835× wild type).
+   - **The peak.** PI 0.8086 (IRR 27.3 %) at ``k_3`` 1.865–1.906 (0.32–0.33×
+     wild type). PI ≥ 0.75 only at 0.31–0.37× wild type; wild-type Pdc gives
+     PI 0.653 (IRR 25.1 %).
+   - **The flat-bottomed drop** between ``k_3`` ≈ 0.031 and 0.098 g/L/h.
+     There, broth ethanol is 0.003–2.3 g/L, enough to switch on the ethanol
+     recovery train (boiler +25.7 MM$, TCI +33 MM$). The model always
+     recovers trace ethanol and never weighs recovery against purging, so
+     this is a separation-design regime.
+   - **The small sawtooth** follows the discrete fermentation-time selection
+     (PI vs τ Spearman 0.93 on the Pdc-null plateau). Ethanol yield, a
+     single-product metric, is trivially monotone here.
 
 .. list-table:: Regions of the Pdc slice through #1912
    :header-rows: 1
@@ -555,8 +583,12 @@ Reproduce it
    trajectory CSVs and the sweep CSVs must be regenerated (the campaigns are
    long, opt-in runs; see :doc:`kinetic_optimization`), or
    ``NSKINETICS_IBO_RESULTS_DIR`` set to a results folder that holds them.
-   The slices reproduce #1912 only under the campaigns' model version
-   (2b5b27d). Script paths are relative to the package folder.
+   **The two slice scripts require hensmith 2b5b27d**, the campaigns'
+   build: they re-simulate #1912 first, and on any other build (including
+   the validated stack's 95e9362) the anchor check aborts with ``anchor PI
+   off by … (> 0.02)``. :ref:`isobutanol-switch-build` shows how to switch
+   hensmith to that commit and back. Script paths are relative to the
+   package folder.
 
 .. list-table::
    :header-rows: 1
@@ -580,14 +612,22 @@ Reproduce it
      - Sim-safe
    * - ``analyses/objective_landscape/evaluate_axis_try_informed_optimum.py``
      - 1-D sweeps through #1912. Set the mode with the ``IBO_AXIS_SWEEP``
-       environment variable: ``screen`` (default; 11 variables, coarse) or a
-       variable name such as ``k_3``. ``IBO_AXIS_N_POINTS`` (default 160)
-       sets the resolution; the ``k_3`` figure used 218 plus the anchor.
-       Writes ``evaluate_axis_try_informed_optimum_<name>.csv`` plus an
-       anchor JSON. Run it in a fresh process under ``supervise_sweep.py``.
+       environment variable (or ``--sweep``): ``screen`` (default; 11
+       variables, coarse) or a variable name such as ``k_3``. The
+       resolution is 30 points per variable in screen mode and 160 for a
+       single variable, plus the anchor value; ``IBO_AXIS_N_POINTS`` (or
+       ``--n-points``) overrides it, and ``IBO_AXIS_LOW`` / ``IBO_AXIS_HIGH``
+       (``--low`` / ``--high``) narrow a single-variable sweep. The ``k_3``
+       figure used 218 points plus the anchor. Writes
+       ``evaluate_axis_try_informed_optimum_<name>.csv`` plus an anchor
+       JSON. Run it in a fresh process under ``supervise_sweep.py``, which
+       passes no arguments, so configure a supervised run with the
+       environment variables. **Requires hensmith 2b5b27d**; on any other
+       build the anchor check aborts with ``anchor PI off by … (> 0.02)``.
      - Simulates; opt-in
    * - ``analyses/objective_landscape/evaluate_k13_try_informed_optimum.py``
-     - The 161-point ``k_13`` sweep through #1912
+     - The 161-point ``k_13`` sweep through #1912. **Requires hensmith
+       2b5b27d**, with the same anchor check.
      - Simulates; about 15–25 min
    * - ``plots/plot_axis_try_informed_sweep.py``
      - ``--param k_3`` draws the Pdc-slice figure above. ``--screen`` prints
@@ -600,3 +640,6 @@ Reproduce it
 All plotting scripts read CSVs through the data layer, which they load by file
 path. They never import ``biosteam`` or build the biorefinery, so they can run
 alongside a simulation.
+
+Next: :doc:`enzyme_burden` shows what these islands cost in proteome, and
+why the yield optima overload it.

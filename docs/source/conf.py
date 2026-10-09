@@ -139,5 +139,40 @@ def _join_numbers_to_percent_signs(app, doctree):
                 _NUMBER_SPACE_PERCENT.sub('\u00a0', str(text))))
 
 
+# Keep a numeric range, and a time unit right after it, on one line:
+# narrow table cells otherwise break "hours (~7\u201311 h)" after the en dash
+# ("~7\u2013" / "11 h)"). Each range is wrapped in an inline node with the
+# ``ibo-nobr`` class (``white-space: nowrap`` in custom.css), so the text,
+# the search index and copy-paste are unchanged. Same exclusions as above.
+_NUMBER_RANGE = re.compile(
+    r'~?\d[\d.,]*\u2013\d[\d.,]*(?:[ \u00a0](?:h|min|s)\b)?')
+
+
+def _keep_number_ranges_together(app, doctree):
+    for text in list(doctree.findall(_nodes.Text)):
+        s = str(text)
+        if not _NUMBER_RANGE.search(s):
+            continue
+        parent = text.parent
+        if parent is None or 'ibo-nobr' in parent.get('classes', ()):
+            continue
+        node = parent
+        while node is not None and not isinstance(node, _NO_TYPOGRAPHY):
+            node = node.parent
+        if node is not None:
+            continue
+        pieces, pos = [], 0
+        for m in _NUMBER_RANGE.finditer(s):
+            if m.start() > pos:
+                pieces.append(_nodes.Text(s[pos:m.start()]))
+            pieces.append(_nodes.inline(m.group(0), m.group(0),
+                                        classes=['ibo-nobr']))
+            pos = m.end()
+        if pos < len(s):
+            pieces.append(_nodes.Text(s[pos:]))
+        parent.replace(text, pieces)
+
+
 def setup(app):
     app.connect('doctree-read', _join_numbers_to_percent_signs)
+    app.connect('doctree-read', _keep_number_ranges_together)

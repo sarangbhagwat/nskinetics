@@ -121,9 +121,9 @@ capacity).
 
 **Kinetic inputs (40).** Each fitted kinetic parameter of the NSKinetics
 *S. cerevisiae* model gets an independent **triangular ±20 %** distribution
-(0.8 / 1.0 / 1.2 × the fitted value). Seven physically constrained parameters
-are excluded by *type*, not by value, which takes scenario A from 45 to 40
-kinetic inputs:
+(0.8 / 1.0 / 1.2 × the fitted value). Physically constrained parameters are
+excluded by *type*, not by value: five in scenario A, which takes it from 45
+to 40 kinetic inputs, plus ``k_16r`` and ``P_10i`` in B:
 
 .. list-table::
    :header-rows: 1
@@ -284,20 +284,27 @@ hurdle. The baseline MESP sits 0.112 $/GGE (2.9 %) above that price.
    :class: pub-figure
 
    **MESP against capital, scale, coproduct revenue and TRY** (run
-   ``_IBO_2026.9.29-23.45``, build 6d4776f). Filled contours are
-   kernel-density estimates of the 6,000 samples. The white diamond is the
-   baseline. Marginal box plots show the 25th–75th percentiles (box), the
-   5th–95th (whiskers) and the minimum and maximum samples (dots). Boxed
-   values are Spearman ρ with MESP. Light-grey boxes span typical corn-ethanol
-   ranges of each abscissa (TCI, production, DDGS revenue and high-gravity
-   TRY ranges) × the 2021–2025 ethanol market price range. The darker grey
-   band is the 2021–2025 retail gasoline range, 2.16–4.84 $/GGE.
-   **What to look at:** the black binned-median lines (ten equal-count bins).
-   Across their sampled ranges, ethanol production (B) and DDGS revenue (C)
-   move MESP by 0.21 and 0.23 $/GGE. Yield, titer and productivity (D–F) move
-   it by only 0.07–0.09 $/GGE. The red staircase in A is **not** a design
-   trade-off; see below. The model's DDGS price (~130 $/short ton) lies below
-   its 2021–2025 low, so the samples in C hug the low edge of the DDGS box.
+   ``_IBO_2026.9.29-23.45``, build 6d4776f). Follow the black binned-median
+   lines: across their sampled ranges, ethanol production (B) and DDGS
+   revenue (C) move MESP by 0.21 and 0.23 $/GGE, while yield, titer and
+   productivity (D–F) move it by only 0.07–0.09 $/GGE. The red staircase in
+   A is **not** a design trade-off; see below. Click the figure to open it
+   at full resolution.
+
+.. dropdown:: How to read this figure
+
+   - **Clouds and markers.** Filled contours are kernel-density estimates of
+     the 6,000 samples. The white diamond is the baseline. The black lines
+     are binned medians over ten equal-count bins.
+   - **Margins.** Marginal box plots show the 25th–75th percentiles (box),
+     the 5th–95th (whiskers) and the minimum and maximum samples (dots).
+     Boxed values are Spearman ρ with MESP.
+   - **Grey reference boxes.** Light-grey boxes span typical corn-ethanol
+     ranges of each abscissa (TCI, production, DDGS revenue and high-gravity
+     TRY ranges) × the 2021–2025 ethanol market price range. The darker grey
+     band is the 2021–2025 retail gasoline range, 2.16–4.84 $/GGE.
+   - **Panel C.** The model's DDGS price (~130 $/short ton) lies below its
+     2021–2025 low, so the samples hug the low edge of the DDGS box.
 
 Where the variance comes from
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -416,6 +423,7 @@ checks this far beyond the ±20 % neighbourhood, and
    .. list-table::
       :header-rows: 1
       :widths: 60 40
+      :class: ibo-num ibo-compact
 
       * - Change from baseline
         - ΔMESP ($/GGE)
@@ -493,6 +501,7 @@ close:
    :header-rows: 1
    :stub-columns: 1
    :widths: 40 30 30
+   :class: ibo-num ibo-compact
 
    * - Input
      - ρ (residual MESP)

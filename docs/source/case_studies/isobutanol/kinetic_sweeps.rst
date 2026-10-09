@@ -75,8 +75,10 @@ fermentation, flowsheet simulation and techno-economic analysis.
    - **More ethanol tolerance can cost more.** The MESP optimum sits at
      about 0.77× the fitted inhibition coefficients (0.77–0.79× in all six
      runs). In every run whose inhibition axis reaches zero, relieving
-     inhibition entirely raises MESP 18–23 % above the baseline, because
-     the extra tolerance feeds growth, not ethanol.
+     inhibition entirely raises MESP 18–23 % above the baseline at the
+     baseline enzyme levels, because the extra tolerance feeds growth, not
+     ethanol (raising Adh1 4× shrinks the penalty to 5.6 %; see
+     `Sibling planes: k_1e, Pdc and Adh1`_).
    - **The process, not the cell, sets the tolerance optimum.** Lower
      inhibition pays only until the fed-batch spike cap binds. A tolerance
      target quoted without a feeding policy is meaningless. The *location*
@@ -98,7 +100,11 @@ Why this plane
 In the uncertainty analysis, the one kinetic lever that showed through the
 commodity-price spread was ethanol inhibition of glycolysis, with
 ρ = 0.70 against context-adjusted MESP (:doc:`uncertainty`; build
-``6d4776f``). The sweeps map that lever, and glycolytic capacity, directly.
+``6d4776f``). The sweeps follow that lever far outside the ±20 % band, but
+bundled: the y-axis scales ``k_1ie`` together with the other three
+ethanol-inhibition coefficients (AcDH, growth and death; see **What the axes
+mean** below), against glycolytic capacity on the x-axis. ``k_1ie`` has not
+been scanned on its own.
 
 What one sweep point is
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -176,9 +182,9 @@ ethanol-inhibition multiplier scales four active coefficients, so it bundles
 four mechanisms (the fifth group member, ``k_16ie``, is zero and has no
 effect):
 
-- r1 glycolysis × exp(−``k_1ie``·[EtOH]), with ``k_1ie`` = 0.02 L/g
-- r4 acetaldehyde → acetate (AcDH) × exp(−``k_4ie``·[EtOH]), with 0.04 L/g
-- r7 growth on glucose × exp(−``k_7ie``·[EtOH]), with 0.04 L/g
+- r1 glycolysis × exp(−\ ``k_1ie``\ ·[EtOH]), with ``k_1ie`` = 0.02 L/g
+- r4 acetaldehyde → acetate (AcDH) × exp(−\ ``k_4ie``\ ·[EtOH]), with 0.04 L/g
+- r7 growth on glucose × exp(−\ ``k_7ie``\ ·[EtOH]), with 0.04 L/g
 - r10 active-cell death × exp(``k_10ie``·([EtOH] − 100 g/L)) above
   100 g/L ethanol, with 0.04 L/g
 
@@ -256,7 +262,8 @@ The glycolysis × ethanol-inhibition plane
                (1.0, 0.15), and the cell-density circle and cyan TCI pentagon
                on the left axis at 0 times glycolysis.
          :class: pub-figure
-         :width: 90%
+         :width: 100%
+         :figclass: ibo-fig-measure
 
          **Profitability over glycolytic capacity × ethanol inhibition.**
          The colour is IRR at default prices, from −15 % to 15 %. The white
@@ -287,7 +294,8 @@ The glycolysis × ethanol-inhibition plane
                productivity, and a cyan TCI pentagon and white cell-density
                circle on the left axis, are placed as in the IRR version.
          :class: pub-figure
-         :width: 90%
+         :width: 100%
+         :figclass: ibo-fig-measure
 
          **The same plane as MESP** (3.5–8 $/GGE; values above 8 are dark
          grey). The hatched region inside the white contour is MESP within
@@ -502,12 +510,13 @@ At the baseline process, then, tolerance pays only while the process can
 deliver more sugar. Tolerance targets and fed-batch capacity have to be
 designed together. The *location* of the optimum depends on the cap chosen
 (823 of the 1,600 nodes sit at the cap, the optimum among them). The plane
-has not been re-run at other caps, such as 8 and 32, so "the cap is ours to
-choose but the mechanism is not" is still an assertion, not a demonstrated
-result.
+has not been re-run at other caps (for example 8 and 32), so whether the
+same cap-onset mechanism sets the optimum at other caps is untested; only
+its location at cap 16 is shown here.
 
-Past the derating onset, the MESP-optimal inhibition **rises** with
-glycolytic capacity:
+The MESP-optimal inhibition **rises** with glycolytic capacity: gently
+while growth is not derated (0.77× at 0.9–1.2×, about 0.97× by 2.36×; see
+the valley below), then steeply past the derating onset:
 
 .. list-table::
    :header-rows: 1
@@ -515,12 +524,14 @@ glycolytic capacity:
 
    * - Glycolysis ×
      - 0.9–1.2
+     - 2.36
      - 2.5
      - 2.8
      - 3.1
      - 3.4
    * - MESP-optimal inhibition ×
      - 0.77
+     - ≈ 0.97
      - 1.08
      - 1.23
      - 1.49
@@ -583,8 +594,9 @@ Three cliffs, three mechanisms
      - Growth derated (d 0.46–0.60), cells 1–3 g/L, τ 73–119 h (up to
        ``tau_max``), 1–5 spikes (retry exhausted, sugar left over), yield
        0.17–0.35 g/g.
-     - Proteome burden. Overexpressing glycolysis about 3.5× uses up the
-       flexible proteome sector and halves growth capacity, so the
+     - Proteome burden. Overexpressing glycolysis about 3.5× leaves too
+       little of the flexible proteome sector for the translation
+       machinery, which roughly halves growth capacity, so the
        fermentation cannot finish within 120 h. The values of d, τ and the
        spike counts are read directly from the outputs; the causal chain is
        inferred.
@@ -635,11 +647,11 @@ same story:
      - −1.53 %
      - 13.7 %
 
-- **Pdc (``k_3``) is not a lever for ethanol economics above the baseline.**
+- **Pdc (**\ ``k_3``\ **) is not a lever for ethanol economics above the baseline.**
   Across 1–4× ``k_3``, the per-row MESP spread has a median of 0.008 % and
   a maximum of 0.58 %. Knocking Pdc down below about 0.3–0.9× (depending
   on inhibition) is a cliff.
-- **Adh1 (``k_6``) matters only for de-inhibited strains.** At 0.001×
+- **Adh1 (**\ ``k_6``\ **) matters only for de-inhibited strains.** At 0.001×
   inhibition, raising Adh1 from 1× to 4× lowers MESP from 4.694 to
   3.998 $/GGE and raises yield from 0.363 to 0.423 g/g. It cuts the full
   de-inhibition penalty from 23.1 % to 5.6 %. At 0.77× inhibition the same
@@ -658,7 +670,8 @@ same story:
          white cell-density circle and cyan TCI pentagon in the bottom-left
          corner.
    :class: pub-figure
-   :width: 85%
+   :width: 100%
+   :figclass: ibo-fig-measure
 
    **MESP over** ``k_1e`` **× ethanol inhibition.** Only ``k_1e`` is scaled;
    ``k_1l`` and ``k_1h`` stay at baseline. The x-axis is absolute (0.2–4× of
@@ -715,14 +728,13 @@ Caveats and limitations
   the no-ethanol column. Which grid row each lands on is a numerical
   tie-break.
 
-.. dropdown:: Common misreadings that the data do not support
+.. dropdown:: What this plane does and does not show
 
-   - The plane is **glycolytic capacity × ethanol inhibition**, not "Pdc1
-     expression × ethanol tolerance". The Pdc plane is flat above the
-     baseline.
-   - "Greater growth inhibition by ethanol improved financial viability" is
-     **contradicted**. The optimum lies at *less* inhibition than fitted
-     (0.77×), and full relief is the costly case.
+   - The x-axis is **glycolytic capacity**, not Pdc expression. The Pdc
+     plane is flat above the baseline.
+   - The MESP optimum lies at *less* inhibition than fitted (0.77×), and
+     full relief is the costly case; stronger ethanol inhibition does not
+     improve the economics.
    - Growth-specific inhibition has no current sweep result. The
      ``k_1e`` × ``k_7ie`` plane (``evaluate_EtOH_k1e_k7ie.py``) has only
      been run on an earlier version of the kinetic model, and that run is

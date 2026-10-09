@@ -258,27 +258,35 @@ Results
    :class: pub-figure
    :width: 100%
 
-   **Feeding-strategy map (A) and the baseline fermentation (B).**
-   **(A)** MESP over the 819 valid threshold × target policies, each with
-   its spike cap optimized for MESP. The empty lower-right triangle holds
-   the invalid policies (threshold ≥ target). The cyan star is the grid
-   optimum: threshold 226.1 / target 230 g/L, with 4 spikes and an MESP of
-   3.8234 $/GGE. The white markers are the first grid points that reach the
-   best titer, cell density, productivity and yield, and the cyan pentagon
-   is the lowest TCI. The titer and cell-density markers sit on broad
-   plateaus (248 and 213 cells within 0.1 % of their maxima), so read them
-   as regions rather than points. The white staircase line is the lowest
-   target at which the optimized cap is zero, with batch above it and
-   fed-batch below. Look for the colour jump between targets 230 and
-   240 g/L. That jump is the evaporation cliff.
-   **(B)** The scenario-A **baseline** policy (217.125 / 221.25 g/L,
-   7 spikes), *not* the panel-A optimum. All 7 spikes fall between 9.0 and
-   11.5 h, before aeration ends at 12.13 h, which shows up as the small
-   ripple on the glucose trace. The fermentation ends at τ = 61.62 h, when
-   glucose first falls below 0.5 g/L. Ethanol then stands at 114.54 g/L
-   (water basis) and is still creeping up (114.95 g/L at 120 h). Panel A uses build
-   ``2b5b27d``. Panel B's trajectory comes from build ``6d4776f``, but it
-   plots concentrations only, which the build does not affect.
+   **Feeding-strategy map (A) and the baseline fermentation (B).** MESP is
+   lowest at targets just below the colour jump between 230 and 240 g/L, the
+   evaporation cliff, and depends far less on the threshold. Panel B is the
+   scenario-A baseline policy, *not* the panel-A optimum. Panel A uses build
+   ``2b5b27d``-equivalent code; panel B's concentrations come from build
+   ``6d4776f``, which does not affect them. Click the figure to open it at
+   full resolution.
+
+.. dropdown:: How to read this figure
+
+   - **(A)** MESP over the 819 valid threshold × target policies, each with
+     its spike cap optimized for MESP. The empty lower-right triangle holds
+     the invalid policies (threshold ≥ target).
+   - **Markers in (A).** The cyan star is the grid optimum: threshold
+     226.1 / target 230 g/L, with 4 spikes and an MESP of 3.8234 $/GGE. The
+     white markers are the first grid points that reach the best titer, cell
+     density, productivity and yield, and the cyan pentagon is the lowest
+     TCI. The titer and cell-density markers sit on broad plateaus (248 and
+     213 cells within 0.1 % of their maxima), so read them as regions rather
+     than points.
+   - **The staircase in (A).** The white staircase line is the lowest target
+     at which the optimized cap is zero, with batch above it and fed-batch
+     below.
+   - **(B)** The scenario-A **baseline** policy (217.125 / 221.25 g/L,
+     7 spikes). All 7 spikes fall between 9.0 and 11.5 h, before aeration
+     ends at 12.13 h, which shows up as the small ripple on the glucose
+     trace. The fermentation ends at τ = 61.62 h, when glucose first falls
+     below 0.5 g/L. Ethanol then stands at 114.54 g/L (water basis) and is
+     still creeping up (114.95 g/L at 120 h).
 
 Sugar loading, not feed mode, sets cost
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -286,9 +294,11 @@ Sugar loading, not feed mode, sets cost
 The table below takes the best policy at each target over all thresholds.
 MESP falls gently as the target rises toward 230 g/L, then jumps:
 
-.. list-table:: Best MESP at each target (envelope over thresholds; build ``2b5b27d``)
+.. list-table:: Best MESP at each target (envelope over thresholds; build ``2b5b27d``-equivalent)
    :header-rows: 1
    :stub-columns: 1
+   :widths: auto
+   :class: ibo-num
 
    * - Target (g/L)
      - 160
@@ -367,7 +377,7 @@ The near-optimal set (within 1 % of the optimum) spans thresholds of
 1–226 g/L and 0–8 spikes, but **only targets 210–230 g/L**. The optimum is
 sharp in the target and flat in the threshold and the spike count.
 
-.. list-table:: Three policies compared (MESP, IRR and TCI on build ``2b5b27d``)
+.. list-table:: Three policies compared (MESP, IRR and TCI on build ``2b5b27d``-equivalent)
    :header-rows: 1
    :stub-columns: 1
 
@@ -428,7 +438,7 @@ Single-metric optima are costly
 Each fermentation metric, maximized on its own, costs money, and each fails
 through a different cost channel:
 
-.. list-table:: Grid optima of single metrics (first argmax on the grid; build ``2b5b27d``)
+.. list-table:: Grid optima of single metrics (first argmax on the grid; build ``2b5b27d``-equivalent)
    :header-rows: 1
    :widths: 14 20 12 18 36
 

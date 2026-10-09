@@ -10,8 +10,8 @@ variance-based global sensitivity analysis (GSA): Sobol' closed indices and
 Shapley effects, computed on surrogates fitted to 4,096 simulated designs per
 sampling measure. It runs over the same decision space that the
 :doc:`kinetic_optimization` campaigns search. Read it as a *pre-optimization screen*.
-It tells a strain program which levers it can drop and how designs fail. It
-cannot tell the program where the rare profitable designs are.
+It ranks levers by how much they move the typical design, which here is a
+failing one; it cannot say which levers the rare profitable designs need.
 
 .. grid:: 1 2 2 2
    :gutter: 3
@@ -368,6 +368,7 @@ from the lowest to the highest ``k_13`` quintile:
    :header-rows: 1
    :stub-columns: 1
    :widths: 40 30 30
+   :class: ibo-num ibo-compact
 
    * - Quantity
      - Lowest quintile (0–0.77)
@@ -716,21 +717,36 @@ What a variance-based screen cannot say
 - **Search, not sampling, finds the good designs.** The best of the 4,091
   SCR designs reaches PI 0.41 (IRR 21.5 %). The Bayesian-optimization
   campaigns on the same model build reached PI ≈ 0.80–0.81
-  (:doc:`kinetic_optimization`). A variance-based screen tells a program what to
-  deprioritize, not what to pursue. Finding the good designs took search.
+  (:doc:`kinetic_optimization`). A variance-based screen ranks what moves
+  the typical, failing design, not what to pursue. Finding the good designs
+  took search.
+- **A small share does not make a lever dispensable.** Every design with
+  PI ≥ 0.75 found by search sits at the ALS cap and at the most tolerant
+  isobutanol setting (:doc:`kinetic_optimization`), and along the ALS slice
+  through the flagship design #1912, PI is positive only above ``k_13`` ≈
+  0.39 (:doc:`objective_landscape`). ALS and isobutanol tolerance pay only
+  together with the downstream Ehrlich enzymes and Adh6, inside a
+  profitable corner (0.46 % of the SCR designs clear the hurdle) too small
+  to register in a variance that failing designs dominate (≥ 95 %).
 
 Smaller results
 ~~~~~~~~~~~~~~~
 
-- **Tolerance multipliers are not profitability levers within their band.**
-  The three inhibition groups carry ≤ 1.2 % each and ≤ 3 % jointly. The band
-  is only 0.75–1.5×, a 2-fold range against the 40-fold expression bands.
-  :doc:`kinetic_sweeps` explores a much wider inhibition range.
+- **Tolerance multipliers carry little variance within their 0.75–1.5×
+  band** (≤ 1.2 % each, ≤ 3 % jointly), yet the best designs sit at its
+  most tolerant end: all 48 with PI ≥ 0.75 at the isobutanol floor, and
+  the ten with PI ≥ 0.79 at both the ethanol and isobutanol floors
+  (:doc:`kinetic_optimization`). The band is only a
+  2-fold range against the 40-fold expression bands. :doc:`kinetic_sweeps`
+  explores a much wider inhibition range.
 - **Adh6 saturates at about 2× native.** In the SCR subset with
   ``k_13`` ≥ 1, 0.4 ≤ Ehrlich ≤ 2 and derating factor d > 0.9 (n = 879),
   median isobutanol titer rises from 3.5 g/L (``k_17`` ≤ 0.05) to 21.9 g/L
-  (0.1–0.2). It then plateaus at 24.6–26.2 g/L for ``k_17`` > 0.2. This is a
-  model-level result: the Adh6 anchor is an abundance ratio.
+  (0.1–0.2). It then plateaus at 24.6–26.2 g/L for ``k_17`` > 0.2. This is
+  a property of the model, not a measured saturation: Adh6's native
+  capacity (0.1077 g/L/h) is not fitted to data but derived from the fitted
+  Adh1 capacity through the two enzymes' measured abundance ratio, so
+  "2× native" is relative to that estimate.
 - **The response is interaction-dominated.** Under SCR, S1 / ST are 23.5 /
   57.1 % for glycolysis, 15.6 / 44.4 % for downstream Ehrlich and 4.5 / 17.4 %
   for ``k_6``.
@@ -861,3 +877,6 @@ See also
   constraint and the growth derating.
 - :doc:`uncertainty`: Monte Carlo uncertainty of the *baseline* ethanol plant,
   where contextual inputs, not kinetics, dominate cost risk.
+
+Next: :doc:`running_analyses` shows how to install the case study and
+reproduce every result on these pages.

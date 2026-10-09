@@ -9,18 +9,12 @@ no cell can make. This page asks **which strain designs are physiologically
 expressible, and how proteome spending shapes the economics.** The isobutanol
 biorefinery answers with a closed-form **proteome-allocation constraint**. The
 enzyme pools a design needs are summed and closed against the cell's flexible
-protein sector, and growth is derated as that sector fills. The constraint is
-enforced at a single choke point, so it applies to every simulation run
-while a burden model is installed: ``load_scenario`` installs one per the
-scenario's policy (on for A and the ``opt_*`` scenarios, off for B), and the
-kinetic-sweep planes reported on :doc:`kinetic_sweeps`, the 1-D slices of
-:doc:`objective_landscape`, the optimization campaigns and the Sobol'
-analysis all ran with it on. The feeding sweep and the uncertainty run used
-scenario A without it, where it would be inert (Φ\ :sub:`M` stays at or
-below about 0.084 g/gDCW, far under the 0.1347 budget). The exploratory
-sweeps whose results these pages do not report
-(``evaluate_EtOH_k1e_k1ie.py``, ``evaluate_EtOH_k1e_k7ie.py`` and the
-scenario-B one-at-a-time sweep) also run without it.
+protein sector, and growth is derated as that sector fills. It applies to
+every simulation run while a burden model is installed: scenario A and the
+``opt_*`` scenarios, the kinetic sweeps, the 1-D slices, the optimization
+campaigns and the Sobol' analysis. Scenario B, the feeding sweep and the
+uncertainty run ran without it; for the latter two, both on scenario A, it
+would have been inert (see :ref:`ibo-burden-which-analyses`).
 
 .. grid:: 1 2 2 2
    :gutter: 3
@@ -352,6 +346,8 @@ burden. Scripts that need it either call ``load_scenario`` or install the
 model themselves with ``system.set_active_burden``, so whether an analysis
 ran with the burden depends on the script:
 
+.. _ibo-burden-which-analyses:
+
 .. list-table:: Which analyses ran with the burden
    :header-rows: 1
    :widths: 50 14 36
@@ -501,21 +497,26 @@ fermentation-level and do not depend on that build.
 
    **What each campaign returned, and what it cost in proteome** (panels c–e
    of the campaign figure on :doc:`kinetic_optimization`; seed 350 and the
-   TRY-informed relay). **(c)** IRR of every trial (strip), the highest-IRR
-   visit (open) and the returned design (filled). **(d)** Ethanol (amber) and
-   isobutanol (violet) titers of the returned designs. **(e)** Their metabolic
-   proteome Φ\ :sub:`M` by sector: glycolysis and TCA/acetate (grey), Pdc and
-   Adh1 (amber; Adh1 hatched), ALS→Aro10 and Adh6 (violet; Adh6 hatched).
-   Dotted: the penalty-free budget, 0.1347 g/(g DCW). The translation sector
-   (φ\ :sub:`T` = 0.110) and the housekeeping sector are omitted. The four
-   designs beyond the budget grow at ×0.84, ×0.63, ×0.30 and ×0.997 of their
-   penalty-free rate. **What to look at:** the two longest proteome bars
-   belong to the yield optima, the two most growth-derated returned designs.
-   The isobutanol-yield optimum also returns only 1.7 % IRR in (c). The
-   TRY-informed design (★) splits its proteome between the two branches and
-   stays inside the budget.
-   Trial numbers in the source figure are 1-based; IRRs are under build
-   2b5b27d.
+   TRY-informed relay). The two longest proteome bars belong to the yield
+   optima, the two most growth-derated returned designs, and the
+   isobutanol-yield optimum returns only 1.7 % IRR. The TRY-informed design
+   (★) splits its proteome between the two branches and stays inside the
+   budget. IRRs under build 2b5b27d. Click the figure to open it at full
+   resolution.
+
+.. dropdown:: How to read this figure
+
+   - **(c)** IRR of every trial (strip), the highest-IRR visit (open) and the
+     returned design (filled). Trial numbers in the source figure are
+     1-based.
+   - **(d)** Ethanol (amber) and isobutanol (violet) titers of the returned
+     designs.
+   - **(e)** Their metabolic proteome Φ\ :sub:`M` by sector: glycolysis and
+     TCA/acetate (grey), Pdc and Adh1 (amber; Adh1 hatched), ALS→Aro10 and
+     Adh6 (violet; Adh6 hatched). Dotted: the penalty-free budget,
+     0.1347 g/(g DCW). The translation sector (φ\ :sub:`T` = 0.110) and the
+     housekeeping sector are omitted. The four designs beyond the budget
+     grow at ×0.84, ×0.63, ×0.30 and ×0.997 of their penalty-free rate.
 
 Proteome spending predicts which designs fail
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -626,3 +627,6 @@ them (:doc:`kinetic_optimization`, :doc:`sensitivity`), or point
 ``NSKINETICS_IBO_RESULTS_DIR`` at a results folder that holds them. The
 figure above is a crop of the campaign figure drawn by
 ``plots/optimization_figure_ideas/fig_main_scouts.py``.
+
+Next: :doc:`sensitivity` ranks the 12 strain and feeding decisions by the
+share of profitability and TRY variance they carry.
