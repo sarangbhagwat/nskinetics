@@ -1,10 +1,9 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Bioindustrial-Park: BioSTEAM's Premier Biorefinery Models and Results
-# Copyright (C) 2021-, Sarang Bhagwat <sarangbhagwat.developer@gmail.com>
+# NSKinetics: simulation of Non-Steady state enzyme Kinetics and inhibitory phenomena
+# Copyright (C) 2025-, Sarang S. Bhagwat <sarangbhagwat.developer@gmail.com>
 #
-# This module is under the UIUC open-source license. See
-# github.com/BioSTEAMDevelopmentGroup/biosteam/blob/master/LICENSE.txt
+# This module is under the MIT open-source license. See
+# https://github.com/sarangbhagwat/nskinetics/blob/main/LICENSE
 # for license details.
 """
 Per-metric scatter grids against every uncertain parameter, from an
@@ -381,8 +380,8 @@ def plot_uncertainty_scatters(results_file,
         scenario = detect_scenario(results_file)
         if scenario is not None:
             candidate = os.path.join(
-                os.path.dirname(os.path.abspath(__file__)),
-                'full', 'parameter_distributions',
+                os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                'data', 'parameter_distributions',
                 f'parameter-distributions_corn_IBO_EtOH_{scenario}.xlsx')
             distributions_file = (candidate if os.path.isfile(candidate)
                                   else None)

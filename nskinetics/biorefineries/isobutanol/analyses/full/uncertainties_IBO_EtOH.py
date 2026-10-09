@@ -1,10 +1,9 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Bioindustrial-Park: BioSTEAM's Premier Biorefinery Models and Results
-# Copyright (C) 2021-, Sarang Bhagwat <sarangb2@illinois.edu>
-# 
-# This module is under the UIUC open-source license. See 
-# github.com/BioSTEAMDevelopmentGroup/biosteam/blob/master/LICENSE.txt
+# NSKinetics: simulation of Non-Steady state enzyme Kinetics and inhibitory phenomena
+# Copyright (C) 2025-, Sarang S. Bhagwat <sarangbhagwat.developer@gmail.com>
+#
+# This module is under the MIT open-source license. See
+# https://github.com/sarangbhagwat/nskinetics/blob/main/LICENSE
 # for license details.
 
 import pandas as pd
@@ -119,7 +118,7 @@ for i in range(len(modes)):
     # ##
     mode = modes[i]
     parameter_distributions_filename = IBO_filepath+\
-        '\\analyses\\full\\parameter_distributions\\'+parameter_distributions_filenames[mode]
+        '\\data\\parameter_distributions\\'+parameter_distributions_filenames[mode]
     print(f'\n\nLoading parameter distributions ({mode}) ...')
     model.parameters = ()
     model.load_parameter_distributions(parameter_distributions_filename, models.namespace_dict)

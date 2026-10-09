@@ -1,10 +1,9 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Bioindustrial-Park: BioSTEAM's Premier Biorefinery Models and Results
-# Copyright (C) 2021-, Sarang Bhagwat <sarangbhagwat.developer@gmail.com>
+# NSKinetics: simulation of Non-Steady state enzyme Kinetics and inhibitory phenomena
+# Copyright (C) 2025-, Sarang S. Bhagwat <sarangbhagwat.developer@gmail.com>
 #
-# This module is under the UIUC open-source license. See
-# github.com/BioSTEAMDevelopmentGroup/biosteam/blob/master/LICENSE.txt
+# This module is under the MIT open-source license. See
+# https://github.com/sarangbhagwat/nskinetics/blob/main/LICENSE
 # for license details.
 """
 One-at-a-time (OAT) sensitivity sweep of every non-discrete kinetic parameter
@@ -60,7 +59,7 @@ os.makedirs(results_dir, exist_ok=True)
 #%% Load scenario B (parameter distributions -> kinetic baselines, then
 #   the scenario-B feeding strategy), mirroring smoke_test_2.load_simulate_baseline
 parameter_distributions_filename = isobutanol_filepath+\
-    '\\analyses\\full\\parameter_distributions\\'+\
+    '\\data\\parameter_distributions\\'+\
     'parameter-distributions_corn_IBO_EtOH_B.xlsx'
 
 model.parameters = ()

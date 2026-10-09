@@ -1,6 +1,6 @@
-// Bioindustrial-Park: BioSTEAM's Premier Biorefinery Models and Results
-// Copyright (C) 2021-, Sarang Bhagwat <sarangbhagwat.developer@gmail.com>
-// UIUC open-source license -- see the biosteam LICENSE.txt.
+// NSKinetics: simulation of Non-Steady state enzyme Kinetics and inhibitory phenomena
+// Copyright (C) 2025-, Sarang S. Bhagwat <sarangbhagwat.developer@gmail.com>
+// MIT open-source license -- see https://github.com/sarangbhagwat/nskinetics/blob/main/LICENSE
 //
 // Bundle entry for build_amcharts.mjs. amCharts5 ships ES modules (for
 // bundlers), not browser UMD/script bundles, so a classic <script> tag on

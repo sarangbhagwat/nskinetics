@@ -1,10 +1,9 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Bioindustrial-Park: BioSTEAM's Premier Biorefinery Models and Results
-# Copyright (C) 2021-, Sarang Bhagwat <sarangbhagwat.developer@gmail.com>
+# NSKinetics: simulation of Non-Steady state enzyme Kinetics and inhibitory phenomena
+# Copyright (C) 2025-, Sarang S. Bhagwat <sarangbhagwat.developer@gmail.com>
 #
-# This module is under the UIUC open-source license. See
-# github.com/BioSTEAMDevelopmentGroup/biosteam/blob/master/LICENSE.txt
+# This module is under the MIT open-source license. See
+# https://github.com/sarangbhagwat/nskinetics/blob/main/LICENSE
 # for license details.
 """Offline verification of kinetic_optimization's pure logic -- search-space
 construction, objective registry, trajectory-CSV round-trip, (from check 6)
@@ -6793,13 +6792,13 @@ for args99, kw99, exc99, needle99 in (
         raise AssertionError((args99, kw99))
 run99 = open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
                           'reproduce_split12d_trial.py')).read()
-assert run99.startswith('#!/usr/bin/env python3\n# -*- coding: utf-8 -*-\n'
-                        "# Bioindustrial-Park: BioSTEAM's Premier Biorefinery Models and Results")
+assert run99.startswith('# -*- coding: utf-8 -*-\n'
+                        '# NSKinetics: simulation of Non-Steady state enzyme Kinetics and inhibitory phenomena\n')
 assert run99.index('isobutanol.load()') < run99.index('ko.reproduce_split12d_trial(')
 assert "if __name__ == '__main__':" in run99                  # never simulates at import
 compile(run99, 'reproduce_split12d_trial.py', 'exec')         # syntax only; not executed
 PASS('reproduce_split12d_trial: spec signature (+ restore), input errors raise before the model '
-     'is touched; runner has the UIUC header, load()s first, guarded by __main__')
+     'is touched; runner has the MIT header, load()s first, guarded by __main__')
 
 #%% 100. Relay selection (spec 2026-09-23-relay-preload-pi-campaign-design,
 # §3.1 + A4/A5): select_relay_rows on temp donor CSVs of check 86's grouped,

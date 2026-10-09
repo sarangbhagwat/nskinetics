@@ -1,10 +1,9 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Bioindustrial-Park: BioSTEAM's Premier Biorefinery Models and Results
-# Copyright (C) 2021-, Sarang Bhagwat <sarangbhagwat.developer@gmail.com>
+# NSKinetics: simulation of Non-Steady state enzyme Kinetics and inhibitory phenomena
+# Copyright (C) 2025-, Sarang S. Bhagwat <sarangbhagwat.developer@gmail.com>
 #
-# This module is under the UIUC open-source license. See
-# github.com/BioSTEAMDevelopmentGroup/biosteam/blob/master/LICENSE.txt
+# This module is under the MIT open-source license. See
+# https://github.com/sarangbhagwat/nskinetics/blob/main/LICENSE
 # for license details.
 """
 Regression test of the fed-batch working-volume guard in
@@ -65,7 +64,7 @@ IBO_filepath = isobutanol.__file__.replace('\\__init__.py', '')
 # Scenario-A baseline (smoke-test / BO-driver recipe)
 model.parameters = ()
 model.load_parameter_distributions(
-    IBO_filepath + '\\analyses\\full\\parameter_distributions\\'
+    IBO_filepath + '\\data\\parameter_distributions\\'
     'parameter-distributions_corn_IBO_EtOH_A.xlsx', namespace_dict)
 model.metrics_at_baseline()
 model_specification()

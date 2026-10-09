@@ -1,10 +1,9 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Bioindustrial-Park: BioSTEAM's Premier Biorefinery Models and Results
-# Copyright (C) 2021-, Sarang Bhagwat <sarangbhagwat.developer@gmail.com>
+# NSKinetics: simulation of Non-Steady state enzyme Kinetics and inhibitory phenomena
+# Copyright (C) 2025-, Sarang S. Bhagwat <sarangbhagwat.developer@gmail.com>
 #
-# This module is under the UIUC open-source license. See
-# github.com/BioSTEAMDevelopmentGroup/biosteam/blob/master/LICENSE.txt
+# This module is under the MIT open-source license. See
+# https://github.com/sarangbhagwat/nskinetics/blob/main/LICENSE
 # for license details.
 """Bayesian (Optuna TPE) global optimization of the fermentation kinetic
 parameters (k_*/K_* on V406's tellurium model; by default the driver
@@ -1253,11 +1252,11 @@ _TE_LOAD_STATEMENT = re.compile(
 
 def parameter_distributions_workbook(scenario):
     """Absolute path of the scenario's parameter-distributions workbook
-    (analyses/full/parameter_distributions/
+    (data/parameter_distributions/
     parameter-distributions_corn_IBO_EtOH_{scenario}.xlsx)."""
     return os.path.join(
         os.path.dirname(os.path.abspath(__file__)),
-        'analyses', 'full', 'parameter_distributions',
+        'data', 'parameter_distributions',
         f'parameter-distributions_corn_IBO_EtOH_{scenario}.xlsx')
 
 def workbook_kinetic_baselines(scenario):

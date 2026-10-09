@@ -1,10 +1,9 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Bioindustrial-Park: BioSTEAM's Premier Biorefinery Models and Results
-# Copyright (C) 2021-, Sarang Bhagwat <sarangb2@illinois.edu>
-# 
-# This module is under the UIUC open-source license. See 
-# github.com/BioSTEAMDevelopmentGroup/biosteam/blob/master/LICENSE.txt
+# NSKinetics: simulation of Non-Steady state enzyme Kinetics and inhibitory phenomena
+# Copyright (C) 2025-, Sarang S. Bhagwat <sarangbhagwat.developer@gmail.com>
+#
+# This module is under the MIT open-source license. See
+# https://github.com/sarangbhagwat/nskinetics/blob/main/LICENSE
 # for license details.
 
 import numpy as np
@@ -97,7 +96,7 @@ if scenario not in ('A', 'B'):
 replot_from_csv = os.environ.get('IBO_SWEEP_REPLOT_FROM_CSV', '') == '1'
 
 parameter_distributions_filename = isobutanol_filepath+\
-    '\\analyses\\full\\parameter_distributions\\'+\
+    '\\data\\parameter_distributions\\'+\
     f'parameter-distributions_corn_IBO_EtOH_{scenario}.xlsx'
         
 model.parameters = ()
