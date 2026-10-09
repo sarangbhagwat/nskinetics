@@ -14,9 +14,11 @@ beside them), and deliberately light: no ``te_r`` kinetic model and no
 ``-m "not slow"`` suite and in CI.
 """
 
-import sys
+import json
 
 from nskinetics.processes import create_sugar_prep_and_fermentation_chemicals
+
+from .isobutanol._support import assert_ran_ok, run_isolated
 
 EXPECTED_IDS = {'Water', 'Ethanol', 'Isobutanol', 'AceticAcid', 'Glucose',
                 'Sucrose', 'CO2', 'O2', 'N2', 'NH3', 'Yeast'}
@@ -37,7 +39,28 @@ def test_chemicals_compile_and_contents():
     assert abs(Yeast.Hf - Glucose.Hf / Glucose.MW * Yeast.MW) < 1e-6
 
 
+_PROBE_SENTINEL = 'NSK_MODULES '
+
+
 def test_chemicals_do_not_pull_heavy_imports():
-    assert not [m for m in sys.modules
-                if 's_cerevisiae_ferm_fb_inhib_mod_ibo' in m]
-    assert 'biorefineries' not in sys.modules
+    """Importing the chemicals factory AND building the chemical set loads
+    neither the shipped kinetic model, nor the upstream ``biorefineries``
+    package, nor the isobutanol biorefinery. Probed in a fresh interpreter
+    (run from the repository root), because this pytest process's
+    ``sys.modules`` holds whatever any other test imported. (``hensmith`` is
+    deliberately not checked: biosteam >= 2.54 imports it whenever it is
+    installed.)"""
+    code = ('from nskinetics.processes import create_sugar_prep_and_fermentation_chemicals\n'
+            'chems = create_sugar_prep_and_fermentation_chemicals()\n'
+            "assert 'Yeast' in chems.IDs\n"
+            'import json, sys\n'
+            f'print({_PROBE_SENTINEL!r} + json.dumps(sorted(sys.modules)))\n')
+    proc = run_isolated(['-c', code], timeout=600, simulation=False)
+    out = assert_ran_ok(proc, _PROBE_SENTINEL)
+    line = [ln for ln in out.splitlines() if ln.startswith(_PROBE_SENTINEL)][-1]
+    modules = json.loads(line[len(_PROBE_SENTINEL):])
+    assert 'nskinetics.processes' in modules
+    assert not [m for m in modules if 's_cerevisiae_ferm_fb_inhib_mod_ibo' in m]
+    assert not [m for m in modules
+                if m == 'biorefineries' or m.startswith('biorefineries.')]
+    assert not [m for m in modules if m.startswith('nskinetics.biorefineries.isobutanol')]

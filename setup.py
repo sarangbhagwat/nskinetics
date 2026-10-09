@@ -59,8 +59,12 @@ setup(
         # tutorial loads the shipped SBML .xml). These must be in the wheel so
         # installed (non-editable) copies can find them.
         'nskinetics.models.s_cerevisiae_ferm_fb_inhib_mod_ibo': ['*.txt', '*.xml'],
-        # Reference antimony used by the events tests.
-        'nskinetics.tests': ['data/*.txt'],
+        # Reference antimony used by the events tests, plus the isobutanol
+        # tests' fixture and the script-style checks their wrappers run in
+        # fresh processes (scripts/ has no __init__.py, so it ships as data).
+        'nskinetics.tests': ['data/*.txt',
+                             'isobutanol/fixtures/*.csv',
+                             'isobutanol/scripts/*.py'],
         # Isobutanol biorefinery case study: the parameter-distribution
         # workbooks read at run time (the 'parameter-distributions_*' glob
         # never matches Excel '~$' lock files), small JSON/CSV inputs, the
@@ -74,7 +78,6 @@ setup(
             'analyses/**/*.py',
             'analyses/**/*.json',
             'analyses/**/*.md',
-            'analyses/fixtures/*.csv',
             'plots/optimization_figure_ideas/*.md',
             'plots/optimization_figure_ideas/*.py',
             'plots/voronoi/package.json',

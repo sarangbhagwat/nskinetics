@@ -3,20 +3,22 @@ include LICENSE
 include requirements.txt
 include requirements_install.txt
 include requirements_test.txt
+include requirements_isobutanol.txt
 
 # Bundled model files loaded by name at import/run time (antimony + SBML).
 recursive-include nskinetics/models *.txt *.xml
 
 # Reference data used by the test suite.
 recursive-include nskinetics/tests/data *.txt
+recursive-include nskinetics/tests/isobutanol/fixtures *.csv
+recursive-include nskinetics/tests/isobutanol/scripts *.py
 
 # Isobutanol biorefinery case study (mirrors package_data in setup.py):
 # parameter-distribution workbooks and small JSON inputs, the analysis scripts
-# (plain folders, shipped as data) with their JSON/CSV inputs, and the
+# (plain folders, shipped as data) with their JSON inputs, and the
 # plotting extras (figure-idea scripts/captions, Voronoi treemap JS source).
 recursive-include nskinetics/biorefineries/isobutanol/data parameter-distributions_*.xlsx *.json
 recursive-include nskinetics/biorefineries/isobutanol/analyses *.py *.json *.md
-recursive-include nskinetics/biorefineries/isobutanol/analyses/fixtures *.csv
 recursive-include nskinetics/biorefineries/isobutanol/plots/optimization_figure_ideas *.md *.py
 include nskinetics/biorefineries/isobutanol/plots/voronoi/package.json
 include nskinetics/biorefineries/isobutanol/plots/voronoi/package-lock.json

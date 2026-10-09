@@ -39,8 +39,11 @@ import biosteam as bst
 import thermosteam as tmo
 
 #%% Load the separations module standalone (no package __init__)
+# This script lives in nskinetics/tests/isobutanol/scripts/; separations.py
+# sits in the nskinetics.biorefineries.isobutanol package folder.
 _here = os.path.dirname(os.path.abspath(__file__))
-_sep_path = os.path.join(os.path.dirname(_here), 'separations.py')
+_nsk_dir = os.path.dirname(os.path.dirname(os.path.dirname(_here)))
+_sep_path = os.path.join(_nsk_dir, 'biorefineries', 'isobutanol', 'separations.py')
 _spec = importlib.util.spec_from_file_location('ibo_separations', _sep_path)
 separations = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(separations)

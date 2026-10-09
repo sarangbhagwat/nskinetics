@@ -471,7 +471,7 @@ MAX_PATH_CHARS = 259
 FONTS = {'band': 12, 'cell': 10, 'tick': 9, 'callout': 9,
          'legend': 10, 'axis': 11, 'panel': 14}
 # --- scenario-A baseline outcomes: HARD-CODED (spec decision b).
-# Re-simulated 2026-09-13 (smoke_test_1 protocol, IBO_2026: load(),
+# Re-simulated 2026-09-13 (smoke case 1 protocol, IBO_2026: load(),
 # scenarios.load_scenario('A'), model_specification, solve_TEA; ethanol MPSP
 # 0.86867) on the current nskinetics dev (anaerobic_growth_mult 0.75, r13 /
 # r14-r16 rate laws -- the latter inert for A). A cached one-off baseline

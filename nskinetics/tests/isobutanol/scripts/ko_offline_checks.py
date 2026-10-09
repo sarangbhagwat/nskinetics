@@ -10,7 +10,12 @@ construction, objective registry, trajectory-CSV round-trip, (from check 6)
 plotting on synthetic data, and (checks 16-18) the lost-trial sidecar. No
 isobutanol.load(), no simulation; optuna only in check 17, which drives the
 real engine with fake handles (SKIP if optuna is absent).
-Run in a fresh kernel; exit 0 + 'ALL ... CHECKS PASSED' = clean."""
+Run in a fresh kernel; exit 0 + 'ALL ... CHECKS PASSED' = clean.
+
+Lives in nskinetics/tests/isobutanol/scripts/ (formerly the package's
+analyses/test_kinetic_optimization_offline.py); pytest runs it in a fresh
+subprocess through ../test_kinetic_optimization_checks.py. Direct use:
+``python nskinetics/tests/isobutanol/scripts/ko_offline_checks.py``."""
 import os
 import tempfile
 from types import SimpleNamespace
@@ -24,11 +29,13 @@ from nskinetics.biorefineries.isobutanol import kinetic_optimization as ko
 
 #: Folders this test reads by path, one constant per folder: the analysis
 #: scripts it runs / reads as source text (the package's
-#: analyses/kinetic_optimization/, located from ko so the test can move) and
-#: its own data fixtures (beside this file).
+#: analyses/kinetic_optimization/, located from ko, never from this file) and
+#: the test data fixtures (nskinetics/tests/isobutanol/fixtures/, beside
+#: this scripts/ folder).
 KIN_OPT_DIR = os.path.join(os.path.dirname(os.path.abspath(ko.__file__)),
                            'analyses', 'kinetic_optimization')
-FIXTURES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'fixtures')
+FIXTURES_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                            'fixtures')
 
 n_pass = 0
 def PASS(msg):
@@ -188,7 +195,7 @@ assert ko.TRACKED_METRICS['n_glu_spikes'](handles) == 7
 # nsk_results_specific_tau_dict; the g/L-broth ones read the V406 POST-VENT
 # broth effluent (outs[1]; the CO2 vent outs[0] has already stripped ~1-2 %
 # of each volatile) as imass/F_vol (kg/hr over m3/hr = g/L) -- what leaves
-# in the broth, pinned live by test_kin_opt_effluent_metrics.py. Fake
+# in the broth, pinned live by sim_kin_opt_effluent_metrics.py. Fake
 # handles with NO
 # effluent -> NaN (never a raise), so every fake-handle engine run above
 # and below keeps working; the kinetic acetate titer needs only the dict.
@@ -4506,7 +4513,7 @@ PASS('supervisor --no-volume-feasibility -> volume_feasibility, emitted into '
 # TPE study writes. Line endings are normalized (csv writes \r\n; git may
 # check the fixture out either way). Regenerate the fixture ONLY for a
 # deliberate protocol change:
-#     IBO_KO_WRITE_GOLDEN=1 python test_kinetic_optimization_offline.py
+#     IBO_KO_WRITE_GOLDEN=1 python ko_offline_checks.py
 if _optuna is None:
     print('SKIP 62: optuna not installed')
 else:

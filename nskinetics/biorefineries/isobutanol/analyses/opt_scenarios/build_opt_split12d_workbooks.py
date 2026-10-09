@@ -46,8 +46,8 @@ in-process printout, as the go/no-go.
 Every nskinetics.biorefineries.isobutanol import lives inside main() / the
 simulation helpers (paths.py, stdlib-only, is loaded by file path), so
 importing this module is build-free (the offline test
-test_build_opt_split12d_workbooks_offline.py and verify_opt_scenarios.py load
-it by file path).
+nskinetics/tests/isobutanol/test_build_opt_workbooks.py and
+verify_opt_scenarios.py load it by file path).
 
 Input: the campaign's trajectory CSV under the results root
 (paths.results_dir(): analyses/results unless NSKINETICS_IBO_RESULTS_DIR is

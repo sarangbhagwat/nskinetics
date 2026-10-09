@@ -18,7 +18,7 @@ ko.reproduce_split12d_trial (anchor A, A-referenced burden ON, restore=True;
 it leaves the flowsheet at the trial, so the unit groups read the trial).
 
 After every simulation the five metrics of the 19 unit groups are read and
-two closures pinned by analyses/test_unit_groups.py are asserted (the
+two closures pinned by tests/isobutanol/scripts/sim_unit_groups.py are asserted (the
 installed-cost column sums to tea.installed_equipment_cost, the
 Operating-cost column to tea.AOC / operating_hours); so is the sales revenue
 of the four products (ethanol, isobutanol, DDGS, corn oil), read at
@@ -97,7 +97,7 @@ BASELINE_KEY, BASELINE_LABEL = 'baseline', 'Baseline'
 METRICS = ('Installed equipment cost', 'Cooling duty', 'Heating duty',
            'Electricity consumption', 'Operating cost')
 INSTALLED, OPERATING = METRICS[0], METRICS[-1]
-#: closure tolerances of analyses/test_unit_groups.py checks 1 and 5
+#: closure tolerances of tests/isobutanol/scripts/sim_unit_groups.py checks 1 and 5
 INSTALLED_RTOL, OPERATING_RTOL = 1e-9, 1e-6
 #: product (display key, in the figure's stack order) -> sold stream ID
 REVENUE_STREAMS = {'ethanol': 'ethanol', 'isobutanol': 'isobutanol',

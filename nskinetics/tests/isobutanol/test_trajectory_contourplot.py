@@ -5,34 +5,36 @@
 # This module is under the MIT open-source license. See
 # https://github.com/sarangbhagwat/nskinetics/blob/main/LICENSE
 # for license details.
-"""Standalone tests for plots/trajectory_contourplot.py.
+"""Tests of ``plots/trajectory_contourplot.py``.
 
-Run:  python -m pytest <this file>   (or python <this file>)
-Loads the module directly via importlib so it never imports the biorefinery
-package or biosteam (no import-time simulation, no numba cache); needs the
-optional `contourplots` package. Uses the Agg backend.
+The module is loaded by file path (inside a fixture), so the biorefinery
+package is never imported (no import-time simulation, no numba cache). It
+needs the optional ``contourplots`` package; the tests skip without it. Uses
+the Agg backend.
+
+Moved from ``plots/test_trajectory_contourplot.py`` (the standalone
+``__main__`` runner was dropped; the 14 tests are unchanged).
 """
 import os
-import importlib.util
 
-import matplotlib
-matplotlib.use('Agg')
 import numpy as np
+import pytest
+
+from ._support import load_by_path, load_paths, skip_unless_modules
+
+pytestmark = [pytest.mark.isobutanol, skip_unless_modules('contourplots')]
 
 
-def _load_module():
-    path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                        'trajectory_contourplot.py')
-    spec = importlib.util.spec_from_file_location('trajectory_contourplot', path)
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    return mod
+@pytest.fixture(scope='module')
+def tc():
+    import matplotlib
+    matplotlib.use('Agg')
+    plots_dir = load_paths().PLOTS_DIR
+    return load_by_path('trajectory_contourplot',
+                        os.path.join(plots_dir, 'trajectory_contourplot.py'))
 
 
-tc = _load_module()
-
-
-def test_squeeze_grid_accepts_2d_and_3d():
+def test_squeeze_grid_accepts_2d_and_3d(tc):
     a2 = np.arange(6.0).reshape(2, 3)
     assert tc._squeeze_grid(a2).shape == (2, 3)
     a3 = np.arange(6.0).reshape(1, 2, 3)
@@ -40,14 +42,14 @@ def test_squeeze_grid_accepts_2d_and_3d():
     assert np.array_equal(tc._squeeze_grid(a3), a2)
 
 
-def test_snap_index_picks_nearest():
+def test_snap_index_picks_nearest(tc):
     spec = np.array([0.0, 10.0, 20.0, 30.0, 40.0])
     assert tc._snap_index(spec, 0.0) == 0
     assert tc._snap_index(spec, 12.0) == 1
     assert tc._snap_index(spec, 26.0) == 3
 
 
-def test_greedy_climb_walks_diagonally_to_min():
+def test_greedy_climb_walks_diagonally_to_min(tc):
     # bowl with min at (4,4); 8-neighbor climb from (0,0) goes diagonally.
     iy, ix = np.mgrid[0:5, 0:5]
     grid = (iy - 4.0) ** 2 + (ix - 4.0) ** 2
@@ -59,14 +61,14 @@ def test_greedy_climb_walks_diagonally_to_min():
     assert all(b < a for a, b in zip(vals, vals[1:]))  # strictly improving
 
 
-def test_greedy_climb_max_sense():
+def test_greedy_climb_max_sense(tc):
     iy, ix = np.mgrid[0:5, 0:5]
     grid = -((iy - 4.0) ** 2 + (ix - 4.0) ** 2)  # max at (4,4)
     path = tc._greedy_climb(grid, (0, 0), 'max')
     assert path[-1] == (4, 4)
 
 
-def test_greedy_climb_skips_nan_neighbors():
+def test_greedy_climb_skips_nan_neighbors(tc):
     iy, ix = np.mgrid[0:5, 0:5]
     grid = (iy - 4.0) ** 2 + (ix - 4.0) ** 2
     grid[1, 1] = np.nan  # block the diagonal; climb must route around it
@@ -75,34 +77,27 @@ def test_greedy_climb_skips_nan_neighbors():
     assert path[-1] == (4, 4)
 
 
-def test_greedy_climb_start_at_optimum_is_single_point():
+def test_greedy_climb_start_at_optimum_is_single_point(tc):
     iy, ix = np.mgrid[0:5, 0:5]
     grid = (iy - 4.0) ** 2 + (ix - 4.0) ** 2
     path = tc._greedy_climb(grid, (4, 4), 'min')
     assert path == [(4, 4)]
 
 
-def test_greedy_climb_nan_start_raises():
+def test_greedy_climb_nan_start_raises(tc):
     grid = np.zeros((3, 3))
     grid[0, 0] = np.nan
-    try:
+    with pytest.raises(ValueError) as e:
         tc._greedy_climb(grid, (0, 0), 'min')
-    except ValueError as e:
-        assert 'NaN' in str(e)
-    else:
-        raise AssertionError("expected ValueError for NaN start cell")
+    assert 'NaN' in str(e.value)
 
 
-def test_greedy_climb_invalid_sense_raises():
-    try:
+def test_greedy_climb_invalid_sense_raises(tc):
+    with pytest.raises(ValueError):
         tc._greedy_climb(np.zeros((2, 2)), (0, 0), 'minimize')
-    except ValueError:
-        pass
-    else:
-        raise AssertionError("expected ValueError for invalid sense")
 
 
-def test_greedy_climb_min_rel_improvement_ignores_round_off_plateau():
+def test_greedy_climb_min_rel_improvement_ignores_round_off_plateau(tc):
     # a flat column (differences ~1e-8 relative, like a converged simulation's
     # noise) next to a genuinely better cell two columns away that the climb
     # cannot reach without first taking a noise-level step.
@@ -123,18 +118,6 @@ def test_greedy_climb_min_rel_improvement_ignores_round_off_plateau():
     assert tc._greedy_climb(grid0, (0, 0), 'max', min_rel_improvement=1e-4) == [(0, 0), (0, 1)]
 
 
-HELPER_TESTS = [
-    test_squeeze_grid_accepts_2d_and_3d,
-    test_greedy_climb_min_rel_improvement_ignores_round_off_plateau,
-    test_snap_index_picks_nearest,
-    test_greedy_climb_walks_diagonally_to_min,
-    test_greedy_climb_max_sense,
-    test_greedy_climb_skips_nan_neighbors,
-    test_greedy_climb_start_at_optimum_is_single_point,
-    test_greedy_climb_nan_start_raises,
-    test_greedy_climb_invalid_sense_raises,
-]
-
 def _synthetic_results():
     # 6x7 grid (ny=6 over spec_2, nx=7 over spec_1). MPSP-like bowl (min at a
     # corner), IRR-like plane (max at the opposite corner), plus a constant.
@@ -152,20 +135,16 @@ def _synthetic_results():
     return results, spec_1, spec_2
 
 
-def test_derive_levels_ranges_and_errors():
+def test_derive_levels_ranges_and_errors(tc):
     lv, ct = tc._derive_levels(np.array([1.0, np.nan, 3.0]))
     assert lv[0] == 1.0 and lv[-1] == 3.0
     assert ct[0] == 1.0 and ct[-1] == 3.0
     for bad in (np.array([np.nan, np.nan]), np.array([2.0, 2.0])):
-        try:
+        with pytest.raises(ValueError):
             tc._derive_levels(bad)
-        except ValueError:
-            pass
-        else:
-            raise AssertionError("expected ValueError from _derive_levels")
 
 
-def test_plot_returns_fig_ax_and_trajectory_data():
+def test_plot_returns_fig_ax_and_trajectory_data(tc):
     results, s1, s2 = _synthetic_results()
     fig, ax, traj = tc.plot_metric_with_trajectories(
         results, s1, s2, color_metric='MPSP', baseline_point=(30.0, 0.5),
@@ -186,31 +165,23 @@ def test_plot_returns_fig_ax_and_trajectory_data():
     plt.close(fig)
 
 
-def test_plot_missing_sense_raises():
+def test_plot_missing_sense_raises(tc):
     results, s1, s2 = _synthetic_results()
-    try:
+    with pytest.raises(KeyError):
         tc.plot_metric_with_trajectories(
             results, s1, s2, color_metric='MPSP', baseline_point=(0.0, 0.0),
             trajectory_metrics=['IRR'], senses={})
-    except KeyError:
-        pass
-    else:
-        raise AssertionError("expected KeyError for missing sense")
 
 
-def test_plot_constant_color_metric_raises():
+def test_plot_constant_color_metric_raises(tc):
     results, s1, s2 = _synthetic_results()
-    try:
+    with pytest.raises(ValueError):
         tc.plot_metric_with_trajectories(
             results, s1, s2, color_metric='Const', baseline_point=(0.0, 0.0),
             trajectory_metrics=['MPSP'], senses={'MPSP': 'min'})
-    except ValueError:
-        pass
-    else:
-        raise AssertionError("expected ValueError for constant color metric")
 
 
-def test_plot_trajectory_styles_and_legend_kwargs():
+def test_plot_trajectory_styles_and_legend_kwargs(tc):
     results, s1, s2 = _synthetic_results()
     fig, ax, traj = tc.plot_metric_with_trajectories(
         results, s1, s2, color_metric='MPSP', baseline_point=(30.0, 0.5),
@@ -239,31 +210,3 @@ def test_plot_trajectory_styles_and_legend_kwargs():
     assert ax.get_legend()._loc == 3                 # matplotlib code for 'lower left'
     import matplotlib.pyplot as plt
     plt.close(fig)
-
-
-PLOT_TESTS = [
-    test_plot_trajectory_styles_and_legend_kwargs,
-    test_derive_levels_ranges_and_errors,
-    test_plot_returns_fig_ax_and_trajectory_data,
-    test_plot_missing_sense_raises,
-    test_plot_constant_color_metric_raises,
-]
-
-
-def _run(tests):
-    failures = 0
-    for t in tests:
-        try:
-            t()
-            print(f"PASS {t.__name__}")
-        except Exception as e:
-            failures += 1
-            print(f"FAIL {t.__name__}: {type(e).__name__}: {e}")
-    return failures
-
-
-if __name__ == '__main__':
-    import sys
-    n = _run(HELPER_TESTS + PLOT_TESTS)
-    print(f"\n{'ALL PASS' if n == 0 else str(n) + ' FAILED'}")
-    sys.exit(1 if n else 0)

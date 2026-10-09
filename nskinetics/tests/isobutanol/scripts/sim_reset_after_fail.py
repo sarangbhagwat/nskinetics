@@ -134,7 +134,7 @@ check(ctx.state_snapshot is not None and diff is None,
 # (4) a FAIL trial restores the snapshot (state dirtied beforehand)
 k3 = ctx.kinetic_baselines['k_3']
 sysm.empty_recycles(); sysm.converge_method = 'fixedpoint' if method_0 != 'fixedpoint' else 'aitken'; fbs.splitter.split = 3e-7
-# test_fed_batch_volume_guard's blow-up point: spike 10 g/L above the target -> x21 per spike, the
+# sim_fed_batch_volume_guard's blow-up point: spike 10 g/L above the target -> x21 per spike, the
 # runtime guard raises FeedingStrategyError after the kinetic run and BEFORE the flowsheet simulate
 blowup = dict(k_3=k3, threshold_conc=100.0, target_delta=200.0, spike_delta=10.0, max_n_spikes=16)
 ev = ko.evaluate_decision_point(ctx, blowup, 1)

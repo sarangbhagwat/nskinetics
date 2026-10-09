@@ -159,7 +159,7 @@ def _guard_fermentor_run(reactor):
     TEA (trials 1401 / 1768: PI -4.8e6 / -1.0e8, TCI 14 / 6.9 MM$; true
     values PI -3.7, TCI ~105 MM$). biosteam dispatches `self._run()`, so the
     instance attribute is honoured by Unit.simulate and the System converge
-    loop alike. Regression: analyses/test_v406_burden_guard.py."""
+    loop alike. Regression: nskinetics/tests/isobutanol/scripts/sim_v406_burden_guard.py."""
     class_run = type(reactor)._run
     def _run():
         with _apply_enzyme_burden():
@@ -1018,7 +1018,7 @@ def load(simulate_baseline=True,
     # isobutanol loop's load through the decanter aqueous recycle), the
     # stillage merge MX7, and the long-standing strays PX, MX5. The leftover
     # rule lives HERE so a future stray lands in the shared group, never
-    # mislabeled as one product's; analyses/test_unit_groups.py pins this
+    # mislabeled as one product's; tests/isobutanol/scripts/sim_unit_groups.py pins this
     # membership by object identity, so a stray surfaces with its ID. In
     # ('ethanol',) builds only the mode-independent units remain.
     alcohol_recovery_group = bst.UnitGroup('alcohol recovery',
@@ -1780,7 +1780,7 @@ def snapshot_flowsheet_state():
     FAIL-after-FAIL clustering of the 09-14 studies both trace to that.
     ko.evaluate_decision_point snapshots after every COMPLETE / NAN trial
     and restores after every FAIL. Regression:
-    analyses/test_reset_after_fail.py."""
+    nskinetics/tests/isobutanol/scripts/sim_reset_after_fail.py."""
     return {'streams': [(s, s.get_data()) for s in corn_EtOH_IBO_sys.streams],
             'split': np.array(fbs_spec.splitter.split, copy=True),
             'methods': [(s, s.converge_method)
