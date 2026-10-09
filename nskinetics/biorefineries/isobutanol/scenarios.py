@@ -6,47 +6,74 @@
 # https://github.com/sarangbhagwat/nskinetics/blob/main/LICENSE
 # for license details.
 """
-Consolidated scenario loading -- the single source of truth for every
-scenario's baseline kinetics + uncertainty distributions (from its
-parameter-distributions workbook) and baseline feeding strategy.
+Scenario registry of the isobutanol biorefinery -- the single source of
+truth for every scenario's baseline kinetics + uncertainty distributions
+(from its parameter-distributions workbook), baseline feeding strategy and
+smoke-test pins.
 
 A "scenario" = (workbook: baseline kinetics + distributions)
              + (feeding strategy: max_n_spikes, threshold_conc, target_conc)
-             + (expected pins for the smoke tests).
+             + (expected pins for the smoke tests)
+             + (enzyme-burden policy).
 
-`load_scenario(scenario)` runs the recipe formerly duplicated across
-smoke tests 1-8 and the BO driver against the ALREADY-LOADED model
-(the caller calls `isobutanol.load(...)` first, choosing the separation
-configuration). It does NOT call `isobutanol.load()`.
+:func:`load_scenario` applies a scenario to the ALREADY-BUILT model (call
+``nskinetics.biorefineries.isobutanol.load(...)`` first, choosing the
+separation configuration); it never calls ``load()`` itself. The
+``assert_*`` helpers are the smoke-test gates (see
+:mod:`nskinetics.biorefineries.isobutanol.smoke`).
 
-Registered as a submodule in `__init__.py`; model/system objects and
-`kinetic_optimization` are imported lazily (only valid after load()), so
-importing this module is build-free.
+Importing this module is build-free: model/system objects,
+``kinetic_optimization`` and ``enzyme_burden`` are imported lazily, inside
+the functions that need them (valid only after ``load()``).
 """
 import os
 import math
 from dataclasses import dataclass
+
+from . import paths as _paths
 
 __all__ = ('ScenarioSpec', 'SCENARIOS', 'load_scenario',
            'assert_MPSPs_pinned', 'assert_MPSPs_stable',
            'assert_objective_reproduced', 'assert_spike_feed_residual',
            'SPIKE_FEED_RESIDUAL_TOL')
 
-_PKG_DIR = os.path.dirname(os.path.abspath(__file__))
-_WORKBOOK_DIR = os.path.join(_PKG_DIR, 'data', 'parameter_distributions')
+_WORKBOOK_DIR = _paths.workbook_dir()
 
 
 @dataclass(frozen=True)
 class ScenarioSpec:
-    """One scenario. `workbook` is a bare filename under
-    analyses/full/parameter_distributions/. `expected` pins the smoke-test
-    MPSPs, {'ethanol': float, 'isobutanol': float} (nan for an empty
-    product). For opt_* scenarios `objective_name` names an
-    OBJECTIVE_REGISTRY key and `objective_value` its reproduced value.
-    `spike_conc` / `stage_1_max_x` are None for every current scenario
-    (load() defaults 600 g/L / 5.0 g/L); a non-None value is not yet
-    supported (see load_scenario). `burden_default` is the enzyme-burden
-    policy load_scenario applies when its own `burden` kwarg is None."""
+    """One registered scenario (an entry of :data:`SCENARIOS`).
+
+    Parameters
+    ----------
+    name : str
+        Scenario key, e.g. ``'A'``, ``'B'``, ``'opt_PI_TRY_informed'``.
+    workbook : str
+        Bare filename of the parameter-distribution workbook under
+        ``data/parameter_distributions/`` (see :attr:`workbook_path`).
+    max_n_spikes : int
+        Glucose-spike cap of the baseline feeding strategy (0 = batch).
+    threshold_conc, target_conc : float
+        Baseline feeding strategy [g/L glucose]: spike when glucose falls to
+        ``threshold_conc``, back up to ``target_conc``.
+    expected : dict
+        Smoke-test MPSP pins, ``{'ethanol': float, 'isobutanol': float}``
+        (purity-adjusted, $/kg at 15 % IRR; nan for an empty product).
+    objective_name : str, optional
+        For opt_* scenarios, the ``kinetic_optimization.OBJECTIVE_REGISTRY``
+        key of the campaign objective; None otherwise.
+    objective_value : float, optional
+        The recorded best-trial value of that objective.
+    objective_tol : float, optional
+        Relative tolerance of :func:`assert_objective_reproduced`. Default 0.02.
+    spike_conc, stage_1_max_x : float, optional
+        None for every current scenario (the ``load()`` defaults, 600 g/L
+        and 5.0 g/L, apply); a non-None value is not yet supported (see
+        :func:`load_scenario`).
+    burden_default : bool, optional
+        Enzyme-burden policy :func:`load_scenario` applies when its own
+        ``burden`` argument is None. Default True (False for scenario B).
+    """
     name: str
     workbook: str
     max_n_spikes: int
@@ -62,9 +89,12 @@ class ScenarioSpec:
 
     @property
     def workbook_path(self):
+        """Absolute path of the scenario's parameter-distribution workbook."""
         return os.path.join(_WORKBOOK_DIR, self.workbook)
 
 
+#: Every registered scenario by name (see :class:`ScenarioSpec`). The
+#: ``expected`` pins gate smoke cases 1-4 and 9-16 (smoke.SMOKE_CASES).
 SCENARIOS = {
     'A': ScenarioSpec(
         name='A',
@@ -89,7 +119,7 @@ SCENARIOS = {
     # opt_IBO_productivity #1472, opt_EtOH_titer #1820, opt_EtOH_yield
     # #1923, opt_EtOH_productivity #365. The two PI scenarios pin PI (the
     # campaigns optimized PI (log-tail), whose argmax is PI's). Workbooks
-    # and pins are generated by analyses/build_opt_split12d_workbooks.py
+    # and pins are generated by build_opt_split12d_workbooks.py (analyses)
     # (ask-first): the workbook = scenario A's live kinetics (INTENDED
     # k_7 / k_8, every K_*) + the trial's k_3 / k_6 / k_13 / k_17 and its
     # glycolysis / ehrlich_downstream / inhib_* group members; the burden
@@ -158,7 +188,7 @@ SCENARIOS = {
 
 
 def _handles():
-    """Live model/system handles. Valid only after isobutanol.load()."""
+    """Live model/system handles. Valid only after the package load()."""
     from nskinetics.biorefineries import isobutanol
     m = isobutanol.models
     model = m.models_EtOH_IBO_corn.model
@@ -205,21 +235,47 @@ def _scenario_A_reference(model, h):
 
 
 def load_scenario(scenario, *, apply=True, burden=None):
-    """Load `scenario`'s baseline kinetics + distributions from its
-    workbook, set the baseline feeding strategy, install the enzyme burden
-    per policy, and (when apply=True) run one baseline `model_specification`.
-    Returns a bundle the caller reuses for its stability loop. Requires the
-    model to be built already (isobutanol.load(...)).
+    """Apply a registered scenario to the built model.
 
-    `burden`: None -> the scenario's burden_default; True/False overrides.
-    When effectively on, the enzyme BurdenModel is built from SCENARIO A's
-    kinetics (the wild-type calibration where native pools are inert) --
-    NOT from this scenario's own baseline -- and installed via
-    system.set_active_burden, so the load_simulate choke point derates
-    k_7/k_8 for every simulation of this scenario. If the scenario's own
-    baseline point is over the proteome cap under that burden (e.g. scenario
-    B's Ehrlich constants), a ValueError is raised telling the caller to
-    pass burden=False."""
+    Loads the scenario's baseline kinetics + distributions from its workbook
+    (the workbook's Baseline column is applied by one
+    ``model.metrics_at_baseline()`` simulation), sets the baseline feeding
+    strategy, installs the enzyme burden per policy and, when ``apply`` is
+    True, runs one baseline ``model_specification``. Requires the model to
+    be built already (``nskinetics.biorefineries.isobutanol.load(...)``).
+
+    Parameters
+    ----------
+    scenario : str
+        Key of :data:`SCENARIOS`.
+    apply : bool, optional
+        If True (default), finish with one ``model_specification`` at the
+        scenario's feeding strategy.
+    burden : bool or None, optional
+        None (default) applies the scenario's ``burden_default``; True/False
+        overrides it. When effectively on, the enzyme ``BurdenModel`` is
+        built from SCENARIO A's kinetics (the wild-type calibration where
+        native pools are inert) -- NOT from this scenario's own baseline --
+        and installed via ``system.set_active_burden``, so the
+        ``load_simulate`` choke point derates k_7/k_8 for every simulation
+        of this scenario.
+
+    Returns
+    -------
+    dict
+        Bundle with keys ``spec`` (the :class:`ScenarioSpec`),
+        ``feeding_kwargs`` (``threshold_conc``/``target_conc``), ``expected``,
+        ``model``, ``model_specification``, ``solve_TEA``, ``fbs_spec``,
+        ``namespace_dict``, ``V406``, ``tea``, ``burden_model`` and
+        ``burden_on``.
+
+    Raises
+    ------
+    ValueError
+        If `scenario` is not registered, or if the burden is on and the
+        scenario's own baseline point is over the proteome cap (e.g.
+        scenario B's Ehrlich constants) -- pass ``burden=False`` then.
+    """
     if scenario not in SCENARIOS:
         raise ValueError(f'scenario {scenario!r} not in SCENARIOS: '
                          f'{sorted(SCENARIOS)}')
@@ -273,8 +329,25 @@ def load_scenario(scenario, *, apply=True, burden=None):
 
 
 def assert_MPSPs_pinned(expected, current, sim_number, rel_tol=0.01):
-    """Verify current MPSPs against pinned baselines (within rel_tol; nan
-    stays nan). Pins live in the SCENARIOS registry."""
+    """Assert the current MPSPs match their pins.
+
+    Parameters
+    ----------
+    expected : dict
+        Pinned MPSPs by stream ID (e.g. ``ScenarioSpec.expected``); a nan
+        pin requires a nan MPSP (empty product).
+    current : dict
+        A ``solve_TEA`` result (its ``'MPSPs'`` entry is read).
+    sim_number : int
+        Simulation index, for the assertion message.
+    rel_tol : float, optional
+        Maximum relative deviation from a finite pin. Default 0.01.
+
+    Raises
+    ------
+    AssertionError
+        On the first MPSP outside its pin.
+    """
     for ID, ref in expected.items():
         cur = current['MPSPs'][ID]
         if math.isnan(ref):
@@ -287,8 +360,23 @@ def assert_MPSPs_pinned(expected, current, sim_number, rel_tol=0.01):
 
 
 def assert_MPSPs_stable(reference, current, sim_number, rel_tol=5e-3):
-    """Verify current MPSPs match the first simulation's to ~3 sig figs
-    (relative drift < rel_tol; nan stays nan)."""
+    """Assert the current MPSPs match a reference simulation's.
+
+    Parameters
+    ----------
+    reference, current : dict
+        ``solve_TEA`` results (their ``'MPSPs'`` entries are compared); nan
+        must match nan.
+    sim_number : int
+        Simulation index, for the assertion message.
+    rel_tol : float, optional
+        Maximum relative drift. Default 5e-3 (~3 significant figures).
+
+    Raises
+    ------
+    AssertionError
+        On the first MPSP that drifted.
+    """
     for ID, ref in reference['MPSPs'].items():
         cur = current['MPSPs'][ID]
         if math.isnan(ref) or math.isnan(cur):
@@ -312,10 +400,25 @@ def assert_MPSPs_stable(reference, current, sim_number, rel_tol=5e-3):
 SPIKE_FEED_RESIDUAL_TOL = 1e-3
 
 def assert_spike_feed_residual(sim_number, abs_tol=SPIKE_FEED_RESIDUAL_TOL):
-    """Verify the live fermentor V406 closed its spike-feed balance on the
-    simulation just run: the reconciler hook is on (residual is not None --
-    the factory installs fbs_spec as the reconciler) and |residual| <=
-    abs_tol. Reads the built system, so valid only after load()."""
+    """Assert the fermentor V406 closed its spike-feed balance.
+
+    Checks the simulation just run: the reconciler hook is on (the residual
+    is not None -- the factory installs ``fbs_spec`` as the reconciler) and
+    ``|V406.spike_feed_residual| <= abs_tol``. Reads the built system, so
+    valid only after ``load()``.
+
+    Parameters
+    ----------
+    sim_number : int
+        Simulation index, for the assertion message.
+    abs_tol : float, optional
+        Maximum absolute residual. Default :data:`SPIKE_FEED_RESIDUAL_TOL`.
+
+    Raises
+    ------
+    AssertionError
+        If the hook is off or the residual exceeds `abs_tol`.
+    """
     from nskinetics.biorefineries.isobutanol import system as _system
     reactor = _system.f.unit.V406
     residual = getattr(reactor, 'spike_feed_residual', None)
@@ -332,10 +435,31 @@ def assert_spike_feed_residual(sim_number, abs_tol=SPIKE_FEED_RESIDUAL_TOL):
 
 
 def assert_objective_reproduced(spec, results, bundle, sim_number, rel_tol=None):
-    """For an opt_* scenario, recompute the study's objective from the
-    current simulated model state (via kinetic_optimization.OBJECTIVE_REGISTRY,
-    the exact study definition) and verify it reproduces the best trial's
-    recorded value. No-op for scenarios without an objective (A/B)."""
+    """Assert an opt_* scenario reproduces its campaign's best objective.
+
+    Recomputes the study's objective from the current simulated state (via
+    ``kinetic_optimization.OBJECTIVE_REGISTRY``, the exact study definition)
+    and compares it with ``spec.objective_value``. A no-op for scenarios
+    without an objective (A, B).
+
+    Parameters
+    ----------
+    spec : ScenarioSpec
+        The scenario (``bundle['spec']``).
+    results : dict
+        The ``solve_TEA`` result of the simulation just run.
+    bundle : dict
+        The :func:`load_scenario` bundle (``V406`` and ``tea`` are read).
+    sim_number : int
+        Simulation index, for the assertion message.
+    rel_tol : float, optional
+        Relative tolerance; None (default) uses ``spec.objective_tol``.
+
+    Raises
+    ------
+    AssertionError
+        If the objective is outside the tolerance.
+    """
     if spec.objective_name is None:
         return
     tol = spec.objective_tol if rel_tol is None else rel_tol

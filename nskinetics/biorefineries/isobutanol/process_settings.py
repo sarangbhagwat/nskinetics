@@ -5,8 +5,21 @@
 # This module is under the MIT open-source license. See
 # https://github.com/sarangbhagwat/nskinetics/blob/main/LICENSE
 # for license details.
+"""Cost-index and price-year settings of the isobutanol biorefinery.
+
+* :data:`CEPCI` (2023 = 797.9) is the capital-cost index every unit is
+  costed at (``bst.CE``, set by :func:`load_process_settings`).
+* Every stream and utility price is entered in the dollars of its source
+  year (:data:`stream_price_basis_years`, :data:`product_price_basis_years`,
+  :data:`utility_price_basis`) and converted once to :data:`PRICE_YEAR`
+  dollars by :func:`index_prices_to_price_year` with the BLS chemicals PPI
+  (:data:`chem_index`).
+
+Both functions mutate biosteam's process-global state (``bst.CE``, utility
+agents and prices); :func:`nskinetics.biorefineries.isobutanol.system.load`
+calls them at the right points of the build.
+"""
 import biosteam as bst
-import thermosteam as tmo
 
 __all__ = ('load_process_settings', 'CEPCI', 'PRICE_YEAR', 'chem_index',
            'price_index_ratio', 'stream_price_basis_years',
@@ -28,7 +41,7 @@ CEPCI = 797.9
 # once, in `index_prices_to_price_year`, by chem_index[PRICE_YEAR]/chem_index
 # [source year] -- the HP-biorefinery pattern (HP/process_settings.py converts
 # its 2016$ price table to 2019$ the same way). The parameter-distribution
-# workbooks (analyses/full/parameter_distributions/*.xlsx) carry their price
+# workbooks (data/parameter_distributions/*.xlsx) carry their price
 # rows already converted to PRICE_YEAR dollars (source year and factor noted
 # in each row's References column), so a workbook baseline overrides a code
 # price on the same year basis.
@@ -63,8 +76,20 @@ chem_index = {
     }
 
 def price_index_ratio(base_year, target_year=PRICE_YEAR):
-    """chem_index[target_year]/chem_index[base_year]: the factor that converts
-    a price in base-year dollars to target-year dollars."""
+    """Return the factor converting base-year dollars to target-year dollars.
+
+    Parameters
+    ----------
+    base_year : int
+        Source year of the price (a key of :data:`chem_index`).
+    target_year : int, optional
+        Year to convert to. Default :data:`PRICE_YEAR`.
+
+    Returns
+    -------
+    float
+        ``chem_index[target_year]/chem_index[base_year]``.
+    """
     return chem_index[target_year]/chem_index[base_year]
 
 # Source year of every priced stream on the flowsheet, by stream ID, as the
@@ -145,7 +170,28 @@ def index_prices_to_price_year(flowsheet, BT, V513, V514):
       heating agent's regeneration price ($/kmol), BT.ash_disposal_price, and
       the ProcessWaterCenter's RO / process water prices.
 
-    Returns {name: (entered price, source year, PRICE_YEAR price)}.
+    Parameters
+    ----------
+    flowsheet : biosteam.Flowsheet
+        Flowsheet whose registered streams are re-priced. Marked as indexed
+        (``flowsheet._prices_indexed_to_year``) so a second call raises.
+    BT : biosteam.BoilerTurbogenerator
+        The boiler turbogenerator (natural-gas and ash-disposal prices).
+    V513, V514 : biosteam.Unit
+        Ethanol and isobutanol product tanks carrying the ``ethanol_price``
+        / ``isobutanol_price`` attributes of their price specifications.
+
+    Returns
+    -------
+    dict
+        ``{name: (entered price, source year, PRICE_YEAR price)}``.
+
+    Raises
+    ------
+    RuntimeError
+        If the flowsheet's prices were already indexed.
+    KeyError
+        If a priced stream has no source year in `stream_price_basis_years`.
     """
     if getattr(flowsheet, '_prices_indexed_to_year', None) is not None:
         raise RuntimeError(
@@ -188,17 +234,15 @@ def index_prices_to_price_year(flowsheet, BT, V513, V514):
     return report
 
 def load_process_settings():
-    import sys
-    if sys.version_info.major==3:
-        if sys.version_info.minor==9:
-            pass
-        elif sys.version_info.minor>9:
-            pass
-        else:
-            print('Fatal Error: Python version must be 3.9 (recommended) or higher (within the v3 release).')
-    else:
-        print('Fatal Error: Python version must be 3.9 (recommended) or higher (within the v3 release).')
+    """Set the process-global cost index and utility regeneration prices.
 
+    Sets ``bst.CE`` to :data:`CEPCI` and zeros the heat-transfer and
+    regeneration prices of low/medium/high-pressure steam, cooling water and
+    chilled water (regenerated on site by the boiler, cooling tower and
+    chilled-water package), leaving purchased natural gas and sold excess
+    electricity as the only utility cash flows. Utility *prices* are set
+    later by :func:`index_prices_to_price_year`.
+    """
     bst.CE = CEPCI # 2023 CEPCI = 797.9 (see module constant above)
     # Utility prices (electricity, natural gas, ash disposal, RO/process water)
     # are set in PRICE_YEAR dollars by index_prices_to_price_year, called from
@@ -215,5 +259,3 @@ def load_process_settings():
     # in the boiler, cooling water tower, and chilled water package
     for i in (_lps, _mps, _hps, _cooling, _chilled):
         i.heat_transfer_price = i.regeneration_price = 0
-        # if i == _cooling: continue
-        # i.heat_transfer_efficiency = 0.85

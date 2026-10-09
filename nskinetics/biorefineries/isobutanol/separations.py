@@ -111,9 +111,12 @@ Usage (standalone, without importing the biorefinery package)::
     sys = separations.create_IBO_EtOH_separation_system(ins=feed)
     sys.simulate()
 
-(``from nskinetics.biorefineries.isobutanol import separations`` also works; the package
-import is build-free — the biorefinery build + baseline simulation run only at
-an explicit ``isobutanol.load()`` call.)
+(``from nskinetics.biorefineries.isobutanol import separations`` also works;
+the package import is build-free -- the biorefinery build + baseline
+simulation run only at an explicit
+``nskinetics.biorefineries.isobutanol.load()`` call. This module must keep
+importing only numpy / biosteam / thermosteam / scipy at top level, and no
+package-relative modules, so that the by-path load above keeps working.)
 
 Two additional factories extend this module:
 
@@ -143,8 +146,17 @@ __all__ = (
 #%% Chemicals and reference feed
 
 def create_separation_chemicals():
-    """Return a compiled chemicals object: corn set + Isobutanol +
-    AceticAcid (mirrors system.py, without the extraction solvent)."""
+    """Return the chemical set for standalone separation-train runs.
+
+    Corn's chemical set + Isobutanol + AceticAcid, as a list of
+    ``thermosteam.Chemical`` (pass it to ``tmo.settings.set_thermo``). It is
+    the biorefinery's set (system.load) without Acetaldehyde, which the
+    separation trains never carry.
+
+    Returns
+    -------
+    list[thermosteam.Chemical]
+    """
     from biorefineries import corn
     chems = [c for c in corn.chemicals.create_chemicals()]
     chems.append(tmo.Chemical('Isobutanol'))
@@ -174,8 +186,21 @@ scenario_B_P301_flows = {
 }
 
 def create_scenario_B_feed(ID='broth', EtOH_mult=1.0, IBO_mult=1.0):
-    """Return a Stream with the scenario B ``P301-0`` composition, with
-    optional multipliers on the ethanol and isobutanol flows."""
+    """Return a broth stream with the scenario-B ``P301-0`` composition.
+
+    Parameters
+    ----------
+    ID : str, optional
+        Stream ID. Default 'broth'.
+    EtOH_mult, IBO_mult : float, optional
+        Multipliers on the ethanol and isobutanol flows of
+        :data:`scenario_B_P301_flows`. Default 1.0.
+
+    Returns
+    -------
+    thermosteam.Stream
+        At 305.15 K and 607,950 Pa.
+    """
     feed = tmo.Stream(ID, T=305.15, P=607950.0)
     for chem_ID, flow in scenario_B_P301_flows.items():
         feed.imass[chem_ID] = flow
@@ -262,6 +287,48 @@ def create_IBO_EtOH_separation_system(
                                       # recycle loops drain to exactly zero instead of
                                       # parking dust at the tolerance floor.
     ):
+    """Solvent-free heteroazeotropic isobutanol/ethanol/water train.
+
+    The flowsheet and its feed-adaptive specifications are described in the
+    module docstring (D101 beer column, D102 ethanol rectifier, H202/MS201/
+    H201 ethanol polish, D103 isobutanol stripper, M301/H301/S301 decanter
+    loop, D104 drying column, H302 product cooler).
+
+    Parameters
+    ----------
+    ins : Stream
+        [0] broth.
+    outs : Stream
+        [0] ethanol product, [1] isobutanol product, [2] stillage (beer
+        column bottoms), [3] D103 bottoms (near-pure water).
+    P : float, optional
+        Column pressure [Pa]. Default 101325.
+    beer_column_y_top_IBO, beer_column_x_bot_IBO : float, optional
+        D101 keys-basis distillate ceiling (default 0.25, below the 0.326
+        IBO-water azeotrope) and bottoms ceiling (default 1e-4).
+    rectifier_y_top_EtOH, rectifier_x_bot_EtOH, rectifier_Rmin : float, optional
+        D102 distillate spec (default 0.80805, the stock ethanol-factory
+        spec), bottoms ceiling (default 3.9106e-6) and minimum-reflux floor
+        (default 1.2, the ethanol-water tangent pinch).
+    stripper_y_top_IBO, stripper_x_bot_IBO : float, optional
+        D103 distillate floor (default 0.25) and bottoms ceiling (default 1e-5).
+    drying_column_y_top_water, drying_column_x_bot_water : float, optional
+        D104 distillate (default 0.60, IBO-rich branch; azeotrope 0.674) and
+        bottoms (default 1e-4) water specs.
+    decanter_T, product_T : float, optional
+        Decanter and product temperatures [K]. Defaults 313.15 and 305.15.
+    rectifier_feed_x_EtOH_max : float, optional
+        Maximum ethanol keys-fraction fed to D102 (D101 takes enough water
+        overhead to ensure it). Default 0.55.
+    stripper_y_top_IBO_max : float, optional
+        Adaptive D103 distillate ceiling (< azeotrope). Default 0.31.
+    bottoms_key_loss_frac : float, optional
+        Bottoms specs are capped at this fraction of the feed
+        keys-composition. Default 0.10.
+    min_key_flow : float, optional
+        [kmol/hr] A light key below this is absent, and a unit fed less than
+        this in total has no duty. Default 1e-2.
+    """
     broth, = ins
     ethanol_product, isobutanol_product, stillage, D103_bottoms = outs
 
@@ -549,6 +616,22 @@ def create_EtOH_primary_separation_system(
 
     ``beer_column_heat_integration=False``: the integrated biorefinery
     removes all HXprocess units in favor of the heat exchanger network.
+
+    Parameters
+    ----------
+    ins : Stream
+        [0] broth.
+    outs : Stream
+        [0] ethanol product, [1] stillage, [2] bottoms water (rectifier
+        bottoms; carries all feed isobutanol).
+    beer_column_x_bot_EtOH, rectifier_x_bot_EtOH : float, optional
+        D302 / D303 bottoms ceilings (default 3.9106e-6, the stock
+        ethanol-factory spec), scaled down with the feed at low titers.
+    bottoms_key_loss_frac : float, optional
+        Bottoms specs are capped at this fraction of the feed
+        keys-composition. Default 0.10.
+    min_key_flow : float, optional
+        [kmol/hr] Ethanol below this bypasses the train. Default 1e-2.
     """
     broth, = ins
     ethanol_product, stillage, bottoms_water = outs
@@ -648,8 +731,18 @@ def create_separation_system(
     ):
     """Build the requested separation process(es) on the broth.
 
-    processes : Iterable[str]
-        Non-empty subset of {'IBO_EtOH', 'ethanol'}. 'IBO_EtOH' is the
+    Parameters
+    ----------
+    ins : Stream
+        [0] broth.
+    outs : Stream
+        [0] ethanol product, [1] isobutanol product, [2] stillage, [3] D103
+        bottoms (IBO/EtOH train); [4] ethanol product 2, [5] stillage 2,
+        [6] bottoms water 2 (ethanol-primary train). Outlets of a train not
+        built are removed (see `processes`).
+    processes : Iterable[str], optional
+        Non-empty subset of {'IBO_EtOH', 'ethanol'} (default
+        ('IBO_EtOH',)). 'IBO_EtOH' is the
         solvent-free heteroazeotropic IBO/EtOH train
         (``create_IBO_EtOH_separation_system``); 'ethanol' is the
         ethanol-primary train (``create_EtOH_primary_separation_system``).
@@ -662,8 +755,16 @@ def create_separation_system(
         Access outlets through the returned stream objects or ``udct``,
         not ``system.get_outlet`` (name->index maps do not survive
         trimming).
-    IBO_EtOH_options / EtOH_primary_options : dict, optional
+    split_to_IBO_EtOH : float, optional
+        Initial S201 split to the IBO/EtOH train when both are built.
+        Default 1.0.
+    IBO_EtOH_options, EtOH_primary_options : dict, optional
         Extra keyword arguments forwarded to the respective sub-factory.
+
+    Raises
+    ------
+    ValueError
+        If `processes` is empty or names an unknown process.
     """
     broth, = ins
     (ethanol_product, isobutanol_product, stillage, D103_bottoms,

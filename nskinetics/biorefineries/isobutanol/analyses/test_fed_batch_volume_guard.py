@@ -48,6 +48,7 @@ def _hard_exit_on_hang(label):
 
 from nskinetics.biorefineries import isobutanol
 isobutanol.load()
+from nskinetics.biorefineries.isobutanol import paths
 from nskinetics.biorefineries.isobutanol import system as ibo_system
 from nskinetics.exceptions import FeedingStrategyError
 
@@ -59,13 +60,10 @@ solve_TEA = ibo_system.solve_TEA
 parameters = ibo_system.parameters
 f = model.system.flowsheet
 V406, S301 = f.V406, f.S301
-IBO_filepath = isobutanol.__file__.replace('\\__init__.py', '')
 
 # Scenario-A baseline (smoke-test / BO-driver recipe)
 model.parameters = ()
-model.load_parameter_distributions(
-    IBO_filepath + '\\data\\parameter_distributions\\'
-    'parameter-distributions_corn_IBO_EtOH_A.xlsx', namespace_dict)
+model.load_parameter_distributions(paths.workbook_path('A'), namespace_dict)
 model.metrics_at_baseline()
 model_specification()
 fbs_spec.max_n_spikes = 16

@@ -5,31 +5,16 @@
 # This module is under the MIT open-source license. See
 # https://github.com/sarangbhagwat/nskinetics/blob/main/LICENSE
 # for license details.
+"""Uncertainty/sensitivity ``Model`` of the isobutanol biorefinery.
 
-from . import (
-    models_EtOH_IBO_corn,
-    # system, 
-    # units,
-    # utils,
-    )
+Build-free at import. After ``nskinetics.biorefineries.isobutanol.load()``
+this subpackage's namespace also holds every name published by
+:func:`models_EtOH_IBO_corn.create_model` (``namespace_dict``, ``fbs_spec``,
+``plot_kinetic_results``, the ``optimize_*`` feeding-strategy optimizers,
+...); the package ``load()`` copies them here.
+"""
+from . import models_EtOH_IBO_corn
 
-__all__ = [
-            *models_EtOH_IBO_corn.__all__,
-            # *system.__all__,
-            # *units.__all__,
-            # *utils.__all__,
-]
+__all__ = [*models_EtOH_IBO_corn.__all__]
 
 from .models_EtOH_IBO_corn import *
-# from .system import *
-# from .units import *
-# from .utils import *
-
-# def load(*args, **kwargs):
-#     br = Biorefinery(*args, **kwargs)
-#     globals().update(br.__dict__)
-#     globals().update({
-#         'biorefinery': br,
-#         'system': br.system,
-#         'tea': br.TEA,
-#     })

@@ -5,7 +5,36 @@
 # This module is under the MIT open-source license. See
 # https://github.com/sarangbhagwat/nskinetics/blob/main/LICENSE
 # for license details.
+"""Flowsheet build, simulation and TEA of the corn -> ethanol + isobutanol
+biorefinery.
 
+:func:`load` builds the biorefinery once per process -- corn's dry-grind
+ethanol plant (``biorefineries.corn``) with NSKinetics' fed-batch sugar
+preparation + fermentation section (``V406``), a vent scrubber recycle, the
+separation train(s) of :mod:`.separations`, high-rate wastewater treatment,
+a boiler turbogenerator, the facility layer and a heat exchanger network --
+simulates it to its baseline state and publishes every built object
+(``corn_EtOH_IBO_sys``, ``corn_EtOH_IBO_sys_tea``, ``fbs_spec``, ``f``,
+``V406``, ``unit_groups_dict``, ...) as a module global. Before ``load()``,
+reading a public build object raises ``RuntimeError`` (PEP 562
+``__getattr__``).
+
+After ``load()``:
+
+* :func:`model_specification` -- THE entry point to simulate: loads feeding
+  specifications and simulates to convergence (:func:`load_simulate`) with
+  the convergence-recovery scaffolding;
+* :func:`solve_TEA` / :func:`solve_TEA_at_IRR` -- side-effect-free TEA
+  solves (MPSPs at a fixed IRR, then the IRR) on the current state;
+* :func:`set_active_burden` -- the enzyme-burden choke point;
+* :func:`snapshot_flowsheet_state` / :func:`restore_flowsheet_state` --
+  undo a failed simulation;
+* :func:`plot_kinetic_results` and the ``optimize_*`` feeding-strategy
+  optimizers used by the analyses.
+
+Importing this module silences Python warnings process-wide
+(``warnings.filterwarnings('ignore')``).
+"""
 import nskinetics as nsk
 import biosteam as bst
 import hensmith
@@ -14,9 +43,8 @@ import numpy as np
 from matplotlib import pyplot as plt
 from biorefineries import corn
 from biorefineries.cellulosic import create_facilities
-from nskinetics.biorefineries.isobutanol import units
 from nskinetics.models.s_cerevisiae_ferm_fb_inhib_mod_ibo import te_r
-from scipy.optimize import differential_evolution, minimize, brute
+from scipy.optimize import minimize
 from matplotlib.ticker import AutoMinorLocator
 from nskinetics.biorefineries.isobutanol.process_settings import (
     load_process_settings, CEPCI, PRICE_YEAR, index_prices_to_price_year)
@@ -27,8 +55,6 @@ from nskinetics.biorefineries.isobutanol import enzyme_burden as _eb
 
 from warnings import filterwarnings
 filterwarnings('ignore')
-
-MultiEffectEvaporator = bst.MultiEffectEvaporator
 
 __all__ = ('load', 'solve_TEA', 'solve_TEA_at_IRR',
            'set_active_burden', 'get_active_burden',
@@ -51,20 +77,36 @@ EnzymeBurdenInfeasibleError = _eb.BurdenInfeasibleError
 #: Broth acids the DDGS dryer (D610) sends to its exhaust (burned in the
 #: thermal oxidizer X611) instead of the DDGS product, like ethanol; set on
 #: D610.isplit in load(). Extended by the r16 Ehrlich split
-#: ('IsobutyricAcid'). Spec: docs/superpowers/specs/
+#: ('IsobutyricAcid'). Spec (local docs): docs/superpowers/isobutanol/specs/
 #: 2026-09-12-ddgs-dryer-acid-split-design.md.
 DDGS_DRYER_OVERHEAD_ACIDS = ('AceticAcid',)
 
 
 def set_active_burden(burden_model):
-    """Install (or clear, with None) the enzyme burden enforced by
-    load_simulate. See _apply_enzyme_burden."""
+    """Install (or clear) the enzyme burden enforced at the simulate choke point.
+
+    Every kinetic run of V406 (through :func:`load_simulate` and V406's own
+    guarded ``_run``) is derated by the active burden; see
+    ``_apply_enzyme_burden``. ``scenarios.load_scenario`` sets it per the
+    scenario's burden policy.
+
+    Parameters
+    ----------
+    burden_model : enzyme_burden.BurdenModel or None
+        The burden to enforce, or None to turn the burden off.
+    """
     global _active_burden
     _active_burden = burden_model
 
 
 def get_active_burden():
-    """The currently active enzyme BurdenModel, or None."""
+    """Return the active enzyme burden.
+
+    Returns
+    -------
+    enzyme_burden.BurdenModel or None
+        The burden installed by :func:`set_active_burden`, or None (off).
+    """
     return _active_burden
 
 
@@ -129,29 +171,57 @@ _published = None
 
 def load(simulate_baseline=True,
          separation_processes=('IBO_EtOH', 'ethanol')):
-    """Build the corn -> ethanol + isobutanol biorefinery, simulate it to the
-    baseline state, and publish every built object (corn_EtOH_IBO_sys,
-    corn_EtOH_IBO_sys_tea, fbs_spec, f, V406, r, unit_groups_dict, ...) into
-    this module's namespace, exactly reproducing the former import-time build.
+    """Build the corn -> ethanol + isobutanol biorefinery and simulate it to
+    its baseline state.
 
-    separation_processes : Iterable[str]
+    Publishes every built object (``corn_EtOH_IBO_sys``,
+    ``corn_EtOH_IBO_sys_tea``, ``fbs_spec``, ``f``, ``V406``, ``r``,
+    ``sep_udct``, ``parameters``, ``unit_groups_dict``, ...) into this
+    module's namespace. Use the package-level
+    ``nskinetics.biorefineries.isobutanol.load()``, which also builds the
+    uncertainty Model; this function alone does not.
+
+    Parameters
+    ----------
+    simulate_baseline : bool, optional
+        If True (default), finish with the baseline ``model_specification``
+        at ``fbs_spec.baseline_specifications``.
+    separation_processes : Iterable[str], optional
         Non-empty subset of ('IBO_EtOH', 'ethanol'): which separation
         train(s) to build (see separations.create_separation_system). The
-        default builds both (the gated-parallel baseline configuration).
-        Whatever a mode does not build is represented by an empty, zero-cost
-        placeholder (empty dangling `isobutanol` feed into V514, empty
-        'isobutanol purification' unit group), so the public surface --
-        registered product streams, unit-group keys, solve_TEA behavior
+        default builds both (the gated-parallel baseline configuration:
+        ``sep_udct['S201'].split`` = 1.0 sends all broth to the IBO/EtOH
+        train). Whatever a mode does not build is represented by an empty,
+        zero-cost placeholder (empty dangling `isobutanol` feed into V514,
+        empty 'isobutanol purification' unit group), so the public surface
+        -- registered product streams, unit-group keys, solve_TEA behavior
         (nan MPSP for an empty product) -- is identical in every mode.
 
+    Returns
+    -------
+    dict
+        The published names.
+
+    Raises
+    ------
+    TypeError, ValueError
+        If `separation_processes` is a bare string or not a non-empty
+        subset of ('IBO_EtOH', 'ethanol'); raised before any global state
+        is touched.
+
+    Notes
+    -----
     Idempotent: a repeat call in the same process is a no-op that IGNORES a
     different `separation_processes` (rebuild is unsupported -- the WWT step
     appends chemicals to the global thermo and flowsheet IDs would collide;
-    one separation configuration per kernel). Returns the dict of published
-    names."""
+    one separation configuration per process). The build also mutates
+    process-global biosteam state (``bst.CE``, utility prices, the
+    ``FireWaterTank`` class and corn's SSF inlet count) and uses
+    ``bst.main_flowsheet`` as found, so run it in a fresh process.
+    """
     global _loaded, _published
     if _loaded:
-        msg = ('nskinetics.biorefineries.isobutanol is already loaded; '
+        msg = (f'{__package__} is already loaded; '
                'rebuilding in the same process is unsupported (no-op).')
         active = _published.get('separation_processes')
         if tuple(separation_processes) != active:
@@ -187,12 +257,6 @@ def load(simulate_baseline=True,
     chems.append(tmo.Chemical('AceticAcid'))
     chems.append(tmo.Chemical('Acetaldehyde'))
     tmo.settings.set_thermo(chems)
-
-    #%%
-    # corn.load(chemicals=chems)
-
-    # corn.system.simulate()
-    # corn.system.diagram('cluster')
 
     # Keep corn's settings object on the same cost index as bst.CE (set by
     # load_process_settings above). corn.systems.create_system never calls
@@ -273,8 +337,7 @@ def load(simulate_baseline=True,
     @MH101.add_specification(run=False)
     def refresh_feed_specifications():
         F_mass_dry_corn = feedstock.F_mass - feedstock.imass['Water']
-        lime.F_mass = F_mass_dry_corn * parameters['slurry_lime_loading'] 
-        # ammonia.F_mass = F_mass_dry_corn * parameters['slurry_ammonia_loading']
+        lime.F_mass = F_mass_dry_corn * parameters['slurry_lime_loading']
         alpha_amylase.F_mass = F_mass_dry_corn * parameters['liquefaction_alpha_amylase_loading']
         sulfuric_acid.F_mass = F_mass_dry_corn * parameters['saccharification_sulfuric_acid_loading']
         MH101._run()
@@ -290,8 +353,6 @@ def load(simulate_baseline=True,
     # converge_air_supply behavior. Caller-side couplings re-added below:
     # vent/effluent docking to V409/P406 and the feed-flow-correction
     # specification.
-    V405_old = f.V405
-
     sugar_prep_and_fermentation_sys = nsk.processes.create_sugar_prep_and_fermentation_system(
         ins=(f.E402-0, f.P404-0),
         nsk_kinetic_model=te_r,
@@ -659,8 +720,8 @@ def load(simulate_baseline=True,
     # membership guard keeps the r16 commit order free: that change appends
     # 'IsobutyricAcid' to DDGS_DRYER_OVERHEAD_ACIDS in the same commit that
     # registers the chemical. The Ev607 vapor share of the acids that
-    # reaches WWT (MX5 -> M501) is unchanged by design. Spec:
-    # docs/superpowers/specs/2026-09-12-ddgs-dryer-acid-split-design.md.
+    # reaches WWT (MX5 -> M501) is unchanged by design. Spec (local docs):
+    # docs/superpowers/isobutanol/specs/2026-09-12-ddgs-dryer-acid-split-design.md.
     D610 = f.D610
     for ID in DDGS_DRYER_OVERHEAD_ACIDS:
         if ID in D610.chemicals:
@@ -821,8 +882,6 @@ def load(simulate_baseline=True,
         corn_EtOH_IBO_sys, **{**corn.tea.default_tea_parameters, 'lang_factor': None})
 
     #%% Set baseline specifications
-
-    # V406.stage_1_time = 15.0
 
     #% Fed-batch strategy specification: built by the factory and attached to the
     #% fermentor. Its constructor initial values and default baseline
@@ -1117,31 +1176,66 @@ def _add_facility_group_metrics(unit_groups_dict, BT, system, tea):
 
 def __getattr__(name):
     # PEP 562: only called when normal module attribute lookup fails, i.e.
-    # never for names published by load().
-    if name.startswith('__'):
-        raise AttributeError(name)
+    # never for names published by load(). Private and dunder probes
+    # (hasattr, inspect, pickle, Sphinx autodoc, ...) get a plain
+    # AttributeError; a public name read before load() gets the not-built
+    # RuntimeError.
+    if name.startswith('_'):
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
     if not _loaded:
         raise RuntimeError(
-            f"nskinetics.biorefineries.isobutanol.system has no attribute {name!r} yet: "
-            "the biorefinery is not built. Call nskinetics.biorefineries.isobutanol.load() first.")
-    raise AttributeError(
-        f"module 'nskinetics.biorefineries.isobutanol.system' has no attribute {name!r}")
+            f"{__name__} has no attribute {name!r} yet: the biorefinery is "
+            f"not built. Call {__package__}.load() first.")
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 def get_purity_adj_price(stream, chem_IDs):
+    """Return a stream's price per kg of its listed chemicals.
+
+    Parameters
+    ----------
+    stream : thermosteam.Stream
+        Priced product stream.
+    chem_IDs : Iterable[str]
+        Chemicals that make up the purity basis (e.g. ``['Ethanol']``).
+
+    Returns
+    -------
+    float
+        ``stream.price * stream.F_mass / sum(stream.imass[chem_IDs])``
+        [$/kg of those chemicals].
+    """
     return stream.price * stream.F_mass/sum([stream.imass[ID] for ID in chem_IDs])
 
 def get_main_chemical_ID(stream):
-    """ID of the chemical carrying the largest mass flow in `stream` -- the
-    purity basis of its MPSP (Ethanol for the denatured ethanol product,
-    Isobutanol for the isobutanol product)."""
+    """Return the ID of the chemical with the largest mass flow in `stream`.
+
+    This is the purity basis of the stream's MPSP (Ethanol for the denatured
+    ethanol product, Isobutanol for the isobutanol product).
+
+    Parameters
+    ----------
+    stream : thermosteam.Stream
+
+    Returns
+    -------
+    str
+    """
     mass = stream.imass
     return max(stream.chemicals.IDs, key=lambda ID: mass[ID])
 
 def get_default_product_prices():
-    """{stream: price} for the two products at their purity-based DEFAULT
-    prices -- the rule the V513/V514 specifications apply during simulation
-    (set price x main-chemical mass fraction) -- computed off the current
-    stream states without simulating. Empty products are omitted."""
+    """Return the two products' purity-based default prices.
+
+    The rule the V513/V514 price specifications apply during simulation
+    (``V513.ethanol_price`` / ``V514.isobutanol_price`` x main-chemical mass
+    fraction), computed off the current stream states without simulating.
+
+    Returns
+    -------
+    dict
+        ``{stream: price}`` for ``f.ethanol`` and ``f.isobutanol``; empty
+        products are omitted.
+    """
     prices = {}
     etoh, ibo = f.ethanol, f.isobutanol
     if etoh.F_mass:
@@ -1155,10 +1249,24 @@ def solve_TEA_at_IRR(stream_IDs=('ethanol', 'isobutanol'),
                      n_tea_solves=3):
     """Solve the TEA on the CURRENT flowsheet state -- no simulation.
 
-    Returns {'IRR': <solved IRR>,
-             'MPSPs': {stream_ID: <MPSP, $/kg of the stream>, ...},
-             'purity_adjusted_MPSPs': {stream_ID: <MPSP, $/kg of the
-             stream's main chemical>, ...}} where
+    Parameters
+    ----------
+    stream_IDs : Iterable[str], optional
+        Product streams whose minimum selling prices are solved. Default
+        ('ethanol', 'isobutanol').
+    IRR_for_MPSP : float, optional
+        Fixed IRR at which the MPSPs are solved; None (default) uses the
+        TEA's current IRR (the baseline 0.15).
+    n_tea_solves : int, optional
+        Successive solve passes per quantity. Default 3.
+
+    Returns
+    -------
+    dict
+        ``{'IRR': <solved IRR>,
+        'MPSPs': {stream_ID: <MPSP, $/kg of the stream>, ...},
+        'purity_adjusted_MPSPs': {stream_ID: <MPSP, $/kg of the stream's
+        main chemical>, ...}}``, where
 
     * each MPSP is the minimum selling price of that stream at the fixed
       IRR `IRR_for_MPSP` (default None: the TEA's current IRR, i.e. the
@@ -1188,11 +1296,12 @@ def solve_TEA_at_IRR(stream_IDs=('ethanol', 'isobutanol'),
       thereby reserved for "not solved" (a failed simulation, or the
       models' cache placeholder).
 
+    Notes
+    -----
     Exit state (guaranteed even on an exception): every product with a
     purity-based default price is left AT that default price, any other
     stream in `stream_IDs` is restored to its entry price, and tea.IRR is
-    restored to its entry (baseline) value. `n_tea_solves` is the number
-    of successive solve passes per quantity.
+    restored to its entry (baseline) value.
     """
     tea = corn_EtOH_IBO_sys_tea
     streams = [f.stream[ID] for ID in stream_IDs]
@@ -1261,11 +1370,28 @@ def solve_TEA_at_IRR(stream_IDs=('ethanol', 'isobutanol'),
 def solve_TEA(stream_IDs=('ethanol', 'isobutanol'),
               IRR_for_MPSP=0.15,
               n_tea_solves=3):
-    """Back-compat wrapper around solve_TEA_at_IRR, keeping the historical
-    return shape used by the smoke tests, optimizers, and kinetic sweeps:
-    {'IRR': <solved IRR>, 'MPSPs': {stream_ID: <PURITY-ADJUSTED MPSP,
-    $/kg of the stream's main chemical>, ...}}, with MPSPs solved at the
-    fixed `IRR_for_MPSP` (0.15 by default)."""
+    """Solve the TEA on the current state: purity-adjusted MPSPs and the IRR.
+
+    A wrapper around :func:`solve_TEA_at_IRR` keeping the historical return
+    shape used by the smoke tests, optimizers and kinetic sweeps.
+
+    Parameters
+    ----------
+    stream_IDs : Iterable[str], optional
+        Product streams whose MPSPs are solved. Default
+        ('ethanol', 'isobutanol').
+    IRR_for_MPSP : float, optional
+        Fixed IRR at which the MPSPs are solved. Default 0.15.
+    n_tea_solves : int, optional
+        Successive solve passes per quantity. Default 3.
+
+    Returns
+    -------
+    dict
+        ``{'IRR': <solved IRR>, 'MPSPs': {stream_ID: <PURITY-ADJUSTED MPSP,
+        $/kg of the stream's main chemical>, ...}}``; an empty product's
+        MPSP is nan (see :func:`solve_TEA_at_IRR` for the IRR conventions).
+    """
     solution = solve_TEA_at_IRR(stream_IDs=stream_IDs,
                                 IRR_for_MPSP=IRR_for_MPSP,
                                 n_tea_solves=n_tea_solves)
@@ -1376,38 +1502,72 @@ def load_simulate(target_conc=None,
     spike_conc=None,
     tau_max=None,
     max_n_spikes=None,
-    # n_sims is an UPPER BOUND on convergence sweeps: each sweep is one
-    # [load_specifications + simulate], repeated until the tracked state
-    # (_simulation_drift_state) moves by <= sim_rtol (relative) in a
-    # sweep. load_specifications stays INSIDE the loop because it is
-    # state-dependent (it re-solves feed actuators and the initial/spike
-    # split against current stream states), so the converged point must
-    # be a fixed point of the composite load+simulate map -- converging
-    # bare simulate() alone can park on a spurious branch (observed as an
-    # HXN1001 flip on the next call). Repeat/near-repeat calls exit after
-    # 1 sweep; real spec or parameter changes need 2-4 (measured: 4 for
-    # 28/30 Monte Carlo samples, 5 for the rest -- the
-    # V406-spec -> V307-spec feed-flow coupling and the WWT/facility
-    # response relax one pass per sweep, and the BT801 utility-cost term
-    # takes the last sweeps to settle below rtol). The cap is 5 because large
-    # scenario jumps can traverse a transient HXN1001 double-flip
-    # (measured scenario-B drifts: 0.186, 3.4e-3, 0.134, 0.153, 4.2e-6 --
-    # the wrong branch at sweep 3 is unstable under this composite map
-    # and sweep 4 escapes it); a cap of 3-4 can stop mid-excursion on
-    # the wrong utility-network branch.
     n_sims=5,
     sim_rtol=1e-4,
-    # A cap hit (n_sims sweeps run, last drift still > sim_rtol) is
-    # tolerated only while the last drift is <= max_final_drift (nearly
-    # converged; last_convergence['cap_hit'] flags it, and the kinetic BO
-    # records n_sims_run / final_drift per trial); beyond it the call
-    # raises SimulationConvergenceError (2026-09-13; report section 6.5).
     max_final_drift=1e-2,
     plot=False,
     ):
-    """Load the feeding specifications and simulate to convergence. Does
-    not solve the TEA (product prices never enter the mass/energy balances);
-    read it afterwards with solve_TEA()."""
+    """Load the feeding specifications and simulate to convergence.
+
+    Does not solve the TEA (product prices never enter the mass/energy
+    balances); read it afterwards with :func:`solve_TEA`. Prefer
+    :func:`model_specification`, which wraps this with the convergence-
+    recovery scaffolding. The whole loop runs under the active enzyme burden
+    (see :func:`set_active_burden`) and the fed-batch working-volume guard.
+
+    Parameters
+    ----------
+    target_conc, threshold_conc, spike_conc, tau_max, max_n_spikes : optional
+        Feeding specifications passed to ``fbs_spec.load_specifications``;
+        None (default) keeps the specification's current value.
+    n_sims : int, optional
+        UPPER BOUND on convergence sweeps (default 5). Each sweep is one
+        [load_specifications + simulate], repeated until the tracked state
+        (_simulation_drift_state) moves by <= sim_rtol (relative) in a
+        sweep. load_specifications stays INSIDE the loop because it is
+        state-dependent (it re-solves feed actuators and the initial/spike
+        split against current stream states), so the converged point must
+        be a fixed point of the composite load+simulate map -- converging
+        bare simulate() alone can park on a spurious branch (observed as an
+        HXN1001 flip on the next call). Repeat/near-repeat calls exit after
+        1 sweep; real spec or parameter changes need 2-4 (measured: 4 for
+        28/30 Monte Carlo samples, 5 for the rest -- the
+        V406-spec -> V307-spec feed-flow coupling and the WWT/facility
+        response relax one pass per sweep, and the BT801 utility-cost term
+        takes the last sweeps to settle below rtol). The cap is 5 because
+        large scenario jumps can traverse a transient HXN1001 double-flip
+        (measured scenario-B drifts: 0.186, 3.4e-3, 0.134, 0.153, 4.2e-6 --
+        the wrong branch at sweep 3 is unstable under this composite map
+        and sweep 4 escapes it); a cap of 3-4 can stop mid-excursion on
+        the wrong utility-network branch.
+    sim_rtol : float, optional
+        Convergence tolerance on the per-sweep drift. Default 1e-4.
+    max_final_drift : float, optional
+        A cap hit (n_sims sweeps run, last drift still > sim_rtol) is
+        tolerated only while the last drift is <= max_final_drift (nearly
+        converged; ``last_convergence['cap_hit']`` flags it, and the kinetic
+        BO records n_sims_run / final_drift per trial); beyond it the call
+        raises :class:`SimulationConvergenceError` (2026-09-13; nskinetics
+        report fed-batch-spike-feed-reconciliation.md section 6.5).
+        Default 1e-2.
+    plot : bool, optional
+        If True, call :func:`plot_kinetic_results` afterwards.
+
+    Raises
+    ------
+    nskinetics.exceptions.FeedingStrategyError
+        If the fed-batch working volume grows beyond
+        ``parameters['max_fed_batch_volume_ratio']``.
+    SimulationConvergenceError
+        See `max_final_drift`.
+    EnzymeBurdenInfeasibleError
+        If the active burden finds the kinetic point over the proteome cap.
+
+    Notes
+    -----
+    Updates :data:`last_convergence` in place and appends to
+    ``convergence_log``.
+    """
 
     if target_conc is None:
         target_conc = fbs_spec.target_conc
@@ -1482,8 +1642,35 @@ def plot_kinetic_results(xlim=None, ylim=None,
                          show_tau_stage_1_complete=True, 
                          show_tau=True,
                          save_fig=False, filename=None, figwidth=3.9):
-    # if variables is None:
-    #     variables = ['[x]', 'curr_a', '[s_glu]', '[s_EtOH]', '[s_acetate]', '[s_IBO]']
+    """Plot V406's latest kinetic trajectories (cells, glucose, products).
+
+    Parameters
+    ----------
+    xlim, ylim : tuple[float, float], optional
+        Axis limits; default ``(0, V406.tau + 20)`` and ``(0, 20 + max
+        concentration)``.
+    show_stage_1_time : bool, optional
+        Draw a dashed line at the kinetic model's ``stage_1_time``.
+    show_tau_stage_1_complete : bool, optional
+        Draw a dashed line at ``V406.tau_stop_aeration`` (default True).
+    show_tau : bool, optional
+        Draw a dashed line at the harvest time ``V406.tau`` (default True).
+    save_fig : bool, optional
+        If True, save the figure to `filename` (600 dpi).
+    filename : str, optional
+        Output path when `save_fig` is True (relative to the working
+        directory; pass it whenever `save_fig` is True).
+    figwidth : float, optional
+        Figure width [in]. Default 3.9.
+
+    Returns
+    -------
+    fig, ax : matplotlib Figure and Axes
+
+    Notes
+    -----
+    Sets global ``matplotlib.pyplot.rcParams`` (Arial font, size 12).
+    """
     plt.rcParams['font.sans-serif'] = "Arial"
     plt.rcParams['mathtext.fontset'] = 'custom'
     plt.rcParams['mathtext.rm'] = 'Arial'
@@ -1514,10 +1701,8 @@ def plot_kinetic_results(xlim=None, ylim=None,
         axis='x',          # changes apply to the x-axis
         which='both',      # both major and minor ticks are affected
         direction='inout',
-        # right=True,
         top=True,
         width=0.65,
-        # zorder=200,
         )
     ax.tick_params(
         axis='y',          # changes apply to the y-axis
@@ -1525,7 +1710,6 @@ def plot_kinetic_results(xlim=None, ylim=None,
         direction='inout',
         right=True,
         width=0.65,
-        # zorder=200,
         )
     
     if xlim is not None:
@@ -1560,10 +1744,7 @@ def plot_kinetic_results(xlim=None, ylim=None,
                     facecolor='white',
                     bbox_inches='tight',
                     dpi=600,
-                    )                                
-        # plt.close()
-    # plt.show()
-    # plt.close()
+                    )
     return fig, ax
     
 def _all_systems(system):
@@ -1572,17 +1753,26 @@ def _all_systems(system):
         yield from _all_systems(subsystem)
 
 def snapshot_flowsheet_state():
-    """Capture the flowsheet state a simulation starts from, so a failed
-    simulation can be undone (restore_flowsheet_state): every stream of
-    corn_EtOH_IBO_sys as a thermosteam StreamData (flows, T, P, phases --
-    the recycle tear streams included), the feed/spike splitter split that
-    fbs_spec.load_specifications writes from each kinetic run (state the
-    load_simulate loop converges, like a recycle), and the convergence
-    method of the system and of every subsystem (reset_and_switch_solver
-    changes the top-level one and never changes it back). Cheap: array
-    copies, no simulation. Take it on a CONVERGED flowsheet -- after a
-    successful load_simulate / model_specification.
+    """Capture the flowsheet state a simulation starts from.
 
+    So that a failed simulation can be undone (:func:`restore_flowsheet_state`):
+    every stream of corn_EtOH_IBO_sys as a thermosteam StreamData (flows, T,
+    P, phases -- the recycle tear streams included), the feed/spike splitter
+    split that fbs_spec.load_specifications writes from each kinetic run
+    (state the load_simulate loop converges, like a recycle), and the
+    convergence method of the system and of every subsystem
+    (reset_and_switch_solver changes the top-level one and never changes it
+    back). Cheap: array copies, no simulation. Take it on a CONVERGED
+    flowsheet -- after a successful load_simulate / model_specification.
+
+    Returns
+    -------
+    dict
+        Opaque snapshot with keys ``'streams'``, ``'split'`` and
+        ``'methods'``, to pass to :func:`restore_flowsheet_state`.
+
+    Notes
+    -----
     Motivation (2026-09-14): in the kinetic BO a FAIL trial (a SYS14
     recycle non-convergence, a failed recovery barrage) left diverged
     recycles, a switched solver and a collapsed split for the next trial
@@ -1597,10 +1787,18 @@ def snapshot_flowsheet_state():
                         for s in _all_systems(corn_EtOH_IBO_sys)]}
 
 def restore_flowsheet_state(snapshot):
-    """Write a snapshot_flowsheet_state() capture back: every stream's
-    data, the feed/spike splitter split, every (sub)system's convergence
-    method; then reset the unit / stream caches so nothing computed on the
-    discarded state survives. Idempotent; no simulation."""
+    """Write a :func:`snapshot_flowsheet_state` capture back.
+
+    Restores every stream's data, the feed/spike splitter split and every
+    (sub)system's convergence method, then resets the unit / stream caches
+    so nothing computed on the discarded state survives. Idempotent; no
+    simulation.
+
+    Parameters
+    ----------
+    snapshot : dict
+        A :func:`snapshot_flowsheet_state` result.
+    """
     for stream, data in snapshot['streams']:
         stream.set_data(data)
     fbs_spec.splitter.split = snapshot['split']
@@ -1609,19 +1807,27 @@ def restore_flowsheet_state(snapshot):
     corn_EtOH_IBO_sys.reset_cache()
 
 def reset_and_reload(**curr_spec):
-    # !!! Resetting might cause yeast stream problems
+    """Recovery step: reset the system, re-converge the baseline feeding
+    strategy, then load_simulate `curr_spec` (feeding specifications).
+
+    Part of the convergence-recovery scaffolding run by
+    :func:`run_bugfix_barrage`.
+    """
+    # Note: resetting might cause yeast stream problems.
     print('Resetting cache and emptying recycles ...')
     corn_EtOH_IBO_sys.reset_cache()
     corn_EtOH_IBO_sys.empty_recycles()
     print('Loading and simulating with baseline specifications ...')
-    # curr_spec = {i: fbs_spec.__getattribute__(i) for i in baseline_spec.keys()}
     corn_EtOH_IBO_sys.simulate()
     load_simulate(**fbs_spec.baseline_specifications)
     print('Loading and simulating with required specifications ...')
-    # load_simulate(**curr_spec)
     load_simulate(**curr_spec)
-    
+
 def reset_and_switch_solver(solver_ID, **curr_spec):
+    """Recovery step: reset the system, switch its convergence method to
+    `solver_ID` (e.g. 'fixedpoint', 'aitken'), simulate, then load_simulate
+    `curr_spec`. The method is NOT switched back (see
+    :func:`restore_flowsheet_state`)."""
     corn_EtOH_IBO_sys.reset_cache()
     corn_EtOH_IBO_sys.empty_recycles()
     corn_EtOH_IBO_sys.converge_method = solver_ID
@@ -1629,8 +1835,11 @@ def reset_and_switch_solver(solver_ID, **curr_spec):
     corn_EtOH_IBO_sys.simulate()
     load_simulate(**curr_spec)
 
-# F403 = u.F403
 def run_bugfix_barrage(**curr_spec):
+    """Last-resort convergence recovery for `curr_spec` (feeding
+    specifications): :func:`reset_and_reload`, then -- depending on the
+    error -- a plain reset + re-simulation, or :func:`reset_and_switch_solver`
+    with 'fixedpoint' and then 'aitken'. Re-raises when every step fails."""
     try:
         reset_and_reload(**curr_spec)
     except Exception as e:
@@ -1644,24 +1853,6 @@ def run_bugfix_barrage(**curr_spec):
             except:
                 print(str(e))
                 raise e
-        
-        # elif 'invalid value encountered' in str(e).lower():
-        #     print('\n\n\n\n\n\n\n\nAAAAAAAAAAAAAAAA\n\n\n\n\n\n\n')
-        #     try:
-        #         for i in corn_EtOH_IBO_sys.units:
-        #             if isinstance(i, MultiEffectEvaporator):
-        #                 for j in i.evaporators:
-        #                     try:
-        #                         j.outs[0].T = j.T
-        #                         j.outs[1].T = j.T
-        #                     except:
-        #                         pass
-        #         load_simulate()
-                
-        #     except:
-        #         print(str(e))
-        #         raise e
-                
         else:
             try:
                 reset_and_switch_solver('fixedpoint', **curr_spec)
@@ -1672,16 +1863,42 @@ def run_bugfix_barrage(**curr_spec):
                 except Exception as e:
                     print(str(e))
                     print("Bugfix barrage failed.\n")
-                    # breakpoint()
                     raise e
 
 
 #%%
 def model_specification(**kwargs):
-    """Main entry point to simulate the biorefinery: load the feeding
-    specifications (current ones updated with `kwargs`) and simulate to
-    convergence, with the convergence-recovery scaffolding below. Returns
-    None -- follow a call with solve_TEA() to read the TEA solution."""
+    """Simulate the biorefinery at a feeding strategy -- the main entry point.
+
+    Loads the feeding specifications (``fbs_spec.current_specifications``
+    updated with `kwargs`) and simulates to convergence
+    (:func:`load_simulate`), with the convergence-recovery scaffolding:
+    a lower ``tau_max`` / tighter integrator / rk45 fallback on a CVODE
+    failure, one more sweep pass on a :class:`SimulationConvergenceError`,
+    one retry and then :func:`run_bugfix_barrage` on other errors. It is
+    also the ``specification`` of the uncertainty Model.
+
+    Parameters
+    ----------
+    **kwargs
+        Feeding specifications overriding the current ones: any of
+        ``target_conc``, ``threshold_conc``, ``spike_conc``, ``tau_max``,
+        ``max_n_spikes`` (see ``fbs_spec.load_specifications``).
+
+    Returns
+    -------
+    None
+        Follow a call with :func:`solve_TEA` to read the TEA solution.
+
+    Raises
+    ------
+    EnzymeBurdenInfeasibleError
+        At once (no recovery) for a kinetic point over the proteome cap.
+    nskinetics.exceptions.FeedingStrategyError
+        At once (no recovery) when the fed-batch volume guard fires.
+    SimulationConvergenceError
+        If the retried convergence sweeps still do not converge.
+    """
     curr_spec = {k: v for k,v in fbs_spec.current_specifications.items()}
     curr_spec.update(kwargs)
     try:
@@ -1708,8 +1925,7 @@ def model_specification(**kwargs):
             return
         str_e = str(e).lower()
         print('Error in model spec: %s'%str_e)
-        # raise e
-        
+
         if 'cv_err_failure' in str_e:
             
             try:
@@ -1725,7 +1941,6 @@ def model_specification(**kwargs):
                         success = True
                         break
                     except Exception as e:
-                        # print(str(e))
                         pass
                 
                 if success: print('Succeeded.')
@@ -1779,7 +1994,6 @@ def model_specification(**kwargs):
                             raise e
         
         elif 'specifications do not meet required condition' in str_e:
-            # flowsheet('AcrylicAcid').F_mass /= 1000.
             raise e
         elif 'max_fed_batch_volume_ratio' in str_e:
             # Fed-batch volume guard (load_simulate): the feeding point itself
@@ -1789,7 +2003,6 @@ def model_specification(**kwargs):
         elif 'argument 3 of type' in str_e:
             raise e
         else:
-            # breakpoint()
             try:
                 print('Trying again ...')
                 load_simulate(**curr_spec)
@@ -1800,35 +2013,63 @@ def model_specification(**kwargs):
 
 
 def get_ethanol_MPSP(IRR_for_MPSP=0.15):
-    """Purity-adjusted ethanol MPSP of the current flowsheet state
-    (side-effect free; see solve_TEA). Objective of the optimizers below."""
+    """Return the purity-adjusted ethanol MPSP of the current state.
+
+    Side-effect free (see :func:`solve_TEA`); the objective of the
+    feeding-strategy optimizers below.
+
+    Parameters
+    ----------
+    IRR_for_MPSP : float, optional
+        Fixed IRR at which the MPSP is solved. Default 0.15.
+
+    Returns
+    -------
+    float
+        Purity-adjusted ethanol MPSP [$/kg ethanol].
+    """
     return solve_TEA(stream_IDs=('ethanol',),
                      IRR_for_MPSP=IRR_for_MPSP)['MPSPs']['ethanol']
 
-def optimize_tau_for_MPSP(threshold_s_EtOH=5, **kwargs):
-    original_run_type = V406.run_type
-    V406.run_type = 'index saved nsk_results by tau'
-    nsk_results = V406.nsk_results_dict
-    where_greq_threshold = np.where(V406.nsk_results_dict['[s_EtOH]']>=5)[0]
-    taus = nsk_results['time']
-    bounds_tau = (taus[where_greq_threshold[0]], taus[where_greq_threshold[-1]])
-    def f(x):
-        V406.tau = x[0]
-        try:
-            # corn_EtOH_IBO_sys.simulate()
-            model_specification(**kwargs)
-            return get_ethanol_MPSP()
-        except:
-            return np.inf
-    res = differential_evolution(f, bounds=(bounds_tau,), atol=1e-2)
-    V406.run_type = original_run_type
-    return res.x[0]
-    
 def optimize_1D_feeding_strategy_for_MPSP(bounds=(100.0, 400.0), threshold_diff=10.0,
                                           method='brute-force', Ns=20,
-                                          model_kwargs={},
-                                          method_kwargs={},
+                                          model_kwargs=None,
+                                          method_kwargs=None,
                                           **kwargs):
+    """Search the glucose target concentration for the minimum ethanol MPSP.
+
+    Each point simulates :func:`model_specification` at ``target_conc = x``
+    and ``threshold_conc = x - threshold_diff`` (other feeding
+    specifications from `model_kwargs`) and scores
+    :func:`get_ethanol_MPSP`; a failed point scores ``inf``. The flowsheet
+    is left simulated at the best point.
+
+    Parameters
+    ----------
+    bounds : tuple[float, float], optional
+        ``target_conc`` range [g/L]. Default (100, 400).
+    threshold_diff : float, optional
+        ``target_conc - threshold_conc`` [g/L]. Default 10.
+    method : {'brute-force', 'scipy-minimize'}, optional
+        Grid search over `bounds` (default) or ``scipy.optimize.minimize``.
+    Ns : int, optional
+        Grid points of the brute-force search. Default 20.
+    model_kwargs : dict, optional
+        Feeding specifications for :func:`model_specification`. Updated in
+        place with each evaluated point's ``target_conc``/``threshold_conc``.
+    method_kwargs : dict, optional
+        Keyword arguments of ``scipy.optimize.minimize`` (with
+        ``method='scipy-minimize'``; must include ``x0``).
+    **kwargs
+        Ignored.
+
+    Returns
+    -------
+    float or None
+        The best ``target_conc`` (None if every brute-force point failed).
+    """
+    if model_kwargs is None: model_kwargs = {}
+    if method_kwargs is None: method_kwargs = {}
     model_specification(**model_kwargs)
     def f(x):
         try:
@@ -1836,13 +2077,9 @@ def optimize_1D_feeding_strategy_for_MPSP(bounds=(100.0, 400.0), threshold_diff=
                                  'threshold_conc': x[0] - threshold_diff})
             model_specification(**model_kwargs)
             MPSP = get_ethanol_MPSP()
-            # print(MPSP)
             return MPSP
         except:
-            # print(np.inf)
             return np.inf
-    # res = brute(f, ranges=(bounds,), Ns=20)
-    # return res.x[0]
     opt_conc = None
     if method=='brute-force':
         concs = np.linspace(bounds[0], bounds[1], Ns)
@@ -1860,10 +2097,44 @@ def optimize_1D_feeding_strategy_for_MPSP(bounds=(100.0, 400.0), threshold_diff=
     return opt_conc
 
 def optimize_stage_1_time_and_max_n_glu_spikes_for_MPSP(bounds=((5, 40), (0, 40)),
-                                          method='brute-force', Ns=(15, 41), 
-                                          model_kwargs={},
-                                          method_kwargs={},
+                                          method='brute-force', Ns=(15, 41),
+                                          model_kwargs=None,
+                                          method_kwargs=None,
                                           **kwargs):
+    """Search V406's stage-1 time and glucose-spike cap for the minimum
+    ethanol MPSP.
+
+    Each point sets ``V406.stage_1_time = x[0]``, simulates
+    :func:`model_specification` with ``max_n_spikes = x[1]`` (over
+    `model_kwargs`) and scores :func:`get_ethanol_MPSP`; a failed point
+    scores ``inf``. The brute-force search stops a spike-cap sweep early
+    once the realized spike count stops changing, and skips the remaining
+    stage-1 times once a stage-1 time's zero-cap MPSP gets worse. The
+    flowsheet is left simulated at the best point.
+
+    Parameters
+    ----------
+    bounds : tuple[tuple[float, float], tuple[float, float]], optional
+        (stage-1 time [h], spike cap) ranges. Default ((5, 40), (0, 40)).
+    method : {'brute-force', 'scipy-minimize'}, optional
+        Grid search (default) or ``scipy.optimize.minimize``.
+    Ns : tuple[int, int], optional
+        Grid points per dimension of the brute-force search. Default (15, 41).
+    model_kwargs : dict, optional
+        Feeding specifications for :func:`model_specification` (not modified).
+    method_kwargs : dict, optional
+        Keyword arguments of ``scipy.optimize.minimize`` (must include ``x0``).
+    **kwargs
+        Ignored.
+
+    Returns
+    -------
+    tuple
+        The best (stage-1 time, spike cap); (None, None) if every
+        brute-force point failed.
+    """
+    if model_kwargs is None: model_kwargs = {}
+    if method_kwargs is None: method_kwargs = {}
     nsk_r = V406.nsk_kinetic_model
     r_te = nsk_r._te
     model_specification(**model_kwargs)
@@ -1877,14 +2148,9 @@ def optimize_stage_1_time_and_max_n_glu_spikes_for_MPSP(bounds=((5, 40), (0, 40)
             # current_specifications. load_specifications stores the value.
             model_specification(**{**model_kwargs, 'max_n_spikes': x[1]})
             MPSP = get_ethanol_MPSP()
-            # print(MPSP)
             return MPSP
         except:
-            breakpoint()
-            # print(np.inf)
             return np.inf
-    # res = brute(f, ranges=(bounds,), Ns=20)
-    # return res.x[0]
     opt_max_n = None
     opt_s1t = None
     if method=='brute-force':
@@ -1897,7 +2163,6 @@ def optimize_stage_1_time_and_max_n_glu_spikes_for_MPSP(bounds=((5, 40), (0, 40)
             prev_actual_n = None
             for n_spike in n_spikes:
                 MPSPs.append(f([s1t, n_spike]))
-                # print(s1t, n_spike, MPSPs[-1])
                 if n_spike==n_spikes[0]:
                     if prev_s1t_n0_MPSP < MPSPs[-1]: # if the last s1t's zeroth n resulted in a lower MPSP than the current s1t's zeroth n, break out of n loop
                         break
@@ -1910,20 +2175,50 @@ def optimize_stage_1_time_and_max_n_glu_spikes_for_MPSP(bounds=((5, 40), (0, 40)
                     break
                 else:
                     prev_actual_n = r_te.n_glu_spikes
-                
+
     elif method=='scipy-minimize':
         res = minimize(fun=f, **method_kwargs)
         opt_s1t = res.x[0]
         opt_max_n = res.x[1]
-        
+
     f([opt_s1t, opt_max_n])
     return opt_s1t, opt_max_n
 
 def optimize_max_n_glu_spikes_for_MPSP(bounds=(0, 40),
-                                          method='brute-force', Ns=41, 
-                                          model_kwargs={},
-                                          method_kwargs={},
+                                          method='brute-force', Ns=41,
+                                          model_kwargs=None,
+                                          method_kwargs=None,
                                           **kwargs):
+    """Search the glucose-spike cap for the minimum ethanol MPSP.
+
+    Each point simulates :func:`model_specification` with ``max_n_spikes =
+    x`` (over `model_kwargs`) and scores :func:`get_ethanol_MPSP`; a failed
+    point scores ``inf``. The brute-force sweep stops early once the
+    realized spike count stops changing. The flowsheet is left simulated at
+    the best point.
+
+    Parameters
+    ----------
+    bounds : tuple[float, float], optional
+        Spike-cap range. Default (0, 40).
+    method : {'brute-force', 'scipy-minimize'}, optional
+        Grid search (default) or ``scipy.optimize.minimize``.
+    Ns : int, optional
+        Grid points of the brute-force search. Default 41.
+    model_kwargs : dict, optional
+        Feeding specifications for :func:`model_specification` (not modified).
+    method_kwargs : dict, optional
+        Keyword arguments of ``scipy.optimize.minimize`` (must include ``x0``).
+    **kwargs
+        Ignored.
+
+    Returns
+    -------
+    float or None
+        The best spike cap (None if every brute-force point failed).
+    """
+    if model_kwargs is None: model_kwargs = {}
+    if method_kwargs is None: method_kwargs = {}
     nsk_r = V406.nsk_kinetic_model
     r_te = nsk_r._te
     model_specification(**model_kwargs)
@@ -1936,14 +2231,9 @@ def optimize_max_n_glu_spikes_for_MPSP(bounds=(0, 40),
             # current_specifications. load_specifications stores the value.
             model_specification(**{**model_kwargs, 'max_n_spikes': x[0]})
             MPSP = get_ethanol_MPSP()
-            # print(MPSP)
             return MPSP
         except:
-            breakpoint()
-            # print(np.inf)
             return np.inf
-    # res = brute(f, ranges=(bounds,), Ns=20)
-    # return res.x[0]
     opt_max_n = None
     if method=='brute-force':
         n_spikes = np.linspace(bounds[0], bounds[1], Ns)
@@ -1959,67 +2249,10 @@ def optimize_max_n_glu_spikes_for_MPSP(bounds=(0, 40),
                 break
             else:
                 prev_actual_n = r_te.n_glu_spikes
-                
+
     elif method=='scipy-minimize':
         res = minimize(fun=f, **method_kwargs)
         opt_max_n = res.x[0]
-        
+
     f([opt_max_n])
     return opt_max_n
-
-def optimize_split_1D_2D_feeding_strategy_for_MPSP(bounds=(20.0, 400.0), threshold_diff=5.0, Ns=5, **kwargs):
-    # first, optimize target conc
-    optimize_1D_feeding_strategy_for_MPSP(bounds=bounds, threshold_diff=threshold_diff, Ns=Ns)
-    model_specification(**kwargs)
-    def f(x):
-        try:
-            model_specification(
-                                target_conc=x[0],
-                                threshold_conc=x[0]-threshold_diff, )
-            MPSP = get_ethanol_MPSP()
-            # print(MPSP)
-            return MPSP
-        except:
-            # print(np.inf)
-            return np.inf
-    # res = brute(f, ranges=(bounds,), Ns=20)
-    # return res.x[0]
-    concs = np.linspace(bounds[0], bounds[1], Ns)
-    MPSPs = []
-    opt_MPSP = np.inf
-    opt_conc = None
-    for conc in concs:
-        MPSPs.append(f([conc]))
-        if MPSPs[-1]<opt_MPSP:
-            opt_MPSP = MPSPs[-1]
-            opt_conc = conc
-    f([opt_conc])
-    return opt_conc
-
-#%% !!!
-def optimize_2D_feeding_strategy_for_MPSP(bounds=(20.0, 400.0), Ns=5, **kwargs):
-    model_specification(**kwargs)
-    def f(x):
-        try:
-            model_specification(
-                                target_conc=x[0],
-                                threshold_conc=x[0]-10, )
-            MPSP = get_ethanol_MPSP()
-            # print(MPSP)
-            return MPSP
-        except:
-            # print(np.inf)
-            return np.inf
-    # res = brute(f, ranges=(bounds,), Ns=20)
-    # return res.x[0]
-    concs = np.linspace(bounds[0], bounds[1], Ns)
-    MPSPs = []
-    opt_MPSP = np.inf
-    opt_conc = None
-    for conc in concs:
-        MPSPs.append(f([conc]))
-        if MPSPs[-1]<opt_MPSP:
-            opt_MPSP = MPSPs[-1]
-            opt_conc = conc
-    f([opt_conc])
-    return opt_conc

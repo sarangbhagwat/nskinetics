@@ -29,7 +29,9 @@ isobutanol.load()
 from nskinetics.biorefineries.isobutanol import scenarios, system
 from nskinetics.biorefineries.isobutanol import kinetic_optimization as ko
 
-threading.Timer(600, lambda: (print('WATCHDOG: 600 s exceeded'), os._exit(2))).start()
+_watchdog = threading.Timer(600, lambda: (print('WATCHDOG: 600 s exceeded', flush=True), os._exit(2)))
+_watchdog.daemon = True   # a traceback must end the process, not wait out the timer
+_watchdog.start()
 
 n_pass = 0; failures = []
 def PASS(m):
@@ -112,5 +114,5 @@ V406.simulate(); fp = fingerprint()
 check(same(fp, ref), f're-activated burden derates again (tau {fp["tau"]:.4g} h, {fp["spikes"]:g} spikes)')
 
 if failures:
-    print(f'\n{len(failures)} CHECK(S) FAILED, {n_pass} passed'); os._exit(1)
-print(f'\nALL {n_pass} CHECKS PASSED'); os._exit(0)
+    print(f'\n{len(failures)} CHECK(S) FAILED, {n_pass} passed', flush=True); os._exit(1)
+print(f'\nALL {n_pass} CHECKS PASSED', flush=True); os._exit(0)

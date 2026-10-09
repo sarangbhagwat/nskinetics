@@ -41,7 +41,7 @@ isobutanol.load()
 from nskinetics.biorefineries.isobutanol import scenarios, system
 from nskinetics.biorefineries.isobutanol import kinetic_optimization as ko
 
-_watchdog = threading.Timer(600, lambda: (print('WATCHDOG: 600 s exceeded'), os._exit(2)))
+_watchdog = threading.Timer(600, lambda: (print('WATCHDOG: 600 s exceeded', flush=True), os._exit(2)))
 _watchdog.daemon = True   # a traceback must end the process, not wait out the timer
 _watchdog.start()
 
@@ -157,5 +157,5 @@ check(ev.state == 'COMPLETE' and abs(ev.objective - ref['PI']) < 1e-5*abs(ref['P
       f'(ref {ref["PI"]:.5f}) in {ev.record.get("n_sims_run")} sweeps (ref {ref["n_sims"]}, at most +1) and refreshes the snapshot')
 
 if failures:
-    print(f'\n{len(failures)} CHECK(S) FAILED, {n_pass} passed'); os._exit(1)
-print(f'\nALL {n_pass} CHECKS PASSED'); os._exit(0)
+    print(f'\n{len(failures)} CHECK(S) FAILED, {n_pass} passed', flush=True); os._exit(1)
+print(f'\nALL {n_pass} CHECKS PASSED', flush=True); os._exit(0)

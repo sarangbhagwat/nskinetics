@@ -5,13 +5,17 @@
 # This module is under the MIT open-source license. See
 # https://github.com/sarangbhagwat/nskinetics/blob/main/LICENSE
 # for license details.
+"""BioSTEAM uncertainty/sensitivity ``Model`` of the isobutanol biorefinery.
 
-# %% 
-
-# =============================================================================
-# Setup
-# =============================================================================
-
+:func:`create_model` builds, on the system that
+``nskinetics.biorefineries.isobutanol.system.load()`` built, the ``Model``
+with every TEA, unit-group and fermentation metric, and the
+``namespace_dict`` that the parameter-distribution workbooks' load
+statements are ``exec``-ed in (every flowsheet stream and unit by ID, plus
+``feedstock``, ``set_feedstock_starch_content``, ``product_stream``,
+``tea``/``IBO_tea``, ``PowerUtility`` and ``low_pressure_steam_agent``).
+The package-level ``load()`` calls it; importing this module is build-free.
+"""
 import biosteam as bst
 import numpy as np
 from biosteam.evaluation import Model, Metric
@@ -21,14 +25,38 @@ __all__ = ('create_model',)
 _published = None
 
 def create_model():
-    """Build the BioSTEAM Model + all TEA/fermentation metrics against the
-    system built by nskinetics.biorefineries.isobutanol.system.load() (which must have
-    been called first), publish every built name (model, namespace_dict,
-    fbs_spec, unit_groups_dict, metrics, ...) into this module's namespace,
-    and return the dict of published names. Idempotent."""
+    """Build the uncertainty Model on the already-built system.
+
+    Requires ``nskinetics.biorefineries.isobutanol.system.load()`` to have
+    run (the package-level ``load()`` calls both). Publishes every built
+    name -- ``model``/``IBO_model``, ``namespace_dict``, ``metrics``,
+    ``fbs_spec``, ``unit_groups_dict``, the product streams, and the system
+    functions imported below (``model_specification``,
+    ``plot_kinetic_results``, the ``optimize_*`` feeding-strategy
+    optimizers, ``solve_TEA_at_IRR``) -- into this module's namespace.
+
+    Returns
+    -------
+    dict
+        The published names. Idempotent: a repeat call returns the same
+        dict without rebuilding.
+
+    Notes
+    -----
+    ``model.specification`` is ``system.model_specification``. The five
+    leading metrics ('Ethanol MPSP', 'Purity-adjusted ethanol MPSP',
+    'Isobutanol MPSP', 'Purity-adjusted isobutanol MPSP', 'IRR') share one
+    ``system.solve_TEA_at_IRR`` solve per simulation, refreshed by 'Ethanol
+    MPSP' (metrics are evaluated in list order); a failed solve leaves them
+    NaN.
+    """
     global _published
     if _published is not None:
         return _published
+    # Load-bearing: every name imported here is published by the
+    # globals().update(...) below (and from there into the package's
+    # `models` namespace) -- e.g. `models.plot_kinetic_results` and the
+    # `models.optimize_*` optimizers exist only through this import.
     from ..system import (corn_EtOH_IBO_sys, fbs_spec, corn_EtOH_IBO_sys_tea,
         model_specification, unit_groups, unit_groups_dict,
         plot_kinetic_results, optimize_1D_feeding_strategy_for_MPSP,
@@ -38,11 +66,6 @@ def create_model():
     IBO_tea = corn_EtOH_IBO_sys_tea
 
     get_annual_factor = lambda: IBO_tea.operating_hours # hours per year
-
-    _kg_per_ton = 907.18474
-
-    system_feeds = [i for i in IBO_sys.feeds if i.price]
-    system_products = [i for i in IBO_sys.products if i.price]
 
     f = IBO_sys.flowsheet
 
@@ -59,9 +82,6 @@ def create_model():
     product_stream = s.ethanol
 
     V406 = u.V406
-
-
-    _feedstock_factor = feedstock.F_mass / (feedstock.F_mass-feedstock.imass['Water'])
 
     # Reference wet-basis corn composition, captured once at build (corn's
     # default: 15 wt% moisture, starch 0.72 kg/dry-kg). The starch-content
@@ -418,15 +438,12 @@ def create_model():
     namespace_dict['set_feedstock_starch_content'] = set_feedstock_starch_content
     namespace_dict['product_stream'] = product_stream
     namespace_dict['IBO_tea'] = namespace_dict['tea'] = IBO_tea
-    # namespace_dict['spec'] = spec
     PowerUtility = bst.PowerUtility
     namespace_dict['PowerUtility'] = PowerUtility
 
     example_lps_agents = [i.agent for i in f.Ev607.heat_utilities if i.agent.ID=='low_pressure_steam']
     lps_agent = example_lps_agents[0]
     namespace_dict['low_pressure_steam_agent'] = lps_agent
-
-    # namespace_dict['PD'] = s.PD
 
     #%% 
 
