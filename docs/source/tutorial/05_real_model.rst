@@ -233,7 +233,7 @@ below about 88 /h (demand 17.5 mmol/L/h versus a cap of 0.2 × ``kLa``);
 
 ``[s_IBO]`` stays at exactly ``0.0``. This is not a bug — it is the shipped
 model's own default: the first three rate constants of the
-``s_pyr -> s_AL -> s_DHI -> s_KIV -> s_IBO`` branch (``k_13``, ``k_14``,
+``s_pyr -> s_AL -> s_DHI -> s_KIV -> s_isobutald -> s_IBO`` branch (``k_13``, ``k_14``,
 ``k_15``) are ``0.0`` in the SBML as shipped; only the constants of the last
 two steps (``k_16``, ``k_17``) are nonzero. With no ALS (``k_13``) flux into
 the branch, it carries zero flux regardless of how long the model runs. This

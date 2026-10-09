@@ -1021,7 +1021,7 @@ if __name__ == '__main__':
                              "driver's gp_kwargs; that constraint GP is fit on "
                              'COMPLETE (hence '
                              'feasible, under the pre-sim INFEASIBLE prune) '
-                             'trials only). '
+                             'trials only. '
                              'The exact feasibility filter is unaffected. '
                              'Cannot be switched back ON for a study whose '
                              'stored trials ran without it')
