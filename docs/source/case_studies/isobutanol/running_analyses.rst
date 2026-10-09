@@ -5,8 +5,8 @@ Running the analyses
 
 This page is the user guide to ``nskinetics.biorefineries.isobutanol``: how
 to install it, build the biorefinery and load a scenario, check an
-installation with the pinned smoke cases, and run, supervise and re-plot
-every analysis behind the case-study pages. The API of the modules named
+installation with the pinned smoke cases, run its test suite, and run,
+supervise and re-plot every analysis behind the case-study pages. The API of the modules named
 here is on :doc:`/API/biorefineries`.
 
 .. admonition:: Three rules for every simulating run
@@ -33,22 +33,49 @@ here is on :doc:`/API/biorefineries`.
    slower.
 
 
+.. _isobutanol-installation:
+
 Installation
 ------------
 
-The case study needs optional dependencies that plain NSKinetics does not:
-the Bioindustrial-Park ``biorefineries`` package (the flowsheet reuses its
-``corn``, ``cellulosic`` and ``ethanol`` modules), ``hensmith`` (heat-exchanger
-network synthesis), ``contourplots``, ``optuna``, ``SALib`` and ``openpyxl``.
-Install them with the ``isobutanol`` extra:
+.. admonition:: Which NSKinetics version has the case study
+   :class: important
+
+   The case study needs the first NSKinetics release that ships
+   ``nskinetics.biorefineries``. The releases published on PyPI so far do
+   not include it: with them, ``pip install "nskinetics[isobutanol]"`` only
+   warns that the ``isobutanol`` extra does not exist, and the smoke command
+   below fails with ``ModuleNotFoundError``. Until that release is out,
+   install from source.
+
+**From source (works now).** Clone the repository, check out the ``dev``
+branch, which carries the case study, and install it in editable mode with
+the ``isobutanol`` extra:
 
 .. code-block:: bash
 
-   $ pip install "nskinetics[isobutanol]"
+   $ git clone https://github.com/sarangbhagwat/nskinetics
+   $ cd nskinetics
+   $ git checkout dev
+   $ pip install -e ".[isobutanol]"
 
-From a clone of the repository, ``pip install -e ".[isobutanol]"`` does the
-same, or install ``requirements_isobutanol.txt`` on top of
-``requirements_install.txt``.
+Instead of the extra you can install ``requirements_isobutanol.txt`` on top
+of ``requirements_install.txt``.
+
+**From PyPI (once that release is out).** ``pip install
+"nskinetics[isobutanol]"`` will install the same package and optional
+dependencies.
+
+The ``isobutanol`` extra adds the dependencies that plain NSKinetics does not
+need: the Bioindustrial-Park ``biorefineries`` package (the flowsheet reuses
+its ``corn``, ``cellulosic`` and ``ethanol`` modules), ``hensmith``
+(heat-exchanger network synthesis), ``contourplots``, ``optuna``, ``SALib``
+and ``openpyxl``. Check the installation with smoke case 1 (about 2–4
+minutes; see `Check an installation: the smoke cases`_):
+
+.. code-block:: bash
+
+   $ python -m nskinetics.biorefineries.isobutanol.smoke 1
 
 .. note::
 
@@ -104,8 +131,16 @@ listed on :doc:`index`.
 one to the built model and runs one baseline simulation. It returns a
 *bundle* dict with ``model_specification`` (the entry point to simulate at a
 feeding strategy), ``solve_TEA``, ``V406``, ``fbs_spec``, ``tea``,
-``model``, ``feeding_kwargs``, ``expected`` (the pins), ``burden_model``
-and ``spec``.
+``model``, ``namespace_dict`` (the namespace the workbook's load
+statements are executed in), ``feeding_kwargs``, ``expected`` (the pins),
+``burden_model``, ``burden_on`` and ``spec``.
+
+**Enzyme burden per scenario.** ``load_scenario`` installs the
+enzyme-burden constraint (:doc:`enzyme_burden`) according to the scenario's
+``burden_default``: on for ``A`` (where it is inert) and for the eight
+``opt_*`` scenarios, off for ``B`` (whose pathway constants exceed the
+proteome cap). Pass ``burden=True`` or ``burden=False`` to override it. A
+bare :func:`~nskinetics.biorefineries.isobutanol.load` installs no burden.
 
 **Simulate, then solve.** Every change goes through
 ``model_specification`` (which loads the feeding specifications and
@@ -174,6 +209,54 @@ simulations. A case takes about 2–4 minutes.
      - registry + campaign objective
 
 
+Testing the case study
+----------------------
+
+The case study's test suite is in the repository, under
+``nskinetics/tests/isobutanol``: 13 pytest modules, a ``fixtures/`` folder
+with a small golden trajectory CSV and a ``scripts/`` folder of
+script-style checks that the tests run in fresh processes. Run it from the
+root of a source install (see `Installation`_). Its markers (``isobutanol``,
+``slow``, ``simulation``, ``smoke``, ``canonical``) are registered in the
+repository's ``conftest.py``.
+
+.. code-block:: bash
+
+   # offline tests: no biorefinery build, seconds to a minute
+   $ python -m pytest nskinetics/tests/isobutanol -m "not slow" -v
+
+   # slow offline checks: kinetic-optimization checks, surrogate fits
+   $ python -m pytest nskinetics/tests/isobutanol -m "slow and not simulation" -v
+
+   # simulation tests: flowsheet regressions and the smoke cases (an hour or more)
+   $ python -m pytest nskinetics/tests/isobutanol -m simulation -v
+
+   # the canonical gate: smoke cases 1 and 2, each run twice
+   $ python -m pytest nskinetics/tests/isobutanol/test_smoke.py -m canonical -v
+
+- **Offline tests** load the stdlib-only and sim-safe modules (``paths``,
+  the enzyme burden, the Sobol' estimators, the sweep helpers, the plotting
+  libraries and figure scripts) by file path and never build the
+  biorefinery. A few skip when an optional module such as ``contourplots``
+  or ``openpyxl`` is missing.
+- **Simulation tests** (marker ``simulation``, always also ``slow``) run
+  each check in a fresh Python process that builds and simulates the
+  biorefinery: the flowsheet regressions of ``scripts/`` through
+  ``test_simulations.py``, and the smoke cases through ``test_smoke.py``
+  (marker ``smoke``). They need the ``isobutanol`` extra and are skipped
+  when its simulation dependencies are missing.
+- **The canonical gate** (marker ``canonical``) runs smoke cases 1 and 2
+  twice each, in fresh processes, and requires the two runs' MPSPs to agree
+  to three significant figures.
+
+The one-process rule holds for tests too: run simulation tests strictly one
+at a time and never under pytest-xdist (``-n``), which the suite refuses by
+skipping them in an xdist worker. Each simulation subprocess also waits a
+few seconds after it exits so that numba's cache writes settle. The first
+run after a numba-cache clear recompiles the kernels and can hit a test
+timeout; set ``NSKINETICS_TEST_TIMEOUT_SCALE=2`` to allow more time.
+
+
 Where results go
 ----------------
 
@@ -206,13 +289,19 @@ Running the scripts
 -------------------
 
 The analysis scripts are plain files, not importable modules. They live in
-thematic folders under the package's ``analyses/`` directory; the plotting
-scripts live in ``plots/``. Every path on these pages is relative to the
-package folder, which you can find without importing anything:
+thematic folders under the package's ``analyses/`` directory; the figure
+scripts (``plot_*.py`` and the schematics) live in ``plots/`` and are run
+as files too. The two plotting libraries in that folder,
+``plots.spearman_matrix`` and ``plots.trajectory_contourplot``, are the
+exception: they are importable modules (see
+:ref:`the API page <ibo-api-plots>`). Every path on these pages is relative
+to the package folder, which you can find without importing anything:
 
-.. code-block:: bash
+.. code-block:: python
 
-   $ python -c "import importlib.util, pathlib; print(pathlib.Path(importlib.util.find_spec('nskinetics').origin).parent / 'biorefineries' / 'isobutanol')"
+   import importlib.util, pathlib
+   spec = importlib.util.find_spec('nskinetics')
+   print(pathlib.Path(spec.origin).parent / 'biorefineries' / 'isobutanol')
 
 Run a script from the ``analyses/`` folder (or give its full path), with
 ``MPLBACKEND=Agg`` for unattended runs:
@@ -225,7 +314,8 @@ Run a script from the ``analyses/`` folder (or give its full path), with
 
          cd <package folder>/analyses
          export MPLBACKEND=Agg
-         IBO_SWEEP_SCENARIO=A IBO_SWEEP_STEPS=40 python feeding_strategies/evaluate_feeding_strategies.py
+         IBO_SWEEP_SCENARIO=A IBO_SWEEP_STEPS=40 \
+             python feeding_strategies/evaluate_feeding_strategies.py
 
    .. tab-item:: PowerShell
 
@@ -261,8 +351,10 @@ process, strictly one process at a time:
 
   .. code-block:: bash
 
-     python supervise_sweep.py kinetic_sweeps/evaluate_EtOH_glycolysis_inhib_ethanol.py
-     python supervise_sweep.py sensitivity/evaluate_sobol_split12d.py --stem <STUDY_NAME> --checkpoint-suffix _trajectory.csv
+     python supervise_sweep.py \
+         kinetic_sweeps/evaluate_EtOH_glycolysis_inhib_ethanol.py
+     python supervise_sweep.py sensitivity/evaluate_sobol_split12d.py \
+         --stem <STUDY_NAME> --checkpoint-suffix _trajectory.csv
 
   A script configured by environment variables keeps them under the
   supervisor, e.g. ``IBO_AXIS_SWEEP=screen python supervise_sweep.py
@@ -305,6 +397,13 @@ supervised: a crash restarts them from the beginning.
        ``custom``), design size, seed and the band file of the custom
        measure (a bare file name such as ``linear_0-4x_2026-09-22.json`` is
        looked up in the package's ``data/sobol_bands``).
+   * - ``VORONOI_NODE``
+     - ``plots/plot_proteome_voronoi.py``: path to the Node.js executable
+       that renders the treemap (``--node`` overrides it).
+   * - ``NSKINETICS_TEST_TIMEOUT_SCALE``
+     - Case-study tests: multiplies every simulation-subprocess timeout,
+       e.g. ``2`` after clearing the numba caches (see
+       `Testing the case study`_).
 
 
 Catalog of analyses
@@ -320,7 +419,7 @@ Feeding strategies
 
 .. list-table::
    :header-rows: 1
-   :widths: 30 34 12 24
+   :widths: 36 32 12 20
 
    * - Script
      - What it does
@@ -330,8 +429,8 @@ Feeding strategies
      - Threshold × target grid with the spike cap optimized for MPSP at
        every valid point (19 metrics). Set ``IBO_SWEEP_SCENARIO=A`` and
        ``IBO_SWEEP_STEPS=40`` for the published grid. Not checkpointed.
-     - hours (several simulations per grid point; plan for an overnight
-       run)
+     - a day or more (at least ~3,400 converged simulations, so at least
+       ~15–30 h)
      - one CSV per metric · :doc:`feeding_strategies`
    * - ``plots/plot_feeding_strategy_baseline_A.py``
      - MESP map + baseline time course. Stage 1 simulates scenario A once
@@ -345,7 +444,7 @@ Kinetic sweeps
 
 .. list-table::
    :header-rows: 1
-   :widths: 30 34 12 24
+   :widths: 36 32 12 20
 
    * - Script
      - What it does
@@ -372,7 +471,9 @@ Kinetic sweeps
    * - ``.../evaluate_EtOH_k13_k7ii.py``, ``.../evaluate_EtOH_k1e_k1ie.py``,
        ``.../evaluate_EtOH_k1e_k7ie.py``
      - Exploratory 20 × 20 or 25 × 25 planes on absolute parameter values;
-       not checkpointed. No results are presented in these pages.
+       not checkpointed. The two ``k_1e`` planes run without the enzyme
+       burden; the ``k_13`` × ``k_7ii`` plane runs with it (its anchor's
+       default). No results are presented in these pages.
      - hours (~2–4 h)
      - CSVs
    * - ``.../evaluate_OAT_kinetics_B.py``
@@ -401,7 +502,7 @@ Kinetic optimization and the ``opt_*`` scenarios
 
 .. list-table::
    :header-rows: 1
-   :widths: 30 34 12 24
+   :widths: 36 32 12 20
 
    * - Script
      - What it does
@@ -440,9 +541,12 @@ Kinetic optimization and the ``opt_*`` scenarios
      - ``publication/Optimization-figures`` · :doc:`kinetic_optimization`
    * - ``plots/plot_kin_opt_parameter_sets.py``, ``plots/plot_proteome_voronoi.py``,
        ``plots/plot_relay_campaign_progress.py``
-     - Parameter-set and proteome-treemap figures of selected trials (the
-       treemap renders with Node.js), and the progress of a relay campaign
-       (``--study``).
+     - Parameter-set and proteome-treemap figures of selected trials, and
+       the progress of a relay campaign (``--study``). The treemap's second
+       stage renders with Node.js 22: run ``npm --prefix plots/voronoi
+       install`` once (``node_modules`` is not shipped), and point
+       ``--node`` or ``VORONOI_NODE`` at the Node executable if it is not on
+       ``PATH``; ``--no-render`` writes only the allocation JSON.
      - sim-free
      - ``publication/Optimization-figures``; results root
 
@@ -451,7 +555,7 @@ Objective landscape
 
 .. list-table::
    :header-rows: 1
-   :widths: 30 34 12 24
+   :widths: 36 32 12 20
 
    * - Script
      - What it does
@@ -479,7 +583,7 @@ Global sensitivity
 
 .. list-table::
    :header-rows: 1
-   :widths: 30 34 12 24
+   :widths: 36 32 12 20
 
    * - Script
      - What it does
@@ -501,7 +605,7 @@ TEA breakdowns
 
 .. list-table::
    :header-rows: 1
-   :widths: 30 34 12 24
+   :widths: 36 32 12 20
 
    * - Script
      - What it does
@@ -522,7 +626,7 @@ Uncertainty
 
 .. list-table::
    :header-rows: 1
-   :widths: 30 34 12 24
+   :widths: 36 32 12 20
 
    * - Script
      - What it does
@@ -548,7 +652,7 @@ Schematics
 
 .. list-table::
    :header-rows: 1
-   :widths: 30 34 12 24
+   :widths: 36 32 12 20
 
    * - Script
      - What it does

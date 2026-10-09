@@ -79,8 +79,8 @@ wastewater treatment, boiler-turbogenerator and facilities layer.
    ethanol + isobutanol train). **A, fermentation:** follow the slurry
    through the splitter into the two conditioning trains — the upper one
    makes the initial charge, the lower one the concentrated spike feed —
-   into the fermentor; the vent scrubber returns stripped alcohols to the
-   broth. **B, separation:** the top row makes fuel ethanol, the dashed
+   into the fermentor; the vent scrubber recovers stripped alcohols into the
+   beer sent to distillation. **B, separation:** the top row makes fuel ethanol, the dashed
    middle row (it runs only when isobutanol is made) makes isobutanol, and
    the bottom rows turn the stillage into DDGS and corn oil. Not drawn: the
    idle ethanol-primary train, heat exchangers, pumps and tanks, wastewater
@@ -109,8 +109,9 @@ wastewater treatment, boiler-turbogenerator and facilities layer.
      - fermentor ``V406``; air compressor ``K330`` and let-down valve
        ``V330``; seed-yeast tank; vent scrubber ``V409``
      - Runs the kinetic fed-batch model (below); the scrubber captures the
-       alcohols stripped by the off-gas (about 1.9 % of scenario A's
-       ethanol) and returns them to the broth.
+       alcohols stripped by the off-gas (in scenario B about 1.2 % of the
+       ethanol and 1.9 % of the isobutanol produced) and recycles them into
+       the beer sent to distillation.
    * - Alcohol recovery and purification
      - gating splitter ``S201``; beer column ``D101``, rectifier ``D102``,
        molecular sieve ``MS201``, stripper ``D103``, decanter, drying column
@@ -429,11 +430,16 @@ Baseline scenarios A and B
 
 A dash means the source reports no value. **Scenario B is provisional:** its
 workbook still uses ``k_17 = 44`` for Adh6 instead of the corrected 0.1077,
-so r17 runs about 400× too fast (see `Caveats and limitations`_).
+so r17 runs about 400× too fast (see `Caveats and limitations`_). B is a
+reference build, not a feasible strain: its pathway constants also exceed
+the proteome cap. Do not read its 21.76 % IRR as evidence that
+co-production pays; the feasible co-production result is
+``opt_PI_TRY_informed`` (:doc:`kinetic_optimization`).
 
-**Reading the baseline.** At 3.83 $/GGE, scenario A's ethanol is about
-0.11 $/GGE (2.9 %) short of the 15 % hurdle at the mean 2021–2025 ethanol
-price, so the plant earns 12.79 % rather than 15 %. Its titer and yield sit
+**Reading the baseline.** Scenario A's MESP, 3.83 $/GGE, is about
+0.11 $/GGE (2.9 %) above the model's ethanol price (3.72 $/GGE =
+0.835 $/kg, the midpoint of the 2021–2025 range), so at that price the
+plant earns 12.79 % rather than the 15 % hurdle. Its titer and yield sit
 inside the US high-gravity ranges (100–142 g/L, 0.42–0.48 g/g); its
 productivity, 1.86 g/L/h, is below the 2.0–4.4 g/L/h range — but that
 conservatism hardly matters: raising productivity to 2.0 g/L/h would lower
@@ -463,7 +469,8 @@ in every row.
 .. list-table:: Cost and revenue at the campaign optima (build 2b5b27d)
    :header-rows: 1
    :stub-columns: 1
-   :widths: 22 9 13 9 9 8 8 8 8 8
+   :widths: auto
+   :class: ibo-num
 
    * - Design
      - IRR
@@ -588,9 +595,11 @@ in every row.
      heating demand (vs 21 %), so net heating rises only 4.5 %; cooling duty
      and electricity each fall 14 %.
    - **Why both alcohols:** in this model isobutanol inhibits glycolysis
-     about 3.75× more strongly per gram than ethanol and becomes lethal above
-     25 g/L, so isobutanol-only optima stall near 46 g/L while the flagship
-     accumulates about 80 g/L of total alcohol.
+     about 3.75× more strongly per gram than ethanol, and its cell-death
+     term switches on above 25 g/L (against 100 g/L for ethanol) and then
+     grows with concentration. Isobutanol-only optima therefore stall near
+     46 g/L, while the flagship splits its product and accumulates about
+     80 g/L of total alcohol.
 
 **Single-metric optima fail through different channels:**
 
@@ -613,8 +622,10 @@ in every row.
 
 **Read co-production economics as break-evens.** MESP is not a stable
 headline for co-producing designs: two equally profitable designs from
-different campaigns read 2.12 and 1.60 $/GGE (#1912 and #1602, both build
-2b5b27d), because each MPSP depends on the other product's revenue. The
+different campaigns read 2.12 and 1.60 $/GGE (#1912, and #1602, the best
+design of a second, independent profitability campaign run with random seed
+33960; see :doc:`kinetic_optimization`; both build 2b5b27d), because each
+MPSP depends on the other product's revenue. The
 robust statement for #1912 is that it clears the 15 % hurdle while
 isobutanol sells above **1.13 $/kg** (25 % below the modeled price, ethanol
 at 0.835 $/kg), or while ethanol sells above **0.475 $/kg** (below its
@@ -639,9 +650,10 @@ Caveats and limitations
    numbers), **2b5b27d** (the campaign-optima breakdowns, break-evens and
    flagship comparison) and **95e9362** (the live ``opt_*`` pins). They move
    TEA results by up to a few percent — more at co-production designs, where
-   one optimum's IRR moved from 27.30 % to 28.02 % between builds — while
-   fermentation metrics reproduce across them to < 1e-5. Never difference
-   numbers across builds.
+   the IRR of #1602 (the seed-33960 profitability optimum) moved from
+   27.30 % to 28.02 % between builds — while fermentation metrics reproduce
+   across them to < 1e-5. A difference between numbers from two builds
+   therefore mixes the build shift into the result.
 
 - **Scenario B's Adh6 constant.** The B workbook still sets ``k_17 = 44``
   while the corrected model value is 0.1077, so Adh6 (r17) runs about 400×

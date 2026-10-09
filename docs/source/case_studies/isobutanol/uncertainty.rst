@@ -22,6 +22,9 @@ rate and yield (TRY), and among those only yield has real per-unit leverage.
       MESP at baseline. The 5th–95th percentile range is 3.64–4.07 $/GGE
       and the median is 3.85. Capital is 139 MM$ [125–151].
 
+      +++
+      Scenario A and the 6,000-sample run, build 6d4776f
+
    .. grid-item-card:: ~92 %
       :text-align: center
       :class-card: ibo-stat
@@ -29,6 +32,9 @@ rate and yield (TRY), and among those only yield has real per-unit leverage.
 
       Share of the variance in MESP from contextual inputs: corn price 41 %,
       DDGS price 24 %, operating days 10.5 %, capacity 7.9 %.
+
+      +++
+      6,000-sample uncertainty run, build 6d4776f
 
    .. grid-item-card:: ~5 %
       :text-align: center
@@ -38,6 +44,9 @@ rate and yield (TRY), and among those only yield has real per-unit leverage.
       Share from all 40 kinetic parameters together. Their effect is fully
       mediated by TRY: context + TRY explains MESP with linear R² 0.993.
 
+      +++
+      6,000-sample uncertainty run, build 6d4776f
+
    .. grid-item-card:: −0.54
       :text-align: center
       :class-card: ibo-stat
@@ -45,6 +54,9 @@ rate and yield (TRY), and among those only yield has real per-unit leverage.
 
       MESP elasticity to ethanol yield, close to corn price's +0.65. For
       titer it is −0.08, and for productivity only −0.014.
+
+      +++
+      6,000-sample uncertainty run, build 6d4776f
 
 .. admonition:: Key insights
    :class: tip
@@ -99,7 +111,13 @@ feeding policy. It then loads the scenario's parameter-distribution workbook,
 ``parameter-distributions_corn_IBO_EtOH_A.xlsx``, and draws 6,000
 Latin-hypercube samples (``model.sample(N=6000, rule='L')``, NumPy seed 3221).
 The seed makes the samples identical across launches. Each sample is a full
-flowsheet simulation followed by a TEA solve.
+flowsheet simulation followed by a TEA solve. The script sets scenario A's
+workbook and feeding policy directly rather than through ``load_scenario``,
+so it runs **without** the enzyme-burden constraint (:doc:`enzyme_burden`).
+At scenario A ± 20 % the constraint would be inert anyway: the modelled
+enzyme load stays at or below about 0.084 g/gDCW, well under the point at
+which growth derating would start (0.1347 g/gDCW at wild-type growth
+capacity).
 
 **Kinetic inputs (40).** Each fitted kinetic parameter of the NSKinetics
 *S. cerevisiae* model gets an independent **triangular ±20 %** distribution
@@ -169,9 +187,9 @@ Metrics and statistics
 
 .. math::
 
-   \text{MESP}\;[\$/\text{GGE}] = \text{MPSP}\;[\$/\text{kg}]
-   \times \frac{0.789 \times 3.785411784}{0.67}
-   = \text{MPSP}\;[\$/\text{kg}] \times 4.45775
+   \text{MESP}\;[\$/\text{GGE}] &= \text{MPSP}\;[\$/\text{kg}]
+   \times \frac{0.789 \times 3.785411784}{0.67} \\
+   &= \text{MPSP}\;[\$/\text{kg}] \times 4.45775
 
 Titer and productivity are per litre of **water**, not broth. Yield is g per g
 of sugar **added**, and productivity = titer/τ. The analyses on this page are:
@@ -255,9 +273,9 @@ Every sample lies inside the 2021–2025 ethanol market price range
 (2.31–5.15 $/GGE) and the reported capital range (110.3–195.6 MM$, 2023$).
 92.5 % of samples lie inside the 40–60 MM gal/y production range. These
 range checks are sanity checks only: the market range is far wider than the
-MESP spread. At the mean 2021–2025 ethanol price (3.722 $/GGE =
-0.835 $/kg), **17.0 %** of the samples clear the 15 % hurdle. The baseline
-sits 0.112 $/GGE (2.9 %) short of it.
+MESP spread. At the model's ethanol price, the midpoint of the 2021–2025
+range (3.722 $/GGE = 0.835 $/kg), **17.0 %** of the samples clear the 15 %
+hurdle. The baseline MESP sits 0.112 $/GGE (2.9 %) above that price.
 
 .. figure:: /_static/images/isobutanol/uncertainty/uncertainty_bivariate_mesp_scenario_a.png
    :target: ../../_static/images/isobutanol/uncertainty/uncertainty_bivariate_mesp_scenario_a.png
@@ -325,6 +343,13 @@ Where the variance comes from
      - 1.1 %
      - —
 
+The listed group shares sum to 98.3 %. The linear fit on all 57 inputs
+explains 98.9 % of Var(MESP) (the remaining 1.1 % is the residual row),
+while the individual β²·Var(z) shares add up to only 97.2 %; the
+difference, about 1.7 %, is carried by the covariance (cross) terms of the
+regression, from the weak chance correlations between independently sampled
+inputs in a finite sample.
+
 The kinetic share acts **entirely through TRY**. TRY alone explains little
 of MESP (linear R² 0.068), but adding TRY to the contextual inputs raises the
 linear R² from 0.934 to **0.993**. In the other direction, TRY are almost
@@ -382,8 +407,9 @@ linear extrapolation beyond the sampled range says that pushing yield, titer
 and productivity all to their ceilings would lower MESP by roughly
 **0.4 $/GGE (~10 %)**. That is about the size of the contextual
 5th–95th-percentile span. Improving ethanol TRY within the incumbent process
-cannot deliver a step change in economics; :doc:`kinetic_optimization` turns to a
-higher-value co-product instead.
+cannot deliver a step change in economics. :doc:`kinetic_sweeps`, next,
+checks this far beyond the ±20 % neighbourhood, and
+:doc:`kinetic_optimization` then turns to a higher-value co-product.
 
 .. dropdown:: TRY ceilings, item by item (indicative linear extrapolation)
 
@@ -511,17 +537,18 @@ Caveats and limitations
    **Model build.** This run used the 6d4776f heat-exchanger-network build
    (baseline 3.835 $/GGE, IRR 12.79 %). The Sobol' GSA, the optimization
    campaigns and the kinetic sweeps used the earlier 2b5b27d build (baseline
-   3.844 $/GGE, IRR 12.60 %), a 0.25 % offset in the baseline. **Never place
-   a campaign IRR beside an MESP from this page.**
+   3.844 $/GGE, IRR 12.60 %), a 0.25 % offset in the baseline. A campaign
+   IRR and an MESP from this page therefore come from different builds, and
+   the offset grows to a few percent at co-production designs, so the two
+   are not directly comparable.
 
 .. caution::
 
-   **Superseded runs.** Two earlier 6,000-sample runs are superseded by the
-   one on this page. ``_IBO_2026.9.20-22.24`` used the 2b5b27d build, an
-   older ±20 % triangular starch band (0.578–0.864) and a starch setter
-   that was not idempotent; ``_IBO_2026.9.29-18.23`` predates the fix of
-   that setter, so its starch and moisture are biased. Every number from
-   those runs is stale, including their MESP range of 3.59–4.32 $/GGE.
+   **Earlier runs are superseded.** Two earlier Monte Carlo runs of this
+   analysis (``_IBO_2026.9.20-22.24`` and ``_IBO_2026.9.29-18.23``) are
+   superseded by the run on this page: the first used an older, wider
+   starch band and a starch setter that was later fixed, and the second ran
+   before that fix. Cite only run ``_IBO_2026.9.29-23.45``.
 
 - **Shares are conditional on the assumed distributions.** Kinetic
   parameters span ±20 %, while corn price spans only −8.6 / +7.9 %. Prices are
@@ -608,3 +635,7 @@ See also
 - :doc:`kinetic_sweeps`: the glycolytic capacity × ethanol inhibition plane
   that follows up on the ``k_1ie`` signal.
 - :doc:`feeding_strategies`: the fed-batch policy held fixed in this run.
+
+Next: :doc:`kinetic_sweeps` follows the ``k_1ie`` signal far outside the
+± 20 % band and asks how much economic headroom the classic ethanol-strain
+levers have.

@@ -26,6 +26,9 @@ target grid and optimizes the spike cap for MESP at every point.
       MESP penalty for a sugar target 10 g/L too high (230 → 240 g/L),
       ten times the +0.46 % penalty for one 10 g/L too low
 
+      +++
+      Threshold × target sweep, build 2b5b27d-equivalent
+
    .. grid-item-card:: +0.41 %
       :text-align: center
       :class-card: ibo-stat
@@ -33,6 +36,9 @@ target grid and optimizes the spike cap for MESP at every point.
 
       MESP of a plain batch at 230 g/L, compared with the best fed-batch
       policy in the grid
+
+      +++
+      Threshold × target sweep, build 2b5b27d-equivalent
 
    .. grid-item-card:: +31.6 %
       :text-align: center
@@ -42,6 +48,9 @@ target grid and optimizes the spike cap for MESP at every point.
       MESP of the titer-maximizing policy, even though its capital and
       operating costs both fall
 
+      +++
+      Threshold × target sweep, build 2b5b27d-equivalent
+
    .. grid-item-card:: 291 of 819
       :text-align: center
       :class-card: ibo-stat
@@ -49,6 +58,9 @@ target grid and optimizes the spike cap for MESP at every point.
 
       feasible policies that lose money (IRR < 0); MESP spans
       3.82–5.03 $/GGE across them
+
+      +++
+      Threshold × target sweep, build 2b5b27d-equivalent
 
 .. admonition:: Key insights
    :class: tip
@@ -124,8 +136,11 @@ policy:
   an upper bound. The fermentor's
   :class:`~nskinetics.units.SpikeReduceRetry` re-simulates with the cap
   lowered by one until the final glucose rounds to 0.00 g/L or the cap
-  reaches 0. A sweep therefore reports the number of spikes that actually
-  fired, not the cap it was given.
+  reaches 0. The last attempt runs at a cap of 1, so a fermentation that
+  never exhausts its glucose ends with at most one spike fired (with
+  scenario A's threshold just below its target, exactly one: the "stalled"
+  signature on :doc:`kinetic_sweeps`). A sweep therefore reports the number
+  of spikes that actually fired, not the cap it was given.
 - **The harvest time τ is read off the trajectory.** It is the first time,
   at or after the last spike, at which glucose (rounded to whole g/L)
   reaches its minimum (below 0.5 g/L). It is capped at ``tau_max``. The
@@ -156,18 +171,23 @@ the specification's precedence order) and read the fermentor and the TEA:
 .. code-block:: python
 
    from nskinetics.biorefineries import isobutanol
-   isobutanol.load()                     # build the flowsheet; simulate the baseline once
+   # build the flowsheet; simulate the baseline once
+   isobutanol.load()
    from nskinetics.biorefineries.isobutanol import scenarios
 
-   h = scenarios.load_scenario('A')      # A's kinetics + policy: cap 16, 217.125 / 221.25 g/L
+   # A's kinetics + policy: cap 16, 217.125 / 221.25 g/L
+   h = scenarios.load_scenario('A')
    V406 = h['V406']
    print(h['fbs_spec'].current_specifications)
 
    # A plain batch at 230 g/L: with max_n_spikes=0 the threshold has no effect
-   h['model_specification'](threshold_conc=226.1, target_conc=230., max_n_spikes=0)
+   h['model_specification'](threshold_conc=226.1, target_conc=230.,
+                            max_n_spikes=0)
    r = V406.nsk_results_specific_tau_dict
-   print(V406.tau, r['curr_n_glu_spikes'], r['[s_EtOH]'])  # τ [h], spikes fired, titer [g/L water]
-   print(h['solve_TEA']())   # {'IRR': ..., 'MPSPs': {'ethanol': $/kg, 'isobutanol': nan}}
+   # τ [h], spikes fired, titer [g/L water]
+   print(V406.tau, r['curr_n_glu_spikes'], r['[s_EtOH]'])
+   # {'IRR': ..., 'MPSPs': {'ethanol': $/kg, 'isobutanol': nan}}
+   print(h['solve_TEA']())
 
 Run it on the current model build, and the economics will differ slightly
 from this page's numbers, which use an earlier build (see
@@ -178,9 +198,11 @@ Method
 
 - **Strain and process.** The analysis uses scenario-A kinetics, applied
   from the scenario's parameter workbook (wild-type ethanol strain,
-  isobutanol pathway off). The enzyme-burden constraint has no effect at
-  this strain (:doc:`enzyme_burden`). The rest of the flowsheet and the TEA
-  basis are as in :doc:`process_and_tea`.
+  isobutanol pathway off). The script sets the workbook and feeding policy
+  directly rather than through ``load_scenario``, so it runs without the
+  enzyme-burden constraint (:doc:`enzyme_burden`), which would be inert at
+  this strain anyway. The rest of the flowsheet and the TEA basis are as in
+  :doc:`process_and_tea`.
 - **Grid.** The threshold takes 40 values (``linspace(1, 400, 40)``, step
   10.23 g/L) and the target takes 40 values (``linspace(10, 400, 40)``,
   step 10 g/L), giving 1,600 cells. Only the 819 cells with threshold <
@@ -189,12 +211,11 @@ Method
 - **Spike cap, optimized per cell.** The biorefinery helper
   ``optimize_max_n_glu_spikes_for_MPSP(bounds=(0, 40), Ns=41)`` tries caps
   0, 1, 2, … and stops once a higher cap adds no spike that actually fires.
-  It then re-simulates the best cap. At the chosen caps, 0 to 30 spikes
-  fired, so the upper bound of 40 never bound. Batch (0 spikes) won at
-  631 cells and
-  fed-batch at 188. The cap evaluations were not logged. The early stop
-  implies at least about 3,400 and at most 34,398, and each one is a
-  converged flowsheet simulation.
+  It then re-simulates the best cap. Between 0 and 30 spikes fired at the
+  chosen caps, so the cap bound of 40 was never reached. Batch (0 spikes)
+  won at 631 cells and fed-batch at 188. Individual cap evaluations were
+  not logged; the early stop implies between about 3,400 and 34,398 of
+  them, each a converged flowsheet simulation.
 - **Fixed settings.** Spike feed 600 g/L, ``tau_max`` 120 h, and the
   glucose-depletion harvest rule above.
 - **Metrics.** The sweep records 19 metrics per cell. They include the
@@ -210,8 +231,9 @@ Method
    $/GGE = $/kg × 0.789 kg/L × 3.785 L/gal ÷ 0.67 GGE/gal = $/kg × 4.45775.
    Titer, productivity and glucose concentrations are per litre of
    **water**, not broth. Yield is g ethanol per g glucose **added**. The
-   sweep's MESP and IRR values come from heat-exchanger-network build
-   ``2b5b27d``. On that build the scenario-A baseline MESP is 3.844 $/GGE.
+   sweep's MESP and IRR values come from code equivalent to
+   heat-exchanger-network build ``2b5b27d`` (2b5b27d-equivalent). On that
+   build the scenario-A baseline MESP is 3.844 $/GGE.
 
 Results
 -------
@@ -286,7 +308,7 @@ MESP falls gently as the target rises toward 230 g/L, then jumps:
      - +4.82 %
      - +12.5 %
      - +31.6 %
-   * - Sugar-evaporation duty (GJ/h)
+   * - Sugar-evaporation duty, both trains (GJ/h)\ :sup:`*`
      - 41.0
      - 23.0
      - 14.0
@@ -304,6 +326,12 @@ MESP falls gently as the target rises toward 230 g/L, then jumps:
      - 149.5
      - 135.1
      - 125.0
+
+:sup:`*` Heating duty of the initial-feed evaporator ``F301`` plus the
+spike-feed evaporator ``F302``. The best policies at targets 160–230 g/L are
+fed-batch (1–6 spikes), so below 240 g/L this duty is the spike-feed train
+concentrating its feed to 600 g/L; ``F301`` stays idle up to 230 g/L and
+switches on at 240 g/L, which is the cliff.
 
 - **The evaporation cliff.** Batch policies need no sugar-evaporation duty
   at any target up to 230 g/L, but they need 60.8–73.5 GJ/h at 240 g/L and
@@ -515,7 +543,8 @@ Script paths are relative to the package folder.
        from saved CSVs without simulating. The sweep is **not** checkpointed,
        so a crash restarts it from the beginning.
      - The longest grid sweep: thousands of converged flowsheet simulations
-       (see `Method`_). Plan for a multi-hour to overnight run.
+       (see `Method`_). At 15–30 s each that is at least ~15–30 h; plan
+       for more than a day.
    * - ``plots/plot_feeding_strategy_baseline_A.py``
      - The two-panel figure above. Stage 1 runs one ``load()`` and
        simulates the scenario-A baseline, caching its time course to
@@ -534,7 +563,8 @@ Script paths are relative to the package folder.
 
          # from the package folder (see running_analyses to find it)
          export MPLBACKEND=Agg
-         IBO_SWEEP_SCENARIO=A IBO_SWEEP_STEPS=40 python analyses/feeding_strategies/evaluate_feeding_strategies.py
+         IBO_SWEEP_SCENARIO=A IBO_SWEEP_STEPS=40 \
+             python analyses/feeding_strategies/evaluate_feeding_strategies.py
          python plots/plot_feeding_strategy_baseline_A.py
 
    .. tab-item:: PowerShell
@@ -547,5 +577,6 @@ Script paths are relative to the package folder.
          python analyses\feeding_strategies\evaluate_feeding_strategies.py
          python plots\plot_feeding_strategy_baseline_A.py
 
-Next: :doc:`kinetic_sweeps` holds this feeding policy fixed and asks which
-strain changes pay.
+Next: :doc:`uncertainty` holds this feeding policy fixed and asks how much
+of the plant's cost risk comes from the strain rather than from prices and
+plant context; :doc:`kinetic_sweeps` then asks which strain changes pay.

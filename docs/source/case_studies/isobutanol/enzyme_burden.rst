@@ -10,9 +10,17 @@ expressible, and how proteome spending shapes the economics.** The isobutanol
 biorefinery answers with a closed-form **proteome-allocation constraint**. The
 enzyme pools a design needs are summed and closed against the cell's flexible
 protein sector, and growth is derated as that sector fills. The constraint is
-enforced at a single choke point, so every analysis inherits it. These
-analyses include the feeding and kinetic sweeps, the uncertainty runs, the
-Sobol' analysis and the optimization campaigns.
+enforced at a single choke point, so it applies to every simulation run
+while a burden model is installed: ``load_scenario`` installs one per the
+scenario's policy (on for A and the ``opt_*`` scenarios, off for B), and the
+kinetic-sweep planes reported on :doc:`kinetic_sweeps`, the 1-D slices of
+:doc:`objective_landscape`, the optimization campaigns and the Sobol'
+analysis all ran with it on. The feeding sweep and the uncertainty run used
+scenario A without it, where it would be inert (Φ\ :sub:`M` stays at or
+below about 0.084 g/gDCW, far under the 0.1347 budget). The exploratory
+sweeps whose results these pages do not report
+(``evaluate_EtOH_k1e_k1ie.py``, ``evaluate_EtOH_k1e_k7ie.py`` and the
+scenario-B one-at-a-time sweep) also run without it.
 
 .. grid:: 1 2 2 2
    :gutter: 3
@@ -25,6 +33,9 @@ Sobol' analysis and the optimization campaigns.
       g/gDCW: the **penalty-free metabolic budget**. The wild-type strain
       uses 0.0701. Above the budget, growth slows linearly.
 
+      +++
+      Model constants (enzyme_burden.py)
+
    .. grid-item-card:: 157 % / 130 %
       :text-align: center
       :class-card: ibo-stat
@@ -33,6 +44,9 @@ Sobol' analysis and the optimization campaigns.
       Budget used by the isobutanol- and ethanol-**yield** optima. Growth is
       derated to ×0.30 and ×0.63, and cells fall to 2.2 and 4.2 g/L.
 
+      +++
+      Yield-campaign optima
+
    .. grid-item-card:: 97 %
       :text-align: center
       :class-card: ibo-stat
@@ -40,6 +54,9 @@ Sobol' analysis and the optimization campaigns.
 
       Budget used by the most profitable design found (#1912, IRR 27.3 %),
       with **no** growth derating
+
+      +++
+      Optimum #1912, build 2b5b27d
 
    .. grid-item-card:: η² = 0.39
       :text-align: center
@@ -50,11 +67,15 @@ Sobol' analysis and the optimization campaigns.
       own (screening prior). Every PI > 0 design in those samples has
       Φ\ :sub:`M` ≤ 0.17.
 
+      +++
+      Sobol' screening sample, build 2b5b27d
+
 .. admonition:: In one sentence
    :class: tip
 
-   Yield optima win by overloading the proteome to throttle growth. The dilute,
-   slow broth that results is what costs the capital. The most profitable
+   Yield optima reach their high yields by overloading the proteome, which
+   throttles growth; the dilute, slow broth that results is what costs the
+   capital. The most profitable
    designs spend their proteome close to the penalty-free budget, and every
    profitable design in the space-filling samples stays at Φ\ :sub:`M`
    ≤ 0.17 g/gDCW.
@@ -82,7 +103,8 @@ At a glance
        growth-derating factor *d*, and feasibility (Φ\ :sub:`M` <
        F\ :sub:`flex`)
    * - Where it acts
-     - Inside ``system.load_simulate``, once per simulation; in the optimizer,
+     - Inside ``system.load_simulate``, once per simulation while a burden
+       model is installed (see `Where it is enforced`_); in the optimizer,
        also as a pre-simulation feasibility check
    * - Calibration
      - Always against scenario A (wild type), where it is exactly inert
@@ -241,10 +263,10 @@ the two demanded growth capacities, and growth is derated linearly once
 
 .. math::
 
-   \Phi_M = \sum_i \mathrm{pool}_i, \qquad
-   \varphi_T = 0.110 \cdot \max\!\left(\frac{k_7}{k_{7,\mathrm{ref}}},
-   \frac{k_8}{k_{8,\mathrm{ref}}}\right), \qquad
-   d = \mathrm{clip}\!\left(\frac{F_\mathrm{flex} - \Phi_M}{\varphi_T},\,0,\,1\right)
+   \Phi_M &= \sum_i \mathrm{pool}_i, \\
+   \varphi_T &= 0.110 \cdot \max\!\left(\frac{k_7}{k_{7,\mathrm{ref}}},
+   \frac{k_8}{k_{8,\mathrm{ref}}}\right), \\
+   d &= \mathrm{clip}\!\left(\frac{F_\mathrm{flex} - \Phi_M}{\varphi_T},\,0,\,1\right)
 
 .. math::
 
@@ -265,19 +287,22 @@ Inhibition and affinity parameters carry no proteome cost.
      - Basis
    * - ``PROTEIN_CONTENT``
      - 0.49
-     - Crude protein of brewery *S. cerevisiae* biomass (Jach et al. 2022)
+     - Crude protein of brewery *S. cerevisiae* biomass
+       (:ref:`Jach et al. 2022 <ibo-ref-jach2022>`)
    * - ``HOUSEKEEPING_FRACTION``
      - 0.50
-     - Growth-invariant half of the proteome (Scott et al. 2010)
+     - Growth-invariant half of the proteome
+       (:ref:`Scott et al. 2010 <ibo-ref-scott2010>`)
    * - ``TRANSLATION_FRACTION_WT``
      - 0.225
      - Active ribosomal sector of fast-growing yeast: ≈ 30 % ribosomal
-       protein, of which ≈ 25 % is a non-translating reserve (Metzl-Raz et al.
-       2017). This is the **looser** of the two options considered.
+       protein, of which ≈ 25 % is a non-translating reserve
+       (:ref:`Metzl-Raz et al. 2017 <ibo-ref-metzlraz2017>`). This is the
+       **looser** of the two options considered.
    * - ``SIGMA_EFF``
      - 0.50
      - In-vivo saturation fitted in the GECKO enzyme-constrained yeast model
-       (Sánchez et al. 2017)
+       (:ref:`Sánchez et al. 2017 <ibo-ref-sanchez2017>`)
 
 Where it is enforced
 ~~~~~~~~~~~~~~~~~~~~
@@ -321,6 +346,44 @@ There is exactly **one** derating site: the simulate choke point
    * - ``opt_*``
      - on
      - As during the campaigns that produced them
+
+A bare :func:`~nskinetics.biorefineries.isobutanol.load` installs no
+burden. Scripts that need it either call ``load_scenario`` or install the
+model themselves with ``system.set_active_burden``, so whether an analysis
+ran with the burden depends on the script:
+
+.. list-table:: Which analyses ran with the burden
+   :header-rows: 1
+   :widths: 50 14 36
+
+   * - Analysis
+     - Burden
+     - Note
+   * - Kinetic-sweep planes (glycolysis, ``k_1e``, Pdc, Adh1, ALS)
+     - on
+     - scenario-A reference (ALS plane: ``opt_PI_TRY_informed`` anchor)
+   * - Optimization campaigns and the ``opt_*`` workbook builds
+     - on
+     - pre-simulation check plus derating
+   * - Sobol' analysis (all three measures)
+     - on
+     - same evaluation path as the campaigns
+   * - 1-D slices through #1912 (:doc:`objective_landscape`)
+     - on
+     - as in the campaigns
+   * - TEA breakdowns of the campaign optima
+     - on
+     - reproduces the campaign trials
+   * - Feeding sweep (:doc:`feeding_strategies`)
+     - off
+     - scenario A, where it would be inert
+   * - Uncertainty run (:doc:`uncertainty`)
+     - off
+     - scenario A ± 20 %, where it would be inert (Φ\ :sub:`M` ≤ ~0.084)
+   * - Exploratory sweeps (``k_1e`` × ``k_1ie``, ``k_1e`` × ``k_7ie``,
+       scenario-B one-at-a-time)
+     - off
+     - no results reported on these pages
 
 Results
 -------
@@ -454,12 +517,14 @@ fermentation-level and do not depend on that build.
    Trial numbers in the source figure are 1-based; IRRs are under build
    2b5b27d.
 
-Proteome spending separates failing designs from merely poor ones
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Proteome spending predicts which designs fail
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The Sobol' samples of the :doc:`sensitivity` analysis draw designs without an
-optimizer. On them, the **single scalar** Φ\ :sub:`M` explains much of the
-profitability variance under the two engineering-prior measures:
+optimizer. Most of them are unprofitable, and most of the variance in
+profitability lies in how far below the baseline a design falls. On these
+samples the **single scalar** Φ\ :sub:`M` explains much of that variance
+under the two engineering-prior measures:
 
 .. list-table:: Φ\ :sub:`M` and profitability on space-filling samples
    :header-rows: 1
@@ -534,9 +599,9 @@ Reproduce it
 ------------
 
 The burden module itself needs no simulation and no results files. Importing
-it through the package needs the optional ``isobutanol`` dependencies
-(``pip install "nskinetics[isobutanol]"``; see :doc:`running_analyses`), but
-builds nothing:
+it through the package needs the case study and its optional ``isobutanol``
+dependencies (see :ref:`isobutanol-installation`; until a release that
+ships the case study is on PyPI, install from source), but builds nothing:
 
 .. code-block:: python
 

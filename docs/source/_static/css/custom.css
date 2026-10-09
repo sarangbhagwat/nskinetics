@@ -124,9 +124,92 @@ table.ibo-scenarios td:nth-child(5) {
    inline literals keep Sphinx's no-break rendering. */
 .bd-article table code.literal span.pre,
 .bd-article dl.field-list code.literal span.pre,
-.bd-article .ibo-long-literals code.literal span.pre {
+.bd-article .ibo-long-literals code.literal span.pre,
+.bd-article figcaption code.literal span.pre {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+
+/* Literals in tables a touch smaller than in running text, so identifier
+   columns (script names, scenario keys) need less width. */
+.bd-article table code.literal {
+  font-size: 0.8em;
+}
+
+/* Scenario keys in the first column of the scenario table never break
+   mid-word ("opt_PI_uninforme|d"); the table scrolls inside its own box
+   if a narrow screen cannot fit them. */
+.bd-article table.ibo-scenarios td:first-child code.literal span.pre {
+  white-space: nowrap;
+  overflow-wrap: normal;
+}
+
+/* Numeric tables (``:class: ibo-num`` on a list-table): tabular figures,
+   tighter cells and a slightly smaller font, so wide comparisons (8-10
+   columns) fit the text column instead of hiding their last columns
+   behind a horizontal scrollbar. */
+.bd-article table.ibo-num {
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.bd-article table.ibo-num th,
+.bd-article table.ibo-num td {
+  padding: 0.35rem 0.5rem;
+}
+
+/* Figure captions: the theme sets them in its light (300) caption weight,
+   which reads faintly at the length of the case-study captions. */
+.bd-article figure figcaption {
+  font-weight: 400;
+}
+
+/* Header: keep each top-level link on one line ("Key Concepts", "Case
+   Studies", "API Reference" otherwise wrap and double the header height). */
+.bd-header .navbar-nav .nav-link {
+  white-space: nowrap;
+}
+
+/* "On this page" lists: long code entries (API function names) wrap
+   instead of running past the sidebar edge. */
+.bd-sidebar-secondary .toc-entry code.literal span.pre,
+.bd-sidebar-primary .toc-entry code.literal span.pre {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+/* Case-study pages put "On this page" in the left sidebar, under the
+   section navigation (html_sidebars in conf.py), so their figures and
+   tables get the full content width. Separate the two lists, and collapse
+   nested levels exactly as the theme does in the right-hand sidebar. */
+.bd-sidebar-primary .page-toc.onthispage {
+  margin-top: 0.75rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--pst-color-border);
+  font-size: var(--pst-sidebar-header-font-size);
+}
+
+.bd-sidebar-primary .bd-toc-nav .nav .nav {
+  display: none;
+}
+
+.bd-sidebar-primary .bd-toc-nav .nav .nav.visible,
+.bd-sidebar-primary .bd-toc-nav .nav > .active > ul {
+  display: block;
+}
+
+/* The theme sizes "On this page" links for its 1200-px secondary-sidebar
+   breakpoint; in the left sidebar they follow its 960-px one instead, to
+   match the section navigation above them. */
+@media (min-width: 960px) {
+  .bd-sidebar-primary .page-toc .nav-link {
+    font-size: var(--pst-sidebar-font-size);
+  }
+}
+
+/* Case Studies landing card: set the case-study title above body size. */
+.ibo-case-card .sd-card-title {
+  font-size: 1.25rem;
 }
 
 /* API signatures: a fully qualified name such as

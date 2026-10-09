@@ -88,7 +88,7 @@ of the shipped *S. cerevisiae* kinetic model, and the kinetics-to-biosteam
 bridge behind ``V406``.
 
 
-.. grid:: 1 2 3 4
+.. grid:: 1 2 2 4
     :class-row: sd-align-major-center
 
 

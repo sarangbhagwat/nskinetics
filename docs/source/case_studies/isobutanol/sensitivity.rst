@@ -25,6 +25,9 @@ cannot tell the program where the rare profitable designs are.
       screening prior, against 36 % of ethanol-titer and 23 % of
       isobutanol-titer variance. ALS carries ≤ 3.5 % under every measure.
 
+      +++
+      Shapley effects, screening prior (SCR), build 2b5b27d
+
    .. grid-item-card:: 10–43 %
       :text-align: center
       :class-card: ibo-stat
@@ -32,6 +35,9 @@ cannot tell the program where the rare profitable designs are.
 
       Share of profitability variance carried by Adh1 (``k_6``) across the
       three measures. Adh1 carries ≤ 1.6 % of isobutanol titer or yield.
+
+      +++
+      Shapley effects, all three measures, build 2b5b27d
 
    .. grid-item-card:: 0.46 %
       :text-align: center
@@ -41,6 +47,9 @@ cannot tell the program where the rare profitable designs are.
       Share of the 4,091 screening designs that clear the 15 % hurdle
       (PI > 0). Every one of them co-produces ethanol and isobutanol.
 
+      +++
+      Screening prior (SCR) sample, build 2b5b27d
+
    .. grid-item-card:: ≥ 95 %
       :text-align: center
       :class-card: ibo-stat
@@ -48,6 +57,9 @@ cannot tell the program where the rare profitable designs are.
 
       Share of Var(PI) carried by designs that do worse than the baseline,
       under every measure. The indices therefore rank **failure modes**.
+
+      +++
+      All three measures, build 2b5b27d
 
 .. admonition:: The robust finding: titer's driver is not profit's driver
    :class: tip
@@ -106,7 +118,6 @@ lever, are **absolute capacities**, because the wild-type strain has neither
 enzyme.
 
 .. dropdown:: The 12 decision variables and their bands under each measure
-   :open:
 
    .. list-table::
       :header-rows: 1
@@ -345,9 +356,12 @@ under each measure:
      - 1.6 / 0.5
 
 ALS's closed first-order index for PI is ≤ 0.9 % under every measure (SCR
-0.009 ± 0.018). For ethanol titer and yield and for isobutanol titer, ALS is
-the single best lever under SCR, with closed first-order indices of 0.321,
-0.296 and 0.199. The mechanism is transparent in the raw samples. Under SCR,
+0.009 ± 0.018). By closed first-order index, the variance a lever explains
+on its own, ALS is the single best lever under SCR for ethanol titer and
+yield and for isobutanol titer (0.321, 0.296 and 0.199). By Shapley effect,
+which also credits interactions, it ranks first for ethanol titer and yield
+but third for isobutanol titer (see the full profile below). The mechanism
+is transparent in the raw samples. Under SCR,
 from the lowest to the highest ``k_13`` quintile:
 
 .. list-table:: Median outcomes by ALS (``k_13``) quintile, screening measure
@@ -612,9 +626,10 @@ Small negative entries are estimation error.
 **Why the two prior measures put the proteome sinks first.** Glycolysis and
 the downstream Ehrlich enzymes are the model's two largest proteome sinks.
 Together they account for 95.7 % (SCR), 95.4 % (CUS) and 97.0 % (CAM) of the
-variance of the sampled enzyme pools. In the prior measures, how much
-proteome a design spends is what separates a failing design from a merely
-poor one:
+variance of the sampled enzyme pools. Since designs worse than the baseline
+carry ≥ 95 % of Var(PI), the variance mostly measures how badly a design
+fails, and in the prior measures that is set largely by how much proteome
+it spends:
 
 - The enzyme load Φ_M on its own explains η² = **0.39** of Var(PI) under SCR
   and **0.47** under CUS (0.012 under CAM).
@@ -633,7 +648,9 @@ reach down to 10⁻³× native. Under CAM, ``k_6`` alone gives η² = 0.25 of PI
 
 .. important::
 
-   Quote a percentage from this section **only with its measure named**.
+   A variance share in this section is a property of the sampling measure
+   it was computed under, so the same lever can carry 3 % under one measure
+   and 39 % under another; every share on this page names its measure.
    *Measure-dependent:* the size of ``k_3`` (39 → 3 %), glycolysis (8 → 40–44
    %), downstream Ehrlich (3 → 30–31 %), which triple is best, and the closed
    index of any triple. *Robust across all three:* ``k_6`` is in PI's top
@@ -729,8 +746,9 @@ Caveats and limitations
    2b5b27d-era heat-exchanger-network build, the same build as every
    optimization campaign. Under that build the scenario-A baseline is PI
    −0.1383 (MESP 3.844 $/GGE, IRR 12.60 %). The :doc:`uncertainty` analysis
-   used the later 6d4776f build. Never compare a number on this page with an
-   uncertainty-page MESP without naming the build. The GSA has not been re-run
+   used the later 6d4776f build, so a number on this page and an
+   uncertainty-page MESP differ by the build shift as well as by the
+   analysis. The GSA has not been re-run
    under the later build. Its expected effect on the indices is small but
    unverified.
 

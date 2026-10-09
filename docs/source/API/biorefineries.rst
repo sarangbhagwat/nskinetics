@@ -5,16 +5,19 @@ Isobutanol biorefinery (case study)
 isobutanol biorefinery of the :doc:`/case_studies/isobutanol/index`: a
 BioSTEAM flowsheet whose fermentor runs the shipped *S. cerevisiae* kinetic
 model, with its scenarios, TEA and the engines behind the analyses. It
-needs the optional ``isobutanol`` dependencies
-(``pip install "nskinetics[isobutanol]"``; see
-:doc:`/case_studies/isobutanol/running_analyses`).
+needs the optional ``isobutanol`` dependencies and an NSKinetics version
+that ships ``nskinetics.biorefineries``; until such a release is on PyPI,
+install it from source (see :ref:`isobutanol-installation`).
 
 Importing the package is **build-free**: it imports the modules below but
 builds and simulates nothing, and ``import nskinetics`` never imports it.
 :func:`~nskinetics.biorefineries.isobutanol.load` builds the flowsheet once
-per process. This page documents the curated public API; the analysis and
-plotting scripts are files, not modules, and are catalogued on
-:doc:`/case_studies/isobutanol/running_analyses`.
+per process. This page documents the curated public API. The analysis
+scripts (``analyses/``) and the figure scripts (``plots/plot_*.py`` and the
+schematics) are files, not modules, and are catalogued on
+:doc:`/case_studies/isobutanol/running_analyses`; the two plotting libraries
+in ``plots/`` are importable and documented under
+`Plotting library (plots)`_.
 
 .. contents:: On this page
    :local:
@@ -34,9 +37,10 @@ object, among them ``corn_EtOH_IBO_sys`` and its TEA
 specification ``fbs_spec``, the flowsheet ``f``, the separation units by
 factory ID ``sep_udct``, the cost and utility groups ``unit_groups_dict``,
 the uncertainty ``model`` and its workbook namespace ``namespace_dict``.
-:func:`~nskinetics.biorefineries.isobutanol.system.solve_TEA` and
-:func:`~nskinetics.biorefineries.isobutanol.scenarios.load_scenario` are
-re-exported at package level.
+:func:`~nskinetics.biorefineries.isobutanol.system.solve_TEA`,
+:func:`~nskinetics.biorefineries.isobutanol.scenarios.load_scenario` and
+:func:`~nskinetics.biorefineries.isobutanol.utils.generate_save_kinetic_parameter_distributions`
+are re-exported at package level.
 
 
 Scenarios
@@ -159,6 +163,15 @@ Uncertainty model
    :no-members:
 
 .. autofunction:: nskinetics.biorefineries.isobutanol.models.models_EtOH_IBO_corn.create_model
+
+
+Workbook helpers (``utils``)
+----------------------------
+
+.. automodule:: nskinetics.biorefineries.isobutanol.utils
+   :no-members:
+
+.. autofunction:: nskinetics.biorefineries.isobutanol.utils.generate_save_kinetic_parameter_distributions
 
 
 Filesystem locations (``paths``)
@@ -292,3 +305,42 @@ Global sensitivity analysis
 
 .. autoclass:: nskinetics.biorefineries.isobutanol.sensitivity_analysis.Surrogate
    :no-members:
+
+
+.. _ibo-api-plots:
+
+Plotting library (``plots``)
+----------------------------
+
+.. automodule:: nskinetics.biorefineries.isobutanol.plots
+   :no-members:
+
+Two modules of ``plots/`` are importable libraries; both need the optional
+``contourplots`` package and run no simulation. Import them explicitly (or
+through the lazy names ``plots.plot_spearman_matrix``,
+``plots.plot_metric_with_trajectories`` and ``plots.JBEI_UCB_colormap``).
+Every other file in the folder is a figure script, run as a file and listed
+on :doc:`/case_studies/isobutanol/running_analyses`.
+
+Spearman correlation matrix (``plots.spearman_matrix``)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. py:module:: nskinetics.biorefineries.isobutanol.plots.spearman_matrix
+
+Ellipse correlation matrix of the Spearman rank correlations in an
+uncertainty-analysis workbook (``*_1_full_evaluation.xlsx``, sheets
+``Spearman`` and ``Spearman p-values``). Run as a script
+(``python plots/spearman_matrix.py [WORKBOOK] [--out-dir DIR]``), it draws
+the newest scenario-A workbook in the results root.
+
+.. autofunction:: nskinetics.biorefineries.isobutanol.plots.spearman_matrix.plot_spearman_matrix
+
+Sweep contours with greedy trajectories (``plots.trajectory_contourplot``)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. automodule:: nskinetics.biorefineries.isobutanol.plots.trajectory_contourplot
+   :no-members:
+
+.. autofunction:: nskinetics.biorefineries.isobutanol.plots.trajectory_contourplot.plot_metric_with_trajectories
+
+.. autofunction:: nskinetics.biorefineries.isobutanol.plots.trajectory_contourplot.JBEI_UCB_colormap

@@ -27,12 +27,18 @@ fermentation, flowsheet simulation and techno-economic analysis.
       improves on the baseline strain (3.788 vs 3.844 $/GGE); only 8.4 % of
       the plane beats the baseline at all
 
+      +++
+      Glycolysis × ethanol-inhibition plane, build 2b5b27d
+
    .. grid-item-card:: 13.7 %
       :text-align: center
       :class-card: ibo-stat
       :shadow: sm
 
       Highest IRR anywhere in the plane: no design clears the 15 % hurdle
+
+      +++
+      Glycolysis × ethanol-inhibition plane, build 2b5b27d
 
    .. grid-item-card:: +21 %
       :text-align: center
@@ -42,6 +48,9 @@ fermentation, flowsheet simulation and techno-economic analysis.
       MESP of a strain with ethanol inhibition fully relieved, despite 3.7×
       the productivity; IRR falls from 12.6 % to −9.4 %
 
+      +++
+      Glycolysis × ethanol-inhibition plane, build 2b5b27d
+
    .. grid-item-card:: 19 of 22
       :text-align: center
       :class-card: ibo-stat
@@ -50,18 +59,24 @@ fermentation, flowsheet simulation and techno-economic analysis.
       glycolysis columns without growth derating whose cost-optimal
       inhibition is exactly where the 16-spike cap starts to bind
 
+      +++
+      Glycolysis × ethanol-inhibition plane, build 2b5b27d
+
 .. admonition:: Key insights
    :class: tip
 
    - **Ethanol-only strain levers have little headroom.** At the baseline
      process, the best design in the plane is only 1.46 % cheaper than the
-     baseline strain. Four sibling planes agree, with best improvements of
-     0.80–1.53 % and highest IRRs of 13.2–13.7 %. A step change requires
-     changing what the plant sells (:doc:`kinetic_optimization`).
+     baseline strain. Four distinct planes (glycolysis, ``k_1e``, Pdc and
+     Adh1), plus two earlier runs of the glycolysis plane, six runs in all,
+     agree: best improvements of 0.80–1.53 % and highest IRRs of
+     13.2–13.7 %. A step change requires changing what the plant sells
+     (:doc:`kinetic_optimization`).
    - **More ethanol tolerance can cost more.** The MESP optimum sits at
-     about 0.77× the fitted inhibition coefficients (0.77–0.79× in all five
-     ethanol planes). Relieving inhibition entirely costs 18–23 % in each
-     plane, because the extra tolerance feeds growth, not ethanol.
+     about 0.77× the fitted inhibition coefficients (0.77–0.79× in all six
+     runs). In every run whose inhibition axis reaches zero, relieving
+     inhibition entirely raises MESP 18–23 % above the baseline, because
+     the extra tolerance feeds growth, not ethanol.
    - **The process, not the cell, sets the tolerance optimum.** Lower
      inhibition pays only until the fed-batch spike cap binds. A tolerance
      target quoted without a feeding policy is meaningless. The *location*
@@ -287,7 +302,8 @@ marked points compare as follows:
 
 .. list-table:: Marked points of the glycolysis × ethanol-inhibition plane (build ``2b5b27d``)
    :header-rows: 1
-   :widths: 20 12 10 10 10 20 8 10
+   :widths: auto
+   :class: ibo-num
 
    * - Point
      - (glycolysis ×, inhibition ×)
@@ -368,6 +384,7 @@ The response along the inhibition axis at baseline glycolytic capacity
 .. list-table:: MESP versus ethanol inhibition at 1.026× glycolysis (build ``2b5b27d``)
    :header-rows: 1
    :stub-columns: 1
+   :class: ibo-num
 
    * - Inhibition ×
      - MESP ($/GGE)
@@ -459,16 +476,19 @@ to 0.365 g/g: tolerance buys cell-hours rather than per-cell production.
 Relief helps only down to about 0.77× the fitted coefficients. Between 1.0×
 and 0.77×, lower inhibition *helps* (−0.9 %). Within 1 % of the column
 minimum the inhibition spans about 0.62–1.03×, so the bottom of the U is
-flat. The same U appears in all five ethanol planes, with the optimum at
-0.77–0.79× and a full-relief penalty of 18–23 %.
+flat. The same U appears in every run of the four planes: the optimum sits
+at 0.77–0.79× in all six, and in the four runs whose inhibition axis
+reaches zero, full relief costs 18–23 % over the baseline.
 
 The process sets the optimum: the 16-spike cap
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 For each glycolysis column, compare the MESP-minimizing inhibition with the
 inhibition at which the realized spike count first reaches its cap of 16.
-In **19 of 22** columns without growth derating (glycolysis < 2.35×), the
-two are identical. Every mismatch lies at 2.46× or above, where derating
+In **19 of the 22** columns without growth derating (glycolysis < 2.35×),
+the two are identical, and in the other three they are one grid step
+apart. Across all 39 columns that make ethanol, the two lie within one grid
+step in 24; every larger mismatch lies at 2.46× or above, where derating
 begins. The mechanism can be read off the table above:
 
 - **Before the cap binds** (1.026× → 0.770×), lower inhibition lets the
@@ -543,11 +563,13 @@ Three cliffs, three mechanisms
      - Low inhibition with high glycolysis. MESP first exceeds 5.15 $/GGE
        at 1.23× (inhibition 0.001×) and at 2.46× (inhibition 0.770×),
        along a roughly linear boundary.
-     - Burden derating is off here (d = 1.00). These are fast fermentations
-       (τ 14–18 h) at the 16-spike cap whose yield collapses (row 0.309×:
-       0.42 g/g at 1.0× → 0.25 at 2.05× → 0.12 at 4.0×) without a biomass
-       sink (cells about 10–14 g/L). Aeration climbs to 199 kmol O₂/h and
-       TCI to 170 MM$.
+     - Fast fermentations (τ 14–18 h) at the 16-spike cap whose yield
+       collapses (row 0.309×: 0.42 g/g at 1.0× → 0.25 at 2.05×) without a
+       biomass sink (cells about 10–14 g/L). Aeration climbs to
+       199 kmol O₂/h and TCI to 170 MM$. Along the boundary itself
+       (1.23–2.46×) burden derating is inactive or nearly so (d = 1 below
+       2.35×, 0.95 at 2.46×); beyond 2.35× the burden also starts to derate
+       growth, so the far right of each row mixes both mechanisms.
      - "Kinetic overflow": once ethanol stops throttling glycolysis, flux
        outruns the ethanol branch (**inferred**). *Where* the carbon goes is
        **not established**. One reading, a leak to acetate through the
@@ -570,7 +592,8 @@ Three cliffs, three mechanisms
 Sibling planes: k_1e, Pdc and Adh1
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Five ethanol planes from the same model state tell the same story:
+Four distinct planes, six runs in all, from the same model state tell the
+same story:
 
 .. list-table:: Sibling planes (all scenario A, 16-spike cap, build ``2b5b27d``)
    :header-rows: 1

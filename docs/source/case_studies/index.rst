@@ -25,11 +25,15 @@ its flowsheet, scenarios and the scripts behind every analysis shown.
       pathway. **Strains that maximize titer, rate or yield miss the
       profitable design; the best strain found co-produces isobutanol and
       ethanol and more than doubles the plant's internal rate of return
-      (12.6 % → 27.3 %) at the same capital.**
+      (12.6 % → 27.3 %) at the same capital.** That strain is a
+      prospective, bounds-limited in-silico target, not a near-term one: its
+      39.6 g/L isobutanol is 15–20× the best reported *S. cerevisiae* titers,
+      and the result rests on one isobutanol price and two random seeds
+      (:ref:`scope <ibo-opt-scope>`).
 
       +++
       ``nskinetics.biorefineries.isobutanol`` · flowsheet, TEA, 10 scenarios,
-      8 analyses
+      8 analyses · IRRs: campaign record, build 2b5b27d
 
 .. toctree::
    :maxdepth: 2

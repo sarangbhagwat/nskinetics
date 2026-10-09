@@ -9,12 +9,12 @@ Isobutanol biorefinery
 
    process_and_tea
    feeding_strategies
+   uncertainty
    kinetic_sweeps
    kinetic_optimization
    objective_landscape
    enzyme_burden
    sensitivity
-   uncertainty
    running_analyses
 
 ``nskinetics.biorefineries.isobutanol`` is a complete corn dry-grind
@@ -22,7 +22,8 @@ biorefinery, built in `BioSTEAM <https://biosteam.readthedocs.io/>`__, that
 turns corn into fuel ethanol, isobutanol, distillers' dried grains with
 solubles (DDGS) and corn oil. Its fermentor, ``V406``, is not a fixed-yield
 black box: every simulation integrates an NSKinetics fed-batch kinetic model
-of *Saccharomyces cerevisiae* (the Lei et al. 2001 core plus an engineered
+of *Saccharomyces cerevisiae* (the :ref:`Lei et al. 2001 <ibo-ref-lei2001>`
+core plus an engineered
 Ehrlich isobutanol pathway, reactions r13–r17), and the titer, yield, rate and
 fermentation time it returns size the separations, utilities and capital
 downstream. That makes it a test bed for one question: **when strain kinetics
@@ -41,7 +42,10 @@ scenarios and every analysis script, so each result below can be re-run
       :shadow: sm
 
       IRR of the wild-type ethanol plant vs the best co-producing strain
-      found, at essentially the same capital (TCI 139.3 vs 137.7 MM$).
+      found in silico, at essentially the same capital (TCI 139.3 vs
+      137.7 MM$). A prospective, bounds-limited target: 39.6 g/L
+      isobutanol is 15–20× the best reported *S. cerevisiae* titers, at one
+      isobutanol price, from two random seeds (:ref:`scope <ibo-opt-scope>`).
 
       +++
       Campaign record, build 2b5b27d
@@ -131,11 +135,15 @@ unit (``V406``), the
 factory that builds the sugar-preparation trains, fermentor and aeration loop
 around it, and the shipped kinetic model
 ``nskinetics.models.s_cerevisiae_ferm_fb_inhib_mod_ibo`` (walked through in
-:doc:`/tutorial/05_real_model`). Two safeguards run on every simulation: the
-fermentor closes its spike-feed balance against what the upstream feed train
-delivers (``V406.spike_feed_residual``, held to 1e-3), and an
-enzyme-burden (proteome-allocation) constraint derates growth for strains
-whose enzyme load would not fit in the cell (:doc:`enzyme_burden`).
+:doc:`/tutorial/05_real_model`). Two safeguards keep the results physical.
+On every simulation the fermentor closes its spike-feed balance against what
+the upstream feed train delivers (``V406.spike_feed_residual``, held to
+1e-3). Wherever an enzyme-burden model is installed, a proteome-allocation
+constraint derates growth for strains whose enzyme load would not fit in the
+cell; it is on for scenario A (where it is inert), the ``opt_*`` scenarios,
+the kinetic-sweep planes reported here, the optimization campaigns and the
+Sobol' analysis, and off for scenario B, the feeding sweep and the
+uncertainty run (:doc:`enzyme_burden`).
 
 .. tab-set::
 
@@ -171,7 +179,7 @@ whose enzyme load would not fit in the cell (:doc:`enzyme_burden`).
          saccharified slurry is split between an initial-feed and a
          spike-feed train, fermented with compressed air in the fed-batch
          (or batch) fermentor, and the vent is scrubbed so stripped alcohols
-         rejoin the broth. **B** — a solvent-free distillation train
+         rejoin the beer sent to distillation. **B** — a solvent-free distillation train
          recovers ethanol and isobutanol; dashed units run only when
          isobutanol is produced; the stillage becomes DDGS and corn oil.
          Wastewater treatment, the boiler-turbogenerator, utilities and the
@@ -190,7 +198,7 @@ package's smoke tests pin. All of them live in
 
 .. list-table:: Registered scenarios and their pinned MPSPs (purity-adjusted, $/kg, at a 15 % IRR)
    :header-rows: 1
-   :widths: 28 35 17 9 11
+   :widths: 30 34 16 10 10
    :class: ibo-scenarios
 
    * - Scenario
@@ -275,23 +283,35 @@ not made at all.
    - **Trial numbers** are the 0-based ``trial_number`` of the campaign
      CSVs. Some figure captions on :doc:`kinetic_optimization` count
      simulations from 1 instead, so #841 appears there as trial 842.
-   - **Scenario B carries an open caveat:** its workbook still sets the
-     Adh6 rate constant ``k_17 = 44``, while the corrected model value is
-     0.1077, so Adh6 (r17) runs about 400× too fast in B. Treat B's numbers
-     as provisional until that row is corrected and re-pinned.
+   - **Scenario B is a reference build, not a feasible strain.** Its
+     pathway constants exceed the proteome cap (so it runs without the
+     enzyme burden), and its workbook still sets the Adh6 rate constant
+     ``k_17 = 44``, while the corrected model value is 0.1077, so Adh6
+     (r17) runs about 400× too fast in B. Treat B's numbers as provisional
+     until that row is corrected and re-pinned, and do not read its IRR as
+     evidence that co-production pays; the feasible co-production result is
+     ``opt_PI_TRY_informed`` (:doc:`kinetic_optimization`).
 
 
 Run it
 ------
 
-The biorefinery needs optional dependencies that plain NSKinetics does not
-(the Bioindustrial-Park ``biorefineries`` package, ``hensmith`` and a few
-analysis libraries; see :doc:`running_analyses` for the validated versions):
+The case study needs the first NSKinetics release that ships
+``nskinetics.biorefineries``, which is not on PyPI yet, plus optional
+dependencies that plain NSKinetics does not (the Bioindustrial-Park
+``biorefineries`` package, ``hensmith`` and a few analysis libraries). Until
+that release is out, install it from source with the ``isobutanol`` extra,
+then check the installation against scenario A's pins.
+:ref:`isobutanol-installation` has the full instructions and the validated
+dependency versions.
 
 .. code-block:: bash
 
-   $ pip install "nskinetics[isobutanol]"
-   $ python -m nskinetics.biorefineries.isobutanol.smoke 1    # check: scenario A vs its pins
+   $ git clone https://github.com/sarangbhagwat/nskinetics
+   $ cd nskinetics
+   $ git checkout dev
+   $ pip install -e ".[isobutanol]"
+   $ python -m nskinetics.biorefineries.isobutanol.smoke 1
 
 Then build the flowsheet, load a scenario and solve its TEA:
 
@@ -334,8 +354,8 @@ Things to know before you script with it:
   exactly, load **one scenario per fresh process**, as the smoke cases do.
 - ``bundle`` also carries ``model`` (the biosteam uncertainty
   ``Model``), ``tea``, ``fbs_spec`` (the fed-batch strategy specification),
-  ``feeding_kwargs``, ``expected`` (the pins) and the active
-  ``burden_model``.
+  ``namespace_dict``, ``feeding_kwargs``, ``expected`` (the pins), the
+  active ``burden_model`` and ``burden_on``.
 - Run simulating scripts **one at a time**: concurrent processes share an
   on-disk numba cache and can corrupt it.
 - The analysis scripts write their outputs under one results root
@@ -349,13 +369,27 @@ Things to know before you script with it:
 What the analyses found
 -----------------------
 
+**The story, in the order of the pages.** At the wild-type ethanol plant,
+cost is set by sugar loading and commodity context, not by the strain:
+about 92 % of the MESP variance is prices, uptime and scale. The classic
+strain levers have little headroom: the wild type sits within 1.5 % of the
+best design on the glycolysis × ethanol-inhibition plane, and full ethanol
+tolerance raises MESP by 21 %. A step change needs a higher-value second
+product, yet strains optimized for titer, rate or yield miss it: 11 of 12
+TRY optima fall short of the 15 % IRR hurdle, while searching profitability
+directly finds a co-producer at 27.3 % IRR at unchanged capital (a
+prospective target; see its :ref:`scope <ibo-opt-scope>`). The landscape,
+burden and sensitivity pages explain why: profitable designs form small,
+separated islands that need ALS, the downstream Ehrlich enzymes and Adh6
+raised together within the cell's proteome budget.
+
 Each page states the question, the method, the results with their figures,
 and the caveats; the build behind each headline is in the card footer.
 
 .. grid:: 1 1 2 2
    :gutter: 3
 
-   .. grid-item-card:: Process and TEA
+   .. grid-item-card:: Process and techno-economics
       :link: process_and_tea
       :link-type: doc
       :shadow: sm
@@ -380,14 +414,30 @@ and the caveats; the build behind each headline is in the card footer.
       +++
       Threshold × target sweep · build 2b5b27d-equivalent
 
+   .. grid-item-card:: Uncertainty analysis
+      :link: uncertainty
+      :link-type: doc
+      :shadow: sm
+
+      **Context, not kinetics, sets cost risk.** ~92 % of MESP variance is
+      context, ~5 % all 40 kinetic parameters — yet per unit change, yield
+      moves MESP almost as much as the corn price (elasticity −0.54 vs
+      +0.65).
+
+      +++
+      6,000 Monte Carlo simulations, Spearman · build 6d4776f
+
    .. grid-item-card:: Kinetic sweeps
       :link: kinetic_sweeps
       :link-type: doc
       :shadow: sm
 
-      **More ethanol tolerance can cost more.** The wild-type strain already
-      sits within 1.5 % of the best MESP on the glycolysis × ethanol-
-      inhibition plane, and no point on it reaches the 15 % hurdle.
+      **More ethanol tolerance can cost more.** Removing ethanol inhibition
+      entirely makes the strain 3.7× more productive yet raises MESP by
+      21 %, because once the feeding policy stops delivering sugar the
+      extra tolerance feeds growth. The wild-type strain already sits within
+      1.5 % of the best design on the glycolysis × ethanol-inhibition plane,
+      and no point on it reaches the 15 % hurdle.
 
       +++
       40 × 40 kinetic planes · build 2b5b27d
@@ -432,7 +482,7 @@ and the caveats; the build behind each headline is in the card footer.
       +++
       Proteome-allocation constraint · build 2b5b27d
 
-   .. grid-item-card:: Global sensitivity
+   .. grid-item-card:: Global sensitivity analysis
       :link: sensitivity
       :link-type: doc
       :shadow: sm
@@ -443,19 +493,6 @@ and the caveats; the build behind each headline is in the card footer.
 
       +++
       Sobol'/Shapley analysis of 12 decisions · build 2b5b27d
-
-   .. grid-item-card:: Uncertainty
-      :link: uncertainty
-      :link-type: doc
-      :shadow: sm
-
-      **Context, not kinetics, sets cost risk.** ~92 % of MESP variance is
-      context, ~5 % all 40 kinetic parameters — yet per unit change, yield
-      moves MESP almost as much as the corn price (elasticity −0.54 vs
-      +0.65).
-
-      +++
-      6,000 Monte Carlo simulations, Spearman · build 6d4776f
 
    .. grid-item-card:: Running the analyses
       :link: running_analyses
@@ -487,8 +524,8 @@ Conventions used on these pages
      .. math::
 
         \mathrm{MESP}\ [\$/\mathrm{GGE}]
-        = \mathrm{MPSP}\ [\$/\mathrm{kg}] \times \frac{0.789 \times 3.785411784}{0.67}
-        = 4.45775 \times \mathrm{MPSP}\ [\$/\mathrm{kg}]
+        &= \mathrm{MPSP}\ [\$/\mathrm{kg}] \times \frac{0.789 \times 3.785411784}{0.67} \\
+        &= 4.45775 \times \mathrm{MPSP}\ [\$/\mathrm{kg}]
 
      (ethanol density 0.789 kg/L, 3.785 L/gal, 0.67 GGE per gallon of
      ethanol). Because each MPSP is a break-even *given the other product's
@@ -521,7 +558,8 @@ Conventions used on these pages
         * - 2b5b27d
           - 0.86233 $/kg = 3.844 $/GGE, IRR 12.60 %, TCI 139.3 MM$
           - every optimization campaign, the TEA breakdowns, the 2-D kinetic
-            sweeps, the feeding grid, the Sobol' runs
+            sweeps, the Sobol' runs; the feeding grid ran on code equivalent
+            to it (2b5b27d-equivalent)
         * - 6d4776f
           - 0.86021 $/kg = 3.835 $/GGE, IRR 12.79 %, TCI 139.09 MM$
           - the 6,000-sample uncertainty run, the baseline trajectory figure,
@@ -531,11 +569,80 @@ Conventions used on these pages
           - the live ``opt_*`` scenario pins (TEA metrics 1–5 % off the
             2b5b27d campaign record)
 
-     A campaign IRR and an uncertainty MESP are never placed side by side.
-   - **Trial numbers** are 0-based campaign-CSV ``trial_number`` values unless
-     a caption says otherwise.
+     Campaign IRRs (build 2b5b27d) and the uncertainty run's MESPs (build
+     6d4776f) therefore come from different builds and are not directly
+     comparable, which is why the pages never set one beside the other.
+   - **Trial numbers.** ``#842`` is a 0-based campaign-CSV
+     ``trial_number``, the form used in prose, in ``scenarios.py`` and in
+     the objective-landscape figures. The two campaign figures on
+     :doc:`kinetic_optimization` count simulations from 1 instead
+     ("trial 843", "simulation 939"), so the same design appears there one
+     number higher (for the relay, simulation = ``trial_number`` − 999).
    - **Reproducibility margin.** The objective is deterministic, but a
      design re-simulated in a fresh process can land slightly differently
      because the flowsheet converges from a different starting state. Each
      page that compares close PI values states which margin it uses
      (0.0105 PI cross-process, or 0.0075 PI between campaigns).
+
+
+.. _isobutanol-references:
+
+References
+----------
+
+The base kinetic model, the isobutanol benchmarks behind the scope of the
+co-production result, and the sources of the enzyme-burden constants, as
+cited on the case-study pages.
+
+.. _ibo-ref-jach2022:
+
+Jach, M. E., Serefko, A., Ziaja, M. & Kieliszek, M. (2022). Yeast protein as
+an easily accessible food source. *Metabolites* **12**, 63.
+https://doi.org/10.3390/metabo12010063
+
+.. _ibo-ref-kondo2012:
+
+Kondo, Tezuka, Ishii, Matsuda, Ogino & Kondo (2012). *J. Biotechnol.*
+**159**, 32–37. https://doi.org/10.1016/j.jbiotec.2012.01.022
+
+.. _ibo-ref-lane2020:
+
+Lane, Zhang, Yun, Ziolkowski, Zhang, Jin & Avalos (2020).
+*Biotechnol. Bioeng.* **117**, 372–381. https://doi.org/10.1002/bit.27202
+
+.. _ibo-ref-lei2001:
+
+Lei, F., Rotbøll, M. & Jørgensen, S. B. (2001). A biochemically structured
+model for *Saccharomyces cerevisiae*. *J. Biotechnol.* **88**, 205–221.
+https://doi.org/10.1016/S0168-1656(01)00269-3
+
+.. _ibo-ref-metzlraz2017:
+
+Metzl-Raz, E., Kafri, M., Yaakov, G., Soifer, I., Gurvich, Y. & Barkai, N.
+(2017). Principles of cellular resource allocation revealed by
+condition-dependent proteome profiling. *eLife* **6**, e28034.
+https://doi.org/10.7554/eLife.28034
+
+.. _ibo-ref-sanchez2017:
+
+Sánchez, B. J., Zhang, C., Nilsson, A., Lahtvee, P.-J., Kerkhoven, E. J. &
+Nielsen, J. (2017). Improving the phenotype predictions of a yeast
+genome-scale metabolic model by incorporating enzymatic constraints.
+*Mol. Syst. Biol.* **13**, 935. https://doi.org/10.15252/msb.20167411
+
+.. _ibo-ref-scott2010:
+
+Scott, M., Gunderson, C. W., Mateescu, E. M., Zhang, Z. & Hwa, T. (2010).
+Interdependence of cell growth and gene expression: origins and
+consequences. *Science* **330**, 1099–1102.
+https://doi.org/10.1126/science.1192588
+
+.. _ibo-ref-su2021:
+
+Su, Shao, Zhang, A. & Zhang, W. (2021). *FEMS Yeast Res.* **21**, foab012.
+https://doi.org/10.1093/femsyr/foab012
+
+.. _ibo-ref-wess2019:
+
+Wess, Brinek & Boles (2019). *Biotechnol. Biofuels* **12**, 173.
+https://doi.org/10.1186/s13068-019-1486-8

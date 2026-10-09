@@ -23,6 +23,9 @@ each campaign's best design as a reproducible ``opt_*`` scenario.
       TRY optima (six objectives × two seeds) failed the 15 % IRR hurdle.
       None exceeded 15.5 %, against the starting strain's 12.6 %.
 
+      +++
+      Campaign record, build 2b5b27d
+
    .. grid-item-card:: 1.7 → 22.9 %
       :text-align: center
       :class-card: ibo-stat
@@ -32,6 +35,9 @@ each campaign's best design as a reproducible ``opt_*`` scenario.
       isobutanol-yield campaign, for 7 % less yield. The campaign returned
       the 1.7 % design.
 
+      +++
+      Campaign record, build 2b5b27d
+
    .. grid-item-card:: 15.8 vs 27.3 %
       :text-align: center
       :class-card: ibo-stat
@@ -40,21 +46,27 @@ each campaign's best design as a reproducible ``opt_*`` scenario.
       Final IRR of two profitability campaigns that differed **only in random
       seed**. One froze on an ethanol-only design for 95 % of its budget.
 
+      +++
+      Campaign record, build 2b5b27d
+
    .. grid-item-card:: 52 and 67
       :text-align: center
       :class-card: ibo-stat
       :shadow: sm
 
       Simulations that two TRY-informed relay campaigns needed to reach
-      PI ≥ 0.75. The successful unseeded campaign needed 939; the other never
-      got there.
+      PI ≥ 0.75. The successful uninformed campaign needed 939; the other
+      never got there.
+
+      +++
+      Campaign record, build 2b5b27d
 
 .. admonition:: In one sentence
    :class: tip
 
-   TRY optima miss the profit optimum, a profitability search alone is
-   seed-dependent, and seeding it with the TRY campaigns' trials makes it
-   fast and repeatable. The best design found co-produces about 40 g/L each of
+   TRY optima miss the profit optimum, a profitability search alone depends
+   on its random seed, and preloading it with the TRY campaigns' trials
+   makes it fast and repeatable. The best design found co-produces about 40 g/L each of
    ethanol and isobutanol with Pdc knocked down, not deleted. It returns
    27.3 % IRR against 12.6 % at essentially the same capital (137.7 vs
    139.3 MM$). That design is a **prospective, bounds-limited target**; see
@@ -79,6 +91,11 @@ each campaign's best design as a reproducible ``opt_*`` scenario.
      **simulated index**: trial = ``trial_number`` + 1, or ``trial_number`` − 999
      for the TRY-informed relay. So #841/#842 are trials 842/843 in the
      figures, and #1912 is trial 913.
+   - **Seeds and donor trials.** On this page a *seed* is always a random
+     seed (seed 350, seed 33960). The 1,000 rows preloaded into a relay
+     campaign are *donor trials*. The two figures, however, label those
+     preloaded donor trials "seeds": in the figures, "seeds" means the 1,000
+     donor trials, not random seeds.
    - **Reproducibility margin.** The objective is deterministic, but it drifts
      slightly with the converged state each simulation starts from
      (load-path drift). This page treats PI differences below
@@ -180,7 +197,6 @@ scenario A (study-name tag ``_aA``), with the enzyme-burden constraint on. Its
 12 variables:
 
 .. dropdown:: The 12 decision variables of ``metabolic_split_12d`` and their campaign bands
-   :open:
 
    .. list-table::
       :header-rows: 1
@@ -325,7 +341,7 @@ The campaigns
    3. Keep all **327** rows with PI ≥ PI\ :sub:`A`, the starting strain's PI.
    4. Fill to 1,000 with **673** maximin (space-filling) rows.
 
-   The keep step selects on PI, so the seed set is **not** blind to
+   The keep step selects on PI, so the donor set is **not** blind to
    profitability. Relays run only under the GP engine. Optuna's TPE would
    class preloaded trials without a constraint record as infeasible, so they
    would become its "bad" density. The relay study name carries ``_rl`` plus
@@ -352,7 +368,8 @@ Results
 -------
 
 The two figures below summarize the eight seed-350 campaigns. The text adds
-the second seed set and the first relay where a claim needs them.
+the campaigns of the second random seed (33960) and the first relay where a
+claim needs them.
 
 .. figure:: /_static/images/isobutanol/optimization/kinbo_main_scouts_campaigns.png
    :target: ../../_static/images/isobutanol/optimization/kinbo_main_scouts_campaigns.png
@@ -371,20 +388,23 @@ the second seed set and the first relay where a claim needs them.
 
    **Isobutanol TRY scouts visit designs above the 15.8 % ethanol-only plateau
    of the uninformed profitability campaign but return low-IRR designs.
-   Seeded with their trials, a profitability search co-produces above that
-   plateau on trial 2, beats every seed by trial 13 and reaches 27.3 %.**
-   Eight GP campaigns (seed 350) searched the same 12-d space. Two maximized
-   profitability (PI, plotted as IRR): **uninformed** (cyan, 2,000 trials) and
-   **TRY-informed** (teal, 1,000 simulated trials after 1,000 preloaded
-   seeds). Six TRY scouts each maximized one titer, rate or yield of ethanol
-   (amber) or isobutanol (violet). Their 12,000 simulations supplied the seeds:
-   327 scout trials at least as profitable as the starting strain, plus 673
-   space-filling ones. Trials are 1-based simulated indices. Dashed cyan: the
-   uninformed plateau (tinted above). Dotted grey: the starting strain,
-   12.6 %. Dotted violet: the best seed, 22.9 %. "Loss": IRR < 0 or no IRR.
-   "Making isobutanol" means ≥ 5 g/L; "co-production" means ≥ 5 g/L of each
-   alcohol.
-   **(a)** Best IRR so far; the left strip shows the seeds. In the TRY-informed
+   Preloaded with their trials, a profitability search co-produces above that
+   plateau on trial 2, beats every donor trial by trial 13 and reaches
+   27.3 %.** In the figure, "seeds" means the 1,000 preloaded donor trials,
+   not random seeds.
+   Eight GP campaigns (random seed 350) searched the same 12-d space. Two
+   maximized profitability (PI, plotted as IRR): **uninformed** (cyan, 2,000
+   trials) and **TRY-informed** (teal, 1,000 simulated trials after 1,000
+   preloaded donor trials). Six TRY scouts each maximized one titer, rate or
+   yield of ethanol (amber) or isobutanol (violet). Their 12,000 simulations
+   supplied the 1,000 donor trials: 327 scout trials at least as profitable
+   as the starting strain, plus 673 space-filling ones. Trials are 1-based
+   simulated indices. Dashed cyan: the uninformed plateau (tinted above).
+   Dotted grey: the starting strain, 12.6 %. Dotted violet: the best donor
+   trial (#842, trial 843 in the figure), 22.9 %. "Loss": IRR < 0 or no
+   IRR. "Making isobutanol" means ≥ 5 g/L; "co-production" means ≥ 5 g/L of
+   each alcohol.
+   **(a)** Best IRR so far; the left strip shows the donor trials. In the TRY-informed
    campaign every improvement from trial 7 on co-produced. It reached 25.3 % on
    trial 18 and refined 26.2 % (trial 25) to 27.3 % (trial 913 = #1912). The
    uninformed campaign stayed at 15.8 % (ethanol only) from trial 104 (#103)
@@ -403,17 +423,19 @@ the second seed set and the first relay where a claim needs them.
    Hatched: Adh1, Adh6.
    **(f)** Share of trials making isobutanol against best-visit (open) and
    returned (filled) IRR. The uninformed campaign made isobutanol in 4.9 % of
-   its trials; the TRY-informed one in 65.9 %. The hexagon marks the seeds.
+   its trials; the TRY-informed one in 65.9 %. The hexagon marks the donor
+   trials.
    IRRs are at default prices under build 2b5b27d.
 
 TRY optima miss the profit optimum
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The first runs were the objectives a strain program would choose. **Eleven of
-twelve** process-level optima (six objectives × two seeds) failed the 15 %
-hurdle. None exceeded 15.5 % IRR; the maximum was 15.45 %, from the seed-33960
-isobutanol-yield optimum. Each optimum fails through a different channel. The
-seed-350 returned designs:
+twelve** process-level optima (six objectives × two random seeds) failed
+the 15 % hurdle. The twelfth, the seed-33960 isobutanol-yield optimum,
+cleared it narrowly at 15.45 % IRR, and only at about 1.8× the starting
+strain's capital (TCI 245 MM$); none exceeded 15.5 %. Each optimum fails
+through a different channel. The seed-350 returned designs:
 
 .. list-table:: Returned designs of the seed-350 campaigns (build 2b5b27d)
    :header-rows: 1
@@ -548,7 +570,7 @@ Two uninformed PI campaigns with identical settings ended at **15.8 %** and
      - #1602: PI 0.809, co-production
    * - Trajectory
      - Frozen from #103 on (95 % of the budget)
-     - First passed PI 0.75 at #938
+     - First passed PI 0.75 at #938 (simulation 939)
    * - Best point of the 50-point start-up
      - PI −0.975, ethanol only (144 g/L ethanol)
      - PI −0.299, co-production (28.0 g/L isobutanol + 62.1 g/L ethanol)
@@ -574,9 +596,12 @@ Scouts make the search fast and repeatable, not higher
 
 The two relay campaigns started from the TRY campaigns' trials, so each began
 already holding its best donor row: PI 0.504 (IRR 22.9 %, the TRY-informed
-relay's #842) and PI 0.658 (IRR 25.1 %, the first relay).
+relay's #842) and PI 0.658 (IRR 25.1 %, the first relay). The counts below
+ignore those preloaded incumbents: they measure how fast each relay's own
+proposals reached each level, starting from simulation 1 (PI −3.63 and
+−3.38, both money-losing first proposals).
 
-.. list-table:: First simulated trial at which best-so-far PI reaches a threshold
+.. list-table:: First simulated trial at which the best-so-far PI among a campaign's own simulations (preloaded rows excluded) reaches a threshold
    :header-rows: 1
    :widths: 16 21 21 21 21
 
@@ -601,11 +626,12 @@ relay's #842) and PI 0.658 (IRR 25.1 %, the first relay).
      - 1603
      - never
 
-- IRR ≥ 25 % came at simulation 18 and 19 for the two relays.
+- Among their own simulations (preloaded rows excluded), the two relays
+  first reached IRR ≥ 25 % at simulation 18 and 19.
 - The relays' finals, PI **0.808** and **0.800**, tie the reference uninformed
   campaign's **0.809** within the 0.0105 reproducibility margin. **The benefit
   is speed and reliability, not a higher ceiling.**
-- The seeded route used 13,000 simulations (12,000 scout + 1,000). The
+- The relay route used 13,000 simulations (12,000 scout + 1,000). The
   uninformed campaign used 2,000.
 - **No warm-start, random-search or single-donor control was run.** These
   comparisons therefore bound the value of reusing donor campaigns that were
@@ -615,7 +641,7 @@ relay's #842) and PI 0.658 (IRR 25.1 %, the first relay).
 - Two 4,091-design Sobol' samples of the same space bracket the result. Under
   the campaigns' own sampling measure no design exceeded the hurdle (best
   13.7 %). Under a linear engineering prior 19 did, the best at 21.5 %, which
-  is below the best seed (:doc:`sensitivity`).
+  is below the best donor trial (#842, 22.9 %; :doc:`sensitivity`).
 
 The ceiling was set by the bounds, not the search
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -623,9 +649,13 @@ The ceiling was set by the bounds, not the search
 All **48** designs with PI ≥ 0.75 sit at four search bounds: the ALS cap
 (4.0 g/L/h), the Adh6 cap (2.154 = 20× native), the isobutanol-inhibition floor
 (0.75) and the target − threshold floor (5 g/L). #1912 sits at five bounds and
-#1602 at six, so higher IRR may exist outside the searched ranges. Wide-band
-``metabolic_14d`` campaigns reached PI 0.99, but in a different decision space
-that is not comparable.
+#1602 at six, so higher IRR may exist outside the searched ranges. Sitting
+at a bound does not prove that the bound binds, though. In the screening
+Sobol' samples isobutanol titer stops rising once Adh6 exceeds about 2×
+native (:doc:`sensitivity`), so the Adh6 cap may be inert; the ALS cap and
+the isobutanol-tolerance floor are the likelier binding limits. No run
+beyond the bands has tested this. Wide-band ``metabolic_14d`` campaigns
+reached PI 0.99, but in a different decision space that is not comparable.
 
 The flagship design inverts the textbook isobutanol strain
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -644,6 +674,9 @@ as a co-product.
 
       Sales; revenue per kg of sugar +22 % (0.384 → 0.469 $/kg)
 
+      +++
+      Optimum #1912 vs scenario A, build 2b5b27d
+
    .. grid-item-card:: 39.6 + 40.6 g/L
       :text-align: center
       :class-card: ibo-stat
@@ -651,12 +684,18 @@ as a co-product.
 
       Isobutanol + ethanol. Isobutanol supplies 55 % of sales.
 
+      +++
+      Optimum #1912
+
    .. grid-item-card:: 0.33×
       :text-align: center
       :class-card: ibo-stat
       :shadow: sm
 
       Pdc capacity relative to wild type: knocked down, not deleted
+
+      +++
+      Optimum #1912
 
    .. grid-item-card:: 47 %
       :text-align: center
@@ -666,10 +705,14 @@ as a co-product.
       Share of the metabolic proteome in the isobutanol pathway
       (0.0607 of Φ\ :sub:`M` 0.130 g/gDCW)
 
-Total alcohol yield **falls** to 0.403 g/g. Revenue still rises, because
-isobutanol sells at 1.80× ethanol per kg; the economic optimum is not the
-carbon-yield optimum. Capital is essentially unchanged (TCI 137.7 vs
-139.3 MM$).
+      +++
+      Optimum #1912
+
+Total alcohol mass yield **falls** to 0.403 g/g, but carbon yield barely
+moves (88 % vs 90 % of theoretical): isobutanol simply weighs less per
+glucose. Revenue rises because isobutanol sells at 1.80× ethanol per kg, so
+the economic optimum is not the mass-yield optimum. Capital is essentially
+unchanged (TCI 137.7 vs 139.3 MM$).
 
 .. dropdown:: The flagship's full decision vector (#1912)
 
@@ -778,13 +821,16 @@ carbon-yield optimum. Capital is essentially unchanged (TCI 137.7 vs
 .. warning:: **Scope of the co-production result: read before quoting 27.3 %**
 
    - **Prospective titers.** 39.6 g/L isobutanol is about **15–20×** the best
-     reported *S. cerevisiae* titers: 2.09 g/L from glucose (Wess et al. 2019)
-     and 2.6 g/L from xylose (Lane et al. 2020). It is also **2.5×** the best
-     engineered tolerance, 16 g/L (Su et al. 2021). The optimum ran at the
+     reported *S. cerevisiae* titers: 2.09 g/L from glucose
+     (:ref:`Wess et al. 2019 <ibo-ref-wess2019>`) and 2.6 g/L from xylose
+     (:ref:`Lane et al. 2020 <ibo-ref-lane2020>`). It is also **2.5×** the
+     best engineered tolerance, 16 g/L
+     (:ref:`Su et al. 2021 <ibo-ref-su2021>`). The optimum ran at the
      most tolerant isobutanol setting allowed, so this result is
      **prospective target-setting**, not a near-term strain. A retained,
      partially knocked-down Pdc nevertheless inverts the academic standard of
-     *PDC1*/*ADH1* deletion (Kondo et al. 2012; Wess et al. 2019).
+     *PDC1*/*ADH1* deletion (:ref:`Kondo et al. 2012 <ibo-ref-kondo2012>`;
+     :ref:`Wess et al. 2019 <ibo-ref-wess2019>`).
    - **Bounds-limited.** All 48 designs with PI ≥ 0.75 sit at the ALS and
      Adh6 caps and at the isobutanol-tolerance and target − threshold floors.
      The ceiling reflects the chosen bands.
@@ -792,9 +838,9 @@ carbon-yield optimum. Capital is essentially unchanged (TCI 137.7 vs
      (2023$), indexed from a 2025 product-listing price of 1.49 $/kg. No price
      sensitivity of the optimum has been run. Quote the break-even (1.13 $/kg
      isobutanol) alongside the IRR.
-   - **Two seeds.** The seed dependence of the uninformed search and the speed
-     of the relays come from single runs per setting. They are an existence
-     proof, not a rate.
+   - **Two random seeds.** The seed dependence of the uninformed search and
+     the speed of the relays come from single runs per setting. They are an
+     existence proof, not a rate.
 
 The economically optimal strain was neither the most productive, the most
 tolerant nor the highest-yielding. It was the one that spent its proteome
@@ -876,9 +922,9 @@ that is not made.
    records. Fermentation metrics reproduce the recorded trials to
    < 10\ :sup:`−5`, but TEA metrics move by 1–5 %. For example, PI moves
    from 0.8083 (campaign) to **0.8559** (pin) for ``opt_PI_TRY_informed``, and
-   from 0.0493 to **0.0761** for ``opt_PI_uninformed``. Quote campaign numbers
-   from the campaign, scenario numbers from the scenario, and name the one you
-   use.
+   from 0.0493 to **0.0761** for ``opt_PI_uninformed``. A campaign number
+   and a scenario pin for the same design therefore differ by the build
+   shift alone; this page labels which of the two each number is.
 
 How the scenarios are built and verified:
 
@@ -938,11 +984,13 @@ Caveats and limitations
   The ``opt_*`` pins are under 95e9362. The current scenario-A/B smoke pins
   are under 6d4776f. The build shift is larger at co-production designs:
   #1602's IRR moves from 27.30 % to 28.02 % between 2b5b27d and 6d4776f.
-  Never place a campaign IRR beside an uncertainty-analysis MESP
-  (:doc:`uncertainty`).
-- **Single runs.** Every campaign is one run at one seed. The seed-dependence
-  and relay-speed claims rest on two seeds and two relays, under the sampler
-  settings used (deterministic objective, no learned constraints).
+  Campaign IRRs and the MESPs of the uncertainty analysis
+  (:doc:`uncertainty`, build 6d4776f) therefore come from different builds
+  and are not directly comparable.
+- **Single runs.** Every campaign is one run at one random seed. The
+  seed-dependence and relay-speed claims rest on two seeds and two relays,
+  under the sampler settings used (deterministic objective, no learned
+  constraints).
 - **No compute-matched control.** No warm start from the single best donor,
   no random-seed preload and no single-donor ablation were run.
 - **Reproducibility margin.** This page uses 0.0105 PI. The caption notes
@@ -950,11 +998,9 @@ Caveats and limitations
   compute a stricter, design-pair-based margin (0.0075 PI, from 49 pairs of
   identical designs simulated after different trial histories). Statements
   here do not use it.
-- **Superseded items.** The ``opt_IRR`` scenario (#1602 of the seed-33960 PI
-  campaign) was removed on 2026-10-08; use ``opt_PI_TRY_informed``. The
-  ``metabolic_minimal_subset`` optima of 2026-09-07/08 (with ``k_17`` = 44
-  workbooks) are removed too. Figures of the parameter-set plotter
-  (``plots/plot_kin_opt_parameter_sets.py``) are not shown on this page.
+- **Earlier optima.** Optima from earlier campaign presets, and an earlier
+  scenario built on #1602, are superseded and not reported here; the
+  registered co-production scenario is ``opt_PI_TRY_informed``.
 - **Basis.** Titers and productivities are per litre of water, not broth.
 
 Reproduce it
@@ -1005,9 +1051,9 @@ Reproduce it
        ``fig_main_scouts.py``, ``fig_s2_fingerprints.py``
      - Sim-safe (pandas only). They check every figure number against the
        campaign CSVs, then draw the two figures above as
-       ``kinBO_main_scouts_<stamp>`` / ``kinBO_S2_fingerprints_<stamp>``
-       (``.png`` + ``.pdf``, plus ``*_latest`` copies) and write the caption
-       files.
+       ``kinBO_main_scouts`` / ``kinBO_S2_fingerprints`` (``.png`` +
+       ``.pdf``; dated copies only with ``--timestamped``) and write the
+       caption files.
      - Seconds, but they need the eight campaign CSVs
 
 Related pages: :doc:`objective_landscape` explains *why* profitability search

@@ -2,8 +2,9 @@ Objective landscape
 ===================
 
 The :doc:`kinetic_optimization` campaigns raise two puzzles. TRY campaigns
-pass through profitable designs but do not return them, and an unseeded
-profitability search succeeds or fails depending on its random seed. This
+pass through profitable designs but do not return them, and an uninformed
+profitability search (one not preloaded with TRY designs) succeeds or fails
+depending on its random seed. This
 page looks at the *shape* of the objectives over the 12-d strain-design and
 feeding space to explain both, and compares the profitability index (PI)
 with the titer, rate and yield (TRY) objectives. The answer is about
@@ -23,6 +24,9 @@ design show what each island is made of.
       Designs with PI > 0 in a uniform sample of the campaigns' own space.
       The profitable region is tiny.
 
+      +++
+      Sobol' campaign-box sample, build 2b5b27d
+
    .. grid-item-card:: −0.07 vs −0.39
       :text-align: center
       :class-card: ibo-stat
@@ -30,6 +34,9 @@ design show what each island is made of.
 
       PI's fitness–distance correlation in the optimizer-sampled pool vs a
       uniform Sobol' sample. The "needle" look comes from the sampling.
+
+      +++
+      Optimizer pool vs Sobol' sample, build 2b5b27d
 
    .. grid-item-card:: +0.50 → −0.68
       :text-align: center
@@ -39,6 +46,9 @@ design show what each island is made of.
       Range of PI along the isobutanol-yield plateau (0.37–0.38 g/g). High
       yield does not imply profit.
 
+      +++
+      Optimizer pool, build 2b5b27d
+
    .. grid-item-card:: 0.32–0.33×
       :text-align: center
       :class-card: ibo-stat
@@ -47,12 +57,16 @@ design show what each island is made of.
       Pdc capacity, relative to wild type, at the PI peak of the Pdc slice
       through the best design (PI 0.8086). Wild-type Pdc gives 0.653.
 
+      +++
+      Pdc slice through #1912, build 2b5b27d
+
 .. admonition:: What this page does *not* claim
    :class: important
 
    The figures below were first drawn to contrast a "needle-like" PI with
-   "smooth" TRY objectives, and their built-in titles and docstrings still say
-   so. **That contrast does not survive unbiased sampling.** It holds only in
+   "smooth" TRY objectives, and the plotting scripts' docstrings and original
+   file names (``…_needle_plateau``) still say so. **That contrast does not
+   survive unbiased sampling.** It holds only in
    the pool of trials the optimizers chose to sample. This page therefore reads
    every landscape figure as a picture of the *optimizer-sampled pool's
    topology*. Do not cite them as evidence that PI is intrinsically rougher
@@ -61,7 +75,9 @@ design show what each island is made of.
    roughness.
 
 .. note:: **Conventions on this page.** Trial numbers (#841, #842, #1882,
-   #1912) are the 0-based CSV ``trial_number``, as in the figures. Every
+   #1912) are the 0-based CSV ``trial_number``, as in the figures. The
+   campaign figures on :doc:`kinetic_optimization` count from 1, so the same
+   design appears there one number higher (#842 is "trial 843"). Every
    dataset here ran under the hensmith build **2b5b27d**, the campaigns'
    build. PI = NPV at the 15 % hurdle ÷ TCI, so PI > 0 exactly when
    IRR > 15 % (see :doc:`kinetic_optimization`).
@@ -136,8 +152,10 @@ An optimizer pool is not a uniform sample. Each GP campaign exploits around
 its own optimum, so short-distance pairs crowd onto whatever plateau that
 campaign climbed. The same statistics were therefore recomputed on the two
 **uniform-feasible Sobol' samples** from the :doc:`sensitivity` analysis
-(4,091 and 4,086 points, no optimizer involved). One is drawn under the
-campaign measure and one under the screening (engineering-prior) measure.
+(no optimizer involved). One is drawn under the campaign measure and one
+under the screening (engineering-prior) measure. Each has 4,091 completed
+designs; the screening-measure statistics use the 4,086 on which all seven
+objectives are finite (five have no finite ethanol productivity).
 
 1-D slices through the best design
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -371,9 +389,13 @@ seen in :doc:`kinetic_optimization`.
 Yield and profit co-locate, except along Pdc
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Through #1912 the isobutanol-yield maximum and the PI maximum coincide along
-**10 of the 11 screened directions plus** ``k_13``. For ``inhib_acetate`` they
-lie within one grid step (0.976 vs 1.023). Two caveats apply. First, 6 of the
+Locally, the picture differs from the global pool, where high yield does
+not imply profit (PI runs from +0.50 to −0.68 along the yield plateau). The
+1-D slices below run through #1912, where ALS, Adh6 and both tolerances
+already sit at their bounds. Along them the isobutanol-yield maximum and
+the PI maximum coincide, to within one grid step, along **10 of the 11
+screened directions plus** ``k_13``; ``inhib_acetate`` is the one-step case
+(0.976 vs 1.023). Two caveats apply. First, 6 of the
 12 coordinates sit at a band bound, where coincidence is partly trivial. The
 interior coincidences are threshold 189.2 g/L, glycolysis 0.98×, ``k_6`` 7.44
 and ``ehrlich_downstream`` 0.575, on a 31-point grid. Second, ``k_3`` (Pdc) is
@@ -504,14 +526,14 @@ Caveats and limitations
 
 - **The pool is biased by construction.** The FDC, variogram, distance-profile
   and t-SNE results describe where seven GP campaigns chose to sample. The
-  needle-vs-smooth contrast built into the three landscape figures' titles
-  and docstrings fails on unbiased samples. Use the figures for topology
-  (islands, plateaus), not roughness.
+  needle-vs-smooth contrast built into the three landscape plotting scripts'
+  docstrings and file names fails on unbiased samples. Use the figures for
+  topology (islands, plateaus), not roughness.
 - **The slices are anchor-specific.** A 1-D slice fixes the other eleven
   decisions at #1912. At the same Pdc capacity, pooled designs span PI −5.1 to
-  +0.79, so the trough and peak positions belong to this anchor. For the
-  Pdc-null benchmark, cite the pooled best (PI 0.52 among 31,905 designs; see
-  :doc:`kinetic_optimization`), not this slice.
+  +0.79, so the trough and peak positions belong to this anchor. The
+  Pdc-null benchmark is therefore the pooled best, PI 0.52 among 31,905
+  designs (:doc:`kinetic_optimization`), not this slice's Pdc-null plateau.
 - **Bounds.** Six of #1912's twelve coordinates sit at a band bound, so
   yield–PI coincidence along those axes is partly trivial.
 - **Unexplained right edge.** The left edge of the trace-ethanol regime
