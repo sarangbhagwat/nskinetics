@@ -24,6 +24,11 @@ from . import units
 
 from . import models
 
+# An empty shell: the biorefinery case studies (e.g.
+# ``nskinetics.biorefineries.isobutanol``) need optional dependencies and are
+# imported explicitly, so this pulls in nothing heavy.
+from . import biorefineries
+
 from . import processes
 
 from . import visualization
@@ -35,6 +40,7 @@ __all__ = (
      'tests',
      'units',
      'models',
+     'biorefineries',
      'processes',
      'visualization'
      )

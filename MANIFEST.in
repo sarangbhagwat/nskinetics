@@ -9,3 +9,26 @@ recursive-include nskinetics/models *.txt *.xml
 
 # Reference data used by the test suite.
 recursive-include nskinetics/tests/data *.txt
+
+# Isobutanol biorefinery case study (mirrors package_data in setup.py):
+# parameter-distribution workbooks and small JSON inputs, the analysis scripts
+# (plain folders, shipped as data) with their JSON/CSV inputs, and the
+# plotting extras (figure-idea scripts/captions, Voronoi treemap JS source).
+recursive-include nskinetics/biorefineries/isobutanol/data parameter-distributions_*.xlsx *.json
+recursive-include nskinetics/biorefineries/isobutanol/analyses *.py *.json *.md
+recursive-include nskinetics/biorefineries/isobutanol/analyses/fixtures *.csv
+recursive-include nskinetics/biorefineries/isobutanol/plots/optimization_figure_ideas *.md *.py
+include nskinetics/biorefineries/isobutanol/plots/voronoi/package.json
+include nskinetics/biorefineries/isobutanol/plots/voronoi/package-lock.json
+include nskinetics/biorefineries/isobutanol/plots/voronoi/*.mjs
+include nskinetics/biorefineries/isobutanol/plots/voronoi/*.js
+include nskinetics/biorefineries/isobutanol/plots/voronoi/treemap.html
+
+# Never ship analysis results (analyses/results/ holds the ~87 MB local-only
+# publication set), figure outputs or node tooling. Prunes come after the
+# includes so they win.
+prune nskinetics/biorefineries/isobutanol/analyses/results
+prune nskinetics/biorefineries/isobutanol/plots/results
+prune nskinetics/biorefineries/isobutanol/plots/voronoi/node_modules
+prune nskinetics/biorefineries/isobutanol/plots/voronoi/vendor
+global-exclude ~$* *.py[cod] *.nbi *.nbc __pycache__

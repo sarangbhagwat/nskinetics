@@ -71,13 +71,19 @@ CoolPropFluids*.json
 # Isobutanol biorefinery (nskinetics/biorefineries/isobutanol) #
 ################################################################
 # Analysis outputs stay local, as they did in Bioindustrial-Park
-# (analyses/results/publication/ is kept on disk but not committed).
+# (analyses/results/publication/ is kept on disk but not committed). Every
+# analysis output -- CSVs, figures, optuna .db/-journal stores, in-flight /
+# seed / design sidecars, run logs -- goes under the flat results root
+# analyses/results/ (or $NSKINETICS_IBO_RESULTS_DIR, outside the repo); the
+# analyses/**/results/ rule also catches a stray per-folder results/.
 nskinetics/biorefineries/isobutanol/analyses/results/
+nskinetics/biorefineries/isobutanol/analyses/**/results/
 nskinetics/biorefineries/isobutanol/plots/results/
 nskinetics/biorefineries/isobutanol/plots/voronoi/node_modules/
 ~$*
-# Binary inputs the package reads at run time ARE tracked.
-!nskinetics/biorefineries/isobutanol/analyses/full/parameter_distributions/parameter-distributions_*.xlsx
+# Binary inputs the package reads at run time ARE tracked (*.xlsx is ignored
+# above; the negation never matches the '~$' Excel lock files).
+!nskinetics/biorefineries/isobutanol/data/parameter_distributions/parameter-distributions_*.xlsx
 
 # Claude Code local working files #
 ###################################
