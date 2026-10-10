@@ -9,10 +9,12 @@ spike-feed conditioning trains (multi-effect evaporator, pumps, dilution-water
 mixer, heat exchanger), a
 :class:`~nskinetics.units.FermentationSaccharomycesEthanolIsobutanol` fermentor
 driven by the shipped *S. cerevisiae* kinetic model, and a compressed-air
-aeration loop. This page runs it end to end: build, simulate, change the
-fed-batch strategy, and inspect the reactor. Total simulation time is a few
-seconds once the imports are loaded; every number and figure below is the
-output of the code shown.
+aeration loop. The complete biorefinery built around this section ships with
+NSKinetics as the :doc:`isobutanol biorefinery case study
+<../case_studies/isobutanol/index>`. This page runs the section end to end:
+build, simulate, change the fed-batch strategy, and inspect the reactor.
+Total simulation time is a few seconds once the imports are loaded; every
+number and figure below is the output of the code shown.
 
 Build the process
 -----------------
@@ -20,8 +22,9 @@ Build the process
 The factory needs only a chemical set — ``set_thermo=True`` activates its
 own, shipped set. One call builds the whole section on biosteam's main
 flowsheet, with its two inlets (the saccharified sugar slurry and the seed
-culture) created with default compositions matching the isobutanol
-biorefinery's baseline simulation, ready to use as-is or overwrite:
+culture) created with default compositions matching the baseline simulation
+of the :doc:`isobutanol biorefinery <../case_studies/isobutanol/index>`, ready
+to use as-is or overwrite:
 
 .. code-block:: python
 
@@ -72,12 +75,13 @@ here):
 .. figure:: /_static/images/examples/tutorial_01_quickstart_kinetics.png
    :width: 500
 
-   The full kinetic trajectory. Early on, 9 spikes hold glucose
-   (``[s_glu]``) in the 210–220 g/L band while aerobic growth builds cells
-   (``[x]``); aeration ends at ~12 h, when the cell density passes its
-   stage-1 cutoff. Glucose is then drawn down to ~0 as ethanol
-   (``[s_EtOH]``) climbs to ~139.5 g/L, and the dashed ``fermentation end``
-   line marks the selected harvest time ``tau`` ≈ 63.7 h.
+   The full kinetic trajectory. Early on, 3 spikes (between ~10 and
+   ~12 h) hold glucose (``[s_glu]``) in the 210–220 g/L band while aerobic
+   growth builds cells (``[x]``); aeration ends at ~12.4 h, when the cell
+   density passes its stage-1 cutoff. Glucose is then drawn down to ~0 as
+   ethanol (``[s_EtOH]``) climbs to ~114.5 g/L, and the dashed
+   ``fermentation end`` line marks the selected harvest time ``tau`` ≈
+   61.8 h.
 
 Change the fed-batch strategy
 -----------------------------
@@ -105,9 +109,9 @@ fall to 180 g/L between spikes:
    The same fermentation under the retuned strategy. The batch now starts at
    200 g/L glucose (the re-solved initial-feed evaporator delivers
    ~200.1 g/L), and the wider 180–200 g/L band means fewer, larger spikes —
-   5 instead of 9 — so less total glucose is fed: it is exhausted by ~45 h,
-   ethanol peaks earlier and slightly lower (~133.5 g/L), and the selected
-   harvest time drops to ``tau`` ≈ 47.1 h.
+   2 instead of 3 — so less total glucose is fed: it is exhausted by ~41 h,
+   ethanol peaks earlier and lower (~109.5 g/L), and the selected harvest
+   time drops to ``tau`` ≈ 43.0 h.
 
 Inspect the reactor
 -------------------
@@ -128,37 +132,38 @@ from the kinetic ``tau``. Both reflect the retuned strategy simulated above:
    ins...
    [0] glucose_initial_feed  from  HXutility-H301
        phase: 'l', T: 305.15 K, P: 101325 Pa
-       flow (kmol/hr): Water    5.83e+03
-                       Glucose  117
-                       NH3      6.71
+       flow (kmol/hr): Water    8.16e+03
+                       Glucose  164
+                       NH3      9.39
    [1] seed
        phase: 'l', T: 298.15 K, P: 101325 Pa
        flow (kmol/hr): Water  0.633
                        Yeast  0.0243
    [2] glucose_spike_feed  from  HXutility-H302
        phase: 'l', T: 305.15 K, P: 101325 Pa
-       flow (kmol/hr): Water    1.61e+03
-                       Glucose  97.2
-                       NH3      5.56
+       flow (kmol/hr): Water    836
+                       Glucose  50.4
+                       NH3      2.89
    [3] s5  from  IsenthalpicValve-V330
        phase: 'g', T: 305.15 K, P: 101325 Pa
-       flow (kmol/hr): O2  11.3
-                       N2  42.4
+       flow (kmol/hr): O2  14.3
+                       N2  54
    outs...
    [0] fermentation_vent
        phase: 'g', T: 305.15 K, P: 101325 Pa
        flow (kmol/hr): Water       17.7
-                       AceticAcid  0.0093
-                       CO2         419
-                       O2          5.64
-                       N2          42.4
+                       Ethanol     7.47
+                       AceticAcid  0.0122
+                       CO2         414
+                       O2          7.17
+                       N2          54
    [1] fermentation_effluent
        phase: 'l', T: 305.15 K, P: 101325 Pa
-       flow (kmol/hr): Water       7.43e+03
-                       Ethanol     391
-                       AceticAcid  2.16
-                       Glucose     6.33e-17
-                       Yeast       81.4
+       flow (kmol/hr): Water       8.98e+03
+                       Ethanol     380
+                       AceticAcid  3.32
+                       Glucose     9.55e-14
+                       Yeast       91.9
 
 .. code-block:: python
 
@@ -166,27 +171,28 @@ from the kinetic ``tau``. Both reflect the retuned strategy simulated above:
 
 .. code-block:: text
 
-   FermentationSaccharomycesEthanolIsobutanol         Units      V406
-   Electricity         Power                             kW       473
-                       Cost                          USD/hr        37
-   Chilled water       Duty                           kJ/hr -5.26e+07
-                       Flow                         kmol/hr  3.52e+04
-                       Cost                          USD/hr       263
-   Design              Reactor volume                    m3  8.85e+03
-                       Batch time                        hr       100
-                       Loading time                      hr      50.1
-                       Number of reactors                           2
-                       Recirculation flow rate        m3/hr      79.4
-                       Reactor duty                   kJ/hr -1.75e+07
-                       Cleaning and unloading time       hr         3
-                       Working volume fraction                    0.9
-   Purchase cost       Heat exchangers (x2)             USD  4.59e+04
-                       Reactors (x2)                    USD  2.81e+06
-                       Agitators (x2)                   USD  1.75e+05
-                       Cleaning in place                USD  7.62e+05
-                       Recirculation pumps (x2)         USD  1.05e+05
-   Total purchase cost                                  USD  3.89e+06
-   Utility cost                                      USD/hr       300
+   FermentationSaccharomycesEthanolIsobutanol              Units      V406
+   Electricity              Power                             kW       148
+                            Cost                          USD/hr      11.5
+   Chilled water            Duty                           kJ/hr -1.61e+07
+                            Flow                         kmol/hr  1.08e+04
+                            Cost                          USD/hr      80.6
+   Design                   Reactor volume                    m3  3.17e+03
+                            Batch time                        hr      61.3
+                            Loading time                      hr      15.3
+                            Number of reactors                           4
+                            Recirculation flow rate        m3/hr      46.6
+                            Reactor duty                   kJ/hr -1.61e+07
+                            Cleaning and unloading time       hr         3
+                            Working volume fraction                    0.9
+   Purchase cost            Heat exchangers (x4)             USD  8.66e+04
+                            Reactors (x4)                    USD  3.36e+06
+                            Agitators (x4)                   USD  2.09e+05
+                            Cleaning in place                USD  4.12e+05
+                            Recirculation pumps (x4)         USD  1.37e+05
+   Total purchase cost                                       USD  4.21e+06
+   Installed equipment cost                                  USD   6.6e+06
+   Utility cost                                           USD/hr      92.1
 
 Where to next
 -------------

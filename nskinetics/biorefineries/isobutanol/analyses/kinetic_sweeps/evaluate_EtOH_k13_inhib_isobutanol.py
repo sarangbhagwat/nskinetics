@@ -1,0 +1,794 @@
+# -*- coding: utf-8 -*-
+# NSKinetics: simulation of Non-Steady state enzyme Kinetics and inhibitory phenomena
+# Copyright (C) 2025-, Sarang S. Bhagwat <sarangbhagwat.developer@gmail.com>
+#
+# This module is under the MIT open-source license. See
+# https://github.com/sarangbhagwat/nskinetics/blob/main/LICENSE
+# for license details.
+"""
+2-D kinetic sweep: the Ehrlich-entry (pyruvate-to-acetolactate) rate capacity
+``k_13`` (x-axis) vs the grouped ``inhib_isobutanol`` family MULTIPLIER
+(y-axis), on the ``opt_PI_TRY_informed`` baseline, WITH the enzyme burden
+turned ON.
+
+It is the isobutanol-inhibition analog of the sibling ``k_3`` / ``k_6`` x
+``inhib_ethanol`` sweeps (individual rate on x, grouped inhibition multiplier
+on y, same wider USER-SPECIFIED multiplier bands), swapping in the Ehrlich-entry
+rate ``k_13`` and the ``inhib_isobutanol`` family, and running on the
+isobutanol-producing ``opt_PI_TRY_informed`` baseline (scenario A makes no
+isobutanol, so its isobutanol-inhibition coefficients are inert):
+
+* **k_13 (x-axis):** swept over its ``opt_PI_TRY_informed`` baseline x
+  **[1e-3, 4.0]**. The
+  span matches the split-preset rate band (``kinetic_optimization`` assigns
+  ``capacity``-role rate constants a [1e-3x, 4x] band in the split presets), so
+  the axis reaches an effective knock-out at the low end (near-zero isobutanol)
+  and 4x the fitted rate at the high end.
+* **inhib_isobutanol multiplier (y-axis):** the grouped decision variable
+  (``kinetic_optimization.METABOLIC_MINIMAL_SUBSET_GROUPS['inhib_isobutanol']``
+  = k_1ii, k_4ii, k_6ii, k_7ii, k_10ii), swept over **[0.75, 1.5]** x each
+  member's ``opt_PI_TRY_informed`` baseline -- the ``metabolic_14d`` default
+  group band (0.75x baseline at the floor, its ceiling at the top). Every
+  member is set to its ``opt_PI_TRY_informed`` baseline x the multiplier, so
+  intra-family ratios are preserved (exactly
+  ``kinetic_optimization.expand_grouped_values`` for a single group).
+
+Both axes are linear grids over these bounds (a contour sweep spaces them
+evenly, matching the sibling ``evaluate_*`` scripts). ``(k_13 =
+opt_PI_TRY_informed baseline, inhib_isobutanol multiplier = 1.0)`` lies on the
+grid interior and reproduces the ``opt_PI_TRY_informed`` baseline point.
+
+Baseline: ``opt_PI_TRY_informed`` (since 2026-10-08; it succeeds the removed
+``opt_IRR`` scenario) is trial #1912 of the 2026-09-24 TRY-informed PI
+(log-tail) relay campaign
+``kin_opt_ethanol_isobutanol_metabolic_split_12d_pi_log-tail_gp_rb0.001-4_ib0.75-1.5_aA_rl15c111dc_burden``
+(preloaded with rows of the six process-level ``_rs350`` seed-350 campaigns):
+a co-production point, IBO 39.6 + EtOH 40.6 g/L, tau 40.84 h, live-model IRR
+0.2792, PI 0.8559, ethanol / isobutanol MPSP 0.4607 / 1.1123 $/kg,
+burden-feasible (Phi_M 0.130). Its baseline kinetics + feeding strategy
+(1-spike cap / 189.19 / 194.19, 1 actual spike, spike 600) come from
+``scenarios.SCENARIOS['opt_PI_TRY_informed']`` (workbook
+``parameter-distributions_corn_IBO_EtOH_opt_PI_TRY_informed.xlsx``) -- this
+script reads them live. Its baseline ``k_13`` is 4.0 (top of the split-preset
+rate band, as was opt_IRR's), so the x-axis still spans [0.004, 16.0] g/L/h.
+
+STALE RESULTS: result CSVs / figures of this sweep produced before 2026-10-08
+are of the OLD ``opt_IRR`` point (split_12d trial 1602: IBO 41.7 + EtOH 29.2
+g/L, tau 28.35 h, IRR ~0.273, 50-spike cap / 170.91 / 175.91). Re-run this
+script to regenerate them for the ``opt_PI_TRY_informed`` baseline. (The
+``file_to_save`` prefix encodes ``max_n``, which is now 1, not opt_IRR's 50, so
+the new CSVs do not overwrite the old ones.)
+
+Enzyme burden: installed A-referenced via
+``scenarios.load_scenario('opt_PI_TRY_informed', burden=True)`` (the
+``BurdenModel`` is ALWAYS built from scenario A's kinetics, never from
+``opt_PI_TRY_informed``'s own baseline; ``system.set_active_burden``), so the
+``load_simulate`` choke point derates ``k_7``/``k_8`` for every simulated point.
+``k_13`` keys the Ehrlich step ``r13`` in ``enzyme_burden.EHRLICH_STEPS``, so it
+IS a proteome pool: raising ``k_13`` raises the modeled pool ``Phi_M``, which
+derates growth (``k_7``/``k_8``) and, at the high end, can push a point past the
+flexible-sector cap (``EnzymeBurdenInfeasibleError`` -> caught -> NaN); the
+``inhib_isobutanol`` coefficients are product-inhibition / lethality terms, not
+pools, so they do not enter the burden.
+
+Re-run this script to (re)generate the CSVs / figures under the results root;
+a prior 40x40 run used an absolute k_13 axis in [0, 8.0], not this multiplier
+band, so those artifacts are superseded.
+
+Crash resilience: the grid is checkpointed per point and resumes on relaunch
+(a native CVODE segfault killed the first run of this grid at ~point 764 of
+1600); see the 'Checkpoint + resume' cell. Launch through
+``supervise_sweep.py`` (see the Run paragraph below) to have a crashed
+or hung process relaunched automatically.
+
+Run: not ask-first, but LONG-RUNNING -- 40 x 40 = 1600 grid points of full
+flowsheet simulations (~15-25 s each, i.e. about 7-11 h).
+Writes, under the results root (paths.results_dir(): analyses/results
+unless NSKINETICS_IBO_RESULTS_DIR is set): one <file_to_save>_<metric>.csv
+per metric and the contour plots
+<metric>_animated_contourplot_<file_to_save>_frame_0.png (the script changes
+into the results root to plot). Set MPLBACKEND=Agg for an unattended run.
+While it runs it also keeps <script stem>_checkpoint.csv /
+<script stem>_inflight.json there (deleted on completion).
+IBO_SWEEP_REPLOT_FROM_CSV=1 skips every simulation and redraws the plots
+from the CSVs of an earlier run (same `file_to_save` prefix).
+From analyses/, under the crash/stall supervisor:
+
+    python supervise_sweep.py kinetic_sweeps/evaluate_EtOH_k13_inhib_isobutanol.py
+"""
+
+import numpy as np
+from nskinetics.biorefineries import isobutanol
+isobutanol.load()
+
+from nskinetics.biorefineries.isobutanol import scenarios
+from nskinetics.biorefineries.isobutanol import kinetic_optimization as ko
+
+from matplotlib import pyplot as plt
+
+
+from warnings import filterwarnings
+filterwarnings('ignore')
+
+import contourplots
+get_rounded_str = contourplots.utils.get_rounded_str
+
+from biosteam.utils import  colors
+
+import pandas as pd
+
+from datetime import datetime
+
+import os
+import csv
+import json
+
+
+import biosteam as bst
+
+model = isobutanol.models.models_EtOH_IBO_corn.model
+fbs_spec = isobutanol.models.models_EtOH_IBO_corn.fbs_spec
+namespace_dict = isobutanol.models.namespace_dict
+optimize_1D_feeding_strategy_for_MPSP = isobutanol.models.optimize_1D_feeding_strategy_for_MPSP
+plot_kinetic_results = isobutanol.models.plot_kinetic_results
+solve_TEA = isobutanol.system.solve_TEA
+model_specification = model.specification
+system = model.system
+tea = model.system.TEA
+
+f = system.flowsheet
+
+chdir = os.chdir
+
+dateTimeObj = datetime.now()
+
+ig = np.seterr(invalid='ignore')
+
+ferm_reactor = f.V406
+r = ferm_reactor.nsk_kinetic_model._te
+
+sugar_sol_evaporators = [f.F301, f.F302]
+
+HXN = f.HXN1001
+
+product = f.ethanol
+broth = ferm_reactor.outs[1]
+# Vent EtOH/IBO (stripped by the fermentation CO2) is captured by the
+# scrubber V409 and recycled to the separation feed via MX8, so it is
+# part of the recoverable product (a broth-only denominator reads >100 %).
+vent = ferm_reactor.outs[0]
+
+EtOH_market_range=np.array([0.7, 1.0])
+
+#%% Filepaths
+from nskinetics.biorefineries.isobutanol import paths
+# The flat results root (paths.results_dir(): analyses/results unless
+# NSKINETICS_IBO_RESULTS_DIR is set) with a trailing separator -- the file
+# names below are appended to it.
+isobutanol_results_filepath = os.path.join(paths.results_dir(create=True), '')
+
+
+#%% opt_PI_TRY_informed baseline + enzyme burden ON
+# load_scenario('opt_PI_TRY_informed', burden=True) loads the scenario's
+# workbook (baseline kinetics + distributions), sets its feeding strategy
+# (1-spike cap / 189.19 / 194.19, 1 actual spike) from scenarios.SCENARIOS,
+# installs the A-referenced active enzyme burden (system.set_active_burden),
+# and runs one baseline model_specification. After it returns, r holds
+# opt_PI_TRY_informed's baseline kinetics. (Its burden_default is already
+# True, so burden=True is explicit but matches the scenario default.)
+scenario = 'opt_PI_TRY_informed'
+
+bundle = scenarios.load_scenario(scenario, burden=True)
+feeding_kwargs = bundle['feeding_kwargs']
+
+# Snapshot each inhib_isobutanol member's opt_PI_TRY_informed baseline off the
+# live model (member list sourced from kinetic_optimization -- no hardcoding; a
+# member absent from the model is dropped, mirroring expand_grouped_values).
+_available = ko.discover_kinetic_parameters(r)
+INHIB_ISOBUTANOL_MEMBERS = [m for m in ko.METABOLIC_MINIMAL_SUBSET_GROUPS['inhib_isobutanol']
+                            if m in _available]
+baseline_inhib_isobutanol = {m: _available[m] for m in INHIB_ISOBUTANOL_MEMBERS}
+baseline_k_13 = _available.get('k_13', getattr(r, 'k_13'))
+print('\n%s baseline k_13 = %s' % (scenario, baseline_k_13))
+print('%s inhib_isobutanol baselines: %s' % (scenario, baseline_inhib_isobutanol))
+
+
+def apply_inhib_isobutanol_multiplier(multiplier):
+    """Set every inhib_isobutanol member to its opt_PI_TRY_informed baseline x
+    `multiplier` (intra-family ratios preserved; == expand_grouped_values
+    for the single inhib_isobutanol group)."""
+    for member, base in baseline_inhib_isobutanol.items():
+        setattr(r, member, base * multiplier)
+
+
+#%% Baseline -- already simulated by load_scenario above
+
+# !!!
+# fbs_spec.max_n_spikes = 0
+perform_feeding_strategy_opt = False
+
+model_specification(
+    n_sims=3,
+    plot=True,
+    )
+
+#%%  Metrics
+product_chemical_IDs = ['Ethanol',]
+IBO_product = f.isobutanol
+
+# One side-effect-free TEA solve per simulated point, shared by the MPSP and
+# IRR metrics below: ethanol MPSP and isobutanol MPSP (each purity-adjusted
+# USD / pure-kg at the default 15% IRR, with the other product at its default
+# price; NaN when the product stream is empty) and the IRR at both products'
+# default prices. `latest_TEA_solution` is refreshed right after each
+# successful simulation in the sweep loop.
+latest_TEA_solution = {'IRR': np.nan, 'MPSPs': {product.ID: np.nan, IBO_product.ID: np.nan}}
+def refresh_TEA_solution():
+    latest_TEA_solution.update(solve_TEA(stream_IDs=(product.ID, IBO_product.ID)))
+    return latest_TEA_solution
+get_product_MPSP = lambda: latest_TEA_solution['MPSPs'][product.ID]
+get_IBO_MPSP = lambda: latest_TEA_solution['MPSPs'][IBO_product.ID]
+get_IRR = lambda: latest_TEA_solution['IRR']
+get_product_purity = lambda: sum([product.imass[i] for i in product_chemical_IDs])/product.F_mass
+get_production = lambda: sum([product.imass[i] for i in product_chemical_IDs])
+get_product_recovery = lambda: sum([product.imol[i] for i in product_chemical_IDs])/sum([broth.imol[i] + vent.imol[i] for i in product_chemical_IDs])
+get_AOC = lambda: tea.AOC / 1e6 # million USD / y
+get_TCI = lambda: tea.TCI / 1e6 # million USD
+
+get_yield_nsk = lambda: ferm_reactor.nsk_results_specific_tau_dict['y_EtOH_IBO_glu_added']
+get_titer_nsk = lambda: ferm_reactor.nsk_results_specific_tau_dict['[s_EtOH]']
+get_prod_nsk = lambda: ferm_reactor.nsk_results_specific_tau_dict['prod_EtOH']
+
+# Per-product yield/titer/productivity (needed as greedy-trajectory targets on
+# the IRR plot; getters mirror evaluate_EtOH_k13_k7ii.py). At k_13 = 0 the
+# broth makes no isobutanol, so the IBO metrics read 0 (not NaN), keeping the
+# ethanol-only (k_13 = 0) trajectory start valid for them.
+get_EtOH_yield_nsk = lambda: ferm_reactor.nsk_results_specific_tau_dict['y_EtOH_glu_added']
+get_IBO_yield_nsk = lambda: ferm_reactor.nsk_results_specific_tau_dict['y_IBO_glu_added']
+get_IBO_titer_nsk = lambda: ferm_reactor.nsk_results_specific_tau_dict['[s_IBO]']
+get_IBO_prod_nsk = lambda: (ferm_reactor.nsk_results_specific_tau_dict['[s_IBO]']
+                            / ferm_reactor.nsk_results_specific_tau_dict['time'])
+
+get_curr_n_glu_spikes = lambda: ferm_reactor.nsk_results_specific_tau_dict['curr_n_glu_spikes']
+
+get_tau = lambda: ferm_reactor.tau
+
+get_sugar_sol_evap_duty = lambda: sum([sum([i.duty for i in evap.heat_utilities if i.duty>0]) for evap in sugar_sol_evaporators])
+
+get_cell_loading = lambda: ferm_reactor.nsk_results_specific_tau_dict['[x]']
+get_active_cell_loading = lambda: ferm_reactor.nsk_results_specific_tau_dict['curr_a']
+# metrics = [get_product_MPSP,
+#             get_AOC,
+#             get_TCI,
+#             get_yield_nsk,
+#             get_titer_nsk,
+#             get_prod_nsk,
+#             get_curr_n_glu_spikes,]
+
+metrics = {'MPSP': {'f': get_product_MPSP, 'units': '$/kg'}, # ethanol MPSP
+            'IBO MPSP': {'f': get_IBO_MPSP, 'units': '$/kg'},
+            'IRR': {'f': get_IRR, 'units': ''},
+            'AOC': {'f': get_AOC, 'units': 'MM$/y'},
+            'TCI': {'f': get_TCI, 'units': 'MM$'},
+            'Combined Yield': {'f': get_yield_nsk, 'units': 'g-EtOH-and-IBO/g-sugars'},
+            'EtOH Titer': {'f': get_titer_nsk, 'units': 'g-EtOH/L-water'},
+            'EtOH Productivity': {'f': get_prod_nsk, 'units': 'g-EtOH/L-water/h'},
+            'Number of glucose spikes': {'f': get_curr_n_glu_spikes, 'units': ''},
+            'Fermentation time': {'f': get_tau, 'units': 'h'},
+            'Total Q sugar evap': {'f': get_sugar_sol_evap_duty, 'units': 'kJ/h'},
+            'Target sugars concentration': {'f': lambda: fbs_spec.target_conc, 'units': 'g-sugars/L-water'},
+            'Cell loading': {'f': get_cell_loading, 'units': 'g-cell/L-water'},
+            'Active cell loading': {'f': get_active_cell_loading, 'units': 'g-cell/L-water'},
+            'EtOH Yield': {'f': get_EtOH_yield_nsk, 'units': 'g-EtOH/g-sugars'},
+            'IBO Yield': {'f': get_IBO_yield_nsk, 'units': 'g-IBO/g-sugars'},
+            'IBO Titer': {'f': get_IBO_titer_nsk, 'units': 'g-IBO/L-water'},
+            'IBO Productivity': {'f': get_IBO_prod_nsk, 'units': 'g-IBO/L-water/h'},
+            'Actual aeration required': {'f': lambda: ferm_reactor.compressed_air.imol['O2'], 'units': 'kmol-O2/h'},
+            }
+
+#%%
+# results = {i: [] for i in range(len(metrics.values()))}
+results = {i: [] for i in metrics.keys()}
+
+steps = (40, 40, 1)
+
+# USER-SPECIFIED band: k_13 x [1e-3, 4.0] its opt_PI_TRY_informed baseline
+# (the split-preset capacity-rate band; effective knock-out / near-zero
+# isobutanol at the low end). opt_PI_TRY_informed baseline k_13 = 4.0 (as was
+# opt_IRR's), so the axis spans [0.004, 16.0] g/L/h. The high-k_13 end is where
+# the burden pushes Phi_M toward F_flex.
+K_13_MULTIPLIER_BOUNDS = (1e-3, 4.0)
+spec_1 = nsk_k_13es = np.linspace(K_13_MULTIPLIER_BOUNDS[0]*baseline_k_13,
+                                  K_13_MULTIPLIER_BOUNDS[1]*baseline_k_13,
+                                  steps[0])
+
+# USER-SPECIFIED band: inhib_isobutanol multiplier x [0.75, 1.5] (metabolic_14d
+# default group band: 0.75x baseline at the low end, ceiling at the top).
+INHIB_ISOBUTANOL_MULTIPLIER_BOUNDS = (0.75, 1.5)
+spec_2 = inhib_isobutanol_multipliers = np.linspace(INHIB_ISOBUTANOL_MULTIPLIER_BOUNDS[0],
+                                                    INHIB_ISOBUTANOL_MULTIPLIER_BOUNDS[1],
+                                                    steps[1])
+
+
+spec_3 = spike_concs =\
+    np.array([
+              # 1.*baseline_spec['spike_conc'],
+              fbs_spec.spike_conc,
+              ])
+
+#%% Plot stuff
+
+# Parameters analyzed across
+
+x_label = "k_13" # title of the x axis
+x_units = r"$\mathrm{g} \cdot \mathrm{L}^{-1} \cdot \mathrm{h}^{-1}$"
+# k_13 range is baseline-dependent (1e-3x-4x baseline); derive round ticks.
+x_ticks = [float(np.round(t, 1)) for t in np.linspace(spec_1[0], spec_1[-1], 5)]
+
+y_label = "inhib_isobutanol multiplier" # title of the y axis
+y_units = r"" # dimensionless (x opt_PI_TRY_informed baseline of each member)
+y_ticks = [0.75, 1.0, 1.25, 1.5]
+
+z_label = "Spike feed glucose concentration" # title of the x axis
+z_units =r"$\mathrm{g} \cdot \mathrm{L}^{-1}$"
+z_ticks = [0, 200, 400, 600, 800]
+
+# Metrics
+MPSP_w_label = r"$\mathbf{MPSP}$" # title of the color axis
+MPSP_units = r"$\mathrm{\$}\cdot\mathrm{kg}^{-1}$"
+# MPSP_units = r"$\mathrm{\$/kg}$"
+
+AOC_w_label = r"$\mathbf{AOC}$" # title of the color axis
+AOC_units = r"$\mathrm{MM\$}\cdot\mathrm{y}^{-1}$"
+# AOC_units = r"$\mathrm{MM\$/y}$"
+
+TCI_w_label = r"$\mathbf{TCI}$" # title of the color axis
+TCI_units = r"$\mathrm{MM\$}$"
+
+Yield_w_label = r"$\mathbf{Yield}$" # title of the color axis
+Yield_units = r"$\mathrm{g}\cdot\mathrm{g}^{-1}$"
+
+Titer_w_label = r"$\mathbf{Titer}$" # title of the color axis
+Titer_units = r"$\mathrm{g}\cdot\mathrm{L}^{-1}$"
+
+Productivity_w_label = r"$\mathbf{Productivity}$" # title of the color axis
+Productivity_units = r"$\mathrm{g}\cdot\mathrm{L}^{-1}\cdot\mathrm{h}^{-1}$"
+
+#%% Colors
+
+marketrange_shadecolor = (*colors.neutral.shade(50).RGBn, 0.3)
+oversaccharine_shadecolor_raw = colors.CABBI_teal_green.tint(40)
+# oversaccharine_shadecolor_raw = colors.CABBI_green.shade(45)
+inhibited_shadecolor_raw = colors.CABBI_grey.shade(60)
+oversaccharine_shadecolor = (*oversaccharine_shadecolor_raw.RGBn, 1)
+inhibited_shadecolor = (*inhibited_shadecolor_raw.RGBn, 1)
+# overlap_color = (*(colors.CABBI_teal_green.tint(20).RGBn + colors.CABBI_black.tint(20).RGBn)/2, 1)
+overlap_color = (*(oversaccharine_shadecolor_raw.RGBn + inhibited_shadecolor_raw.RGBn)/2, 1)
+linecolor_dark = (*colors.CABBI_black.shade(40).RGBn, 0.95)
+linecolor_light = (*colors.neutral_tint.RGBn, 0.85)
+markercolor = (*colors.CABBI_orange.shade(5).RGBn, 1)
+edgecolor = (*colors.CABBI_black.RGBn, 1)
+
+
+from nskinetics.biorefineries.isobutanol.sweep_utils import JBEI_UCB_colormap
+
+#%%
+minute = '0' + str(dateTimeObj.minute) if len(str(dateTimeObj.minute))==1 else str(dateTimeObj.minute)
+# file_to_save = f'_{steps}_steps_'+'etoh_fbs_%s.%s.%s-%s.%s'%(dateTimeObj.year, dateTimeObj.month, dateTimeObj.day, dateTimeObj.hour, minute)
+file_to_save = f'ibo_{steps}_{x_label[:5]}_{y_label[:5]}_{z_label[:5]}_opt={perform_feeding_strategy_opt}_max_n={ferm_reactor.nsk_kinetic_model.default_max_n_glu_spikes}_'
+
+# Set IBO_SWEEP_REPLOT_FROM_CSV=1 to skip the grid simulations and rebuild
+# the contour plots from the per-metric CSVs a previous run of this script
+# (same steps / scenario / feeding settings, i.e. same `file_to_save` prefix)
+# saved under the results root. Only the plot styling below then matters.
+replot_from_csv = os.environ.get('IBO_SWEEP_REPLOT_FROM_CSV', '') == '1'
+
+#%% Checkpoint + resume (crash resilience)
+# A native integrator crash (CVODE segfault; exit code 5, no traceback) kills
+# the process and cannot be caught by the sweep loop's try/except, so the grid
+# is checkpointed PER POINT and a relaunch resumes it:
+# - <script stem>_checkpoint.csv: one flushed row per evaluated grid point
+#   (grid indices, axis values, state OK / ERROR / LOST, every metric). Points
+#   already in it are not re-simulated.
+# - <script stem>_inflight.json: written right before each point's simulation
+#   and removed once its row is logged. One found at start-up marks the point
+#   the previous process died in: it is logged as a LOST (all-NaN) row and
+#   skipped, so a deterministic crash is stepped past (the kinetic-BO
+#   supervisor's sidecar pattern).
+# Paths depend only on the script name, so analyses/supervise_sweep.py (the
+# auto-relaunching wrapper) can find them without loading the model. The
+# checkpoint is deleted when the script finishes (plots included); set
+# IBO_SWEEP_FRESH=1 to discard a leftover one and start over. Its axis values
+# are verified against this grid, so a checkpoint of other bounds raises.
+_script_stem = os.path.splitext(os.path.basename(__file__))[0]
+checkpoint_filepath = isobutanol_results_filepath + _script_stem + '_checkpoint.csv'
+inflight_filepath = isobutanol_results_filepath + _script_stem + '_inflight.json'
+checkpoint_fieldnames = ['i_row', 'i_col', 'k_13', 'inhib_isobutanol_multiplier',
+                         'state'] + list(metrics.keys())
+
+def append_checkpoint_row(i2, i1, state, metric_values):
+    is_new = not os.path.exists(checkpoint_filepath)
+    with open(checkpoint_filepath, 'a', newline='') as fh:
+        writer = csv.DictWriter(fh, fieldnames=checkpoint_fieldnames)
+        if is_new: writer.writeheader()
+        writer.writerow({'i_row': i2, 'i_col': i1,
+                         'k_13': repr(float(spec_1[i1])),
+                         'inhib_isobutanol_multiplier': repr(float(spec_2[i2])),
+                         'state': state,
+                         **{k: repr(float(v)) for k, v in metric_values.items()}})
+        fh.flush()
+        os.fsync(fh.fileno())
+
+def load_checkpoint():
+    points = {}
+    if not os.path.exists(checkpoint_filepath): return points
+    with open(checkpoint_filepath, newline='') as fh:
+        reader = csv.DictReader(fh)
+        if reader.fieldnames != checkpoint_fieldnames:
+            raise RuntimeError(f'Checkpoint columns do not match this sweep: {checkpoint_filepath} '
+                               '(delete it or set IBO_SWEEP_FRESH=1).')
+        for row in reader:
+            if None in row.values() or '' in row.values(): continue # truncated last line
+            i2, i1 = int(row['i_row']), int(row['i_col'])
+            if not (i2 < len(spec_2) and i1 < len(spec_1)
+                    and np.isclose(float(row['k_13']), spec_1[i1])
+                    and np.isclose(float(row['inhib_isobutanol_multiplier']), spec_2[i2])):
+                raise RuntimeError(f'Checkpoint is of a different grid: {checkpoint_filepath} '
+                                   '(delete it or set IBO_SWEEP_FRESH=1).')
+            points[(i2, i1)] = {k: float(row[k]) for k in metrics.keys()}
+    return points
+
+def write_inflight(i2, i1):
+    with open(inflight_filepath, 'w') as fh:
+        json.dump({'i_row': i2, 'i_col': i1,
+                   'k_13': float(spec_1[i1]),
+                   'inhib_isobutanol_multiplier': float(spec_2[i2])}, fh)
+        fh.flush()
+        os.fsync(fh.fileno())
+
+def clear_inflight():
+    if os.path.exists(inflight_filepath): os.remove(inflight_filepath)
+
+checkpointed_points = {}
+if not replot_from_csv:
+    assert len(spec_3)==1, 'the checkpoint assumes a single spike concentration'
+    if os.environ.get('IBO_SWEEP_FRESH', '') == '1':
+        for _path in (checkpoint_filepath, inflight_filepath):
+            if os.path.exists(_path): os.remove(_path)
+    checkpointed_points = load_checkpoint()
+    if os.path.exists(inflight_filepath):
+        with open(inflight_filepath) as fh: _lost = json.load(fh)
+        _lost_point = (_lost['i_row'], _lost['i_col'])
+        if _lost_point not in checkpointed_points:
+            print(f'\nThe previous process died at grid point {_lost_point} '
+                  f'(k_13 = {_lost["k_13"]}, inhib_isobutanol multiplier = '
+                  f'{_lost["inhib_isobutanol_multiplier"]}); logging it as LOST (NaN).')
+            checkpointed_points[_lost_point] = {k: np.nan for k in metrics.keys()}
+            append_checkpoint_row(*_lost_point, 'LOST', checkpointed_points[_lost_point])
+        clear_inflight()
+    if checkpointed_points:
+        print(f'\nRESUMING from {checkpoint_filepath}: {len(checkpointed_points)} of '
+              f'{len(spec_1)*len(spec_2)} grid points already evaluated '
+              '(set IBO_SWEEP_FRESH=1 for a fresh sweep).')
+
+#%% Initial simulation
+
+if not replot_from_csv:
+    print('\n\nSimulating the initial point to avoid bugs ...')
+    curr_spec = fbs_spec.current_specifications
+    r.k_13 = baseline_k_13  # baseline k_13 (known-good; low grid points are near-knockouts)
+    apply_inhib_isobutanol_multiplier(1.0)  # baseline inhib_isobutanol (known-good)
+    model_specification(**curr_spec,
+        n_sims=3,
+        plot=True,
+        )
+
+# %% Run analysis
+
+def print_status(curr_no, total_no, s1, s2, s3, HXN_qbal_error, results=None, exception_str=None,):
+    print('\n\n')
+    print(f'{curr_no}/{total_no}')
+    print('\n')
+    print(f'integrator: {r.integrator.getName()}')
+    print(s1, s2, s3)
+    print('\n')
+    print(f'HXN Qbal error = {round(HXN_qbal_error, 2)} %.')
+    print('\n')
+    print(results)
+    print('\nError: ', exception_str)
+
+max_HXN_qbal_percent_error = 0.
+
+curr_no = 0
+total_no = len(spec_1)*len(spec_2)*len(spec_3)
+
+print_status_every_n_simulations = 1
+
+errors_dict = {}
+
+if replot_from_csv:
+    print(f'\nReplotting from saved CSVs: {isobutanol_results_filepath}{file_to_save}_<metric>.csv')
+    for k in results.keys():
+        results[k] = [pd.read_csv(isobutanol_results_filepath+file_to_save+f'_{k}.csv',
+                                  index_col=0).to_numpy()]
+    spec_3_to_run = []
+else:
+    spec_3_to_run = spec_3
+
+for s3 in spec_3_to_run:
+    for v in list(results.values()): v.append([])
+
+    for i2, s2 in enumerate(spec_2):
+        for v in list(results.values()): v[-1].append([])
+        for i1, s1 in enumerate(spec_1):
+            curr_no +=1
+            if (i2, i1) in checkpointed_points:
+                # evaluated by a previous process (or LOST in its crash)
+                for k, v in list(results.items()):
+                    v[-1][-1].append(checkpointed_points[(i2, i1)][k])
+                continue
+            error_message = None
+            write_inflight(i2, i1)
+            try:
+                # if round(s1,2)==round(spec_1[1],2) and round(s2,2)==round(spec_2[4],2):
+                #     breakpoint()
+                curr_spec = {k: v for k,v in fbs_spec.current_specifications.items()}
+                r.k_13 = s1
+                apply_inhib_isobutanol_multiplier(s2)
+                curr_spec.update({'spike_conc':s3,})
+
+                if perform_feeding_strategy_opt:
+                    optimize_1D_feeding_strategy_for_MPSP(Ns=20, model_kwargs=curr_spec)
+                else:
+                    model_specification(**curr_spec)
+                # plot_kinetic_results()
+
+
+                refresh_TEA_solution()
+                for k, v in list(results.items()):
+                    v[-1][-1].append(metrics[k]['f']())
+
+                HXN_qbal_error = HXN.energy_balance_percent_error
+                if abs(max_HXN_qbal_percent_error)<abs(HXN_qbal_error): max_HXN_qbal_percent_error = HXN_qbal_error
+
+            except Exception as e:
+                str_e = str(e).lower()
+                print('Error in model spec: %s'%str_e)
+                for v in list(results.values()): v[-1][-1].append(np.nan)
+                error_message = str_e
+                # A burden-infeasible point (high k_13 over the proteome cap)
+                # is an EXPECTED NaN, not a solver failure -- keep it out of
+                # errors_dict so the console log flags only genuine issues.
+                if ('specifications do not meet required' not in str_e
+                        and 'enzyme' not in str_e
+                        and 'proteome' not in str_e
+                        and 'burden' not in str_e):
+                    errors_dict[(s1, s2, s3)] = str_e
+                    # breakpoint()
+                    # raise e
+
+            append_checkpoint_row(i2, i1, 'ERROR' if error_message else 'OK',
+                                  {k: v[-1][-1][-1] for k, v in results.items()})
+            clear_inflight()
+
+            if curr_no%print_status_every_n_simulations==0 or error_message:
+                print_status(curr_no, total_no,
+                             s1, s2, s3,
+                             results=[v[-1][-1][-1] for v in list(results.values())],
+                             HXN_qbal_error=HXN.energy_balance_percent_error,
+                             exception_str=error_message)
+
+    # Convert last 2D list to array and transpose
+    for k in results.keys():
+        # results[k][-1] = np.array(results[k][-1]).transpose()
+        results[k][-1] = np.array(results[k][-1])
+
+    # Save generated data
+    for k, v in results.items():
+        csv_file_to_save = file_to_save + f'_{k}'
+        pd.DataFrame(v[-1]).to_csv(isobutanol_results_filepath+csv_file_to_save+'.csv')
+
+#%% Report maximum HXN energy balance error
+print(f'Max HXN Q bal error was {round(max_HXN_qbal_percent_error, 3)} %.')
+
+#%%
+
+chdir(isobutanol_results_filepath)
+
+#%% More plot stuff
+
+fps = 3
+axis_title_fonts={'size': {'x': 11, 'y':11, 'z':11, 'w':11},}
+default_fontsize = 11.
+clabel_fontsize = 9.5
+axis_tick_fontsize = 9.5
+keep_frames = True
+
+print('\nCreating and saving contour plots ...\n')
+
+#%% Smoothing
+smoothing = False
+
+if smoothing:
+    for arr in list(results.values()):
+        for i in range(arr.shape[0]):
+            for j in range(arr.shape[1]):
+                for k in range(arr.shape[2]):
+                    if j>0 and k>0 and j<arr.shape[1]-1 and k<arr.shape[2]-1 :
+                        if np.isnan(arr[i,j,k]):
+                            manhattan_neighbors = np.array([
+                                         # arr[i][j-2][k],
+                                         # arr[i][j+2][k],
+                                         arr[i][j][k-1],
+                                         arr[i][j][k+1]
+                                         ])
+                            if not np.any(np.isnan(manhattan_neighbors)):
+                                arr[i,j,k] = np.mean(manhattan_neighbors)
+                        # else:
+                        #     manhattan_neighbors = np.array([
+                        #                  arr[i][j-1][k],
+                        #                  arr[i][j+1][k],
+                        #                  arr[i][j][k-1],
+                        #                  arr[i][j][k+1]
+                        #                  ])
+                        #     if not np.any(np.isnan(manhattan_neighbors)):
+                        #         if not round(arr[i,j,k]/np.mean(manhattan_neighbors),0)==1:
+                        #             print(i,j,k)
+
+#%% Plots
+plot = True
+
+if plot:
+
+    #%% All metrics
+    # (Unlike the k_1e x inhib_ethanol reference, this script does NOT
+    # hardcode the MPSP / IRR contour bounds -- those were fitted to a
+    # scenario-B grid and would clip this baseline's ranges (e.g.
+    # opt_PI_TRY_informed's EtOH MPSP 0.4607, IBO MPSP 1.1123, IRR 0.2792).
+    # Every metric's levels/ticks except IRR's are derived from its own
+    # finite grid data below; IRR keeps a hard 0-30% scale plus the
+    # under-color / -inf handling for money-losing corners.)
+    for curr_metric, val in metrics.items():
+        extend_cmap = 'max'
+        cmap_under_color = None
+        lccm = curr_metric.lower()
+        if 'spike' in lccm or 'q sugar' in lccm or 'target sugars' in lccm:
+            if not perform_feeding_strategy_opt:
+                continue
+            else:
+                if 'spike' in lccm:
+                    if ferm_reactor.nsk_kinetic_model.default_max_n_glu_spikes == 0.:
+                        continue
+                else:
+                    pass
+        elif 'yield' in lccm or 'titer' in lccm or 'productivity' in lccm or 'loading' in lccm or 'irr' in lccm:
+            cmap = JBEI_UCB_colormap(reverse=True)
+            cmap_over_color = colors.yellow_tint.RGBn
+
+        else:
+            cmap = JBEI_UCB_colormap(reverse=False)
+            cmap_over_color = colors.grey_dark.shade(8).RGBn
+
+        # curr_metric_w_levels, curr_metric_w_ticks, curr_metric_cbar_ticks = get_contour_info_from_metric_data(results_metric_1, lb=3)
+        # Use only FINITE values to derive levels/ticks: solve_TEA reports an
+        # unsolvable (money-losing) IRR as -inf, and np.isnan does NOT catch
+        # +/-inf -- an -inf leaking into np.arange(min, ...) below raises
+        # "arange: cannot compute length" and aborts all remaining plots.
+        curr_metric_non_nans = np.array(results[curr_metric])[np.isfinite(np.array(results[curr_metric]))]
+        if curr_metric_non_nans.size == 0 or curr_metric_non_nans.min() == curr_metric_non_nans.max():
+            # e.g. IBO MPSP (all NaN) or IBO yield/titer (all zero) in a
+            # scenario that makes no isobutanol: no range to contour
+            print(f'Skipping contour plot for {curr_metric}: all values are NaN or identical.')
+            continue
+
+        curr_metric_w_levels = np.arange(curr_metric_non_nans.min(),
+                                      curr_metric_non_nans.max()*1.001,
+                                      (curr_metric_non_nans.max()-curr_metric_non_nans.min())/80
+                                      )
+        curr_metric_cbar_ticks = np.arange(curr_metric_non_nans.min(),
+                                      curr_metric_non_nans.max()*1.001,
+                                      (curr_metric_non_nans.max()-curr_metric_non_nans.min())/5
+                                      )
+
+        curr_metric_w_ticks = list(set([np.percentile(curr_metric_non_nans, 25),
+                            np.percentile(curr_metric_non_nans, 50),
+                            np.percentile(curr_metric_non_nans, 75),
+                            curr_metric_non_nans.max()]))
+        curr_metric_w_ticks.sort(reverse=False)
+
+        # Per-metric plot formatting (defaults; the IRR branch overrides).
+        curr_fmt_clabel = lambda cvalue: get_rounded_str(cvalue, 3)
+        curr_w_units = val['units']
+        curr_comparison_lines = []   # extra, distinctly-coloured labeled lines
+        scale_percent = False
+
+        if 'irr' in lccm:
+            # IRR is shown as a PERCENTAGE (x100) on a HARD 0-30% colour scale
+            #  (raised from 0-25% for the 2026-09-20 opt_IRR relocation, whose
+            #  baseline IRR ~27.3% exceeded the old 25% top). These bounds
+            #  were set for the OLD opt_IRR point and may need revisiting
+            #  after a re-run on opt_PI_TRY_informed (baseline IRR 0.2792,
+            #  i.e. ~27.9%; the new grid's max is not yet known):
+            #  - gray UNDER-colour for money-losing cells (< 0%, incl. the
+            #    -inf unsolvable corners), extend_cmap='min';
+            #  - NO over-colour: the old opt_IRR grid max (~27%) was below
+            #    30%, so nothing extended past the top of the bar;
+            #  - break-even (0%) drawn as a WHITE labeled contour line via
+            #    comparison_lines; black labeled lines mark 5/10/15/20/25%;
+            #  - every contour label carries the % symbol.
+            scale_percent = True
+            curr_w_units = '%'
+            curr_fmt_clabel = lambda cvalue: f'{cvalue:.0f}%'
+            curr_metric_w_levels = np.arange(0.0, 30.0001, 30.0/80)
+            curr_metric_cbar_ticks = np.arange(0.0, 30.0001, 5.0)
+            curr_metric_w_ticks = [5.0, 10.0, 15.0, 20.0, 25.0]
+            extend_cmap = 'min'
+            cmap_under_color = colors.grey_dark.shade(40).RGBn
+            cmap_over_color = None
+            curr_comparison_lines = [0.0]
+        # curr_metric_w_levels = np.arange(0., 15.5, 0.5)
+
+
+        # contourf masks non-finite cells (they render blank). For a metric
+        # drawn with an under-color extend (IRR), push -inf (unsolvable,
+        # money-losing points) to just below the lowest level so those cells
+        # fill with cmap_under_color instead of vanishing.
+        plot_data = np.array(results[curr_metric], dtype=float)
+        if scale_percent:
+            plot_data = plot_data * 100.0  # fractions -> percent (-inf/nan preserved)
+        if cmap_under_color is not None:
+            _pd = np.array(plot_data, dtype=float)
+            if np.isneginf(_pd).any():
+                _step = curr_metric_w_levels[1] - curr_metric_w_levels[0]
+                _pd[np.isneginf(_pd)] = curr_metric_w_levels[0] - _step
+                plot_data = _pd
+
+        contourplots.animated_contourplot(w_data_vs_x_y_at_multiple_z=plot_data, # shape = z * x * y # values of the metric you want to plot on the color axis; e.g., curr_metric
+                                        x_data=spec_1, # x axis values
+                                        # x_data = curr_metrics/theoretical_max_g_HP_acid_per_g_glucose,
+                                        y_data=spec_2, # y axis values
+                                        z_data=spec_3, # z axis values
+                                        x_label=x_label, # title of the x axis
+                                        y_label=y_label, # title of the y axis
+                                        z_label=z_label, # title of the z axis
+                                        w_label=f'{curr_metric}', # title of the color axis
+                                        x_ticks=x_ticks,
+                                        y_ticks=y_ticks,
+                                        z_ticks=z_ticks,
+                                        w_levels=curr_metric_w_levels, # levels for unlabeled, filled contour areas (labeled and ticked only on color bar)
+                                        w_ticks=curr_metric_w_ticks, # labeled, lined contours; a subset of w_levels
+                                        x_units=x_units,
+                                        y_units=y_units,
+                                        z_units=z_units,
+                                        w_units=curr_w_units,
+                                        # fmt_clabel=lambda cvalue: r"$\mathrm{\$}$"+" {:.1f} ".format(cvalue)+r"$\cdot\mathrm{kg}^{-1}$", # format of contour labels
+                                        fmt_clabel = curr_fmt_clabel,
+                                        cmap=cmap, # can use 'viridis' or other default matplotlib colormaps
+                                        # cmap_over_color = colors.grey_dark.shade(8).RGBn,
+                                        cmap_over_color=cmap_over_color,
+                                        cmap_under_color=cmap_under_color,
+                                        extend_cmap=extend_cmap,
+                                        comparison_lines=curr_comparison_lines, # white 0% break-even line for IRR
+                                        comparison_lines_colors='white',
+                                        cbar_ticks=curr_metric_cbar_ticks,
+                                        z_marker_color='g', # default matplotlib color names
+                                        fps=fps, # animation frames (z values traversed) per second
+                                        n_loops='inf', # the number of times the animated contourplot should loop animation over z; infinite by default
+                                        animated_contourplot_filename=f'{curr_metric}_animated_contourplot_'+file_to_save, # file name to save animated contourplot as (no extensions)
+                                        keep_frames=keep_frames, # leaves frame PNG files undeleted after running; False by default
+                                        axis_title_fonts=axis_title_fonts,
+                                        clabel_fontsize = clabel_fontsize,
+                                        default_fontsize = default_fontsize,
+                                        axis_tick_fontsize = axis_tick_fontsize,
+                                        # comparison_range=EtOH_market_range,
+                                        n_minor_ticks = 1,
+                                        cbar_n_minor_ticks = 3,
+                                        units_on_newline = (False, False, False, False), # x,y,z,w
+                                        units_opening_brackets = [" (",] * 4,
+                                        units_closing_brackets = [")",] * 4,
+                                        )
+
+#%% Sweep complete (per-metric CSVs + plots saved): drop the checkpoint
+if not replot_from_csv:
+    for _path in (checkpoint_filepath, inflight_filepath):
+        if os.path.exists(_path): os.remove(_path)

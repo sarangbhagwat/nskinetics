@@ -1,0 +1,15 @@
+# Optional dependencies of the isobutanol biorefinery case study
+# (nskinetics.biorefineries.isobutanol), on top of requirements_install.txt.
+# Mirrors extras_require['isobutanol'] in setup.py -- keep the two in sync;
+# `pip install "nskinetics[isobutanol]"` installs the same set.
+#
+# biorefineries (Bioindustrial-Park) and hensmith are on PyPI, but the locally
+# validated stack imports the Bioindustrial-Park (biorefineries 2.35.1) and
+# hensmith (0.1.2) git clones from PYTHONPATH. hensmith requires
+# biosteam>=2.54.0.
+biorefineries
+hensmith
+contourplots>=0.4.0
+optuna>=4.9
+SALib>=1.5
+openpyxl

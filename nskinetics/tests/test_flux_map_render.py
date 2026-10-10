@@ -24,7 +24,9 @@ import matplotlib.pyplot as plt
 import pytest
 from matplotlib.colors import to_rgba
 from matplotlib.patches import FancyArrowPatch, FancyBboxPatch, Rectangle
+from matplotlib.transforms import Bbox
 
+import nskinetics.visualization.flux_map as flux_map_module
 from nskinetics.engine.flux_analysis import FluxSummary
 from nskinetics.visualization import FluxMapSpec, draw_flux_map
 from nskinetics.visualization.flux_map import (
@@ -465,6 +467,56 @@ def test_legend_items_wrap_rather_than_collide_in_a_narrow_band():
         ys = {round(t.get_position()[1], 6) for t in legend.texts}
         assert len(ys) > 2                    # items wrapped onto more rows
         _assert_legend_is_clean(fig, axes)
+    finally:
+        plt.close(fig)
+
+
+def _assert_legend_graphics_are_clean(fig, axes):
+    """No two legend artists overlap, swatches and sample lines included."""
+    legend = _legend_axes(fig, axes)
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+
+    def half_stroke(artist):            # a stroke straddles the outline
+        return artist.get_linewidth() * fig.dpi / 72 / 2
+
+    boxes = [(t.get_text(), t.get_window_extent(renderer))
+             for t in legend.texts]
+    boxes += [('swatch', p.get_window_extent(renderer).padded(half_stroke(p)))
+              for p in legend.patches]
+    for ln in legend.lines:             # butt caps: the stroke widens only y
+        bb, pad = ln.get_window_extent(renderer), half_stroke(ln)
+        boxes.append(('sample line',
+                      Bbox([[bb.x0, bb.y0 - pad], [bb.x1, bb.y1 + pad]])))
+    for i, (name_a, a) in enumerate(boxes):
+        for name_b, b in boxes[i + 1:]:
+            assert not (a.x0 < b.x1 and b.x0 < a.x1
+                        and a.y0 < b.y1 and b.y0 < a.y1), \
+                f'{name_a!r} overlaps {name_b!r}'
+
+
+def _px_per_mm(ax):
+    (_, y0), (_, y1) = ax.transData.transform([(0., 0.), (0., 1.)])
+    return y1 - y0
+
+
+@pytest.mark.parametrize('dpi', [100., 300., 600.])
+def test_narrow_band_is_clean_in_the_linux_fallback_font(monkeypatch, dpi):
+    # Linux CI has neither Arial nor Helvetica, so the band is measured and
+    # drawn in the wider, taller DejaVu Sans, and `import nskinetics` sets
+    # figure.dpi = 300 (via biosteam). There the narrow band wraps to six
+    # rows, which a pitch derived from the band height alone packed closer
+    # than one line of text is tall.
+    monkeypatch.setitem(flux_map_module._RC_PARAMS, 'font.sans-serif',
+                        ['DejaVu Sans'])
+    monkeypatch.setitem(plt.rcParams, 'figure.dpi', dpi)
+    fig, axes = draw_flux_map([_summary('A', 10.)], _shipped_like_spec(60.))
+    try:
+        _assert_legend_is_clean(fig, axes)
+        _assert_legend_graphics_are_clean(fig, axes)
+        # a band grown to fit its rows keeps the panels' mm scale
+        assert _px_per_mm(_legend_axes(fig, axes)) == \
+            pytest.approx(_px_per_mm(axes[0]))
     finally:
         plt.close(fig)
 

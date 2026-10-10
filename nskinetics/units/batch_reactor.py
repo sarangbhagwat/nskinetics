@@ -321,7 +321,7 @@ class NSKBatchReactor(BatchBioreactor):
     default_V_max = 3785.
     #: Spike-feed reconciliation hook (see the class docstring); ``None`` = off.
     spike_feed_reconciler = None
-    #: [float] Relative spike-feed residual, |implied - delivered|/delivered,
+    #: [float] Relative spike-feed residual, ``|implied - delivered| / delivered``,
     #: below which a run is accepted without reconciling. The quickstart
     #: baseline sits at ~8e-5.
     spike_feed_reconciliation_tol = 1e-3

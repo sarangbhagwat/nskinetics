@@ -12,7 +12,8 @@ Renders one or more :class:`~nskinetics.FluxSummary` objects onto a shared
 scale across panels), and each inhibited step carries a compact strip whose
 row lengths are the fraction of potential flux lost per inhibitor plus a grey
 joint-effect row. A legend band beneath the panels keys both encodings, laid
-out from measured text widths so items never collide at any figure width.
+out from measured text extents so items never collide at any figure width or
+in any font.
 Sized for a Nature-family double-column figure (Arial, 5-8 pt -- no text below
 the 5 pt floor, and 8 pt only for the bold panel letters -- vector PDF with
 editable text + 600 dpi PNG).
@@ -23,6 +24,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.font_manager import FontProperties
 from matplotlib.lines import Line2D
 from matplotlib.patches import FancyBboxPatch, FancyArrowPatch, Rectangle
 
@@ -45,7 +47,7 @@ STRIP_LEN = 9.0      # full strip-row length in mm (a row = 0-100 % lost)
 STRIP_ROW_H = 1.1    # strip row height in mm
 STRIP_ROW_GAP = 0.3  # vertical gap between strip rows in mm
 LABEL_OFFSET = 1.6   # edge value label offset from the line, in mm
-LEGEND_H = 13.0      # height of the legend band in mm
+LEGEND_H = 13.0      # nominal height of the legend band in mm (grows if needed)
 MAX_MUTATION_SCALE = 9.0   # cap on the flux-scaled arrowhead size
 LEADER_LW = 0.3      # hairline linking a strip to the edge it belongs to
 
@@ -55,9 +57,12 @@ LEG_MARGIN = 2.0     # clear space at the left/right of the band
 LEG_GAP = 0.8        # between an item's graphic and its label
 LEG_ITEM_GAP = 3.5   # between one item and the next
 LEG_ROW_H = 4.0      # maximum row pitch; shrinks when rows wrap
+LEG_ROW_GAP = 0.3    # minimum clear space between the extents of two rows
 LEG_SAMPLE_W = 5.0   # length of a flux-sample line
 LEG_SWATCH_W = 3.5   # width of a strip-color swatch
 LEG_SWATCH_H = 2.0   # height of a strip-color swatch
+LEG_DASH_LW = 0.5    # linewidth of the inactive-pathway sample, in pt
+LEG_EDGE_LW = 0.3    # outline linewidth of a strip-color swatch, in pt
 
 #: rcParams applied *only* while a figure is drawn and saved (Nature-family
 #: conventions: Arial, editable vector text). Applied through
@@ -513,8 +518,8 @@ def _renderer(fig):
     return get() if get is not None else None
 
 
-def _text_width_mm(ax, artist, renderer):
-    """Width of a drawn text artist in the legend's mm data units.
+def _text_size_mm(ax, artist, renderer):
+    """Width and height of a drawn text artist in the legend's mm data units.
 
     Parameters
     ----------
@@ -527,12 +532,32 @@ def _text_width_mm(ax, artist, renderer):
 
     Returns
     -------
-    float
+    (float, float)
+        The rendered extent, ``(width, height)``; the height is the full
+        line box (ascent plus descent) that the text occupies on the page.
     """
     bb = artist.get_window_extent(renderer)
     inv = ax.transData.inverted()
-    (x0, _), (x1, _) = inv.transform([(bb.x0, bb.y0), (bb.x1, bb.y0)])
-    return abs(x1 - x0)
+    (x0, y0), (x1, y1) = inv.transform([(bb.x0, bb.y0), (bb.x1, bb.y1)])
+    return abs(x1 - x0), abs(y1 - y0)
+
+
+def _pt_to_mm(ax, pt):
+    """Length of ``pt`` points (e.g. a linewidth) in ``ax``'s mm data units.
+
+    Parameters
+    ----------
+    ax : matplotlib.axes.Axes
+        The axes whose ``transData`` sets the mm scale (equal aspect).
+    pt : float
+        Length in points.
+
+    Returns
+    -------
+    float
+    """
+    (_, y0), (_, y1) = ax.transData.transform([(0., 0.), (0., 1.)])
+    return pt * ax.get_figure().dpi / 72. / abs(y1 - y0)
 
 
 def _legend_entries(spec, fmax):
@@ -576,8 +601,13 @@ def _draw_legend(ax, spec, scale, fmax, width_mm):
     measured width of its own label (via
     :meth:`~matplotlib.text.Text.get_window_extent`, converted to the band's
     mm data units) plus its graphic, so nothing depends on a guessed pitch.
-    The row pitch shrinks if the content needs more rows than the band's
-    nominal height allows.
+    Rows are stacked the same way: a row is as tall as the measured extent of
+    its tallest member (label, ``+`` marker or graphic), and two adjacent rows
+    always keep ``LEG_ROW_GAP`` of clear space between their extents. The row
+    pitch shrinks if the content needs more rows than the band's nominal
+    height allows, but never below that clearance; a band too short for its
+    rows grows instead (see :func:`draw_flux_map`), so wrapped rows cannot
+    overprint whatever the font's metrics.
 
     Parameters
     ----------
@@ -592,6 +622,12 @@ def _draw_legend(ax, spec, scale, fmax, width_mm):
         Largest drawn cumulative flux.
     width_mm : float
         Full figure width in mm (the legend's x data range).
+
+    Returns
+    -------
+    float
+        Height of the band in mm (its y data range): ``LEGEND_H``, or more
+        when the rows need more.
     """
     ax.set_xlim(0, width_mm)
     ax.set_ylim(0, LEGEND_H)
@@ -605,62 +641,87 @@ def _draw_legend(ax, spec, scale, fmax, width_mm):
 
     # --- pass 1: create every text, measure it, and plan the rows ---
     plan = []          # (row, x_mm, entry, artists...)
+    heights = [0.]     # measured height of each row's tallest member, in mm
     row, x = 0, 0.0
     for kind, payload, label, color in items:
-        marker = None
+        marker, marker_w = None, 0.
         if kind == 'swatch' and payload:
             marker = ax.text(0, 0, '+', fontsize=FS_VAL, ha='left',
                              va='center', color=color)
         text = ax.text(0, 0, label, fontsize=FS_LEG, ha='left', va='center',
                        color='#555555' if kind == 'dash' else None)
-        graphic_w = LEG_SAMPLE_W if kind in ('line', 'dash') else LEG_SWATCH_W
-        w = graphic_w + LEG_GAP + _text_width_mm(ax, text, renderer)
+        # every member is centered on the row's y, so its full height counts
+        if kind == 'line':
+            graphic_w, graphic_h = LEG_SAMPLE_W, _pt_to_mm(ax, scale(payload))
+        elif kind == 'dash':
+            graphic_w, graphic_h = LEG_SAMPLE_W, _pt_to_mm(ax, LEG_DASH_LW)
+        else:
+            graphic_w = LEG_SWATCH_W
+            graphic_h = LEG_SWATCH_H + _pt_to_mm(ax, LEG_EDGE_LW)
+        text_w, text_h = _text_size_mm(ax, text, renderer)
+        w, h = graphic_w + LEG_GAP + text_w, max(graphic_h, text_h)
         if marker is not None:
-            w += _text_width_mm(ax, marker, renderer) + LEG_GAP
+            marker_w, marker_h = _text_size_mm(ax, marker, renderer)
+            w += marker_w + LEG_GAP
+            h = max(h, marker_h)
         if x > 0. and x + w > usable:
             row, x = row + 1, 0.
-        plan.append((row, x, kind, payload, color, graphic_w, marker, text))
+            heights.append(0.)
+        heights[row] = max(heights[row], h)
+        plan.append((row, x, kind, payload, color, graphic_w, marker,
+                     marker_w, text))
         x += w + LEG_ITEM_GAP
     row += 1
+    heights.append(0.)
     cap_artists = []
     x = 0.
     for cap in captions:
         text = ax.text(0, 0, cap, fontsize=FS_LEG, ha='left', va='center',
                        color='#555555')
-        w = _text_width_mm(ax, text, renderer)
+        w, h = _text_size_mm(ax, text, renderer)
         if x > 0. and x + w > usable:
             row, x = row + 1, 0.
+            heights.append(0.)
+        heights[row] = max(heights[row], h)
         cap_artists.append((row, x, text))
         x += w + 2 * LEG_ITEM_GAP
     n_rows = row + 1
 
-    # --- pass 2: place everything on a pitch that fits the band ---
-    pitch = min(LEG_ROW_H, (LEGEND_H - 2 * LEG_PAD) / n_rows)
-    top = LEGEND_H / 2 + n_rows * pitch / 2
+    # --- pass 2: stack the rows on their measured heights ---
+    # The nominal pitch spreads the rows over the band (at most LEG_ROW_H);
+    # any pair of rows it would bring closer than LEG_ROW_GAP is pushed apart.
+    nominal = min(LEG_ROW_H, (LEGEND_H - 2 * LEG_PAD) / n_rows)
+    pitches = [max(nominal, (heights[r] + heights[r + 1]) / 2 + LEG_ROW_GAP)
+               for r in range(n_rows - 1)]
+    span = sum(pitches)
+    # The row centers are centered in the band, which must therefore hold the
+    # span, the taller of the two outer rows' half-heights on each side, and
+    # the padding; a band that cannot is grown.
+    band_h = max(LEGEND_H, span + max(heights[0], heights[-1]) + 2 * LEG_PAD)
+    ax.set_ylim(0, band_h)
+    ys = band_h / 2 + span / 2 - np.concatenate(([0.], np.cumsum(pitches)))
 
-    def _y(r):
-        return top - (r + 0.5) * pitch
-
-    for r, x0, kind, payload, color, graphic_w, marker, text in plan:
+    for r, x0, kind, payload, color, graphic_w, marker, marker_w, text in plan:
         x0 += LEG_MARGIN
-        y = _y(r)
+        y = ys[r]
         if kind == 'line':
             ax.plot([x0, x0 + graphic_w], [y, y], color=color,
                     lw=scale(payload), solid_capstyle='butt')
         elif kind == 'dash':
-            ax.plot([x0, x0 + graphic_w], [y, y], color=color, lw=0.5,
-                    ls=(0, (2, 2)))
+            ax.plot([x0, x0 + graphic_w], [y, y], color=color,
+                    lw=LEG_DASH_LW, ls=(0, (2, 2)))
         else:
             ax.add_patch(Rectangle((x0, y - LEG_SWATCH_H / 2), graphic_w,
-                                   LEG_SWATCH_H, fc=color, ec=C_ROW, lw=0.3,
-                                   hatch=payload))
+                                   LEG_SWATCH_H, fc=color, ec=C_ROW,
+                                   lw=LEG_EDGE_LW, hatch=payload))
         tx = x0 + graphic_w + LEG_GAP
         if marker is not None:
             marker.set_position((tx, y))
-            tx += _text_width_mm(ax, marker, renderer) + LEG_GAP
+            tx += marker_w + LEG_GAP
         text.set_position((tx, y))
     for r, x0, text in cap_artists:
-        text.set_position((x0 + LEG_MARGIN, _y(r)))
+        text.set_position((x0 + LEG_MARGIN, ys[r]))
+    return band_h
 
 
 def draw_flux_map(summaries, spec, save_dir=None, formats=('png', 'pdf'),
@@ -701,7 +762,12 @@ def draw_flux_map(summaries, spec, save_dir=None, formats=('png', 'pdf'),
     Notes
     -----
     Figure styling is confined to a :func:`matplotlib.pyplot.rc_context`, so
-    the caller's global ``rcParams`` are unchanged on return. The returned
+    the caller's global ``rcParams`` are unchanged on return; the text keeps
+    the concrete font it was laid out in (Arial where installed, else the
+    first available fallback) when the figure is drawn again later. The
+    figure is ``h_mm + LEGEND_H`` mm tall unless the legend needs more rows
+    than that band holds (a narrow figure in a wide font), in which case the
+    band, and with it the figure, is taller. The returned
     figure is not closed; close it with :func:`matplotlib.pyplot.close` when
     drawing many.
     """
@@ -720,6 +786,11 @@ def draw_flux_map(summaries, spec, save_dir=None, formats=('png', 'pdf'),
     scale = _width_scale(fmax)
     total_w = w_mm * n
     with plt.rc_context(_RC_PARAMS):
+        # Pin the face the generic family resolves to here (Arial, else the
+        # first fallback installed), so a figure drawn again after the context
+        # exits -- e.g. a caller's own savefig -- keeps the font its legend
+        # was measured in instead of resolving 'sans-serif' afresh.
+        plt.rcParams['font.family'] = [FontProperties().get_name()]
         fig = plt.figure(figsize=(total_w * MM, (h_mm + LEGEND_H) * MM))
         gs = fig.add_gridspec(2, n, height_ratios=[h_mm, LEGEND_H],
                               left=0.01, right=0.99, bottom=0.01, top=0.99,
@@ -728,7 +799,15 @@ def draw_flux_map(summaries, spec, save_dir=None, formats=('png', 'pdf'),
         legend_ax = fig.add_subplot(gs[1, :])
         for i, (ax, s) in enumerate(zip(axes, summaries)):
             _draw_panel(ax, s, spec, scale, annotate_values, _panel_letter(i))
-        _draw_legend(legend_ax, spec, scale, fmax, total_w)
+        band_h = _draw_legend(legend_ax, spec, scale, fmax, total_w)
+        if band_h > LEGEND_H:
+            # The legend's rows need a taller band: grow the figure by the
+            # difference. The panels keep their h_mm share of the gridspec,
+            # so their size and mm scale (and the legend's) are unchanged.
+            gs.set_height_ratios([h_mm, band_h])
+            fig.set_size_inches(total_w * MM, (h_mm + band_h) * MM)
+            for a in fig.axes:
+                a.set_position(a.get_subplotspec().get_position(fig))
         if save_dir:
             os.makedirs(save_dir, exist_ok=True)
             for fmt in formats:

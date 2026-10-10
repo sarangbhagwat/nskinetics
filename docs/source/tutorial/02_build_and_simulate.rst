@@ -127,8 +127,7 @@ recent simulation. Pass ``labels`` for a readable legend:
 Running it
 ----------
 
-Putting the whole snippet together and running it in the ``HP_2024``
-environment prints:
+Putting the whole snippet together and running it prints:
 
 .. code-block:: text
 

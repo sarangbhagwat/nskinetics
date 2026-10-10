@@ -15,15 +15,19 @@ biorefinery's inline system relies on, so it is pinned separately from the
 Deliberately needs only ``biosteam``: no chemical set, no thermo, no
 simulation, and no ``te_r`` kinetic model (the factory only imports it when
 *called*, which this module never does). It is therefore *not* ``slow``-marked
-and runs in the default ``-m "not slow"`` suite and in CI.
+and runs in the default ``-m "not slow"`` suite and in CI. The import-weight
+guards probe a fresh interpreter, so they hold whatever else the pytest
+process has imported.
 """
 
-import sys
+import json
 import inspect
 
 import biosteam as bst
 
 from nskinetics.processes import create_sugar_prep_and_fermentation_system
+
+from .isobutanol._support import assert_ran_ok, run_isolated
 
 EXPECTED_INS_IDS = ['saccharified_slurry', 'seed']
 
@@ -64,12 +68,52 @@ def test_declared_inlet_defaults():
     assert list(f.ins) == EXPECTED_INS_DEFAULTS
 
 
+_PROBE_SENTINEL = 'NSK_MODULES '
+
+
+def _modules_after(statement):
+    """Sorted ``sys.modules`` of a FRESH interpreter after running
+    ``statement`` (run from the repository root, so it imports this checkout).
+
+    A fresh interpreter, because this pytest process's ``sys.modules`` holds
+    whatever any earlier-collected or earlier-run test imported."""
+    code = (f'{statement}\n'
+            'import json, sys\n'
+            f'print({_PROBE_SENTINEL!r} + json.dumps(sorted(sys.modules)))\n')
+    proc = run_isolated(['-c', code], timeout=600, simulation=False)
+    out = assert_ran_ok(proc, _PROBE_SENTINEL)
+    line = [ln for ln in out.splitlines() if ln.startswith(_PROBE_SENTINEL)][-1]
+    return json.loads(line[len(_PROBE_SENTINEL):])
+
+
+def _heavy_modules(modules):
+    """The modules an import of nskinetics (or of the factory) must never
+    load: the shipped kinetic model, the upstream ``biorefineries`` package
+    and the isobutanol biorefinery. (``hensmith`` is deliberately not checked:
+    biosteam >= 2.54 imports it whenever it is installed.)"""
+    return [m for m in modules
+            if 's_cerevisiae_ferm_fb_inhib_mod_ibo' in m
+            or m == 'biorefineries' or m.startswith('biorefineries.')
+            or m.startswith('nskinetics.biorefineries.isobutanol')]
+
+
 def test_import_is_lightweight():
-    """Importing the factory must not pull in the shipped kinetic model or the
-    biorefineries package: both are call-time (and slow-test) dependencies."""
-    assert not [m for m in sys.modules
-                if 's_cerevisiae_ferm_fb_inhib_mod_ibo' in m]
-    assert 'biorefineries' not in sys.modules
+    """Importing the factory must not pull in the shipped kinetic model, the
+    biorefineries package or the isobutanol biorefinery: all are call-time
+    (and slow-test) dependencies. Probed in a fresh interpreter."""
+    modules = _modules_after('from nskinetics.processes import '
+                             'create_sugar_prep_and_fermentation_system')
+    assert 'nskinetics.processes' in modules
+    assert _heavy_modules(modules) == []
+
+
+def test_import_nskinetics_is_lightweight():
+    """A plain ``import nskinetics`` loads none of them either (its
+    ``biorefineries`` subpackage is an empty shell). Probed in a fresh
+    interpreter."""
+    modules = _modules_after('import nskinetics')
+    assert 'nskinetics.biorefineries' in modules
+    assert _heavy_modules(modules) == []
 
 
 EXPECTED_FBS_KWARG_DEFAULTS = {

@@ -43,7 +43,7 @@ To get the git version, run:
 
 .. code-block:: bash
 
-    $ git clone git://github.com/sarangbhagwat/nskinetics
+    $ git clone https://github.com/sarangbhagwat/nskinetics
 
 For help on common installation issues, please visit the `documentation <https://nskinetics.readthedocs.io/en/latest/>`__.
 
@@ -52,7 +52,7 @@ Documentation
 
 NSKinetic's `full documentation <https://nskinetics.readthedocs.io/en/latest/>`__ includes a staged tutorial, starting from a minimal model and building up to a full process/TEA-coupled fed-batch fermentation. The interactive quickstart demo below runs that full picture end to end.
 
-One factory call builds a complete, industrially configured process around a real kinetic model: ``nskinetics.processes.create_sugar_prep_and_fermentation_system`` assembles the sugar-solution preparation and fed-batch fermentation section of an actual biorefinery model — a splitter feeding parallel initial-feed and spike-feed conditioning trains (multi-effect evaporator, pumps, dilution-water mixer, heat exchanger), a ``FermentationSaccharomycesEthanolIsobutanol`` fermentor driven by the shipped *S. cerevisiae* kinetic model, and a compressed-air aeration loop. This example runs it end to end: build, simulate, change the fed-batch strategy, and inspect the reactor. Total simulation time is a few seconds once the imports are loaded; the ~1-minute interactive demo below plays through the whole thing, showing real output at every step:
+One factory call builds a complete, industrially configured process around a real kinetic model: ``nskinetics.processes.create_sugar_prep_and_fermentation_system`` assembles the sugar-solution preparation and fed-batch fermentation section of an actual biorefinery model — a splitter feeding parallel initial-feed and spike-feed conditioning trains (multi-effect evaporator, pumps, dilution-water mixer, heat exchanger), a ``FermentationSaccharomycesEthanolIsobutanol`` fermentor driven by the shipped *S. cerevisiae* kinetic model, and a compressed-air aeration loop. The complete biorefinery built around this section ships with NSKinetics as the `isobutanol biorefinery case study <https://nskinetics.readthedocs.io/en/latest/case_studies/isobutanol/index.html>`__. This example runs the section end to end: build, simulate, change the fed-batch strategy, and inspect the reactor. Total simulation time is a few seconds once the imports are loaded; the ~1-minute interactive demo below plays through the whole thing, showing real output at every step:
 
 .. figure:: docs/source/_static/images/examples/quickstart_demo_poster.png
    :width: 700
@@ -63,6 +63,24 @@ One factory call builds a complete, industrially configured process around a rea
    ▶ `Watch the quickstart run end to end <https://nskinetics.readthedocs.io/en/latest/_static/quickstart_demo.html>`__ — a ~1-minute interactive demo (build, simulate, re-tune, inspect).
 
 See the `full tutorial <https://nskinetics.readthedocs.io/en/latest/tutorial/index.html>`__ for the full walkthrough — writing and simulating a kinetic model from scratch, the ``Event``/``FeedSpike`` API used inside the fermentor, a tour of the shipped *S. cerevisiae* kinetic model, and the kinetics-to-biosteam bridge behind ``V406``.
+
+
+Case study: isobutanol biorefinery
+----------------------------------
+
+NSKinetics ships a complete corn dry-grind biorefinery as a case study, ``nskinetics.biorefineries.isobutanol``: a `BioSTEAM <https://biosteam.readthedocs.io/en/latest/>`__ flowsheet whose fermentor runs the shipped *S. cerevisiae* fed-batch model with an engineered isobutanol pathway, so titer, rate and yield are outputs of the strain kinetics and the feeding policy rather than inputs to the techno-economic analysis. It comes with ten scenarios (the wild-type ethanol plant, an engineered ethanol + isobutanol co-producer and eight strain-design optima), its TEA, and the scripts behind its feeding-strategy and kinetic sweeps, Bayesian strain-design optimization, objective-landscape, enzyme-burden (proteome allocation), global sensitivity and uncertainty analyses.
+
+The case study needs NSKinetics 0.7.0 or later, the first release that ships ``nskinetics.biorefineries``; earlier releases do not include it. Until 0.7.0 is on PyPI, install it from source, with its optional ``isobutanol`` dependencies, and check the installation with a pinned smoke case (a few minutes):
+
+.. code-block:: bash
+
+    $ git clone https://github.com/sarangbhagwat/nskinetics
+    $ cd nskinetics
+    $ git checkout dev
+    $ pip install -e ".[isobutanol]"
+    $ python -m nskinetics.biorefineries.isobutanol.smoke 1
+
+Once 0.7.0 is on PyPI, ``pip install "nskinetics[isobutanol]>=0.7.0"`` installs the same package and dependencies. `Running the analyses <https://nskinetics.readthedocs.io/en/latest/case_studies/isobutanol/running_analyses.html>`__ has the full installation instructions (including the validated dependency versions) and lists every analysis script, its runtime and its outputs; the `case study documentation <https://nskinetics.readthedocs.io/en/latest/case_studies/isobutanol/index.html>`__ presents the findings.
 
 
 Bug reports

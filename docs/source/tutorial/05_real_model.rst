@@ -5,7 +5,8 @@ A real fed-batch model
 ``FeedSpike`` from small, hand-written Antimony models. This page runs the
 same machinery on a **shipped, production-scale** model: the *S. cerevisiae*
 fed-batch fermentation SBML that ships inside the NSKinetics package and
-backs the downstream ``isobutanol`` biorefinery's fermentation unit. It has
+drives the fermentor of the
+:doc:`isobutanol biorefinery case study <../case_studies/isobutanol/index>`. It has
 ten floating species (glucose, ethanol, isobutanol, biomass, and six
 pathway intermediates) and dozens of kinetic parameters — the same shape of
 model as :doc:`04_fed_batch_feeding`'s toy example, just larger.
@@ -41,7 +42,7 @@ shipped SBML ships **without** any baked-in events — the fed-batch glucose
 feed and the aerobic/anaerobic stage switch are not part of the file itself,
 and must be added through the same :class:`~nskinetics.FeedSpike` /
 :class:`~nskinetics.Event` API from the last two pages, exactly as the
-downstream biorefinery's own setup script does.
+isobutanol biorefinery's own fermentor does.
 
 Adding the events conditionally
 ---------------------------------
@@ -168,8 +169,7 @@ species, so it has no amount/concentration distinction.)
 while it throttles them; see
 :doc:`the shipped-model API page </API/models>`.)
 
-Running the full snippet above end-to-end in the ``IBO_2026`` environment
-prints:
+Running the full snippet above end to end prints:
 
 .. code-block:: text
 
@@ -232,16 +232,19 @@ below about 88 /h (demand 17.5 mmol/L/h versus a cap of 0.2 × ``kLa``);
 :doc:`the shipped-model API page </API/models>` documents the parameters.
 
 ``[s_IBO]`` stays at exactly ``0.0``. This is not a bug — it is the shipped
-model's own default: the four isobutanol-pathway rate constants
-(``k_13``, ``k_14``, ``k_15``, ``k_16``, governing the
-``s_pyr -> s_AL -> s_DHI -> s_KIV -> s_IBO`` branch) are all ``0.0`` in the
-SBML as shipped, so that branch carries zero flux regardless of how long the
-model runs. This mirrors the downstream ``isobutanol`` biorefinery's own
-*baseline* scenario, which runs this exact model with the isobutanol branch
-switched off and only activates it (by setting ``k_13`` and friends to
-literature-derived values) in scenarios explicitly exploring isobutanol
-co-production. Nothing about the fed-batch feeding or stage-switch machinery
-above changes between the two cases — only the kinetic parameters do.
+model's own default: the first three rate constants of the
+``s_pyr -> s_AL -> s_DHI -> s_KIV -> s_isobutald -> s_IBO`` branch (``k_13``, ``k_14``,
+``k_15``) are ``0.0`` in the SBML as shipped; only the constants of the last
+two steps (``k_16``, ``k_17``) are nonzero. With no ALS (``k_13``) flux into
+the branch, it carries zero flux regardless of how long the model runs. This
+mirrors the :doc:`isobutanol biorefinery's <../case_studies/isobutanol/index>`
+*baseline* scenario (scenario A), which runs this exact model with the
+isobutanol branch switched off and activates it only in co-production
+scenarios: scenario B, with literature-derived constants, and the ``opt_*``
+strain-design scenarios, with optimized ones (see
+:doc:`../case_studies/isobutanol/kinetic_optimization`). Nothing about the
+fed-batch feeding or stage-switch machinery above changes between the two
+cases — only the kinetic parameters do.
 
 Describing a parameter change
 -----------------------------

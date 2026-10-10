@@ -26,9 +26,9 @@ resolving.
 
 Marked ``slow`` as a whole and deliberately not registered in
 ``nskinetics/tests/__init__.py``: the shipped subpackage builds ``te_r`` on
-import, and ``test_processes_contract.test_import_is_lightweight`` asserts
-that nothing named for the shipped model is in ``sys.modules`` during the
-``-m "not slow"`` run. Every import of it (and of libsbml) therefore lives
+import, so importing it at collection time would load it into every
+``-m "not slow"`` run (``import nskinetics`` must never load it; the
+fresh-interpreter guards in ``test_processes_contract`` check that). Every import of it (and of libsbml) therefore lives
 inside a test body. Never load a second Antimony model in this process: doing
 so perturbs the shipped model. Every test that applies scenario B or writes a
 parameter restores scenario A and the default in ``finally`` --

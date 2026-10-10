@@ -10,9 +10,9 @@ parameter-change description helper.
 
 Marked ``slow`` as a whole and deliberately not registered in
 ``nskinetics/tests/__init__.py``: the shipped subpackage builds ``te_r`` on
-import, and ``test_processes_contract.test_import_is_lightweight`` asserts
-that nothing named for the shipped model is in ``sys.modules`` during the
-``-m "not slow"`` run. Even the dict-only tests below import the
+import, so importing it at collection time would load it into every
+``-m "not slow"`` run (``import nskinetics`` must never load it; the
+fresh-interpreter guards in ``test_processes_contract`` check that). Even the dict-only tests below import the
 classification from that subpackage, so every such import lives inside a
 test body and the module runs only under ``-m ""`` (same precedent as
 ``test_flux_map.py``).
