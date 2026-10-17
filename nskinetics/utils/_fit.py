@@ -22,11 +22,32 @@ except Exception:
     basinhopping = None
     minimize = None
 
-__all__ = ('hybrid_global_optimize',)
+__all__ = ('hybrid_global_optimize', 'GlobalOptResult')
 
 #%%
 @dataclass
 class GlobalOptResult:
+    """Outcome of :func:`hybrid_global_optimize`.
+
+    Attributes
+    ----------
+    x : numpy.ndarray
+        Best point found (in the objective's own space).
+    fun : float
+        Objective value at ``x``.
+    success : bool
+        ``True`` if differential evolution reported success or at least one
+        local polish converged (``scipy.optimize.minimize`` success);
+        ``False`` otherwise, e.g. when the objective returns ``NaN``.
+    message : str
+        Stages run and the status of each.
+    nfev : int
+        Objective evaluations over all stages.
+    history : list of dict
+        Per-stage records (filled with ``return_all=True``).
+    meta : dict
+        Parallel mode, workers, dimension and the main options.
+    """
     x: np.ndarray
     fun: float
     success: bool
@@ -50,7 +71,7 @@ def hybrid_global_optimize(
     bounds: Sequence[Tuple[float, float]],
     *,
     # Parallelism control
-    parallel: str = "threads",           # "none" | "threads" | "processes"
+    parallel: str = "none",              # "none" | "threads" | "processes"
     workers: int | None | str = None,    # -1, int, None, or "auto"
     # Differential Evolution
     de_popsize: int = 15,
@@ -73,14 +94,58 @@ def hybrid_global_optimize(
     return_all: bool = False,
     **minimize_kwargs,
 ) -> GlobalOptResult:
-    """
-    Hybrid global optimization using DE → (optional) Basin-Hopping → local polish.
+    """Hybrid global optimization: differential evolution, then (optionally)
+    basin hopping, then a local polish of the best candidates.
 
-    `parallel`:
-        "threads" (safe in notebooks/Windows; default), "processes" (requires __main__ guard),
-        or "none" for serial.
-    `workers`:
-        None/1 (serial), int for #threads/processes, or -1/"auto" for all CPUs.
+    Parameters
+    ----------
+    objective : callable
+        ``objective(x) -> float`` for ``x`` a 1-D array within ``bounds``.
+    bounds : sequence of (float, float)
+        ``(low, high)`` per dimension, ``low < high``.
+    parallel : {'none', 'threads', 'processes'}
+        How differential evolution evaluates its population. ``'none'``
+        (default) is serial. ``'threads'`` evaluates in a thread pool and is
+        only safe for objectives that share no mutable state: **never** use
+        it with an objective that runs a :class:`~nskinetics.KineticModel`
+        (or any RoadRunner instance), because one RoadRunner must never be
+        used from several threads at once. ``'processes'`` needs a picklable
+        objective (and an ``if __name__ == '__main__':`` guard under the
+        ``spawn`` start method); each process must then build its own model.
+        For kinetic models prefer ``'none'`` (as
+        :func:`nskinetics.analysis.fit_parameters` does) or parallelize
+        independent optimizations over processes.
+    workers : int, 'auto' or None
+        ``None``/``1`` (serial), an int for the number of threads/processes,
+        or ``-1``/``'auto'`` for all CPUs. Ignored with ``parallel='none'``.
+    de_popsize, de_maxiter, de_tol, de_strategy, de_mutation, de_recombination
+        Options of ``scipy.optimize.differential_evolution``.
+    do_basinhop, bh_niter, bh_stepsize
+        Run ``scipy.optimize.basinhopping`` from the DE optimum.
+    local_method, local_maxiter, polish_top_k
+        ``scipy.optimize.minimize`` method and iterations for the local
+        polish of the ``polish_top_k`` best DE candidates (at least one).
+    random_state : int, optional
+        Seed for DE, basin hopping and the fallback candidates.
+    callback : callable, optional
+        ``callback(x, f, info)`` after each stage.
+    return_all : bool
+        Record every stage in ``history``.
+    **minimize_kwargs
+        Passed to the local polish.
+
+    Returns
+    -------
+    GlobalOptResult
+        ``success`` is ``True`` only if differential evolution reported
+        success or at least one local polish converged.
+
+    Raises
+    ------
+    ImportError
+        If SciPy's optimizers are unavailable.
+    ValueError
+        For invalid bounds.
     """
     if differential_evolution is None or minimize is None:
         raise ImportError("SciPy (`scipy.optimize`) is required.")
@@ -224,11 +289,22 @@ def hybrid_global_optimize(
     if best_f2 < best_f:
         best_f, best_x = best_f2, best_x2
 
+    # Success: DE converged, or at least one local polish did (a NaN or
+    # failing objective gives neither).
+    de_success = bool(getattr(de_res, "success", False))
+    polished = sum(bool(rec["success"]) for rec in local_records)
+    success = de_success or polished > 0
+    message = (f"DE {'converged' if de_success else 'did not converge'} "
+               f"({de_res.message}); "
+               f"{'basin hopping; ' if do_basinhop and basinhopping is not None else ''}"
+               f"{polished}/{len(local_records)} {local_method} polish(es) "
+               "converged")
+
     return GlobalOptResult(
         x=np.asarray(best_x, float),
         fun=float(best_f),
-        success=True,
-        message=f"Finished (DE → {'BH → ' if do_basinhop else ''}{local_method})",
+        success=bool(success),
+        message=message,
         nfev=int(total_evals),
         history=history,
         meta={"parallel": parallel, "workers": w, "dim": dim,

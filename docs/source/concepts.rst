@@ -908,6 +908,428 @@ base condition. Sensitivity and screening results keep their condition
 (``.condition``, also saved by ``to_csv``), so a number's context travels
 with it.
 
+Calibration and identifiability
+-------------------------------
+
+:func:`~nskinetics.analysis.fit_parameters` estimates parameters by
+weighted least squares. Each :class:`~nskinetics.analysis.Experiment` is
+a :class:`Condition` (its own feeding parameters, initial values and run
+length) plus its data. Every evaluation of the objective runs each
+experiment's condition, with the candidate values merged in, from the
+restored baseline on a private copy of the model, and compares the
+:class:`~nskinetics.analysis.Observable` values of the run with the data.
+A ``scope='local'`` :class:`~nskinetics.analysis.FitParameter` gets one
+free value per experiment, named ``'target@experiment'``, and reaches only
+its own experiment's runs. The derivatives come from the event-aware
+central differences of :func:`~nskinetics.analysis.local_sensitivity`
+(above). The :doc:`calibration tutorial <tutorial/08_calibration>` shows
+all of this on a fed-batch example; this section explains the choices
+behind it.
+
+.. _calibration-noise:
+
+Noise models and weights
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+Each data point :math:`i` gets a standard deviation :math:`\sigma_i`, and
+the fit minimizes
+
+.. math::
+
+   \mathrm{cost} = \tfrac{1}{2} \sum_i \rho\left(r_i^2\right), \qquad
+   r_i = \frac{m_i - y_i}{\sigma_i},
+
+with :math:`y_i` the measured value, :math:`m_i` the observable's model
+value (``scale * transform(x) + offset`` of its selection ``x``), and
+:math:`\rho(z) = z` for the default linear loss, so that twice the cost
+is the chi-square. An observable's ``scale`` and ``offset`` can be fitted
+too (name them, and add a :class:`~nskinetics.analysis.FitParameter` of
+that name); they cost no extra runs. Each observable has one of three
+noise models:
+
+- ``'additive'``: :math:`\sigma_i` = ``sigma``, in the observable's units;
+- ``'proportional'``: :math:`\sigma_i = \mathrm{rel} \cdot \max(|y_i|,\,
+  f \max |y|)`, with ``rel`` = ``rel_sigma``, the maximum over the data of
+  that observable in that experiment, and :math:`f` = ``relative_floor``
+  of :class:`~nskinetics.analysis.CalibrationProblem` (default ``1e-3``).
+  The floor is the one of :func:`~nskinetics.analysis.identifiability`
+  (:ref:`identifiability-noise`): a value near 0, such as the product at
+  the start or a depleted substrate, would otherwise get an unbounded
+  weight;
+- ``'combined'``: :math:`\sigma_i = \sqrt{\mathrm{sigma}^2 +
+  \mathrm{proportional}_i^2}`, an absolute part that dominates near 0 and
+  a relative part that dominates at large values.
+
+A value in the ``sigma`` column of the
+:class:`~nskinetics.analysis.Dataset`, such as the standard deviation of
+replicates, overrides the observable's noise model for that point.
+
+Every :math:`\sigma_i` is computed once, from the data, and held fixed;
+none follows the model's predictions. With fixed weights the objective
+is a plain weighted least-squares problem: its minimum is the
+maximum-likelihood estimate for Gaussian noise of known standard
+deviations, and :math:`J^T J`, from the Jacobian :math:`J` of the
+weighted residuals, is the Gauss-Newton Fisher information behind the
+covariance. A standard deviation proportional to the prediction would move
+the weights with the parameters: minimizing
+:math:`\sum ((m_i - y_i) / (\mathrm{rel}\, m_i))^2` favors large
+predictions, which shrink every residual, and a proper likelihood would
+need a :math:`\ln \sigma_i` term that least squares does not have.
+Data-based weights have a cost too: a point that happens to read low gets
+a larger weight. In a simulation of a constant measured 20 times, this
+biased the estimate low by about :math:`2\,\mathrm{rel}^2` of its value:
+0.5% at ``rel_sigma=0.05``, 2% at 0.1, while the standard error was 1.1%
+and 2.4%. When the bias is comparable to the standard error (many points
+of a noisy observable), give per-point standard deviations in the
+``sigma`` column, or use the ``'additive'`` or ``'combined'`` model.
+
+``absolute_sigma=True`` (the default) means that the :math:`\sigma_i`
+are the true standard deviations. The covariance is then used as
+computed, and the chi-square should be close to the degrees of freedom,
+``n_data - n_free``. A reduced chi-square far above 1 means that the model
+misses the data (a wrong local minimum, a wrong model, or standard
+deviations that are too small). A chi-square above the 99.9% quantile
+of the chi-square distribution with ``n_data - n_free`` degrees of
+freedom is flagged ``lack_of_fit`` (a goodness-of-fit test at the 0.1%
+level; with a robust loss, whose chi-square includes, on purpose, the
+outliers it down-weights, twice the robust cost is tested instead, see
+below). Look at
+:meth:`~nskinetics.analysis.FitResult.plot` before reading any
+uncertainty. ``absolute_sigma=False`` treats the :math:`\sigma_i` as
+relative weights only (weights-only sigmas; elsewhere on this page,
+*relative* refers to the proportional noise model and its floor, never to
+this setting): the covariance is scaled by the reduced chi-square
+(as ``scipy.optimize.curve_fit`` does), the Wald intervals use the
+Student-t quantile :math:`t_{0.975,\,n_\mathrm{data} - n_\mathrm{free}}`
+in place of 1.96, since the noise level is then estimated (2.57 with 5
+degrees of freedom), and AIC, AICc and BIC use :math:`n \ln(\chi^2 / n)`
+in place of :math:`\chi^2` and count the estimated noise level as one
+more parameter (Hurvich and Tsai, 1989). It needs the linear loss (see
+`Robust losses`_) and more data points than free parameters: without
+degrees of freedom there is no covariance (flag ``no_covariance``).
+
+Fitting in log space
+~~~~~~~~~~~~~~~~~~~~
+
+A :class:`~nskinetics.analysis.FitParameter` is fitted in
+:math:`x = \ln p` by default (``log=True``). Rate constants and initial
+values are positive, and their plausible ranges often span decades. In
+:math:`\ln p`, positive bounds keep :math:`p` positive; start points are
+spread uniformly over the decades of the range; the finite-difference
+step is relative (``rel_step``, default ``1e-3``), so parameters of any
+size are differenced alike; and the standard error of :math:`\ln p` is
+about the relative standard error of :math:`p`. The Wald interval
+:math:`\exp(x \pm 1.96\,\mathrm{SE})` is therefore asymmetric in
+:math:`p` and never reaches 0. Use ``log=False`` for a quantity that can
+be 0 or negative, such as an offset; it is differenced with the step
+``rel_step * max(|p|, 1e-3 * (hi - lo))``. The floor keeps the step of a
+parameter near 0 above the integration noise, but it ties the step to
+the width of the bounds: when :math:`|p|` is far below it (more than
+about :math:`10^4`-:math:`10^5` times smaller than ``hi - lo``, e.g. a
+rate constant of 0.5 on ``(0, 1e6)``), the central difference is not
+small relative to :math:`p` and can leave the bounds, and the Jacobian,
+the estimate and the SE are then inaccurate without any flag. Use
+``log=True`` for a positive quantity, or bounds within a few decades of
+the expected size. A start outside the bounds is clipped to them; a
+start on a bound is kept.
+
+Multiple starts
+~~~~~~~~~~~~~~~
+
+``scipy.optimize.least_squares`` is a local method: it converges to
+the minimum of the region it starts in. Nonlinear kinetics can have
+several minima, and event-driven models have many (next subsection).
+:func:`~nskinetics.analysis.fit_parameters` therefore runs ``n_starts``
+local fits: start 0 at each parameter's ``initial`` value (by default
+the value the run already starts from, i.e. the experiment condition's
+entry or else the model's value, so a fit refines what the model holds;
+the midpoint of the bounds in the fitting space for observable scales and
+offsets and for values outside the bounds), the others at scrambled
+Sobol' (or Latin hypercube) points over the bounds, reproducible with
+``seed``. It keeps the start with the lowest cost. The ``starts`` table of
+the :class:`~nskinetics.analysis.FitResult` lists every start: several
+starts that reach the same estimates at the same cost are reassuring,
+while widely different costs mean several minima, and the best start is
+only as good as the region the starts covered. ``method='hybrid'``
+replaces the starts with a global stage (differential evolution on the
+same cost, serial) followed by a least-squares polish; ``workers > 1``
+runs the starts in parallel processes.
+
+.. _calibration-event-timing:
+
+Event timing makes the objective non-smooth
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+An event makes a state jump. A parameter that moves the event in time
+moves the jump, and when the jump crosses a sample time, the model value
+at that sample changes by the whole jump, at once: a substrate top-up of
+40 g/L measured with a standard deviation of 1 g/L adds 1600 to the
+chi-square. The objective of a fed-batch fit is therefore smooth only
+piecewise, between the parameter values at which some event crosses some
+sample time (or fires once more or less before it). This has four
+consequences.
+
+**A local optimizer stays on its piece.** It converges to the best point
+of the piece it starts on, often at the piece's edge, where the jump
+blocks a better fit. In the :doc:`calibration tutorial
+<tutorial/08_calibration>`, five starts converged to five such points, at
+costs from 4870 to 10200, against 36 for the right piece.
+
+**The flags see the edge, not the piece.** The Jacobian of the fit
+compares the event counters (a :class:`FeedSpike`'s ``count_var``, other
+``v = v + 1`` counters found automatically, or ``event_counters=``) at
+every output time of every experiment. When a perturbation changes them,
+the step is refined (``max_refinements``, tenfold each time), and if the
+counts still differ, a one-sided difference from the side that kept them
+is used. The fit's ``flags`` then report ``event_count_changed`` for that
+parameter (and ``unreliable_derivative`` for a difference that is
+unreliable for another reason, such as failed runs): the optimum lies
+within a step of a jump, its Wald uncertainty is one-sided, and a profile
+should confirm it. A fit that stopped inside a wrong piece raises no
+derivative flag, since the objective is smooth there. Its signs are a
+chi-square far above the degrees of freedom, which the ``lack_of_fit``
+flag reports (with absolute sigmas, for every loss), starts that end
+at different costs, and the plot, which marks the model's events: an event
+on the wrong side of a sample shows as a residual of the jump's size.
+
+**Remedies.** Use ``method='hybrid'``, which found the right piece in the
+tutorial where five starts did not; more starts; initial values whose
+events line up with the data; or a robust loss, which caps the pull of a
+residual that sits across a jump so that the well-fitted points steer:
+in the tutorial, five of ten starts with ``loss='soft_l1', f_scale=3``
+reached the right piece, against one of twenty with the linear loss. A
+linear-loss fit started from the robust estimates,
+``fit_parameters(linear_problem, initial=robust_fit, n_starts=1)``, then
+reached the hybrid optimum, with the usual meaning of the covariance.
+Observables that do not jump also help: fitted
+to the product alone, which a spike only dilutes, three of five starts
+found the best fit, and a fit to all the data from those estimates
+reached the hybrid optimum.
+
+**Profiles can jump too.** :func:`~nskinetics.analysis.profile_likelihood`
+re-optimizes the other parameters locally, from the solution at the
+previous grid value. When a grid step moves an event across a sample
+time, the re-optimization can stay on the far side of the jump, although
+other values of the free parameters would bring the event back: the
+profile then rises by about :math:`(\mathrm{jump}/\sigma)^2` at once, and
+its interval ends at the jump, too narrow. With the tutorial's data, but
+with the runs charged with 47 and 32 g/L of substrate, the third spike of
+``FB2`` comes 0.02 h before the 11-h sample at the estimates. The
+profile interval of ``k`` then ends at 0.40002 on its lower side (the
+last grid value below the threshold is 0.40004), where the Wald interval
+reaches 0.3987: one grid step down, the re-optimization left the
+spike after the sample, and the chi-square jumped from 72 to 1627. A
+search over the initial charges at the same values of ``k`` found
+chi-squares of 73 to 81, a smooth continuation. Treat a profile that
+jumps by the size of a spike residual as suspect, and check its far side,
+for example by fixing the parameter in the conditions and refitting the
+others with ``method='hybrid'``.
+
+Wald, profile and Laplace uncertainty
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A fit reports its uncertainty in three ways, from cheapest to most
+faithful to the objective:
+
+- **Wald** (``se``, ``ci``, ``correlation`` of
+  :class:`~nskinetics.analysis.FitResult`): from the Jacobian at the
+  optimum, at no extra cost. The covariance of :math:`x` is the
+  pseudo-inverse of the equilibrated :math:`D J^T J D` on its numerical
+  range (singular values of :math:`J D` below ``rank_rtol`` times the
+  largest count as 0), mapped back by :math:`D`, which equals
+  :math:`(J^T J)^{-1}` at full rank. The equilibration scales every
+  column to unit norm, :math:`D_j = 1/\lVert J_j \rVert` (van der
+  Sluis' near-optimal diagonal scaling), so the rank test and the
+  condition numbers below measure only how nearly collinear the columns
+  are, whatever the units, origin and bounds of the parameters and the
+  noise level. How precisely each parameter is determined is judged
+  separately, by its SE (below). Equilibration must not lift a column of
+  pure integration noise to unit norm, where that noise, which follows
+  the dynamics, would look correlated with the other columns. So a
+  simulation column whose change of the weighted residuals over its own
+  finite-difference step, :math:`\lVert J_j \rVert h_j`, is at most
+  ``rank_rtol`` times the largest such change (of a reliable column) is
+  set to 0 first: the outputs do not measurably depend on that parameter
+  (with the default tolerances such columns came out at
+  :math:`10^{-11}` to :math:`10^{-7}` of the largest on toys; looser
+  ``tolerances=`` raise that noise; a ``log=False`` parameter's step is
+  smallest near 0, so a weak one there measures a smaller change and is
+  more readily taken as unseen). It gets an infinite SE and a
+  ``rank_deficient`` flag, and the other parameters are unaffected, as in
+  :func:`~nskinetics.analysis.identifiability`, whose rank test on the
+  raw :math:`\ln p` columns rejects such a column too. Observable scales
+  and offsets involve no integration and are exempt. Beyond that, the two
+  differ: identifiability's raw rank test also counts a parameter
+  determined far less precisely than the others as rank deficient, while
+  a fit separates collinearity (``rank_deficient``, ``ill_conditioned``)
+  from precision (``high_rel_se``, ``wide_interval``). Equilibration
+  also scales up the finite-difference error of a weak but real column
+  along with the column itself: on :math:`S \Rightarrow P;\ (k_1 + k_2) S` with :math:`k_2` at
+  about :math:`10^{-4}` of :math:`k_1`, a fit reports rank 2 with
+  ``high_rel_se`` for both and ``high_correlation``, where
+  identifiability reports rank 1. The interval is
+  :math:`x \pm 1.96\,\mathrm{SE}` (with ``absolute_sigma=False``,
+  :math:`x \pm t_{0.975,\,\mathrm{dof}}\,\mathrm{SE}`), mapped back to
+  :math:`p`. It is exact for a model linear in :math:`x`, and good when
+  the objective is close to quadratic over the interval. A parameter on a
+  direction the data cannot see gets an infinite SE, with a
+  ``rank_deficient`` flag (a Jacobian whose condition number exceeds
+  ``1 / rank_rtol``, :math:`10^6` by default, counts as rank deficient);
+  at full rank, ``ill_conditioned`` flags a nearly singular
+  :math:`D J^T J D` (condition number above :math:`10^8`, i.e. above
+  :math:`10^4` for :math:`J D`). ``high_correlation`` flags pairs with
+  :math:`|\rho| > 0.95` and ``high_rel_se`` a relative SE above 1. The
+  relative SE is judged only for parameters whose bounds exclude 0: for a
+  zero-capable ``log=False`` parameter (an offset, an initial value with
+  lower bound 0) it depends on where the origin is, so such a parameter
+  is judged against the only scale given for it, its bounds:
+  ``wide_interval`` flags (and the ``identifiable`` column of
+  :attr:`~nskinetics.analysis.FitResult.table` rejects) a 95% interval
+  wider than the bounds, the Wald counterpart of a profile that does not
+  cross within them. A parameter with a small but measurable effect is
+  flagged this way, and its weak column can widen the other intervals, so
+  fix it and refit if it is not needed. The
+  pseudo-inverse leaves an unseen direction out, so between parameters
+  with an infinite SE the correlation is instead the limit of a vanishing
+  ridge, :math:`(J^T J + \epsilon I)^{-1}` as :math:`\epsilon \to 0`
+  (with the columns equilibrated as for the rank test): :math:`-1` for
+  :math:`k_1` and :math:`k_2` when the data determine only
+  :math:`k_1 k_2`, and 0
+  against parameters off that direction. This deliberately differs from
+  :class:`~nskinetics.analysis.IdentifiabilityResult`, whose
+  ``correlation`` is ``NaN`` there.
+- **Profile likelihood**
+  (:func:`~nskinetics.analysis.profile_likelihood`): one parameter is
+  fixed on a grid outward from the estimate (``span`` SEs per side,
+  continued with doubling steps until the profile crosses the threshold
+  or reaches the bound, the last step then bisected down to the grid
+  step), the others are re-optimized, and the 95% interval is where
+  twice the cost rose by at most :math:`\chi^2_{1,\,0.95} = 3.84` (with
+  ``absolute_sigma=False``, the rise is divided by the reduced
+  chi-square and compared with
+  :math:`F_{1,\,\mathrm{dof},\,0.95} = t^2_{0.975,\,\mathrm{dof}}`,
+  matching the Wald interval). The interval's ends are interpolated
+  between grid values linearly in the square root of the rise, which is
+  exact for a quadratic profile. It follows the objective itself:
+  skewed, flat or bounded profiles. The rise is measured from the
+  lowest cost found, and the ends are searched outward from where it
+  was found: if the profile finds a lower cost than the fit, a warning
+  says the fit had not reached the minimum, and the estimate may lie
+  outside the interval. A side that never crosses within the bounds
+  leaves the interval open, and ``is_identifiable`` is ``False``: the
+  data do not bound the parameter (a practical non-identifiability). The
+  converse does not hold: a side that crosses only where another,
+  re-optimized parameter sits at its bound (visible in the
+  ``estimate:<name>`` columns) is bounded by the box, not the data, so a
+  structurally non-identifiable parameter (``rank_deficient``, infinite
+  SE) can still show a closed interval. It costs a re-optimization per
+  grid value, and events can make it jump (above).
+- **Laplace sampling** (:meth:`~nskinetics.analysis.FitResult.sample`,
+  :meth:`~nskinetics.analysis.FitResult.predict`): draws from the normal
+  distribution with the Wald covariance (with ``absolute_sigma=False``,
+  the Student-t distribution with ``dof`` degrees of freedom, matching
+  the t-based interval), in the fitting space and clipped
+  to the bounds, turned into parameter sets and prediction bands. It
+  inherits the Wald approximation: it understates the uncertainty of a
+  parameter whose profile is skewed or flat, and has no spread at all
+  along a direction the data cannot see (a warning says so), whose
+  uncertainty is in fact unbounded. The bands hold the parameter
+  uncertainty only, not the measurement noise, and are of model
+  selections in model units: observables (their scale, offset and
+  transform) are not applied.
+
+When the profiles agree with the Wald intervals, as in the tutorial, the
+three agree and the bands can be used as they are. When they differ,
+believe the profile, and read the Laplace bands as too narrow.
+
+Robust losses
+~~~~~~~~~~~~~
+
+``loss='soft_l1'``, ``'huber'`` or ``'cauchy'`` replace :math:`r^2` by
+:math:`\rho(r^2)`, which grows more slowly beyond ``f_scale`` (in units
+of :math:`\sigma`, since the residuals are weighted). A point far from the
+model then counts less, so an outlier, or a sample on the wrong side of a
+spike, pulls the estimates less. ``FitResult.chi2`` remains the plain
+:math:`\sum r_i^2`, and ``cost`` is :math:`\tfrac12 \sum \rho(r_i^2)`.
+The covariance is still the Gauss-Newton covariance (above) of the plain
+weighted residuals, evaluated at the robust optimum: every point keeps its full
+weight in it, so it is a fair estimate when only a few outliers are
+down-weighted, and not the robust estimator's covariance when many points
+are. The ``lack_of_fit`` test is applied to twice the cost,
+:math:`\sum \rho(r_i^2)`, rather than to the chi-square, which includes
+the outliers: :math:`\rho(z) \le z` for every robust loss, so the test
+is conservative (it rarely fires on data without outliers), yet it
+flags a fit stuck on a wrong piece. A few gross outliers can trigger it
+too; check the residuals. AIC and BIC, computed from the chi-square, are
+comparable only between linear-loss fits. A robust loss needs absolute
+sigmas (``absolute_sigma=False`` raises ``ValueError``): ``f_scale``
+counts standard deviations, and with relative weights it would refer to
+their arbitrary scale, so that the estimate and the profile would change
+when every sigma is rescaled. The 3.84 threshold of a profile holds for
+the linear loss only: the robust cost rises more slowly than the
+chi-square even for residuals within ``f_scale``, so profiles on it come
+out wider. For example, on 12 outlier-free Gaussian points with
+``f_scale=1``, the profile intervals were about 1.1 times as wide as the
+linear-loss ones for ``'huber'``, 1.3 times for ``'soft_l1'`` and 1.6 to
+1.8 times for ``'cauchy'`` (less at a larger ``f_scale``). Use a robust
+loss to find the minimum and to resist outliers; for the uncertainties,
+refit with the linear loss from the robust estimates
+(``initial=robust_fit``) once the outliers are dealt with.
+
+Fit few parameters, and check identifiability first
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Time courses of a few species typically determine a few parameter
+combinations, not dozens of parameters. A parameter the data cannot see
+gives the optimizer a flat direction: it stops anywhere along it, often at
+a bound, its SE is infinite or huge, its correlations approach
+:math:`\pm 1`, and the other parameters' uncertainties lose their meaning
+(flags ``rank_deficient``, ``high_correlation``, ``high_rel_se`` or
+``wide_interval``, ``at_bound``). Every free parameter also costs runs: a
+Jacobian takes up to :math:`1 + 2 n_{free}` runs of each experiment, at
+every iteration of every start (fewer for local and observable
+parameters, more when a step is refined), and profiles multiply this.
+:class:`~nskinetics.analysis.CalibrationProblem` warns above 15 free
+parameters.
+
+So before fitting a larger model, run
+:func:`~nskinetics.analysis.local_sensitivity` on an experiment's
+condition at plausible values and
+:func:`~nskinetics.analysis.identifiability` with the planned noise
+model, measured outputs and sampling times
+(:doc:`tutorial/07_sensitivity_identifiability`). Its null directions show
+which combinations the data cannot see, and
+:meth:`~nskinetics.analysis.IdentifiabilityResult.best_subset` picks
+parameters that can be estimated together. Fit that subset, and fix the
+others at literature or measured values, in the model or in the
+conditions. The fit then checks the result on the real data with its own
+rank, flags and profiles. Several experiments together can determine what
+one condition cannot, such as a shared rate constant together with each
+run's initial charge in the tutorial, and an identifiability analysis
+holds at the values it was computed at: re-check it at the estimates.
+
+Data times are in model time units
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The times of a :class:`~nskinetics.analysis.Dataset` are used as given, in
+the model's time unit (the ``units`` given when the model was created,
+minutes by default), as every time of a :class:`Condition` is; data in
+minutes are not converted for a model in hours. An experiment's runs
+record its condition's ``t0`` and every data time of that experiment (its
+``times``), so every data time must lie between ``t0`` and the condition's
+``t_end``. Values are compared with the selection in the model's own
+units; use an observable's ``scale``, ``offset`` or ``transform`` for a
+measured quantity in other units or a signal derived from one selection.
+A ``transform`` acts on its one selection only: a signal that combines
+several species (total sugars, or the OD of several biomass pools) needs
+an assignment rule in the model, whose id is then the observable's
+selection. A ``transform`` with a domain (a logarithm, say) should return
+``NaN`` outside it rather than raise, as numpy's ``np.log`` does: a
+non-finite value is penalized like a failed run, but an exception stops
+the fit.
+:meth:`~nskinetics.analysis.FitResult.summary` ends with the model's units
+as a reminder.
+
 The process bridge
 -------------------
 

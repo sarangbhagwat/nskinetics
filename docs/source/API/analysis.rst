@@ -10,9 +10,13 @@ modified, and runs through :meth:`nskinetics.KineticModel.run` and
 :func:`nskinetics.run_many`. It is a subpackage: import from
 ``nskinetics.analysis``, e.g. ``from nskinetics.analysis import Final,
 local_sensitivity``. :doc:`../tutorial/07_sensitivity_identifiability`
-walks through every tool on a fed-batch model, and the :doc:`../concepts`
-section "Sensitivities across events" explains how the derivatives are
-computed and what their flags mean.
+walks through the sensitivity, identifiability and screening tools on a
+fed-batch model, and the :doc:`calibration tutorial
+<../tutorial/08_calibration>` fits a fed-batch model to the data of two
+runs. The :doc:`../concepts` sections
+"Sensitivities across events" and "Calibration and identifiability"
+explain how the derivatives are computed, what their flags mean, and the
+choices behind the fits.
 
 Metrics
 -------
@@ -107,6 +111,63 @@ non-finite metric values, are excluded and counted.
    :members: n_runs, n_failed, n_used, design, samples, rank, plot, to_csv,
              from_csv
 
+Calibration
+-----------
+
+:class:`CalibrationProblem` compares :class:`Observable` values of a model
+with measured :class:`Dataset` time courses in one or more
+:class:`Experiment` conditions (each with its own feeding parameters and
+initial state), and :func:`fit_parameters` estimates the
+:class:`FitParameter` values by weighted least squares from several starts,
+returning a :class:`FitResult` with Wald uncertainty, correlations and
+identifiability and goodness-of-fit flags. Failed integrations inside the
+optimizer are penalized and counted, never raised;
+:exc:`nskinetics.FittingError` is raised only when every start fails.
+:func:`profile_likelihood` re-optimizes the other parameters along a grid
+of each profiled one, and :meth:`FitResult.sample` /
+:meth:`FitResult.predict` propagate the Gaussian (Laplace) approximation to
+parameter draws and prediction bands. Standard
+deviations come from each observable's noise model (absolute,
+proportional to the data with the floor of :func:`identifiability`, or
+both) or from the data's ``sigma`` column, and are fixed before the fit.
+Data times are in the model's time unit.
+
+.. autoclass:: Dataset
+   :members: from_frame, from_long_csv, from_wide, frame, experiments,
+             observables
+
+.. autoclass:: Observable
+   :members: parameters, values, noise_sigma
+
+.. autoclass:: Experiment
+
+.. autoclass:: FitParameter
+   :members: range, initial_for
+
+.. autoclass:: CalibrationProblem
+   :members: residuals, cost, to_natural, data, bounds, x0, log,
+             n_failed_evals
+
+.. autofunction:: fit_parameters
+
+.. autoclass:: FitResult
+   :members: summary, table, warnings, apply, plot, sample, predict, to_csv,
+             from_csv
+
+.. autofunction:: profile_likelihood
+
+.. autoclass:: ProfileResult
+   :members: estimate, plot, to_csv, from_csv
+
+The global stage of ``fit_parameters(method='hybrid')`` is
+:func:`nskinetics.utils.hybrid_global_optimize`, which also works on its
+own for any scalar objective:
+
+.. autofunction:: nskinetics.utils.hybrid_global_optimize
+
+.. autoclass:: nskinetics.utils.GlobalOptResult
+   :exclude-members: x, fun, success, message, nfev, history, meta
+
 Parameter ranges
 ----------------
 
@@ -117,8 +178,9 @@ Parameter ranges
 References
 ----------
 
-The identifiability measures and the screening designs and estimators
-follow:
+The identifiability measures, the screening designs and estimators, the
+profile-likelihood intervals, the model-selection criteria and the
+least-squares uncertainty follow:
 
 * Brun, R., Reichert, P., Kuensch, H. R. (2001). Practical identifiability
   analysis of large environmental simulation models. *Water Resources
@@ -137,3 +199,15 @@ follow:
 * Sobol', I. M. (2001). Global sensitivity indices for nonlinear
   mathematical models and their Monte Carlo estimates. *Mathematics and
   Computers in Simulation* 55(1-3), 271-280.
+* Raue, A., Kreutz, C., Maiwald, T., Bachmann, J., Schilling, M.,
+  Klingmueller, U., Timmer, J. (2009). Structural and practical
+  identifiability analysis of partially observed dynamical models by
+  exploiting the profile likelihood. *Bioinformatics* 25(15), 1923-1929.
+* Akaike, H. (1974). A new look at the statistical model identification.
+  *IEEE Transactions on Automatic Control* 19(6), 716-723.
+* Hurvich, C. M., Tsai, C.-L. (1989). Regression and time series model
+  selection in small samples. *Biometrika* 76(2), 297-307.
+* Schwarz, G. (1978). Estimating the dimension of a model. *The Annals of
+  Statistics* 6(2), 461-464.
+* Bates, D. M., Watts, D. G. (1988). *Nonlinear Regression Analysis and Its
+  Applications*. Wiley, New York.
