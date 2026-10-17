@@ -56,6 +56,12 @@ Behaviour changes
   passes (``reset(preserve=...)``). A baseline reset therefore cannot undo
   a reduced or frozen cap.
 
+* ``nskinetics.utils.hybrid_global_optimize`` now runs serially by
+  default (``parallel='none'``; it was ``'threads'``). One RoadRunner
+  must never be used from several threads at once, and its docstring now
+  warns against threads for any objective that runs a model. Its
+  ``success`` flag is no longer always ``True`` (see "Fixed").
+
 New
 ~~~
 
@@ -155,6 +161,55 @@ New
     subsets, and return zeros, an error or wrong values on the shipped
     model (see :doc:`concepts`).
 
+* Parameter estimation for fed-batch data in ``nskinetics.analysis``
+  (the :doc:`calibration tutorial <tutorial/08_calibration>`, and the
+  :doc:`concepts` section "Calibration and identifiability").
+
+  - :class:`~nskinetics.analysis.Dataset` holds measured time courses
+    (from long or wide tables or a CSV file, with optional per-point
+    standard deviations). :class:`~nskinetics.analysis.Observable` maps a
+    model selection to a measured quantity, with an optional scale,
+    offset and transform, and an additive, proportional or combined
+    noise model. The standard deviations are computed once from the data
+    and held fixed, so the fit is a weighted least-squares problem; the
+    proportional model has the same floor as ``identifiability``.
+  - :class:`~nskinetics.analysis.Experiment` pairs a :class:`Condition`,
+    with its own feeding parameters and initial values, with its data.
+    :class:`~nskinetics.analysis.FitParameter` estimates a global
+    parameter, an initial value (also one per experiment,
+    ``scope='local'``) or an observable's scale or offset, in log space
+    by default; by default each starts from the value its run already
+    starts from (the condition's or the model's).
+  - :class:`~nskinetics.analysis.CalibrationProblem` validates
+    everything before the first simulation and evaluates weighted
+    residuals on a private copy of the model. A failed integration
+    gives a penalty residual and is counted, never raised.
+  - :func:`~nskinetics.analysis.fit_parameters` runs
+    ``scipy.optimize.least_squares`` from several reproducible starts
+    (``method='multistart'``, optionally on a process pool, and the
+    first optionally from a previous fit, ``initial=``) or after a
+    global stage (``method='hybrid'``), with the event-aware
+    finite-difference Jacobian of ``local_sensitivity`` and optional
+    robust losses (with absolute standard deviations). It raises
+    :class:`FittingError` only when every start fails.
+  - :class:`~nskinetics.analysis.FitResult` reports the estimates, the
+    chi-square, AIC, AICc and BIC, the Wald covariance, standard errors,
+    asymmetric 95% intervals (Student-t with ``absolute_sigma=False``)
+    and correlations, and flags (lack of fit, rank deficiency,
+    ill-conditioning, high relative standard errors or correlations,
+    intervals wider than the bounds of a zero-capable linear parameter,
+    estimates at a bound, and spike counts that change within a
+    finite-difference step). It offers ``summary`` (warnings first),
+    ``plot`` (data against the model, with its spikes marked), ``apply``
+    (writes the global estimates into a model), ``sample`` and
+    ``predict`` (Laplace parameter draws and prediction bands through
+    :func:`run_many`), and an exact CSV round trip.
+  - :func:`~nskinetics.analysis.profile_likelihood` returns a
+    :class:`~nskinetics.analysis.ProfileResult` per parameter, with its
+    profile-likelihood interval, ``is_identifiable``, a plot and an exact
+    CSV round trip.
+  - :class:`FittingError`, a new :class:`NSKError` subclass.
+
 Fixed
 ~~~~~
 
@@ -171,6 +226,11 @@ Fixed
   to import.
 * The :attr:`KineticModel.time_factor` docstring now says what the property
   returns: model time units per hour. Its behaviour is unchanged.
+* ``nskinetics.utils.hybrid_global_optimize`` reported ``success=True``
+  whatever happened. It now reports success only when differential
+  evolution converged or a local polish did, and its message says which.
+  Its result class, ``GlobalOptResult``, is exported from
+  ``nskinetics.utils``.
 * The shipped model's reset function and
   :class:`~nskinetics.units.NSKBatchReactor`'s spike-cap writes use item
   access (``r['env'] = 1.``) instead of attribute access. libroadrunner

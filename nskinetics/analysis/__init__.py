@@ -6,7 +6,8 @@
 # https://github.com/sarangbhagwat/nskinetics/blob/main/LICENSE
 # for license details.
 """Analysis tools: metrics, event-aware local sensitivity, practical
-identifiability, global screening (Morris, Sobol') and sampling ranges.
+identifiability, global screening (Morris, Sobol'), sampling ranges and
+parameter estimation (calibration).
 
 Everything here runs on private copies of a model (the caller's model is
 never modified) through :meth:`nskinetics.KineticModel.run` and
@@ -23,6 +24,8 @@ from . import identifiability as _identifiability_module
 from .identifiability import *
 from . import screening
 from .screening import *
+from . import calibration
+from .calibration import *
 
 __all__ = (
      *metrics.__all__,
@@ -30,4 +33,5 @@ __all__ = (
      *sensitivity.__all__,
      *_identifiability_module.__all__,
      *screening.__all__,
+     *calibration.__all__,
      )
