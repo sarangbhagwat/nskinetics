@@ -11,7 +11,6 @@ import os
 import nskinetics as nsk
 import biosteam as bst
 import tellurium as te
-import simplesbml
 
 __all__ = ('te_r', 'reset_nsk_kinetic_model',)
 
@@ -54,14 +53,24 @@ te_r.add_event(nsk.Event(when='x >= stage_1_max_x',
 te_r.compile_events()
 
 def reset_nsk_kinetic_model(km, reset_spike_cap=True, **kwargs):
-    km._te.reset()
     r_te = km._te
-    r_te.n_glu_spikes = 0
-    r_te.last_vol_glu_feed_added = 0.
-    r_te.tot_vol_glu_feed_added = 0.
-    r_te.env = 1.
-    r_te.is_aerobic = 1
-    if reset_spike_cap: r_te.max_n_glu_spikes = km.default_max_n_glu_spikes
+
+    def _bookkeeping():
+        # Item access: attribute properties (r_te.env = ...) are removed from
+        # the RoadRunner class whenever another model is loaded.
+        r_te['n_glu_spikes'] = 0
+        r_te['last_vol_glu_feed_added'] = 0.
+        r_te['tot_vol_glu_feed_added'] = 0.
+        r_te['env'] = 1.
+        r_te['is_aerobic'] = 1
+
+    # Before reset() as well as after it: RoadRunner converts initial
+    # concentrations to amounts with the *current* volume of env, so resetting
+    # at the previous run's end volume would start every species off.
+    _bookkeeping()
+    r_te.reset()
+    _bookkeeping()
+    if reset_spike_cap: r_te['max_n_glu_spikes'] = km.default_max_n_glu_spikes
 
 te_r.reset_func = reset_nsk_kinetic_model
 

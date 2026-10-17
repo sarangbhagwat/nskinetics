@@ -108,9 +108,24 @@ class SpikeReduceRetry:
         """Run ``simulate_once`` while decrementing the cap on ``model`` until
         ``stop_when(model)`` holds or the cap hits 0."""
         var = self.max_count_var
-        while (not self.stop_when(model)) and (getattr(model, var) > 0):
+        # Item access where the model supports it (a RoadRunner): attribute
+        # properties on a RoadRunner can be removed by another model's load
+        # (see KineticModel.copy). Plain objects fall back to attributes.
+        item = (hasattr(type(model), '__getitem__')
+                and hasattr(type(model), '__setitem__'))
+
+        def get():
+            return model[var] if item else getattr(model, var)
+
+        def put(value):
+            if item:
+                model[var] = value
+            else:
+                setattr(model, var, value)
+
+        while (not self.stop_when(model)) and (get() > 0):
             simulate_once()
-            setattr(model, var, getattr(model, var) - 1)
+            put(get() - 1)
 
 
 class AerationSpec:
@@ -523,9 +538,12 @@ class NSKBatchReactor(BatchBioreactor):
                 add(name)
         return cols
 
-    def _reset_and_simulate(self, feed, reset_spike_cap=False):
+    def _reset_and_simulate(self, feed, reset_spike_cap=False, preserve=()):
+        # `preserve` names selections the reset must not undo (the frozen /
+        # reduced spike cap): a baseline reset restores event-assigned and
+        # rate-rule variables, which may include the cap variable.
         nkm = self.nsk_kinetic_model
-        nkm.reset(reset_spike_cap=reset_spike_cap)
+        nkm.reset(preserve=preserve, reset_spike_cap=reset_spike_cap)
         volume = getattr(feed, nkm.material_indexer.replace('imol', 'ivol')
                          .replace('imass', 'ivol'))['Water']
         indexer = getattr(feed, nkm.material_indexer)
@@ -548,8 +566,12 @@ class NSKBatchReactor(BatchBioreactor):
             # the count the previous pass reached, and no reduce-then-retry,
             # so the count can only fall, never flip up (a spike-count
             # discontinuity would otherwise two-cycle against the split).
-            setattr(nkm._te, self.spike_retry.max_count_var, frozen)
-            self._reset_and_simulate(feed, reset_spike_cap=False)
+            cap_var = self.spike_retry.max_count_var
+            # Item access: attribute properties on a RoadRunner can be
+            # removed by another model's load (see KineticModel.copy).
+            nkm._te[cap_var] = frozen
+            self._reset_and_simulate(feed, reset_spike_cap=False,
+                                     preserve=(cap_var,))
         else:
             # initial full simulation
             self._reset_and_simulate(feed, reset_spike_cap=True)
@@ -559,10 +581,12 @@ class NSKBatchReactor(BatchBioreactor):
                 sr = self.spike_retry
                 # Seed the cap from the count reached by the full run, then let
                 # the retry loop honor the SAME cap attribute it decrements.
-                setattr(model, sr.max_count_var,
-                        list(self.nsk_results_dict[sr.count_var])[-1] - 1)
+                model[sr.max_count_var] = (
+                    list(self.nsk_results_dict[sr.count_var])[-1] - 1)
                 sr.run(
-                    model, lambda: self._reset_and_simulate(feed, reset_spike_cap=False))
+                    model, lambda: self._reset_and_simulate(
+                        feed, reset_spike_cap=False,
+                        preserve=(sr.max_count_var,)))
         # validators
         for validate in self.validators:
             validate(nkm._te)

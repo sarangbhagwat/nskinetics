@@ -53,15 +53,20 @@ Compiling events — and the lifecycle gotcha
    :meth:`~nskinetics.KineticModel.compile_events`,
    :meth:`~nskinetics.Event.compile`, and
    :meth:`~nskinetics.FeedSpike.compile`. The safe ordering is always:
-   ``add_event(...)`` (repeatable) → ``compile_events()`` → set any custom
-   ICs/parameters → ``reset()`` → simulate.
+   ``add_event(...)`` (repeatable) → ``compile_events()`` → ``reset()`` →
+   set any custom ICs/parameters → simulate. Or put the ICs and parameters
+   in a :class:`~nskinetics.Condition` and call
+   :meth:`km.run(cond) <nskinetics.KineticModel.run>`, which applies them in
+   exactly that order.
 
 :meth:`~nskinetics.KineticModel.compile_events` injects every
 pending event into the model and regenerates it once (it is guarded, so
 calling it again after it has already succeeded is a no-op). Follow it with
 :meth:`~nskinetics.KineticModel.reset`, which restores model
-*state* — species amounts, time — to the (now regenerated) origin values,
-without touching structure:
+*state* to the (now regenerated) origin values, without touching structure.
+That state is species amounts and time and, for a model without a custom
+reset function, also compartments and event-assigned variables such as
+``flag``:
 
 .. code-block:: python
 
@@ -70,9 +75,11 @@ without touching structure:
 
 Because this example sets no custom ICs, ``reset()`` here simply guarantees
 a clean start from the Antimony-declared values (``s = 100``, ``flag = 1``).
-If you did need a custom starting concentration, this is exactly where it
-would go — between ``compile_events()`` and ``reset()``/simulation, never
-before ``compile_events()``.
+If you did need a custom starting concentration, it would go between
+``reset()`` and the simulation. Never set it before ``compile_events()``,
+and not before ``reset()`` either, which would put ``s`` back to 100. A
+:class:`~nskinetics.Condition` with ``initial={'[s]': 50}`` does this for
+you (see :doc:`02_build_and_simulate`).
 
 Running it
 ----------
