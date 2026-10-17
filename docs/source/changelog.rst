@@ -95,6 +95,65 @@ New
   :meth:`KineticModel.from_sbml` now takes ``units`` and ``reset``.
 * Top-level exports: ``nsk.Condition``, ``nsk.SimulationResult``,
   ``nsk.run_many``, ``nsk.scan``, ``nsk.RunBatch`` and ``nsk.ScanResult``.
+* ``nskinetics.analysis``, a new subpackage that asks which parameters
+  matter and which ones measurements can determine (:doc:`API/analysis`,
+  :doc:`tutorial/07_sensitivity_identifiability`, and the
+  :doc:`concepts` section "Sensitivities across events"). Import it as
+  ``from nskinetics.analysis import ...``; it is not re-exported at the top
+  level.
+
+  - Metrics with an explicit basis: :class:`~nskinetics.analysis.Final`,
+    :class:`~nskinetics.analysis.At`, :class:`~nskinetics.analysis.Max`,
+    :class:`~nskinetics.analysis.Min`,
+    :class:`~nskinetics.analysis.TimeAtMax`,
+    :class:`~nskinetics.analysis.Integral`,
+    :class:`~nskinetics.analysis.EventCount`,
+    :class:`~nskinetics.analysis.Productivity`,
+    :class:`~nskinetics.analysis.Yield` and
+    :class:`~nskinetics.analysis.CallableMetric`. They also work as
+    ``metrics=`` in :func:`run_many` and :func:`scan`, which then record the
+    columns they read. A zero denominator gives ``NaN``.
+  - :func:`~nskinetics.analysis.local_sensitivity`: sensitivities of output
+    time courses and metrics by central finite differences in
+    log-parameter space. Every perturbation is a run from the restored
+    baseline on a private copy of the model, whose integrator is tightened
+    to at most ``(1e-12, 1e-10)`` by default (tighter model values are
+    kept), with ``atol`` scaled to the peak of outputs and metric columns
+    that start at 0, so results do not depend on the concentration unit.
+    When a perturbation changes how often an event fires, or moves a
+    firing across an output time, the step is refined, and parameters
+    whose event counters still differ are flagged
+    (``event_count_changed``, ``reliable``). A parameter at 0 is
+    differenced in linear space; without an ``abs_step`` its step is
+    ``rel_step`` in its own units, unrelated to the model's scale, and a
+    warning says so.
+    :class:`~nskinetics.analysis.LocalSensitivityResult` offers ``rank``,
+    ``time_course``, ``metric_sensitivities``, two plots and an exact CSV
+    round trip.
+  - :func:`~nskinetics.analysis.identifiability`: the Fisher information
+    matrix of weighted log-sensitivities, its singular values, numerical
+    rank and null directions, Cramer-Rao standard errors, a practical
+    ``identifiable`` verdict per parameter, and the Brun et al. (2001)
+    importance and collinearity measures with
+    :meth:`~nskinetics.analysis.IdentifiabilityResult.best_subset`. The
+    noise is absolute, or relative with a floor at ``relative_floor``
+    (default 1e-3) of each output's peak, per output. A warning, recorded
+    as ``rank_test_doubtful``, says when the estimated finite-difference
+    error could hide an exact non-identifiability; the documented
+    step-convergence check (recompute at ``rel_step / 3``) settles a full
+    rank.
+  - :func:`~nskinetics.analysis.morris` and
+    :func:`~nskinetics.analysis.sobol`: global screening over parameter
+    ranges (:class:`~nskinetics.analysis.ParamRange`, linear or log). Runs
+    go through :func:`run_many`, failed runs and non-finite metric values
+    are excluded and counted, and the same seed gives identical results.
+  - Every analysis result's ``from_csv`` refuses an incomplete file (a
+    missing ``meta`` key, or a missing or duplicated entry) with a
+    ``ValueError`` instead of loading it.
+  - RoadRunner's native forward sensitivities are deliberately not used.
+    With libroadrunner 2.10.0 they drop event jumps, mislabel parameter
+    subsets, and return zeros, an error or wrong values on the shipped
+    model (see :doc:`concepts`).
 
 Fixed
 ~~~~~

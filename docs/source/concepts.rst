@@ -444,6 +444,470 @@ sets the species to its target concentration and increments a spike counter.
 An optional ``max_count`` caps how many times a given ``FeedSpike`` may fire,
 by folding a count comparison into every trigger it expands to.
 
+Sensitivities across events
+---------------------------
+
+A local sensitivity is the derivative of an output with respect to a
+parameter or an initial value, for one condition: ``dy/dp``, or the
+elasticity ``d ln y / d ln p``, the percentage change of ``y`` per
+percentage change of ``p``. Events make it delicate. An event makes a state
+jump, and a parameter change also moves *when* the event fires; a correct
+derivative must carry both effects. In the smallest example, ``S`` decays
+at rate ``k*S`` and is topped up by 5 whenever it falls to 5, and ``n``
+counts the top-ups:
+
+.. code-block:: python
+
+   import numpy as np
+   import nskinetics as nsk
+   from nskinetics.analysis import local_sensitivity
+
+   toy = nsk.KineticModel.from_antimony("""
+   model ev()
+     S = 10; n = 0; k = 0.5;
+     J: S => ; k*S;
+     E1: at S < 5: S = S + 5, n = n + 1;
+   end
+   """)
+   cond = nsk.Condition(t_end=6, n_steps=61, selections=['S', 'n'])
+   ls = local_sensitivity(toy, cond, ['k'], outputs=['S'])
+   print(ls.counters)
+   print(f'dS/dk = {ls.raw[-1, 0, 0]:.4f}, '
+         f'd ln S/d ln k = {ls.scaled[-1, 0, 0]:.5f}')
+
+prints:
+
+.. code-block:: text
+
+   ('n',)
+   dS/dk = -47.7956, d ln S/d ln k = -3.00000
+
+Each top-up restores ``S`` to 10, at :math:`t_n = n \ln 2 / k`, so
+:math:`S(t) = 10 \cdot 2^{n} e^{-kt}` after ``n`` top-ups. Four of them
+happen before :math:`t = 6` at :math:`k = 0.5`, so :math:`S(6) = 160
+e^{-3}`, :math:`dS/dk = -6\,S(6) = -960 e^{-3} = -47.7956` and
+:math:`d \ln S / d \ln k = -kt = -3`, as computed.
+
+Central differences from a restored baseline
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+:func:`~nskinetics.analysis.local_sensitivity` sets each parameter to
+:math:`p\,e^{\pm h}` (``rel_step`` :math:`h`, default ``1e-3``) and divides
+the change of the output by :math:`2h`. That is a central difference in
+:math:`\ln p`: accurate to :math:`O(h^2)`, with the same relative step for
+parameters of any size. Each perturbation is a complete run of the
+condition:
+
+* Every run starts from the restored baseline (see "Resets, baselines and
+  reproducible runs" above), so a perturbed run differs from the nominal
+  one only in the perturbed value. The difference therefore contains
+  everything the parameter does, jumps and shifted firing times included,
+  without any event-specific bookkeeping. Without the baseline restore, a
+  perturbed run would start from the previous run's spike counter and
+  volume, and the difference would measure that instead.
+* Every run, the nominal one included, sets each perturbed id explicitly.
+  The values are merged into the condition with ``with_parameters`` and
+  ``with_initial``, so the condition's own values stay in force. Each
+  column is therefore a partial derivative with the *other listed ids*
+  held fixed, and it can change when another id is added. Changing a
+  compartment keeps the species amounts unless a concentration ``'[S]'``
+  is also listed, in which case the concentration is held: with a rate
+  ``k*S*env``, ``d[P]/d env`` is -9.50 with ``params=['env']`` and 0 with
+  ``['env', '[S]']``. Morris and Sobol' screening set their sampled ids the
+  same way.
+* The ids are set after the reset, so SBML initial assignments are not
+  re-evaluated. If ``S = S_init`` is an initial assignment, perturbing
+  ``S_init`` leaves ``S`` at its nominal start and its effect through
+  ``S`` is missing (a sensitivity of 0, an "inert" parameter in
+  screening); NSKinetics warns about such ids. Perturb ``'init(S_init)'``
+  instead, which re-evaluates the assignment.
+* The runs use a private :meth:`~KineticModel.copy`. Your model is never
+  changed, and only the copy's integrator is tightened: to at most
+  ``(atol, rtol) = (1e-12, 1e-10)`` by default, or to
+  ``tolerances=(atol, rtol)``. Integration error enters the difference
+  divided by the step. At CVODE's own ``rtol = 1e-6`` and
+  :math:`h = 10^{-3}` the derivative of even a plain decay
+  ``S => P; (k1 + k2)*S`` is off by about 1%, and refined steps (below)
+  amplify the error further; at the default ``rtol = 1e-10`` it stays
+  below 1e-6. A ``UserWarning`` is raised when ``rtol`` exceeds ``rel_step /
+  100``, or 1/100 of the relative size of a smaller step that a reported
+  value used (a refined step, or one set by ``abs_step``). It flags only
+  gross mismatches: at CVODE's ``rtol = 1e-6``, the 1% error above
+  passes without a warning. Tighter tolerances need more integrator steps,
+  so the copy's step budget (``maximum_num_steps``) is raised tenfold with
+  them; if a run still fails where your model's own run succeeds, the error
+  says so, and ``tolerances=`` loosens them.
+* A parameter at 0 (or below) cannot be perturbed in :math:`\ln p`, so it is
+  differenced in linear space, with ``abs_step``. Without one, a parameter
+  at 0 gets ``rel_step`` in its own units, which has nothing to do with the
+  model's scale: 1e-3 mol/L is ten times a 100 µM substrate, and on a
+  product-inhibition toy at that scale it gave a derivative of the wrong
+  sign, still flagged reliable. A warning names such parameters; give each
+  an ``abs_step`` on the scale of the quantity, e.g. 1e-3 of the
+  concentrations it competes with. Central differences then
+  also run a parameter at 0 one step below zero. If that run fails (a
+  negative value the model cannot integrate) while the other side runs,
+  the other side's one-sided difference is used: ``scheme`` says
+  ``'forward'`` or ``'backward'``, the value stays reliable, and a warning
+  names the parameter. If the running side counted other firings than the
+  nominal run, the step is refined first, as for any count change.
+* Log scaling divides by the output, so it is only as good as the
+  output's difference. Where an output sits at the integrator's noise
+  level -- a depleted substrate, say -- its difference is integration
+  error of about :math:`3\,\mathrm{atol}_y/h` and
+  :math:`\mathrm{d}\ln y/\mathrm{d}\ln p` is noise divided by a tiny
+  :math:`y`. Here :math:`\mathrm{atol}_y` is the absolute tolerance in the
+  output's units: RoadRunner multiplies a scalar ``absolute_tolerance`` by
+  each state's start value, so :math:`\mathrm{atol}_y =
+  \mathrm{atol}\,|y_0|` for an output that starts at :math:`y_0 \ne 0`,
+  and :math:`\mathrm{atol}` for one that starts at 0. The noise level
+  is therefore relative to the start value: a 1 µM substrate in mol/L is
+  as accurate as a 10 g/L one. A state that starts at 0 keeps the fixed
+  tolerance :math:`\mathrm{atol}` for the whole run, so by default the
+  copy's ``atol`` is also scaled down to the smallest peak below 1 of the
+  outputs, and of the columns the metrics read, that start at 0 (one
+  extra run; explicit ``tolerances=`` are used as given): a product at
+  the nanomolar scale is then as accurate as one at 10 g/L, and the
+  tolerances used are in ``ls.tolerances``.
+  Log-scaled output entries below :math:`|y| = 30\,\mathrm{atol}_y/h`
+  (:math:`|y|/|y_0|` below 3e-8 at the defaults, or :math:`|y|` below
+  :math:`3 \cdot 10^4\,\mathrm{atol}` for an output starting at 0) are
+  NaN; up to about :math:`1000\,\mathrm{atol}_y/h` (1e-6) they are kept
+  but noisy, and the elasticity of a near-zero metric such as
+  ``Final('[S]')`` of a residual substrate is not masked at all.
+  ``reliable`` speaks about event counts and failed runs, not about such
+  entries: use ``scaled='semi'`` or ``'none'`` there, or leave those
+  times out.
+
+With central differences the cost is two runs per parameter plus the
+nominal one, one more run to read start values the condition does not set,
+one to scale ``atol`` (default tolerances only), and two more per step
+refinement (forward differences: one per parameter and per refinement), at
+a few milliseconds per run for a small model.
+
+RoadRunner's native sensitivities
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+libroadrunner can integrate forward sensitivities alongside the model
+(CVODES, ``RoadRunner.timeSeriesSensitivities``). NSKinetics does not use
+them. With libroadrunner 2.10.0, the version this page was checked against,
+they fail in ways that return plausible numbers and no error:
+
+* **Event jumps are dropped.** Add a product to the toy above
+  (``J: S => P``), so that the model has two state variables. The native
+  ``dS/dk`` at :math:`t = 6` is then -13.91 instead of -47.80. It agrees
+  with the finite difference up to the first top-up, at :math:`t = 1.39`,
+  and departs from it from the next output time on.
+* **Single-state models give zeros.** On the toy exactly as written above,
+  and on a plain decay ``S => ; k*S`` without any event, every native
+  sensitivity is 0.
+* **Parameter subsets are mislabelled.** With ``params=[...]``, the values
+  come back in the model's parameter order, under the names in the order
+  asked for. Asking for ``['k', 'a']`` in a model that declares ``a``
+  first returns the sensitivity to ``a`` labelled ``k``. A single parameter
+  that is not the model's first gets 0. On the shipped *S. cerevisiae*
+  model, the sensitivities of ``s_glu`` and ``s_IBO`` to ``k_13`` and
+  ``k_16`` are all 0, although ``s_glu`` at 100 h does depend on ``k_13``.
+  Ethanol's sensitivity to ``k_7ie``, one of the rate constants it depends
+  on most, is also 0. Asking for all parameters (the default) raises a
+  ``RuntimeError``, because some of the model's global parameters are
+  defined by assignment rules. Listing the 87 other parameters in model
+  order gives values that are off by factors of 2 to 13 for the three
+  checked against finite differences, and NaN for two parameters.
+
+A wrapper around them would silently report "insensitive", or a wrong
+number. Finite differences cost more runs, but they are right across events
+by construction, and where no derivative exists they say so.
+
+What ``event_count_changed`` and ``reliable`` mean
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A derivative exists only where a small change of the parameter changes the
+output smoothly. A change that adds or removes an event firing before the
+end of the run makes the output jump. So does, at one output time, a change
+that moves a firing from just after that time to just before it. The
+finite difference then measures the jump divided by the step, which grows
+without bound as the step shrinks. NSKinetics watches *event counters* to
+catch this:
+
+* Counters are found automatically: every variable that only events
+  change and that an event sets to ``v + 1``, such as a :class:`FeedSpike`
+  ``count_var`` or ``n`` above. A species that also reacts, or a rule
+  variable, is not a counter even if an event adds 1 to it (a pulse feed
+  ``S = S + 1``): its final value differs between runs anyway. Nor is a
+  species in a compartment whose size changes: ``n = n + 1`` adds 1 to its
+  concentration, so its amount is the count times the volume at each
+  firing (NSKinetics warns and leaves it out; count with a parameter, as a
+  :class:`FeedSpike` does). A species counter in a constant compartment is
+  watched through its concentration ``'[n]'``, which rises by exactly 1
+  per firing even when the compartment's size is perturbed.
+  ``ls.counters`` lists them. ``event_counters=[...]`` replaces the list,
+  and ``event_counters=()`` turns the check off. An event that switches a
+  stage without counting (``is_aerobic = 0``) is not detected; list the
+  flag it sets in ``event_counters``, since every watched variable is
+  compared at every output time.
+* After the perturbed runs, the firings each counter has counted by every
+  output time (its value minus its start value, so perturbing a counter's
+  own start value changes nothing) are compared with the nominal run's.
+  If they differ anywhere -- a firing added or removed, or moved across an
+  output time -- the step is divided by 10 and the parameter re-run, up to
+  ``max_refinements`` times (default 2, so down to a step of ``1e-5``). If
+  the counters then agree, the derivative is reliable. ``n_refinements``
+  says how many refinements it took, and ``step`` gives the step of the
+  reported difference.
+* If they still differ, the parameter is flagged
+  ``event_count_changed=True`` and ``reliable=False``. Its reported value
+  is the difference on the side whose counters agree with the nominal run
+  (``scheme`` is ``'forward'`` or ``'backward'``), when exactly one side
+  does, taken at the largest step at which that side agreed: the smaller
+  the step, the more the integration error weighs. Across the end of the
+  run that is a one-sided derivative, not a derivative; across an output
+  time, it is the derivative from the side that does not cross.
+* ``reliable=False`` also marks a perturbed run that failed, when no
+  one-sided difference could stand in for it (both sides of a central
+  difference failed, or the forward run). Its column is NaN, and
+  ``error`` says why.
+
+At :math:`k = 4 \ln 2 / 6`, the fourth top-up of the toy lands exactly at
+:math:`t = 6`:
+
+.. code-block:: python
+
+   edge = local_sensitivity(toy, cond.with_parameters(k=4 * np.log(2) / 6),
+                            ['k'], outputs=['S'])
+   print(edge.flags[['step', 'n_refinements', 'event_count_changed',
+                     'reliable', 'scheme']])
+   print(f'dS/dk = {edge.raw[-1, 0, 0]:.4f}')
+
+prints:
+
+.. code-block:: text
+
+              step  n_refinements  event_count_changed  reliable    scheme
+   parameter
+   k         0.001              2                 True     False  backward
+   dS/dk = -30.0266
+
+A slightly larger ``k`` fires the fourth top-up before :math:`t = 6`, and a
+slightly smaller one does not, so ``S(6)`` jumps from 5 to 10 at this
+``k``. The reported value is the derivative from below,
+:math:`-6 \cdot 5 = -30`, up to the truncation error of a one-sided
+difference at the step 0.001 (0.1%). From above it is
+:math:`-6 \cdot 10 = -60`, and no two-sided derivative exists.
+
+The same check covers the rows of a time course. A perturbation that moves
+a firing across an output time leaves the final count alone, but the
+counter differs at that output time, so the step is refined: each
+refinement narrows the window around the firing time tenfold, from 0.1% of
+it for the toy (a rate constant at the default step) to 0.001%. A crossing
+is flagged only when the output time lies inside that last window, and
+then the reported value comes from the side that does not cross. Events
+that switch a stage without counting still need ``event_counters=`` for
+this.
+:meth:`~nskinetics.analysis.LocalSensitivityResult.rank` shows the flags
+next to every value,
+:meth:`~nskinetics.analysis.LocalSensitivityResult.plot_time_course` draws
+unreliable parameters dashed, and
+:func:`~nskinetics.analysis.identifiability` warns when it uses one.
+
+The basis of each metric
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+A metric reduces a run to one number, for :func:`run_many`,
+:func:`~nskinetics.analysis.local_sensitivity` and the screening
+functions. Each one in ``nskinetics.analysis`` states exactly what it
+computes, so two analyses mean the same thing by "yield":
+
+.. list-table::
+   :header-rows: 1
+   :widths: 34 66
+
+   * - Metric
+     - Value
+   * - ``Final(sel)``
+     - The value at the last output time.
+   * - ``At(sel, t)``
+     - The value at ``t``: linear interpolation between output times,
+       exact at an output time. ``ValueError`` outside the run.
+   * - ``Max(sel)``, ``Min(sel)``
+     - The largest and smallest value over the output times.
+   * - ``TimeAtMax(sel)``
+     - The time of the maximum: the vertex of the parabola through the
+       first grid maximum and its two neighbours (the grid time at the
+       first or last row, or on a plateau).
+   * - ``Integral(sel)``
+     - The trapezoid rule over the output times, in the selection's units
+       times model time units.
+   * - ``EventCount(counter)``
+     - The final minus the initial value of the counter.
+   * - ``Productivity(P, turnaround=0)``
+     - ``(P_end - P_0) / (t_end - t_0 + turnaround)``, in concentration
+       per model time unit. It uses concentrations, so dilution by fed
+       volume lowers it.
+   * - ``Yield(P, S, volume=None, fed=None, basis='consumed')``
+     - Amounts are concentrations times the ``volume`` selection (1
+       without one). The fed amount is ``F = (V_fed,end - V_fed,0) *
+       feed_conc``, from ``fed=(V_fed, feed_conc)``. ``'added'`` divides
+       the product formed by ``A_S,0 + F``; ``'consumed'`` by
+       ``A_S,0 + F - A_S,end``. No stoichiometric factor is applied.
+   * - ``CallableMetric(fn, name, selections)``
+     - Anything else: ``fn(result)`` must return a number, and
+       ``selections`` names the columns it reads.
+
+A zero denominator gives NaN, never an error or an infinity, although
+importing NSKinetics makes numpy raise on division by zero. The metrics
+over the output times (``Max``, ``Min``, ``TimeAtMax``, ``Integral``) are
+only as fine as the output grid. Local sensitivities difference a metric as
+computed, so one that is piecewise constant in the parameters has no
+usable derivative: a plain grid time would give 0, or a jump of one grid
+step over the step size, which is why ``TimeAtMax`` refines the grid
+maximum by a parabola: the vertex moves continuously with the parameters,
+so its derivative converges as the grid is refined, though only to first
+order in the output spacing (use a dense grid around the peak).
+``EventCount`` stays piecewise constant: its derivative is 0 unless a
+count changes, which the flags report. Screen such metrics with Morris or
+Sobol' instead.
+
+.. _identifiability-noise:
+
+Noise models and the rank test of identifiability
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+:func:`~nskinetics.analysis.identifiability` divides each measured row by
+its standard deviation: an absolute one in the output's units, or a
+relative one, ``sigma=('relative', rel)``; a mapping can give each output
+either, as in ``{'[S]': 0.5, '[P]': ('relative', 0.05)}``. Five rules keep
+its verdicts sound.
+
+**Keep the floor of the relative model at its default.** A pure relative
+error, :math:`\sigma_i = \mathrm{rel}\,|y_i|`, gives unbounded weight to
+the rows where an output is near 0, such as a depleted substrate or a
+product at :math:`t_0`, while the integration and finite-difference errors
+of :math:`y` there do not shrink with :math:`y`. The relative model is
+therefore bounded below:
+
+.. math::
+
+   \sigma_i = \mathrm{rel} \cdot \max\left(|y_i|,\;
+   f \max_t |y(t)|\right),
+
+with :math:`f` = ``relative_floor`` (default ``1e-3``) and the maximum over
+the whole output grid of the sensitivity run, so ``times=`` does not
+change it. The floor acts like a detection limit at a small fraction of
+the output's own peak, and does not depend on the output's unit. On
+``S => P; (k1 + k2)*S`` with the substrate depleted (61 output times to
+:math:`t = 30`, ``sigma=('relative', 0.1)``), the default floor leaves
+the null singular value of ``k1`` and ``k2`` at 4e-7 of the largest,
+below the default ``rank_rtol`` of 1e-6; a floor of 1e-4 already lifts it
+to full rank. Smaller floors let the noise back in, so for them the rank
+test scales its error estimate (below) by the extra weight they give the
+rows, at most :math:`10^{-3}/f`. An output that is 0 throughout is left
+out with a warning; give it an absolute sigma in a mapping to count it.
+
+**Leave parameters at 0 out.** A parameter at 0 (or below) has a column
+per model unit of :math:`p` instead of per :math:`\ln p`, so the singular
+values, the numerical rank and with them the other parameters' standard
+errors and ``identifiable`` verdicts depend on that unit. A warning says
+so; judge the other parameters with ``params=`` leaving such parameters
+out.
+
+**Keep the differences precise.** The null singular value of an exact
+non-identifiability sits at the finite-difference error level, not at 0:
+integration noise of about :math:`3\,\mathrm{rtol}/h` plus the truncation
+error that a sum such as ``(k1 + k2) * S`` does not cancel (a product
+``k1 * k2`` does), about :math:`0.3\,h^2` for central differences and
+:math:`h/2` for one-sided ones (``method='forward'``, or a column that
+fell back to one side). At the defaults of
+:func:`~nskinetics.analysis.local_sensitivity` (central differences,
+``rel_step=1e-3``, tolerances of at most ``(1e-12, 1e-10)``) that level
+stayed below the default ``rank_rtol`` on smooth toys. One-sided
+differences or CVODE's own ``rtol=1e-6`` lift it to 1e-6 to 1e-3 and
+beyond, where no ``rank_rtol`` separates an exact non-identifiability from
+a genuine weak direction. The estimate counts ``rtol`` only: an ``atol``
+above 1e-8 is warned about, and the level is then recorded as unknown
+(``fd_error_level`` and ``rank_test_doubtful`` are ``None``).
+
+**Read the warning as a screen.**
+:func:`~nskinetics.analysis.identifiability` warns, for two or more
+parameters, when its estimate of this error level exceeds ``rank_rtol``
+and the smallest singular value the rank test retained lies within 100
+times it, relative to the largest, and records the doubt as
+``rank_test_doubtful=True`` (kept by ``to_csv``). A value already counted
+as zero is the conservative verdict and raises no doubt. ``False`` is no
+proof: the estimate assumes that the higher derivatives in :math:`\ln p`
+are of the order of the first, while at a depletion front or a switch a
+step in :math:`\ln p` shifts the front in time. Monod growth,
+``S => X; (m1 + m2)*S/(Ks + S)*X`` with 20 g/L of substrate, 0.01 g/L of
+biomass and ``Ks = 0.5``, with ``[X]`` and ``[S]`` measured on 301 output
+times to :math:`t = 30` h and ``sigma=('relative', 0.1)``, depends on
+``m1 + m2`` only. Yet at the defaults its null singular value sits at
+about 630 times the estimate: the result reads full rank, with all three
+parameters identifiable and no warning. Michaelis-Menten kinetics with
+:math:`K_m` far below the substrate behaves alike. The relative standard
+error check of ``identifiable`` is no substitute: it weakens as the data
+get more precise or denser.
+
+**Check step convergence.** The decisive test is to recompute
+:func:`~nskinetics.analysis.local_sensitivity` at ``rel_step / 3`` with the
+same tolerances and compare :math:`s_{min}/s_{max}`, which is
+``1 / condition_number`` of a full-rank result (in general, the smallest
+retained singular value over the largest,
+``singular_values[numerical_rank - 1] / singular_values[0]``). On the
+Monod example:
+
+.. code-block:: python
+
+   import nskinetics as nsk
+   from nskinetics.analysis import identifiability, local_sensitivity
+
+   monod = nsk.KineticModel.from_antimony("""
+   model monod()
+     X = 0.01; S = 20; m1 = 0.1; m2 = 0.3; Ks = 0.5;
+     J1: S => X; (m1 + m2)*S/(Ks + S)*X;
+   end
+   """, units={'time': 'h', 'conc': 'g/L'})
+   cond = nsk.Condition(t_end=30, n_steps=301)
+   params, outputs = ['m1', 'm2', 'Ks'], ['[X]', '[S]']
+   ls = local_sensitivity(monod, cond, params, outputs=outputs)
+   fine = local_sensitivity(monod, cond, params, outputs=outputs,
+                            rel_step=1e-3 / 3)
+   for subset in (params, ['m2', 'Ks']):
+       ident = identifiability(ls, ('relative', 0.1), params=subset)
+       ident_fine = identifiability(fine, ('relative', 0.1), params=subset)
+       falls = ident_fine.condition_number / ident.condition_number
+       print(f'{subset}: rank {ident.numerical_rank}, falls {falls:.3g}x')
+
+prints:
+
+.. code-block:: text
+
+   ['m1', 'm2', 'Ks']: rank 3, falls 9.06x
+   ['m2', 'Ks']: rank 2, falls 0.975x
+
+The ratio of the condition numbers is the factor by which
+:math:`s_{min}/s_{max}` falls. About 9 means a null direction lifted by
+the truncation error of central differences, which falls as :math:`h^2`
+(``m1`` and ``m2``, despite the full rank); about 3 means the same for
+one-sided differences, whose error falls as :math:`h`; about 1/3 means one
+lifted by integration noise, which grows as :math:`1/h`; about 1 means a
+genuine weak direction (``m2`` and ``Ks``). Run it before trusting a full
+rank that matters.
+
+Results depend on the condition
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A sensitivity holds at the nominal parameter values, and for one
+condition: its initial values, its feed settings, its run length and its
+output grid. In :doc:`tutorial/07_sensitivity_identifiability`, the
+elasticity of the titer with respect to the enzyme level is 3e-7 at 48 h,
+when the substrate is used up, and 0.64 at 12 h. Change the condition and
+the ranking can change with it. The same holds for identifiability, which
+also depends on what is measured, when, and how precisely. Morris and Sobol'
+screening vary only the sampled ranges; every other value comes from the
+base condition. Sensitivity and screening results keep their condition
+(``.condition``, also saved by ``to_csv``), so a number's context travels
+with it.
+
 The process bridge
 -------------------
 

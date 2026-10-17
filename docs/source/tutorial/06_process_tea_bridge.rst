@@ -277,3 +277,7 @@ solve give the plant's selling prices and rate of return:
 
 The :doc:`isobutanol biorefinery case study </case_studies/isobutanol/index>`
 walks through the process, its scenarios and the analyses built on it.
+
+Next: :doc:`07_sensitivity_identifiability` returns to the kinetic model
+and asks which of its parameters control titer and yield, and which ones
+measurements can determine.
