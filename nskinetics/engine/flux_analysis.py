@@ -16,6 +16,7 @@ re-implemented here.
 
 import re
 from collections import defaultdict
+from contextlib import nullcontext
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -512,6 +513,13 @@ def compute_flux_summary(model_or_unit, inhibition_map, reactions=None,
     ``write_time`` is the escape hatch from that detection, which reads the
     model's SBML text: pass ``True`` to force the write-back for a model whose
     time dependence the parser cannot see, or ``False`` to suppress it.
+
+    When the trajectory comes from :meth:`~KineticModel.run`, the values
+    that run set and then restored
+    (its condition's ``parameters`` and non-state ``initial`` entries) are
+    applied again for the replay and restored afterwards, so the rates are
+    those the run integrated. A later :meth:`~KineticModel.simulate` (or a
+    reactor simulation) clears them.
     """
     km = _resolve_model(model_or_unit)
     unit = model_or_unit if km is not model_or_unit else None
@@ -581,50 +589,54 @@ def compute_flux_summary(model_or_unit, inhibition_map, reactions=None,
     for p, (rid, inh) in inhibition_map.items():
         by_rxn[rid][inh].append(p)
 
-    snap = {c: r[c] for c in ordered_cols}
-    snap_par = {p: r[p] for p in inhibition_map}
+    # run() restores the parameters a Condition set once it returns; replay
+    # the trajectory with the values that run used (KineticModel.run).
+    used = getattr(km, '_results_overrides', None) or {}
+    with (km.overrides(used) if used else nullcontext()):
+        snap = {c: r[c] for c in ordered_cols}
+        snap_par = {p: r[p] for p in inhibition_map}
 
-    def _restore_model():
-        _restore(r, snap, ordered_cols)
-        for p, v in snap_par.items():
-            r[p] = v
+        def _restore_model():
+            _restore(r, snap, ordered_cols)
+            for p, v in snap_par.items():
+                r[p] = v
 
-    try:
-        cumulative_mass = _cum(r, arrs, write_cols, idx_of, n, t)
-        fraction_lost = {}
-        fraction_lost_all = {}
-        for rid in reactions:
-            inhdict = by_rxn.get(rid)
-            if not inhdict:
-                continue
-            fl = {}
-            all_params = []
-            for inh, plist in inhdict.items():
-                all_params += plist
-                saved = {p: r[p] for p in plist}
-                for p in plist:
+        try:
+            cumulative_mass = _cum(r, arrs, write_cols, idx_of, n, t)
+            fraction_lost = {}
+            fraction_lost_all = {}
+            for rid in reactions:
+                inhdict = by_rxn.get(rid)
+                if not inhdict:
+                    continue
+                fl = {}
+                all_params = []
+                for inh, plist in inhdict.items():
+                    all_params += plist
+                    saved = {p: r[p] for p in plist}
+                    for p in plist:
+                        r[p] = 0.0
+                    cf = _cum(r, arrs, write_cols, {rid: idx_of[rid]}, n, t)[rid]
+                    for p, v in saved.items():
+                        r[p] = v
+                    fl[inh] = _frac(cumulative_mass[rid], cf)
+                fraction_lost[rid] = fl
+                saved = {p: r[p] for p in all_params}
+                for p in all_params:
                     r[p] = 0.0
-                cf = _cum(r, arrs, write_cols, {rid: idx_of[rid]}, n, t)[rid]
+                cf_all = _cum(r, arrs, write_cols, {rid: idx_of[rid]}, n, t)[rid]
                 for p, v in saved.items():
                     r[p] = v
-                fl[inh] = _frac(cumulative_mass[rid], cf)
-            fraction_lost[rid] = fl
-            saved = {p: r[p] for p in all_params}
-            for p in all_params:
-                r[p] = 0.0
-            cf_all = _cum(r, arrs, write_cols, {rid: idx_of[rid]}, n, t)[rid]
-            for p, v in saved.items():
-                r[p] = v
-            fraction_lost_all[rid] = _frac(cumulative_mass[rid], cf_all)
-    except BaseException as exc:
-        # The model is restored on the way out either way, but a failure in
-        # the restore must chain from the original error rather than mask it.
-        try:
-            _restore_model()
-        except BaseException as restore_exc:
-            raise restore_exc from exc
-        raise
-    _restore_model()
+                fraction_lost_all[rid] = _frac(cumulative_mass[rid], cf_all)
+        except BaseException as exc:
+            # The model is restored on the way out either way, but a failure in
+            # the restore must chain from the original error rather than mask it.
+            try:
+                _restore_model()
+            except BaseException as restore_exc:
+                raise restore_exc from exc
+            raise
+        _restore_model()
 
     # env is the model's broth-volume compartment; fall back to 1.0
     final_volume = float(df['env'].iloc[-1]) if 'env' in df.columns else 1.0

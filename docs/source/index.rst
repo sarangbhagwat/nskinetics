@@ -11,6 +11,7 @@
    concepts
    case_studies/index
    API/api
+   changelog
    contributing/index
 
 .. raw:: html
