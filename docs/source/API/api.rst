@@ -14,6 +14,7 @@ last page documents the isobutanol biorefinery that ships as a case study
    units
    processes
    flux_analysis
+   analysis
    models
    exceptions
    biorefineries
