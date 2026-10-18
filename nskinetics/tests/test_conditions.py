@@ -201,6 +201,33 @@ def test_replace_and_merging_helpers():
         base.with_parameters({'[S]': 10})
 
 
+def test_mappings_may_be_pandas_series():
+    """A fit's estimates and sample rows are pandas Series: every entry
+    point takes them like a dict, and a non-mapping raises the same clean
+    TypeError everywhere."""
+    base = _cond(initial={'[S]': 50}, parameters={'k': 0.4})
+    estimates = pd.Series({'k': 0.8, 'n_max': 2.0}, name='estimate')
+    merged = base.with_parameters(estimates)
+    assert merged.parameters == {'k': 0.8, 'n_max': 2.0}
+    assert base.with_parameters(estimates, k=0.9).parameters['k'] == 0.9
+    assert base.with_initial(pd.Series({'[X]': 0.3})).initial == {
+        '[S]': 50.0, '[X]': 0.3}
+    # an empty Series is a no-op
+    assert base.with_parameters(pd.Series(dtype=float)) == base
+    assert base.with_initial(pd.Series(dtype=float)) == base
+    cond = nsk.Condition(parameters=pd.Series({'k': 0.5}), t_end=1,
+                         initial=pd.Series({'[S]': 2.0}))
+    assert cond.parameters == {'k': 0.5} and cond.initial == {'[S]': 2.0}
+    assert base.replace(parameters=estimates).parameters == dict(estimates)
+    for bad in (5, [('k', 1.0)]):
+        with pytest.raises(TypeError, match='must be a mapping'):
+            base.with_parameters(bad)
+        with pytest.raises(TypeError, match='must be a mapping'):
+            base.with_initial(bad)
+    with pytest.raises(TypeError, match='keys must be non-empty strings'):
+        base.with_parameters(pd.Series([1.0, 2.0]))
+
+
 def test_condition_serialization_round_trips():
     cond = nsk.Condition(initial={'[S]': 50.5}, parameters={'k': 0.1 + 0.2},
                          times=[0, 0.5, 48], selections=['time', '[P]'],

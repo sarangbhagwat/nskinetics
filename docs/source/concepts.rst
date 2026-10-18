@@ -5,8 +5,12 @@ Key Concepts
 
 This page explains the ideas behind NSKinetics' current, recommended
 workflow: build a kinetic model in SBML/Antimony, drive it with Tellurium's
-RoadRunner engine, and (optionally) plug it into a biosteam process model.
-It assumes you have already worked through the :doc:`tutorial <tutorial/index>`.
+RoadRunner engine, run it reproducibly (resets, baselines, conditions and
+private copies), ask which parameters matter and which ones measurements
+can determine (event-aware sensitivities and identifiability), calibrate it
+against fed-batch data with its uncertainty, and (optionally) plug it into
+a biosteam process model. It assumes you have already worked through the
+:doc:`tutorial <tutorial/index>`.
 
 SBML and Antimony
 ------------------
@@ -79,7 +83,19 @@ leaks into the next run. If you drive the model by hand instead, the order
 is ``compile_events()`` → ``reset()`` → set values → ``simulate()``. The
 default reset restores floating species, compartments and event-assigned
 variables to their origin values, so state you set *before* it is
-overwritten (see the next section).
+overwritten (see `Resets, baselines and reproducible runs`_).
+
+``Event`` vs ``FeedSpike``
+----------------------------
+
+:class:`Event` represents a single SBML event: a trigger expression paired
+with one or more assignments. :class:`FeedSpike` is a higher-level
+convenience that expands into three coordinated :class:`Event` objects fired
+in sequence: one computes the volume of feed needed to hit a target
+concentration, one updates the working volume (and a running total), and one
+sets the species to its target concentration and increments a spike counter.
+An optional ``max_count`` caps how many times a given ``FeedSpike`` may fire,
+by folding a count comparison into every trigger it expands to.
 
 Resets, baselines and reproducible runs
 ----------------------------------------
@@ -402,6 +418,12 @@ document. The copy then re-applies the settings that make up the model:
 The copy finally applies a baseline reset (never the ``reset_func``), so it
 starts at its baseline, whatever the original ran before.
 
+A copy reloads and recompiles the model, so it costs about as much as
+loading it: about a second for the shipped yeast model, far longer than
+one run of it. Every call of :func:`run_many`, :func:`scan`, an analysis
+or a calibration problem makes one; put many conditions in one call
+(:func:`run_many`, :func:`scan`) rather than calling it in a loop.
+
 Exporting with ``RoadRunner.getCurrentSBML()`` instead would copy the wrong
 thing. It bakes the post-run state into the initial values: ``S`` would
 start at the 1.9e-6 g/L it ended at. It also drops initial assignments, so
@@ -423,7 +445,10 @@ closure) raises a ``ValueError`` that names it before any process starts.
 On macOS and Windows, workers start with ``spawn`` and re-import the main
 module: call :func:`run_many` and :func:`scan` under
 ``if __name__ == '__main__':`` in scripts, and define metrics and the
-``reset_func`` at module level.
+``reset_func`` at module level. Each such worker imports nskinetics
+afresh, so every call with ``workers > 1`` first waits about as long as
+``import nskinetics``; there, prefer ``workers=1`` unless the batch runs
+for minutes.
 
 libroadrunner keeps attribute access (``r.k = 0.4``) as properties on the
 RoadRunner *class* and replaces them with the newest model's on every load.
@@ -431,18 +456,6 @@ The loads that :meth:`~KineticModel.copy`, :func:`run_many` and
 :func:`scan` make on your behalf keep the other live models' properties in
 place; explicit Tellurium loads still follow libroadrunner's behaviour.
 Item access, ``r['k'] = 0.4``, is always safe.
-
-``Event`` vs ``FeedSpike``
-----------------------------
-
-:class:`Event` represents a single SBML event: a trigger expression paired
-with one or more assignments. :class:`FeedSpike` is a higher-level
-convenience that expands into three coordinated :class:`Event` objects fired
-in sequence: one computes the volume of feed needed to hit a target
-concentration, one updates the working volume (and a running total), and one
-sets the species to its target concentration and increments a spike counter.
-An optional ``max_count`` caps how many times a given ``FeedSpike`` may fire,
-by folding a count comparison into every trigger it expands to.
 
 Sensitivities across events
 ---------------------------
@@ -498,8 +511,8 @@ the change of the output by :math:`2h`. That is a central difference in
 parameters of any size. Each perturbation is a complete run of the
 condition:
 
-* Every run starts from the restored baseline (see "Resets, baselines and
-  reproducible runs" above), so a perturbed run differs from the nominal
+* Every run starts from the restored baseline (see `Resets, baselines and
+  reproducible runs`_), so a perturbed run differs from the nominal
   one only in the perturbed value. The difference therefore contains
   everything the parameter does, jumps and shifted firing times included,
   without any event-specific bookkeeping. Without the baseline restore, a
@@ -993,9 +1006,11 @@ of the chi-square distribution with ``n_data - n_free`` degrees of
 freedom is flagged ``lack_of_fit`` (a goodness-of-fit test at the 0.1%
 level; with a robust loss, whose chi-square includes, on purpose, the
 outliers it down-weights, twice the robust cost is tested instead, see
-below). Look at
-:meth:`~nskinetics.analysis.FitResult.plot` before reading any
-uncertainty. ``absolute_sigma=False`` treats the :math:`\sigma_i` as
+below); :func:`~nskinetics.analysis.profile_likelihood`,
+:meth:`~nskinetics.analysis.FitResult.predict` and
+:meth:`~nskinetics.analysis.FitResult.predict_metrics` warn about such a
+fit. Look at :meth:`~nskinetics.analysis.FitResult.plot` before reading
+any uncertainty. ``absolute_sigma=False`` treats the :math:`\sigma_i` as
 weights only (weights-only sigmas; elsewhere on this page, *relative*
 refers to the proportional noise model and its floor, never to this
 setting): the covariance is scaled by the reduced chi-square
@@ -1110,23 +1125,33 @@ found the best fit, and a fit to all the data from those estimates
 reached the hybrid optimum.
 
 **Profiles can jump too.** :func:`~nskinetics.analysis.profile_likelihood`
-re-optimizes the other parameters locally, from the solution at the
-previous grid value. When a grid step moves an event across a sample
-time, the re-optimization can stay on the far side of the jump, although
-other values of the free parameters would bring the event back: the
-profile then rises by about :math:`(\mathrm{jump}/\sigma)^2` at once, and
-its interval ends at the jump, too narrow. With the tutorial's data, but
-with the runs charged with 47 and 32 g/L of substrate, the third spike of
-``FB2`` comes 0.02 h before the 11-h sample at the estimates. The
-profile interval of ``k`` then ends at 0.40002 on its lower side (the
-last grid value below the threshold is 0.40004), where the Wald interval
-reaches 0.3987: one grid step down, the re-optimization left the
-spike after the sample, and the chi-square jumped from 72 to 1627. A
-search over the initial charges at the same values of ``k`` found
-chi-squares of 73 to 81, a smooth continuation. Treat a profile that
-jumps by the size of a spike residual as suspect, and check its far side,
-for example by fixing the parameter in the conditions and refitting the
-others with ``method='hybrid'``.
+re-optimizes the other parameters locally, each time from a predicted
+start: the optimum moved along the fit's tangent (the linearized
+re-optimization, from its Jacobian) for the first grid value, then the
+line through the solutions at the two previous values. The start thus
+follows the valley of the objective, which keeps most re-optimizations on
+the same side of every event as the optimum. When a grid step moves an
+event across a sample time, the re-optimization can still stay on the far
+side of the jump, although other values of the free parameters would
+bring the event back: the profile then rises by about
+:math:`(\mathrm{jump}/\sigma)^2` at once, and its interval ends at the
+jump, too narrow. With the tutorial's data, but with the runs charged
+with 47 and 32 g/L of substrate, the third spike of ``FB2`` comes 0.02 h
+before the 11-h sample at the estimates. The profile interval of ``k``
+then ends at 0.39882 on its lower side (the last grid value below the
+threshold), where the Wald interval reaches 0.39866: one grid step down,
+at 0.39852, the re-optimization left the spike after the sample, and the
+chi-square jumped from 75 to 1626. Refits of the initial charges with
+``method='hybrid'`` at the same values of ``k`` found chi-squares of 72
+to 81 over the lower grid, a smooth continuation (76.1 at 0.39852). Such
+an end is flagged: within one grid step the profile
+rose by far more than the threshold beyond the Wald parabola's rise, so
+the ``abrupt_ends`` of its :class:`~nskinetics.analysis.ProfileResult`
+marks it and :func:`~nskinetics.analysis.profile_likelihood` warns. Check
+the far side of a flagged end by fixing the parameter there in the
+conditions and refitting the others with ``method='hybrid'`` (a coarse
+grid can trigger the flag too, next to a bound for example; raise
+``n_points`` then).
 
 Wald, profile and Laplace uncertainty
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1189,11 +1214,13 @@ faithful to the objective:
   SE) can still show a closed interval. It costs a re-optimization per
   grid value, and events can make it jump (above).
 - **Laplace sampling** (:meth:`~nskinetics.analysis.FitResult.sample`,
-  :meth:`~nskinetics.analysis.FitResult.predict`): draws from the normal
-  distribution with the Wald covariance (with ``absolute_sigma=False``,
-  the Student-t distribution with ``dof`` degrees of freedom, matching
-  the t-based interval), in the fitting space and clipped
-  to the bounds, turned into parameter sets and prediction bands. It
+  :meth:`~nskinetics.analysis.FitResult.predict`,
+  :meth:`~nskinetics.analysis.FitResult.predict_metrics`): draws from the
+  normal distribution with the Wald covariance (with
+  ``absolute_sigma=False``, the Student-t distribution with ``dof``
+  degrees of freedom, matching the t-based interval), in the fitting space
+  and clipped to the bounds, turned into parameter sets, prediction bands
+  and percentiles of run metrics (titer, yield, spike count). It
   inherits the Wald approximation: it understates the uncertainty of a
   parameter whose profile is skewed or flat, and has no spread at all
   along a direction the data cannot see (a warning says so), whose

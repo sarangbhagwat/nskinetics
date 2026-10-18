@@ -82,11 +82,23 @@ reactor.
      </p>
    </div>
 
+Runs are reproducible: a :class:`Condition` describes one,
+:meth:`KineticModel.run` starts it from the model's baseline, and
+:func:`run_many` and :func:`scan` run batches and grids of conditions,
+serially or on a process pool. On top of them, the
+:doc:`nskinetics.analysis <API/analysis>` subpackage asks which parameters
+matter (event-aware local sensitivities, Morris and Sobol' screening), which
+ones measurements can determine (identifiability), and which values
+fed-batch data support, with their uncertainty (calibration, profile
+likelihoods and prediction bands).
+
 See the full :doc:`tutorial <tutorial/index>` for the rest of the workflow —
 writing and simulating a kinetic model from scratch, the
 :class:`Event`/:class:`FeedSpike` API used inside the fermentor here, a tour
-of the shipped *S. cerevisiae* kinetic model, and the kinetics-to-biosteam
-bridge behind ``V406``.
+of the shipped *S. cerevisiae* kinetic model, the kinetics-to-biosteam
+bridge behind ``V406``, :doc:`sensitivity and identifiability
+<tutorial/07_sensitivity_identifiability>`, and :doc:`calibration
+<tutorial/08_calibration>`.
 
 
 .. grid:: 1 2 2 4

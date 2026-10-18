@@ -928,7 +928,11 @@ def local_sensitivity(model, condition, params, *, outputs=None, metrics=None,
     Cost: two runs per parameter (one for ``method='forward'``), the
     nominal run, one more run to read start values the condition does not
     set, one to scale ``atol`` (default ``tolerances`` only), and two more
-    per step refinement.
+    per step refinement. Each call also first builds a private copy of the
+    model (:meth:`~nskinetics.KineticModel.copy`), which takes about a
+    second for the shipped yeast model, far longer than one of its runs:
+    for a few parameters that rebuild dominates, so a loop of calls (e.g.
+    sensitivities at many operating points) pays mostly for rebuilding.
 
     Examples
     --------

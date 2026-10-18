@@ -1,6 +1,8 @@
 Analysis
 ========
 
+.. module:: nskinetics.analysis
+
 .. currentmodule:: nskinetics.analysis
 
 ``nskinetics.analysis`` holds the tools that run a model many times to
@@ -124,9 +126,10 @@ identifiability and goodness-of-fit flags. Failed integrations inside the
 optimizer are penalized and counted, never raised;
 :exc:`nskinetics.FittingError` is raised only when every start fails.
 :func:`profile_likelihood` re-optimizes the other parameters along a grid
-of each profiled one, and :meth:`FitResult.sample` /
-:meth:`FitResult.predict` propagate the Gaussian (Laplace) approximation to
-parameter draws and prediction bands. Standard
+of each profiled one, and :meth:`FitResult.sample`,
+:meth:`FitResult.predict` and :meth:`FitResult.predict_metrics` propagate
+the Gaussian (Laplace) approximation to parameter draws, prediction bands
+and percentiles of run metrics (titer, yield, spike count...). Standard
 deviations come from each observable's noise model (absolute,
 proportional to the data with the floor of :func:`identifiability`, or
 both) or from the data's ``sigma`` column, and are fixed before the fit.
@@ -151,8 +154,8 @@ Data times are in the model's time unit.
 .. autofunction:: fit_parameters
 
 .. autoclass:: FitResult
-   :members: summary, table, warnings, apply, plot, sample, predict, to_csv,
-             from_csv
+   :members: summary, table, warnings, apply, plot, sample, predict,
+             predict_metrics, to_csv, from_csv
 
 .. autofunction:: profile_likelihood
 

@@ -1032,6 +1032,29 @@ def test_lack_of_fit_is_flagged_for_absolute_sigmas(robust_hybrid_fit):
     assert 'lack_of_fit' not in set(robust_hybrid_fit.flags['flag'])
 
 
+def test_lack_of_fit_is_propagated_to_profiles_and_predictions():
+    from nskinetics.analysis import Final
+    data = _decay_data(sigma=0.1, seed=0)
+    # sigma 10x too small: flagged lack_of_fit (see the test above)
+    bad = fit_parameters(_decay_problem(data=data, sigma=0.01), n_starts=1,
+                         seed=0)
+    assert 'lack_of_fit' in set(bad.flags['flag'])
+    calls = {
+        'profile intervals': lambda: profile_likelihood(bad, 'k', n_points=3),
+        'predicted bands': lambda: bad.predict('E', n_samples=5, seed=0),
+        'predicted bands and percentiles': lambda: bad.predict_metrics(
+            nsk.Condition(t_end=6), [Final('[S]')], n_samples=5, seed=0)}
+    for what, call in calls.items():
+        with pytest.warns(UserWarning, match='lack_of_fit') as record:
+            call()
+        hits = [w for w in record if 'lack_of_fit' in str(w.message)]
+        # one warning, pointing at the caller (this file)
+        assert len(hits) == 1 and hits[0].filename == __file__
+        message = str(hits[0].message)
+        assert what in message and 'fit.summary()' in message
+        assert f'reduced chi2 = {bad.reduced_chi2:.3g}' in message
+
+
 def test_relative_sigma_without_degrees_of_freedom_has_no_covariance():
     data = _decay_data(sigma=0.1, seed=0, times=np.array([2.0]))
     fit = fit_parameters(_decay_problem(data=data, absolute_sigma=False),
@@ -2078,6 +2101,104 @@ def test_predict_warns_that_an_observable_name_is_a_model_selection(
     with warnings.catch_warnings():
         warnings.simplefilter('error')
         noisy_fit.predict(cond, n_samples=5, seed=0, outputs=['[S]', 'P'])
+
+
+@pytest.fixture(scope='module')
+def feed_fit():
+    """Two FeedSpike runs (initial S 30 and 40, k = 0.4, 3 spikes each)
+    with seeded noise (sigma 0.5): global k, local initial [S]."""
+    km = _feedspike_model()
+    t = np.arange(0.5, 12.01, 0.5)
+    base = nsk.Condition(parameters={'threshold': 10}, t_end=12)
+    rng = np.random.default_rng(0)
+    rows, exps = [], []
+    for name, S0 in (('FB1', 30.0), ('FB2', 40.0)):
+        cond = base.with_initial({'[S]': S0})
+        res = km.copy().run(cond.with_parameters(k=0.4).replace(
+            times=np.concatenate([[0.0], t]), selections=('[S]', '[P]')))
+        for sel, ob in (('[S]', 'S'), ('[P]', 'P')):
+            rows += [(name, ob, ti, v + 0.5 * rng.standard_normal())
+                     for ti, v in zip(t, res[sel][1:])]
+        exps.append(cond)
+    data = Dataset(pd.DataFrame(rows, columns=['experiment', 'observable',
+                                               'time', 'value']))
+    exps = [Experiment(n, c, data[n]) for n, c in zip(('FB1', 'FB2'), exps)]
+    fit = fit_parameters(CalibrationProblem(
+        km, exps, [Observable('S', '[S]', sigma=0.5),
+                   Observable('P', '[P]', sigma=0.5)],
+        [FitParameter('k', (0.05, 2), initial=0.4),
+         FitParameter('[S]', (5, 100), scope='local')]), n_starts=1, seed=0)
+    assert fit.reduced_chi2 < 1.5
+    return fit, km, exps
+
+
+def test_predict_metrics_percentiles_of_titer_yield_and_spike_count(
+        feed_fit):
+    from nskinetics.analysis import EventCount, Final, Yield
+    fit, km, exps = feed_fit
+    metrics = [Final('[P]'),
+               Yield('[P]', '[S]', volume='env', fed=('tot_vol', 'feed_conc')),
+               EventCount('n_spk')]
+    names = [m.name for m in metrics]
+    before = _model_state(km)
+    table = fit.predict_metrics('FB2', metrics, n_samples=30, seed=1)
+    assert _model_state(km) == before
+    assert list(table.columns) == ['nominal', 'q5', 'q50', 'q95', 'n_ok']
+    assert list(table.index) == names and table.index.name == 'metric'
+    assert table.attrs == {'n_samples': 30, 'n_failed': 0,
+                           'quantiles': (5.0, 50.0, 95.0),
+                           'parameters': ['k', '[S]@FB2'], 'seed': 1,
+                           'units': UNITS}
+    assert (table['n_ok'] == 30).all()
+    assert (table['q5'] <= table['q50']).all()
+    assert (table['q50'] <= table['q95']).all()
+    assert table.loc['EventCount(n_spk)', 'nominal'] == 3
+    assert table.loc['Final([P])', 'q95'] > table.loc['Final([P])', 'q5']
+    pd.testing.assert_frame_equal(
+        table, fit.predict_metrics('FB2', metrics, n_samples=30, seed=1))
+    # the nominal is a run at the estimates: the global k (a fit's
+    # estimates are a Series) and FB2's local initial [S] (on the caller's
+    # model: the problem's private copy has its own tolerances)
+    cond = exps[1].condition.with_parameters(fit.estimates[['k']])
+    cond = cond.with_initial({'[S]': fit.estimates['[S]@FB2']})
+    res = km.copy().run(cond, extra_selections=[
+        s for m in metrics for s in m.selections])
+    on_km = fit.predict_metrics('FB2', metrics, n_samples=2, seed=1,
+                                model=km)
+    for m in metrics:
+        assert math.isclose(on_km.loc[m.name, 'nominal'], m(res),
+                            rel_tol=1e-12)
+        assert math.isclose(table.loc[m.name, 'nominal'], m(res),
+                            rel_tol=1e-4)
+    # the same draws as predict(): its band of [P] at the end is the
+    # percentiles of the final titer
+    bands = fit.predict('FB2', n_samples=30, seed=1, outputs=['[P]'])
+    end = bands.iloc[-1]
+    for q in ('nominal', 'q5', 'q50', 'q95'):
+        assert math.isclose(end[q], table.loc['Final([P])', q],
+                            rel_tol=1e-12)
+    # a new condition gets the global estimate only; FB1 gets its own
+    # local estimate
+    other = fit.predict_metrics(
+        nsk.Condition(initial={'[S]': 35.0}, parameters={'threshold': 10},
+                      t_end=12), {'P_end': Final('[P]')}, n_samples=5,
+        seed=0, q=(50,))
+    assert other.attrs['parameters'] == ['k']
+    assert list(other.columns) == ['nominal', 'q50', 'n_ok']
+    fb1 = fit.predict_metrics('FB1', metrics[:1], n_samples=5, seed=0)
+    assert fb1.attrs['parameters'] == ['k', '[S]@FB1']
+    assert not math.isclose(fb1['nominal'].iloc[0], table['nominal'].iloc[0],
+                            rel_tol=1e-3)
+    with pytest.warns(UserWarning, match='local estimates'):
+        fit.predict_metrics(exps[1].condition, metrics[:1], n_samples=5,
+                            seed=0)
+    # validated before any run
+    for bad, error in (([], ValueError), (None, ValueError), (5, TypeError),
+                       ({'x': 1.0}, TypeError)):
+        with pytest.raises(error):
+            fit.predict_metrics('FB2', bad, n_samples=5, seed=0)
+    with pytest.raises(ValueError, match='Unknown experiment'):
+        fit.predict_metrics('FB3', metrics, n_samples=5, seed=0)
 
 
 # --- (k) plot ----------------------------------------------------------------

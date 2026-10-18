@@ -201,6 +201,9 @@ The rest of the tutorial builds this picture up one layer at a time:
 :doc:`02_build_and_simulate` writes and simulates a kinetic model from
 scratch; :doc:`03_events` and :doc:`04_fed_batch_feeding` add the event API
 and ``FeedSpike`` feeding used inside the fermentor here; :doc:`05_real_model`
-tours the shipped *S. cerevisiae* model itself; and
+tours the shipped *S. cerevisiae* model itself;
 :doc:`06_process_tea_bridge` unpacks the kinetics-to-biosteam bridge that
-made ``V406`` possible. :doc:`../concepts` covers the ideas in more depth.
+made ``V406`` possible; and :doc:`07_sensitivity_identifiability` and
+:doc:`08_calibration` ask which parameters matter and which ones
+measurements can determine, and fit them to fed-batch data.
+:doc:`../concepts` covers the ideas in more depth.

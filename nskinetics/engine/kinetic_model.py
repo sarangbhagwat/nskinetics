@@ -680,7 +680,7 @@ class KineticModel():
         ``'time'``, each settable compartment, every floating species as a
         concentration selection (``[species]``), every rate-rule variable,
         and every variable assigned by an event -- both the :class:`Event`
-        objects in :attr:`events` and events defined in the SBML/Antimony
+        objects in ``events`` and events defined in the SBML/Antimony
         source itself. Variables defined by assignment rules are excluded
         because they cannot be set independently.
 
@@ -1429,7 +1429,7 @@ class KineticModel():
             called), carrying: the user-edited values of global parameters
             and boundary species (every one that is not an assignment-rule,
             rate-rule or event target; reset never restores these, so edits
-            persist), the :attr:`events` list (shallow; already compiled into
+            persist), the ``events`` list (shallow; already compiled into
             the origin SBML when compiled here), units (copied),
             :attr:`reset_func`, the integrator name and the settings that
             differ from its defaults (tolerances, step limits, seed...),

@@ -614,12 +614,17 @@ class IdentifiabilityResult:
     def correlation(self):
         """Correlation matrix from :attr:`covariance` (``pandas.DataFrame``);
         ``NaN`` in the rows and columns of parameters with infinite or zero
-        :attr:`se`."""
+        :attr:`se`, a diagonal of exactly 1 otherwise, and entries within
+        ``[-1, 1]``."""
         se = self.se.to_numpy()
         ok = np.isfinite(se) & (se > 0)
         with np.errstate(all='ignore'):
             scale = np.where(ok, se, np.nan)
             corr = self.covariance.to_numpy() / np.outer(scale, scale)
+        # rounding leaves the diagonal and the extremes an ulp off
+        # (BLAS-dependent); np.clip keeps NaN (as FitResult.correlation)
+        corr = np.clip(corr, -1.0, 1.0)
+        np.fill_diagonal(corr, np.where(ok, 1.0, np.nan))
         return pd.DataFrame(corr, index=self.covariance.index,
                             columns=list(self.parameters))
 
@@ -1249,7 +1254,11 @@ def identifiability(sens, sigma, *, times=None, params=None,
         bounded below: the row of output ``y`` at time ``t_i`` has
         ``sigma_i = rel * max(|y_i|, relative_floor * max_t |y|)``, the
         maximum taken over the output's whole time grid in ``sens`` (see
-        Notes). A mapping can mix both, and gives outputs their own
+        Notes). This is the form of
+        :class:`Observable(noise='proportional', rel_sigma=rel)
+        <nskinetics.analysis.Observable>` in calibration (with the same
+        ``relative_floor``), evaluated on the nominal model outputs rather
+        than on data. A mapping can mix both, and gives outputs their own
         ``rel``: ``{'[S]': 0.5, '[P]': ('relative', 0.05)}``. Outputs not
         named are not measured.
     times : sequence of float, optional

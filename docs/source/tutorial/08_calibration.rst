@@ -441,9 +441,11 @@ objective is close to quadratic in the log parameters, and no spike
 crosses a sample. They part ways when a parameter is poorly determined
 (a skewed or flat profile, ``is_identifiable=False`` when a side never
 crosses the threshold within the bounds), and when a spike sits within
-the uncertainty of a sample time, where the profile shows a jump. Each
-grid value is a re-optimization of the other parameters, so profiles cost
-many fits: profile the parameters the flags point at, and the ones a
+the uncertainty of a sample time, where the profile can jump
+(:func:`~nskinetics.analysis.profile_likelihood` then warns that an
+interval end may be too narrow; see :ref:`calibration-event-timing`).
+Each grid value is a re-optimization of the other parameters, so profiles
+cost many fits: profile the parameters the flags point at, and the ones a
 decision rests on.
 
 From parameters to predictions
@@ -536,6 +538,38 @@ Run-to-run variation of the initial charge, which missed its recipe by
 1.5 and 3 g/L in the fitted runs, is not in them either: draw it
 yourself into the conditions of :func:`~nskinetics.run_many` to include
 it.
+
+For a number that summarizes a run, such as a titer, a yield or a spike
+count, :meth:`~nskinetics.analysis.FitResult.predict_metrics` evaluates
+:mod:`nskinetics.analysis` metrics on the same draws (the same seed gives
+the same parameter sets) and returns their percentiles. A yield needs
+this: the percentile of a ratio is not the ratio of the percentiles of
+its parts.
+
+.. code-block:: python
+
+   from nskinetics.analysis import At, EventCount, Yield
+
+   metrics = [At('[P]', 8),
+              Yield('[P]', '[S]', volume='env', fed=('tot_vol', 'feed_conc')),
+              EventCount('n_spk')]
+   table = fit.predict_metrics(fb3, metrics, n_samples=200, seed=1)
+   print(table.to_string(float_format=lambda v: f'{v:.4g}'))
+
+prints:
+
+.. code-block:: text
+
+                             nominal   q5   q50   q95  n_ok
+   metric
+   At([P], 8)                  97.51 97.1 97.47 97.84   200
+   Yield([P]/[S], consumed)        1    1     1     1   200
+   EventCount(n_spk)               3    3     3     3   200
+
+Every draw gives three spikes, and the yield is 1 g/g because ``S``
+turns into ``P`` one to one in this model; only the titer at 8 h carries
+the uncertainty of ``k`` (``n_ok`` counts the runs behind each
+percentile).
 
 Saving and applying the result
 ------------------------------
