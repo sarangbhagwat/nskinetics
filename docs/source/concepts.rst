@@ -996,9 +996,9 @@ outliers it down-weights, twice the robust cost is tested instead, see
 below). Look at
 :meth:`~nskinetics.analysis.FitResult.plot` before reading any
 uncertainty. ``absolute_sigma=False`` treats the :math:`\sigma_i` as
-relative weights only (weights-only sigmas; elsewhere on this page,
-*relative* refers to the proportional noise model and its floor, never to
-this setting): the covariance is scaled by the reduced chi-square
+weights only (weights-only sigmas; elsewhere on this page, *relative*
+refers to the proportional noise model and its floor, never to this
+setting): the covariance is scaled by the reduced chi-square
 (as ``scipy.optimize.curve_fit`` does), the Wald intervals use the
 Student-t quantile :math:`t_{0.975,\,n_\mathrm{data} - n_\mathrm{free}}`
 in place of 1.96, since the noise level is then estimated (2.57 with 5
@@ -1081,11 +1081,14 @@ compares the event counters (a :class:`FeedSpike`'s ``count_var``, other
 every output time of every experiment. When a perturbation changes them,
 the step is refined (``max_refinements``, tenfold each time), and if the
 counts still differ, a one-sided difference from the side that kept them
-is used. The fit's ``flags`` then report ``event_count_changed`` for that
-parameter (and ``unreliable_derivative`` for a difference that is
+is used (if both sides still change them, the difference spans the jump,
+``scheme`` ``'central'`` in ``fd_flags``, and its Wald uncertainty is not
+meaningful; if the other side's run failed instead, the column is
+unavailable and the flag message gives the error). The fit's ``flags`` then report ``event_count_changed`` for
+that parameter (and ``unreliable_derivative`` for a difference that is
 unreliable for another reason, such as failed runs): the optimum lies
-within a step of a jump, its Wald uncertainty is one-sided, and a profile
-should confirm it. A fit that stopped inside a wrong piece raises no
+within a step of a jump, its Wald uncertainty is approximate at best, and
+a profile should confirm it. A fit that stopped inside a wrong piece raises no
 derivative flag, since the objective is smooth there. Its signs are a
 chi-square far above the degrees of freedom, which the ``lack_of_fit``
 flag reports (with absolute sigmas, for every loss), starts that end
@@ -1134,40 +1137,9 @@ faithful to the objective:
 - **Wald** (``se``, ``ci``, ``correlation`` of
   :class:`~nskinetics.analysis.FitResult`): from the Jacobian at the
   optimum, at no extra cost. The covariance of :math:`x` is the
-  pseudo-inverse of the equilibrated :math:`D J^T J D` on its numerical
-  range (singular values of :math:`J D` below ``rank_rtol`` times the
-  largest count as 0), mapped back by :math:`D`, which equals
-  :math:`(J^T J)^{-1}` at full rank. The equilibration scales every
-  column to unit norm, :math:`D_j = 1/\lVert J_j \rVert` (van der
-  Sluis' near-optimal diagonal scaling), so the rank test and the
-  condition numbers below measure only how nearly collinear the columns
-  are, whatever the units, origin and bounds of the parameters and the
-  noise level. How precisely each parameter is determined is judged
-  separately, by its SE (below). Equilibration must not lift a column of
-  pure integration noise to unit norm, where that noise, which follows
-  the dynamics, would look correlated with the other columns. So a
-  simulation column whose change of the weighted residuals over its own
-  finite-difference step, :math:`\lVert J_j \rVert h_j`, is at most
-  ``rank_rtol`` times the largest such change (of a reliable column) is
-  set to 0 first: the outputs do not measurably depend on that parameter
-  (with the default tolerances such columns came out at
-  :math:`10^{-11}` to :math:`10^{-7}` of the largest on toys; looser
-  ``tolerances=`` raise that noise; a ``log=False`` parameter's step is
-  smallest near 0, so a weak one there measures a smaller change and is
-  more readily taken as unseen). It gets an infinite SE and a
-  ``rank_deficient`` flag, and the other parameters are unaffected, as in
-  :func:`~nskinetics.analysis.identifiability`, whose rank test on the
-  raw :math:`\ln p` columns rejects such a column too. Observable scales
-  and offsets involve no integration and are exempt. Beyond that, the two
-  differ: identifiability's raw rank test also counts a parameter
-  determined far less precisely than the others as rank deficient, while
-  a fit separates collinearity (``rank_deficient``, ``ill_conditioned``)
-  from precision (``high_rel_se``, ``wide_interval``). Equilibration
-  also scales up the finite-difference error of a weak but real column
-  along with the column itself: on :math:`S \Rightarrow P;\ (k_1 + k_2) S` with :math:`k_2` at
-  about :math:`10^{-4}` of :math:`k_1`, a fit reports rank 2 with
-  ``high_rel_se`` for both and ``high_correlation``, where
-  identifiability reports rank 1. The interval is
+  pseudo-inverse of :math:`J^T J` on its numerical range, which equals
+  :math:`(J^T J)^{-1}` at full rank (see `How rank and collinearity are
+  judged`_). The interval is
   :math:`x \pm 1.96\,\mathrm{SE}` (with ``absolute_sigma=False``,
   :math:`x \pm t_{0.975,\,\mathrm{dof}}\,\mathrm{SE}`), mapped back to
   :math:`p`. It is exact for a model linear in :math:`x`, and good when
@@ -1176,9 +1148,10 @@ faithful to the objective:
   ``rank_deficient`` flag (a Jacobian whose condition number exceeds
   ``1 / rank_rtol``, :math:`10^6` by default, counts as rank deficient);
   at full rank, ``ill_conditioned`` flags a nearly singular
-  :math:`D J^T J D` (condition number above :math:`10^8`, i.e. above
-  :math:`10^4` for :math:`J D`). ``high_correlation`` flags pairs with
-  :math:`|\rho| > 0.95` and ``high_rel_se`` a relative SE above 1. The
+  equilibrated :math:`D J^T J D` (condition number above :math:`10^8`,
+  i.e. above :math:`10^4` for :math:`J D`). ``high_correlation`` flags
+  pairs with :math:`|\rho| > 0.95` and ``high_rel_se`` a relative SE
+  above 1. The
   relative SE is judged only for parameters whose bounds exclude 0: for a
   zero-capable ``log=False`` parameter (an offset, an initial value with
   lower bound 0) it depends on where the origin is, so such a parameter
@@ -1188,16 +1161,7 @@ faithful to the objective:
   wider than the bounds, the Wald counterpart of a profile that does not
   cross within them. A parameter with a small but measurable effect is
   flagged this way, and its weak column can widen the other intervals, so
-  fix it and refit if it is not needed. The
-  pseudo-inverse leaves an unseen direction out, so between parameters
-  with an infinite SE the correlation is instead the limit of a vanishing
-  ridge, :math:`(J^T J + \epsilon I)^{-1}` as :math:`\epsilon \to 0`
-  (with the columns equilibrated as for the rank test): :math:`-1` for
-  :math:`k_1` and :math:`k_2` when the data determine only
-  :math:`k_1 k_2`, and 0
-  against parameters off that direction. This deliberately differs from
-  :class:`~nskinetics.analysis.IdentifiabilityResult`, whose
-  ``correlation`` is ``NaN`` there.
+  fix it and refit if it is not needed.
 - **Profile likelihood**
   (:func:`~nskinetics.analysis.profile_likelihood`): one parameter is
   fixed on a grid outward from the estimate (``span`` SEs per side,
@@ -1242,6 +1206,126 @@ When the profiles agree with the Wald intervals, as in the tutorial, the
 three agree and the bands can be used as they are. When they differ,
 believe the profile, and read the Laplace bands as too narrow.
 
+.. _calibration-rank:
+
+How rank and collinearity are judged
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The Wald covariance of :math:`x` is the pseudo-inverse of the
+equilibrated :math:`D J^T J D` on its numerical range (singular values of
+:math:`J D` below ``rank_rtol`` times the largest count as 0), mapped
+back by :math:`D`, which equals :math:`(J^T J)^{-1}` at full rank. The
+equilibration scales every column to unit norm, :math:`D_j = 1/\lVert
+J_j \rVert` (van der Sluis' near-optimal diagonal scaling), so the rank
+test and the condition numbers (``rank_deficient``, ``ill_conditioned``)
+measure only how nearly collinear the columns are, whatever the units,
+origin and bounds of the parameters and the noise level. How precisely
+each parameter is determined is judged separately, by its SE
+(``high_rel_se``, ``wide_interval``).
+
+Equilibration must not lift a column of pure integration noise to unit
+norm, where that noise, which follows the dynamics, would look correlated
+with the other columns. So a simulation column whose change of the
+weighted residuals over its nominal finite-difference step,
+:math:`\lVert J_j \rVert h_j` (the step before any event-count
+refinement: ``rel_step`` in :math:`\ln p`, ``rel_step``
+:math:`\cdot \max(|p|, 10^{-3} (hi - lo))` for a linear parameter; a
+refined column's derivative times that step), is at most ``rank_rtol``
+times the largest such change of a simulation column whose difference is
+a derivative (a reliable column, or one kept one-sided after an
+``event_count_changed`` refinement; not a central difference across an
+event jump, which the jump inflates) is set to 0 first. The nominal step
+is used because a refinement divides a column's step, but not the
+integration noise of the others. The outputs do not measurably depend
+on that parameter. It gets an infinite SE and a ``rank_deficient`` flag,
+and the other parameters are unaffected, as in
+:func:`~nskinetics.analysis.identifiability`, whose rank test on the raw
+:math:`\ln p` columns rejects such a column too. A ``log=False``
+parameter's step is smallest near 0, so a weak one there measures a
+smaller change and is more readily taken as unseen. Observable scales and
+offsets involve no integration and are exempt; they do not set the
+reference either, since an offset's change over its step grows with its
+distance from 0. The comparison is among simulation columns only: if
+none of them is informative (for example, only observable scales or
+offsets are fitted besides an uninformative simulation parameter), the
+largest is its own reference and is kept; it is then reported through
+``high_rel_se`` or ``wide_interval`` and can widen the other parameters'
+intervals.
+
+The margin over the integration noise is thin, and depends on the
+reference. A column the outputs do not depend on changes the weighted
+residuals by about :math:`3\,\mathrm{rtol}\,\lVert y/\sigma \rVert`
+(integration noise, whatever the parameter), the reference by about
+:math:`s_{max} \lVert y/\sigma \rVert h`, where :math:`h` is
+``rel_step`` and :math:`s_{max} = \lVert \partial (y/\sigma) / \partial
+\ln p \rVert / \lVert y/\sigma \rVert` is the normalized sensitivity of
+the most influential fitted simulation parameter (for a log parameter
+``j``, ``||fit.jacobian[:, j]|| / ||fit.residuals['model'] /
+fit.residuals['sigma']||``). Their ratio is about
+:math:`3\,\mathrm{rtol}/(s_{max} h)`, the estimate of the
+identifiability rank test: :math:`3 \times 10^{-7}` at ``rtol``
+:math:`10^{-10}` and ``rel_step`` :math:`10^{-3}` for :math:`s_{max}`
+about 1, i.e. when a dominant rate constant is fitted. That estimate is a
+lower bound, not a guarantee. At the defaults, these columns came out at
+:math:`10^{-11}` to about :math:`8 \times 10^{-7}` of the largest on a
+smooth decay toy, and up to about :math:`9.8 \times 10^{-7}` on a
+FeedSpike toy with a dominant :math:`k` (:math:`s_{max}` about 2.4 to
+2.8): within a few percent of the default ``rank_rtol`` of
+:math:`10^{-6}`. Event re-initializations add integration noise that does
+not fall as :math:`1/s_{max}`, up to about 10 times the estimate, and
+the scatter is wide, so the estimate is only a rough guide. Three things
+raise the ratio further: a looser ``rtol`` (``tolerances=``) and a
+smaller ``rel_step``, in proportion to ``rtol / rel_step`` (``rtol``
+:math:`10^{-9}` at ``rel_step`` :math:`10^{-3}`, or ``rel_step``
+:math:`10^{-4}` at ``rtol`` :math:`10^{-10}`, already exceed
+``rank_rtol``), and a weakly influential reference, :math:`s_{max}`
+below about 1: a fit of only weak parameters, such as a minor-pathway
+constant, or a :math:`K_m` or :math:`K_i` with the dominant constants
+fixed. On :math:`S \Rightarrow P;\ (k + k_2) S` with :math:`k` fixed and
+:math:`k_2` carrying 1% of the flux (:math:`s_{max}` about 0.007), the
+column of a parameter of an unobserved branch came out at about
+:math:`3.5 \times 10^{-5}` of :math:`k_2`'s at the defaults. Such a
+parameter escapes the filter, is reported through ``high_rel_se`` or
+``wide_interval`` instead of ``rank_deficient``, and widens the other
+intervals (the SE of :math:`k_2` 2.6 times; the situation
+identifiability reports as ``rank_test_doubtful``). So when a fitted
+simulation parameter may not affect the outputs, and in particular on
+fed-batch and other event models, tighten the integrator, e.g.
+``tolerances=(1e-14, 1e-12)``: on the FeedSpike toy that puts such a
+column at about :math:`1.3 \times 10^{-9}` of the largest, for
+negligible extra cost. Alternatively, judge the fit at a threshold above
+the noise with ``dataclasses.replace(fit, rank_rtol=...)``, which
+recomputes every derived attribute and flag from the stored Jacobian
+without refitting. A higher ``rank_rtol`` also makes the collinearity
+test on :math:`J D` stricter: a ``condition_number`` above ``1 /
+rank_rtol`` (``1e4`` at ``1e-4``) counts as rank deficient, with
+infinite SE, and at ``rank_rtol >= 1e-4`` ``ill_conditioned``
+(``condition_number**2 > 1e8``) can no longer fire; raise it only as far
+as the noise requires.
+
+Beyond that, the fit and identifiability differ: identifiability's raw
+rank test also counts a parameter determined far less precisely than the
+others as rank deficient, while a fit separates collinearity
+(``rank_deficient``, ``ill_conditioned``) from precision
+(``high_rel_se``, ``wide_interval``). Equilibration also scales up the
+finite-difference error of a weak but real column along with the column
+itself: on :math:`S \Rightarrow P;\ (k_1 + k_2) S` with :math:`k_2` at
+about :math:`10^{-4}` of :math:`k_1`, identifiability reports rank 1,
+while a fit, depending on the noise draw, may report rank 2 (flagged
+``high_rel_se`` for both and ``high_correlation``, sometimes also
+``ill_conditioned``) or rank 1 (``rank_deficient``); either way the pair
+is flagged.
+
+The pseudo-inverse leaves an unseen direction out, so between parameters
+with an infinite SE the correlation is instead the limit of a vanishing
+ridge, :math:`(J^T J + \epsilon I)^{-1}` as :math:`\epsilon \to 0`
+(with the columns equilibrated as for the rank test): :math:`-1` for
+:math:`k_1` and :math:`k_2` when the data determine only
+:math:`k_1 k_2`, and 0 against parameters off that direction. This
+deliberately differs from
+:class:`~nskinetics.analysis.IdentifiabilityResult`, whose
+``correlation`` is ``NaN`` there.
+
 Robust losses
 ~~~~~~~~~~~~~
 
@@ -1263,8 +1347,8 @@ flags a fit stuck on a wrong piece. A few gross outliers can trigger it
 too; check the residuals. AIC and BIC, computed from the chi-square, are
 comparable only between linear-loss fits. A robust loss needs absolute
 sigmas (``absolute_sigma=False`` raises ``ValueError``): ``f_scale``
-counts standard deviations, and with relative weights it would refer to
-their arbitrary scale, so that the estimate and the profile would change
+counts standard deviations, and with weights-only sigmas it would refer
+to their arbitrary scale, so that the estimate and the profile would change
 when every sigma is rescaled. The 3.84 threshold of a profile holds for
 the linear loss only: the robust cost rises more slowly than the
 chi-square even for residuals within ``f_scale``, so profiles on it come

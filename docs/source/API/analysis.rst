@@ -179,8 +179,9 @@ References
 ----------
 
 The identifiability measures, the screening designs and estimators, the
-profile-likelihood intervals, the model-selection criteria and the
-least-squares uncertainty follow:
+profile-likelihood intervals, the model-selection criteria, the
+least-squares uncertainty and the column equilibration of its rank test
+follow:
 
 * Brun, R., Reichert, P., Kuensch, H. R. (2001). Practical identifiability
   analysis of large environmental simulation models. *Water Resources
@@ -211,3 +212,5 @@ least-squares uncertainty follow:
   Statistics* 6(2), 461-464.
 * Bates, D. M., Watts, D. G. (1988). *Nonlinear Regression Analysis and Its
   Applications*. Wiley, New York.
+* van der Sluis, A. (1969). Condition numbers and equilibration of
+  matrices. *Numerische Mathematik* 14(1), 14-23.

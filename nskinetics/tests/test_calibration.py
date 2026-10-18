@@ -74,8 +74,20 @@ def _model(text):
     return nsk.KineticModel(te.loadAntimonyModel(text), units=UNITS)
 
 
-def _feedspike_model():
-    km = _model(FEEDSPIKE_TOY)
+# The FeedSpike toy with an unobserved branch: Q affects no output.
+FEEDSPIKE_Q_TOY = """
+model fbq()
+  compartment env = 1; species S in env, P in env, Q in env;
+  S = 50; P = 0; Q = 5; k = 0.5; kq = 0.3; threshold = 5; target = 50;
+  feed_conc = 500; n_max = 3; n_spk = 0; last_vol = 0; tot_vol = 0;
+  J: S => P; k*S*env;
+  J2: Q => ; kq*Q*env;
+end
+"""
+
+
+def _feedspike_model(text=FEEDSPIKE_TOY):
+    km = _model(text)
     spike = nsk.FeedSpike('S', 'S <= threshold', 'target', 'feed_conc',
                           volume_var='env', max_count='n_max',
                           count_var='n_spk', last_vol_var='last_vol',
@@ -381,7 +393,8 @@ def test_robust_loss_reports_plain_chi2_and_resists_an_outlier():
 
 
 def test_relative_sigmas_need_the_linear_loss_and_ignore_the_sigma_scale():
-    # relative weights: rescaling every sigma changes nothing (linear loss)
+    # weights-only sigmas: rescaling every sigma changes nothing (linear
+    # loss)
     data = _decay_data(sigma=0.1, seed=0)
     a, b = (fit_parameters(_decay_problem(data=data, sigma=sigma,
                                           absolute_sigma=False),
@@ -1103,15 +1116,90 @@ def test_a_column_within_the_noise_of_the_largest_is_null(two_parameter_fit):
     assert row['parameters'] == ('[S]',)
     assert "do not measurably depend on ['[S]']" in row['message']
     assert set(g.flags.flag) == {'rank_deficient'}
-    # an observable scale or offset involves no integration: never null
+    # rank_rtol sets the filter too: replace() re-judges without refitting
+    t = dataclasses.replace(g, rank_rtol=1e-7)
+    assert t.numerical_rank == 2 and np.isfinite(t.se['[S]'])
+    assert 'rank_deficient' not in set(t.flags.flag)
+    assert t.estimates.equals(g.estimates)
+    # an observable scale or offset involves no integration: never null;
+    # nor does it set the reference (an offset's change over its step
+    # grows with its distance from 0), so a lone simulation column is its
+    # own reference
     h = dataclasses.replace(g, kinds=['model', 'observable'])
+    assert h.numerical_rank == 2 and np.isfinite(h.se['[S]'])
+    h = dataclasses.replace(g, kinds=['observable', 'model'])
     assert h.numerical_rank == 2 and np.isfinite(h.se['[S]'])
     # an unreliable column (e.g. across an event jump, whose difference is
     # large) does not set the reference while a reliable one exists
     assert fit.fd_flags['reliable'].all()
+    assert (fit.fd_flags['scheme'] == 'central').all()
     flags = fit.fd_flags.copy()
     flags.loc['k', 'reliable'] = False
     assert dataclasses.replace(g, fd_flags=flags).numerical_rank == 2
+    flags.loc['k', 'event_count_changed'] = True
+    assert dataclasses.replace(g, fd_flags=flags).numerical_rank == 2
+    # but a one-sided difference kept at agreeing firings is a derivative
+    # (no jump in it) and does
+    for scheme in ('backward', 'forward'):
+        flags.loc['k', 'scheme'] = scheme
+        e = dataclasses.replace(g, fd_flags=flags)
+        assert e.numerical_rank == 1 and math.isinf(e.se['[S]'])
+        assert e.se['k'] == pytest.approx(1 / 100.0, rel=1e-12)
+        row = e.flags.set_index('flag').loc['rank_deficient']
+        assert row['parameters'] == ('[S]',)
+
+
+def test_the_noise_filter_measures_columns_over_their_nominal_step(
+        two_parameter_fit):
+    # an event-count refinement divides a column's fd_flags step (by 10
+    # each time) but not the integration noise of the others: measured
+    # over the refined step, the reference k shrank 100x and the [S] noise
+    # (5e-7 of it over the nominal step) passed as a weak effect (5e-5)
+    fit = two_parameter_fit
+    u, _ = np.linalg.qr(np.random.default_rng(0).standard_normal(
+        (fit.n_data, 2)))
+    g = dataclasses.replace(fit, jacobian=u * [100.0, 100.0 / 2e6])
+    assert g.numerical_rank == 1
+    expected = g.flags.set_index('flag').loc['rank_deficient']
+    flags = fit.fd_flags.copy()
+    # refined twice, then reliable and central
+    flags.loc['k', 'step'] = 1e-5
+    flags.loc['k', 'n_refinements'] = 2
+    cases = [flags.copy()]
+    # one-sided after an event-count refinement, at the largest step whose
+    # firings agreed (not the nominal one divided by 10**n_refinements)
+    flags.loc['k', 'step'] = 1e-4
+    flags.loc['k', 'n_refinements'] = 3
+    flags.loc['k', 'event_count_changed'] = True
+    flags.loc['k', 'reliable'] = False
+    flags.loc['k', 'scheme'] = 'backward'
+    cases.append(flags)
+    for fd in cases:
+        e = dataclasses.replace(g, fd_flags=fd)
+        assert e.numerical_rank == 1 and math.isinf(e.se['[S]'])
+        assert e.se['k'] == g.se['k']
+        row = e.flags.set_index('flag').loc['rank_deficient']
+        assert row['parameters'] == expected['parameters']
+        assert row['message'] == expected['message']
+    # a linear column's nominal step is rel_step * max(|p|, 1e-3 (hi - lo))
+    # (fd_flags' step aside): at [S] = 8 its change is 8 * 5e-7 = 4e-6 of
+    # k's (kept), at [S] = 1.5 it is 7.5e-7 (null)
+    for value, rank in ((8.0, 2), (1.5, 1)):
+        e = dataclasses.replace(g, log=np.array([True, False]),
+                                x=np.array([g.x[0], value]))
+        assert e.numerical_rank == rank
+
+
+@pytest.mark.parametrize('value', [math.nan, math.inf, -1.0, 0.0, 1.0, 2.0])
+def test_rank_rtol_is_validated(two_parameter_fit, value):
+    # nan gave rank 0, inf a bare FloatingPointError, 0 or a negative value
+    # turned the noise filter off and 2 zeroed every column
+    with pytest.raises(ValueError, match='rank_rtol'):
+        dataclasses.replace(two_parameter_fit, rank_rtol=value)
+    with pytest.raises(TypeError, match='rank_rtol'):
+        dataclasses.replace(two_parameter_fit, rank_rtol=True)
+    assert dataclasses.replace(two_parameter_fit,
+                               rank_rtol=1e-4).rank_rtol == 1e-4
 
 
 @pytest.fixture(scope='module')
@@ -1312,8 +1400,9 @@ def test_a_parameter_the_outputs_do_not_depend_on_is_a_null_direction(
     # direction nearly collinear with k: se of k 6x too large (with a
     # tolerance-dependent factor), a false high_correlation flag and too
     # wide samples. It is a null direction: k is as if it were not fitted
-    # (as in identifiability and in the profile of k), whatever the
-    # tolerances
+    # (as in identifiability and in the profile of k), with the default or
+    # a tighter atol (rtol at most 1e-10; a looser rtol raises the noise
+    # above rank_rtol)
     ref = k_only_noisy_fit
     for tolerances in (None, (1e-14, 1e-10)):
         prob = _decay_problem(
@@ -1392,6 +1481,29 @@ def test_fd_flags_propagate_into_flags(decay_fit):
     fit = dataclasses.replace(decay_fit, fd_flags=fd)
     assert list(fit.flags['flag']) == ['event_count_changed']
     assert fit.table.loc['k', 'event_count_changed']
+    # both sides still changed the firings: the central difference spans
+    # the jump, which the message must not call a one-sided derivative
+    assert fd.loc['k', 'scheme'] == 'central'
+    message = fit.flags['message'].iloc[0]
+    assert 'spans the jump' in message and 'one-sided' not in message
+    fd.loc['k', 'scheme'] = 'backward'
+    message = dataclasses.replace(decay_fit, fd_flags=fd).flags[
+        'message'].iloc[0]
+    assert 'derivative is one-sided' in message
+    assert 'spans the jump' not in message
+    # one side changed the firings and the other side's run failed: the
+    # column is NaN, not a difference across the jump, and the message
+    # gives the failure
+    fd.loc['k', ['event_count_changed', 'reliable', 'scheme', 'error']] = [
+        True, False, 'central', 'condition 1: CVODE error']
+    jac = decay_fit.jacobian.copy()
+    jac[:, list(decay_fit.names).index('k')] = np.nan
+    flags = dataclasses.replace(
+        decay_fit, fd_flags=fd, jacobian=jac).flags.set_index('flag')
+    message = flags.loc['event_count_changed', 'message']
+    assert 'condition 1: CVODE error' in message
+    assert 'spans the jump' not in message
+    assert 'unreliable_derivative' not in flags.index
     fd.loc['k', 'event_count_changed'] = False
     fd.loc['k', 'error'] = 'every run failed'
     fit = dataclasses.replace(decay_fit, fd_flags=fd)
@@ -1401,15 +1513,13 @@ def test_fd_flags_propagate_into_flags(decay_fit):
 
 
 # --- methods and workers -----------------------------------------------------
-def test_event_count_change_from_a_real_fit_is_flagged():
-    # a sample 1e-5 h after the first feed spike (at ln 3 / k for [S] 30,
-    # threshold 10): perturbing k moves the spike across it, which the FD
-    # refinements cannot resolve
-    km = _feedspike_model()
+def _spike_sample_problem(km, params, after=1e-5):
+    """Noise-free FeedSpike data at k = 0.4 with a sample ``after`` h after
+    the first feed spike (at ln 3 / k for [S] 30, threshold 10)."""
     cond = nsk.Condition(initial={'[S]': 30}, parameters={'threshold': 10},
                          t_end=12)
     t = np.sort(np.append(np.arange(0.5, 12.01, 0.5),
-                          math.log(3) / 0.4 + 1e-5))
+                          math.log(3) / 0.4 + after))
     res = km.copy().run(cond.with_parameters(k=0.4).replace(
         times=np.concatenate([[0.0], t]), selections=('[S]', '[P]')))
     data = pd.DataFrame(
@@ -1418,8 +1528,14 @@ def test_event_count_change_from_a_real_fit_is_flagged():
         columns=['observable', 'time', 'value'])
     obs = [Observable('S', '[S]', sigma=0.5),
            Observable('P', '[P]', noise='proportional', rel_sigma=0.05)]
-    prob = CalibrationProblem(km, [Experiment('FB', cond, data)], obs,
-                              [FitParameter('k', (0.05, 2), initial=0.41)])
+    return CalibrationProblem(km, [Experiment('FB', cond, data)], obs, params)
+
+
+def test_event_count_change_from_a_real_fit_is_flagged():
+    # perturbing k moves the first spike across the sample just after it,
+    # which the FD refinements cannot resolve
+    prob = _spike_sample_problem(
+        _feedspike_model(), [FitParameter('k', (0.05, 2), initial=0.41)])
     fit = fit_parameters(prob, n_starts=1, seed=0)
     assert math.isclose(fit.estimates['k'], 0.4, rel_tol=1e-4)
     assert fit.fd_flags.loc['k', 'event_count_changed']
@@ -1429,6 +1545,59 @@ def test_event_count_change_from_a_real_fit_is_flagged():
     text = fit.summary()
     assert 0 < text.index('a perturbation changes how many times') < \
         text.index('Parameters (')
+
+
+def test_a_no_effect_column_is_null_when_every_informative_one_is_flagged():
+    # every parameter that moves the spike is event-flagged, so the only
+    # reliable column is that of [Q], which affects no output: it was its
+    # own reference, never zeroed, and its noise (2e-9 of k's change) was
+    # lifted to unit norm by equilibration: se of k 2.8x too wide and a
+    # false high_correlation. k's one-sided difference at agreeing firings
+    # is a derivative and sets the reference
+    km = _feedspike_model(FEEDSPIKE_Q_TOY)
+    k = FitParameter('k', (0.05, 2), initial=0.41)
+    ref = fit_parameters(_spike_sample_problem(km, [k]), n_starts=1, seed=0)
+    fit = fit_parameters(
+        _spike_sample_problem(
+            km, [k, FitParameter('[Q]', (0.1, 10), initial=5)]),
+        n_starts=1, seed=0)
+    assert fit.fd_flags.loc['k', 'event_count_changed']
+    assert fit.fd_flags.loc['k', 'scheme'] in ('forward', 'backward')
+    assert fit.fd_flags.loc['[Q]', 'reliable']
+    assert fit.se['k'] == pytest.approx(ref.se['k'], rel=1e-3)
+    assert math.isinf(fit.se['[Q]']) and fit.numerical_rank == 1
+    assert fit.correlation.loc['k', '[Q]'] == 0.0
+    flags = fit.flags.set_index('flag')
+    assert flags.loc['rank_deficient', 'parameters'] == ('[Q]',)
+    assert 'high_correlation' not in flags.index
+
+
+def test_a_no_effect_column_is_null_against_a_refined_reference():
+    # a sample 1e-3 h after the spike: k's step is refined once (1e-4) and
+    # its difference is then reliable and central. Measured over that
+    # refined step, k's change was 10x too small a reference, kq's
+    # integration noise (over its nominal step) passed as a weak effect
+    # (6e-6 of it): se of k 1.6x too wide, corr 0.79, high_rel_se on kq.
+    # Over the nominal step, kq's noise is about 6.3e-7 of k's change and
+    # the buggy refined-step reference made it 6.3e-6: the fit is judged
+    # at rank_rtol 2e-6, about 3x from both, so the result does not hinge
+    # on the noise realization of a particular CVODE build
+    km = _feedspike_model(FEEDSPIKE_Q_TOY)
+    k = FitParameter('k', (0.05, 2), initial=0.41)
+    ref = fit_parameters(_spike_sample_problem(km, [k], after=1e-3),
+                         n_starts=1, seed=0)
+    fit = fit_parameters(
+        _spike_sample_problem(km, [k, FitParameter('kq', (0.01, 10))],
+                              after=1e-3), n_starts=1, seed=0)
+    fd = fit.fd_flags
+    assert fd.loc['k', 'n_refinements'] >= 1 and fd.loc['k', 'reliable']
+    assert fd.loc['k', 'step'] < 1e-3 and fd.loc['kq', 'step'] == 1e-3
+    fit = dataclasses.replace(fit, rank_rtol=2e-6)
+    assert math.isinf(fit.se['kq']) and fit.numerical_rank == 1
+    assert fit.se['k'] == pytest.approx(ref.se['k'], rel=1e-5)
+    flags = fit.flags.set_index('flag')
+    assert flags.loc['rank_deficient', 'parameters'] == ('kq',)
+    assert not {'high_rel_se', 'high_correlation'} & set(flags.index)
 
 
 def _long_lines(text):
