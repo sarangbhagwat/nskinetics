@@ -103,9 +103,9 @@ from ._common import (_CSV_COLUMNS, _EMPTY, _check_ids, _count, _finite,
 from ._sampling import (ParamRange, _child_seed, _gaussian, _seed_record,
                         _seed_sequence, _unit_sample)
 from .identifiability import (NULL_LOADING, RANK_RTOL, REL_SE_MAX,
-                              RELATIVE_FLOOR, _check_relative_floor,
-                              _identifiable, _rel_se, _relative_sigma,
-                              _svd_analysis)
+                              RELATIVE_FLOOR, _check_rank_rtol,
+                              _check_relative_floor, _identifiable, _rel_se,
+                              _relative_sigma, _svd_analysis)
 
 __all__ = ('Dataset', 'Observable', 'Experiment', 'FitParameter',
            'CalibrationProblem', 'fit_parameters', 'FitResult',
@@ -435,7 +435,11 @@ class Dataset:
             One row per sampling time and experiment.
         experiment, time : str
             Names of the experiment-label and time columns (time in model
-            time units).
+            time units). A single run without a label column needs one
+            added, e.g. ``Dataset.from_wide(df.assign(run='B1'),
+            experiment='run', time='t_h', columns=['S', 'P'])``; any label
+            works, since :class:`Experiment` relabels a one-experiment
+            dataset to its own name.
         columns : sequence of str or mapping
             The measured columns: names (each is also the observable name)
             or ``{column: observable name}``.
@@ -1281,10 +1285,11 @@ class CalibrationProblem:
     absolute_sigma : bool
         ``True`` (default): the sigmas are absolute and the covariance is
         ``(J^T J)^-1`` (see :attr:`FitResult.covariance`). ``False``: they
-        are relative weights and the covariance is scaled by the reduced
-        chi-square; only with ``loss='linear'``, whose fit does not depend
-        on the scale of the weights (a robust loss's ``f_scale`` would
-        refer to that arbitrary scale).
+        are weights only (the noise level is estimated from the residuals)
+        and the covariance is scaled by the reduced chi-square; only with
+        ``loss='linear'``, whose fit does not depend on the scale of the
+        weights (a robust loss's ``f_scale`` would refer to that arbitrary
+        scale).
     relative_floor : float
         Floor of proportional noise, as a fraction of each observable's
         largest measured magnitude per experiment (default ``1e-3``, the
@@ -1298,12 +1303,26 @@ class CalibrationProblem:
         of the bounds: for ``|p|`` more than about ``1e4``-``1e5`` times
         smaller than ``hi - lo`` the step is not small relative to ``p``,
         and the Jacobian, the estimate and the SE are inaccurate without
-        any flag (see :class:`FitParameter` ``log``).
+        any flag (see :class:`FitParameter` ``log``). A smaller
+        ``rel_step`` (like a looser ``rtol``, see ``tolerances``) narrows
+        the margin of the rank test and column filter of
+        :attr:`FitResult.covariance` over the integration noise, which is
+        thin at the defaults on fed-batch and other event models, so a
+        parameter the outputs do not depend on can show as
+        ``high_rel_se`` or ``wide_interval`` instead of
+        ``rank_deficient`` (see :ref:`calibration-rank`).
     tolerances : (float, float), optional
         ``(atol, rtol)`` of the private copy's integrator. ``None``
         (default) tightens them to at most ``(1e-12, 1e-10)`` (and the
         absolute tolerance further to outputs that start at 0), as
-        :func:`~nskinetics.analysis.local_sensitivity` does.
+        :func:`~nskinetics.analysis.local_sensitivity` does. A looser
+        ``rtol`` raises the integration noise of every column, as a
+        smaller ``rel_step`` does, so a parameter the outputs do not
+        depend on can escape the zeroing in :attr:`FitResult.covariance`
+        and show as ``high_rel_se`` or ``wide_interval``. A tighter one
+        (e.g. ``(1e-14, 1e-12)``) widens that margin, which is thin on
+        fed-batch and other event models and when no dominant rate
+        constant is fitted (see :ref:`calibration-rank`).
     event_counters : sequence of str, optional
         Event counters whose firings the Jacobian watches; ``None``
         (default) detects them (e.g. a FeedSpike's ``count_var``).
@@ -1390,9 +1409,10 @@ class CalibrationProblem:
             raise ValueError(
                 f'loss={loss!r} needs absolute sigmas (absolute_sigma=True): '
                 'a robust loss down-weights residuals beyond f_scale standard '
-                'deviations, and with relative weights f_scale, the estimate '
-                'and the profile change when every sigma is rescaled. Give '
-                'absolute sigmas, or use loss=\'linear\' with '
+                'deviations; with weights-only sigmas (absolute_sigma=False) '
+                'f_scale would refer to their arbitrary scale, so the '
+                'estimate and the profile would change when every sigma is '
+                'rescaled. Give absolute sigmas, or use loss=\'linear\' with '
                 'absolute_sigma=False.')
         relative_floor = _check_relative_floor(relative_floor)
         rel_step = _fd.check_step(rel_step)
@@ -2311,7 +2331,19 @@ class FitResult:
     units : dict
         The model's units (e.g. ``{'time': 'h', 'conc': 'g/L'}``).
     rank_rtol : float
-        Relative threshold of the rank test.
+        Relative threshold of both the rank test and the integration-noise
+        column filter (see ``covariance``); default ``1e-6``, as in
+        :func:`~nskinetics.analysis.identifiability`; in ``(0, 1)``. The
+        default tolerances keep that noise only just below it (measured up
+        to about ``9.8e-7``; see :ref:`calibration-rank`). It is not a
+        :class:`CalibrationProblem` option: to judge a fit at another
+        threshold (e.g. above the integration noise of looser
+        ``tolerances=``), use ``dataclasses.replace(fit, rank_rtol=...)``,
+        which recomputes every derived attribute and flag from the stored
+        Jacobian without refitting. A higher value also counts a fit with
+        ``condition_number > 1 / rank_rtol`` as ``rank_deficient``
+        (infinite SE; from ``1e-4`` on, ``ill_conditioned`` can no longer
+        fire), so raise it only as far as the noise requires.
     problem : CalibrationProblem or None
         The problem (not stored; ``None`` after :meth:`from_csv`).
 
@@ -2351,24 +2383,39 @@ class FitResult:
         full rank ``D`` cancels: the covariance is ``(J^T J)^-1``. All
         ``NaN`` if ``J`` is not finite. Before equilibrating, a simulation
         column (``kinds`` ``'model'``) is set to 0 if the change of the
-        weighted residuals over its own finite-difference step,
-        ``||J_j|| h_j`` (``h_j`` from ``fd_flags['step']``, fitting
-        space), is at most ``rank_rtol`` times the largest such change of
-        a reliable simulation column: the outputs do not measurably depend
-        on that parameter, and its column is integration noise, which
-        equilibration would lift to unit norm and which, following the
-        dynamics, would look correlated with the other columns. It is
-        then an exact null direction (infinite ``se``,
-        ``rank_deficient``, correlation 0 with the others) and the other
-        parameters are unaffected, as in
-        :func:`~nskinetics.analysis.identifiability`, whose rank test on
-        the raw ``ln p`` columns rejects such a column too (for a
-        ``log=False`` parameter the step is smallest near 0, so a weak one
-        there measures a smaller change). Observable scales and offsets
-        involve no integration and are never set to 0. A parameter with a
-        small but measurable effect keeps its column: it is flagged
-        (``high_rel_se`` or ``wide_interval``), and its weak column can
-        widen the other intervals; fix it and refit if it is not needed.
+        weighted residuals over its nominal finite-difference step,
+        ``||J_j|| h_j`` (fitting space; the step before any event-count
+        refinement: ``rel_step`` in ``ln p``, ``rel_step * max(|p|, 1e-3
+        (hi - lo))`` for a linear parameter; a refined column's derivative
+        times that step), is at most ``rank_rtol`` times the largest such
+        change of a simulation column whose difference is a derivative
+        (reliable, or one-sided after an ``event_count_changed``
+        refinement; not a central difference across an event jump): the
+        outputs do not measurably depend on that parameter, and its column
+        is integration noise, which equilibration would lift to unit norm
+        and which, following the dynamics, would look correlated with the
+        other columns. It is then
+        an exact null direction (infinite ``se``, ``rank_deficient``,
+        correlation 0 with the others) and the other parameters are
+        unaffected, as in :func:`~nskinetics.analysis.identifiability`,
+        whose rank test on the raw ``ln p`` columns rejects such a column
+        too (for a ``log=False`` parameter the step is smallest near 0, so a
+        weak one there measures a smaller change). Observable scales and
+        offsets involve no integration and are never set to 0; nor do they
+        set the reference (an offset's change over its step grows with its
+        distance from 0). The comparison is among simulation columns only:
+        if none of them is informative (for example, only observable scales
+        or offsets are fitted besides an uninformative simulation
+        parameter), the largest is its own reference and is kept. The
+        margin over the integration noise is thin (see ``rank_rtol``), in
+        particular on fed-batch and other event models, when only weakly
+        influential parameters are fitted, or with a looser ``rtol`` or a
+        smaller ``rel_step``: a parameter without effect can then be kept,
+        show as ``high_rel_se`` or ``wide_interval`` and widen the other
+        intervals; fix it and refit, tighten ``tolerances`` (e.g.
+        ``(1e-14, 1e-12)``, at little extra cost), or re-judge with
+        ``dataclasses.replace(fit, rank_rtol=...)`` (see
+        :ref:`calibration-rank`).
     se : pandas.Series
         Standard errors in the fitting space (of ``ln p`` for log
         parameters); ``inf`` for a parameter on an unidentifiable direction.
@@ -2437,7 +2484,10 @@ class FitResult:
     Raises
     ------
     ValueError
-        If the fields have inconsistent shapes.
+        If the fields have inconsistent shapes, or ``rank_rtol`` is not
+        finite or not in ``(0, 1)``.
+    TypeError
+        If ``rank_rtol`` is not a real number (a bool included).
 
     Notes
     -----
@@ -2498,8 +2548,8 @@ class FitResult:
         self.n_data, self.n_failed_evals = int(self.n_data), \
             int(self.n_failed_evals)
         self.success = bool(self.success)
-        self.f_scale, self.rank_rtol = float(self.f_scale), \
-            float(self.rank_rtol)
+        self.f_scale = float(self.f_scale)
+        self.rank_rtol = _check_rank_rtol(self.rank_rtol)
         self.absolute_sigma = bool(self.absolute_sigma)
         if self.jacobian.shape != (self.n_data, n):
             raise ValueError(f'jacobian must have shape ({self.n_data}, {n}); '
@@ -2639,36 +2689,62 @@ class FitResult:
         """Boolean mask of the simulation (``kinds == 'model'``) columns that
         the outputs do not measurably depend on.
 
-        ``d_j = ||J_j|| h_j``, with ``h_j`` the step of ``fd_flags`` in the
-        fitting space, is the change of the weighted residuals (in units
-        of sigma) that column ``j``'s own finite difference measured, so
-        it does not depend on the parameter's unit (a linear parameter's
-        step, ``rel_step * max(|p|, LINEAR_STEP_FLOOR * (hi - lo))``, is
-        smallest near 0, where a weak one measures a smaller change). Every
-        simulation column carries integration noise of the same size
-        (about ``_fd.FD_NOISE * rtol * ||y / sigma||``, whatever the
-        parameter), so a column whose ``d_j`` is at most ``rank_rtol``
-        times the largest one of a reliable simulation column is taken as
-        that noise: a null direction. With equal relative steps this is
-        the rank criterion of
+        ``d_j = ||J_j|| h_j``, with ``h_j`` the nominal step in the
+        fitting space (the step before any event-count refinement:
+        ``rel_step`` for a log parameter, ``rel_step * max(|p|,
+        LINEAR_STEP_FLOOR * (hi - lo))`` for a linear one; ``rel_step`` is
+        common to every column and cancels, so it is left out), is the
+        change of the weighted residuals (in units of sigma) over that
+        step, so it does not depend on the parameter's unit (a linear
+        parameter's step is smallest near 0, where a weak one measures a
+        smaller change). Every simulation column carries integration noise
+        of the same size (about ``_fd.FD_NOISE * rtol * ||y / sigma||``,
+        whatever the parameter), so a column whose ``d_j`` is at most
+        ``rank_rtol`` times the largest one of a simulation column whose
+        difference is a derivative (reliable, or one-sided after an
+        ``event_count_changed`` refinement; not a central difference
+        across an event jump) is taken as that noise: a null direction.
+        The reference is about ``s_max * ||y / sigma|| * h``, with
+        ``s_max = ||d(y/sigma)/d ln p|| / ||y/sigma||`` the normalized
+        sensitivity of the most influential fitted simulation parameter,
+        so the noise column sits at about ``FD_NOISE * rtol / (s_max h)``
+        of it. With equal relative steps this is the rank criterion of
         :func:`~nskinetics.analysis.identifiability` on the raw ``d r / d
-        ln p`` columns. Observable scales and offsets involve no
-        integration and are never null here; a column without a known
-        step (no ``fd_flags`` row) is left as it is.
+        ln p`` columns, whose ``3 rtol / h`` estimate assumes ``s_max``
+        of about 1. The nominal step, not ``fd_flags['step']``, is used
+        because an event-count refinement divides a column's step (by 10
+        each time) but not the integration noise of the others; a
+        one-sided column's step is the largest at which its side agreed,
+        not the nominal one divided by ``10**n_refinements``. Observable
+        scales and offsets involve no integration and are never null here;
+        nor do they set the reference, since an offset's change over its
+        step grows with its distance from 0. A column without a known step
+        (no ``fd_flags`` row) is left as it is.
         """
         k = len(self.names)
         model = np.array([kind == 'model' for kind in self.kinds],
                          dtype=bool)
-        step = self.fd_flags['step'].reindex(self.names).to_numpy(
-            dtype=float)
+        flags = self.fd_flags.reindex(self.names)
+        step = flags['step'].to_numpy(dtype=float)
         reliable = self.fd_flags['reliable'].reindex(
             self.names, fill_value=False).to_numpy(dtype=bool)
+        one_sided = flags['scheme'].isin(('forward', 'backward')).to_numpy(
+            dtype=bool)
+        # over the nominal step without its common factor rel_step (not
+        # fd_flags' step, which an event-count refinement divides)
+        scale = np.where(self.log, 1.0,
+                         _linear_scale(self.x, self.lower, self.upper))
         with np.errstate(all='ignore'):
-            d = np.linalg.norm(self.jacobian, axis=0) * np.abs(step)
-        known = model & np.isfinite(d)
-        # an event jump makes a column's difference large; it must not set
-        # the reference unless no reliable column exists
-        reference = known & reliable
+            d = np.linalg.norm(self.jacobian, axis=0) * scale
+        known = model & np.isfinite(step) & np.isfinite(d)
+        # A central difference across an event jump (event_count_changed,
+        # scheme 'central') is inflated by the jump; it must not set the
+        # reference unless nothing else can. A one-sided difference kept at
+        # the largest step whose firings agree with the nominal run is a
+        # proper derivative (no jump in it) and may: when a sample sits at
+        # a spike, every parameter that moves the spike is flagged, and
+        # the reliable columns left may all be noise.
+        reference = known & (reliable | one_sided)
         if not reference.any():
             reference = known
         if not reference.any():
@@ -2727,7 +2803,7 @@ class FitResult:
                     "plot(); try more starts or method='hybrid'), a model "
                     'that cannot describe the data, or standard deviations '
                     'smaller than the real noise or outliers (if the sigmas '
-                    'are only relative weights, use absolute_sigma=False).')
+                    'are only weights, use absolute_sigma=False).')
         if self.numerical_rank is None:
             add('no_covariance', (), math.nan,
                 'The residual Jacobian at the optimum is not finite (a finite '
@@ -2813,12 +2889,30 @@ class FitResult:
                 continue
             row = flags.loc[name]
             if bool(row['event_count_changed']):
+                if row['scheme'] in ('forward', 'backward'):
+                    where, detail = '', (
+                        'its derivative is one-sided and its Wald '
+                        'uncertainty approximate (check it with a profile '
+                        'likelihood).')
+                elif isinstance(row['error'], str):
+                    # one side changed the firings and the other side's
+                    # run failed: no difference at all (the column is NaN)
+                    where, detail = ' on one side of the estimate', (
+                        'the run on the other side failed '
+                        f'({row["error"]}), so it has no finite difference '
+                        'and no Wald uncertainty (use a profile '
+                        'likelihood).')
+                else:
+                    # neither side kept the nominal firings: the central
+                    # difference spans the jump
+                    where, detail = ' on either side of the estimate', (
+                        'its finite difference spans the jump (not a '
+                        'derivative) and its Wald uncertainty is not '
+                        'meaningful (use a profile likelihood).')
                 add('event_count_changed', (name,), math.nan,
-                    f'{name}: a perturbation changes how many times (or '
-                    'between which output times) an event fires, so the '
-                    'objective is not smooth there; its derivative is '
-                    'one-sided and its Wald uncertainty approximate (check '
-                    'it with a profile likelihood).')
+                    f'{name}: a perturbation{where} changes how many times '
+                    '(or between which output times) an event fires, so the '
+                    f'objective is not smooth there; {detail}')
             elif not bool(row['reliable']):
                 add('unreliable_derivative', (name,), math.nan,
                     f'{name}: the finite difference is unreliable '

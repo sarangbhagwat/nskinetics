@@ -190,8 +190,8 @@ prints:
        standard deviations, and the Wald uncertainties assume it does not. Causes: a wrong
        local minimum (compare the costs in the starts table and look at plot(); try more
        starts or method='hybrid'), a model that cannot describe the data, or standard
-       deviations smaller than the real noise or outliers (if the sigmas are only relative
-       weights, use absolute_sigma=False).
+       deviations smaller than the real noise or outliers (if the sigmas are only weights,
+       use absolute_sigma=False).
      - [event_count_changed] k: a perturbation changes how many times (or between which
        output times) an event fires, so the objective is not smooth there; its derivative
        is one-sided and its Wald uncertainty approximate (check it with a profile
