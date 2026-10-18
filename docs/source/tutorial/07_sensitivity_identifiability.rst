@@ -316,7 +316,8 @@ prints:
    13.1
 
 ``kcat`` and ``E`` cannot be told apart at all, so a fit should estimate
-one of them with the other fixed. ``threshold`` and ``feed_conc`` are each
+one of them with the other fixed (:doc:`08_calibration` shows how to fit
+a chosen set of parameters). ``threshold`` and ``feed_conc`` are each
 identifiable, but added to the three most important parameters they push
 :math:`\gamma` above 10. Their estimates would then be strongly correlated
 with the others'. Fix them at known values (they are process settings
@@ -484,3 +485,6 @@ prints:
 derivatives are computed by finite differences, what the flags guard
 against, and the basis of each metric. The :doc:`API reference
 <../API/analysis>` lists every option.
+
+Next: :doc:`08_calibration` fits the identifiable parameters to fed-batch
+data.

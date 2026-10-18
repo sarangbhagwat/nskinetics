@@ -8,6 +8,7 @@
 """Practical identifiability (F2 item 4; spec tests f, j, k), plus the
 Cramer-Rao standard error against its closed form on a one-parameter
 decay."""
+import copy
 import dataclasses
 import math
 import warnings
@@ -108,6 +109,12 @@ def test_product_rate_is_rank_deficient_with_a_log_null_direction(product_ls):
                        1 / math.sqrt(2), atol=1e-6)
     corr = ident.correlation
     assert np.isnan(corr.loc['k1', 'k2']) and corr.loc['k3', 'k3'] == 1.0
+    # The diagonal is exactly 1 also when the standard errors are an ulp
+    # off sqrt(diag(covariance)), as some BLAS builds give.
+    off = copy.copy(ident)
+    off.se = ident.se * (1 + 2 ** -52)
+    assert off.correlation.loc['k3', 'k3'] == 1.0
+    assert np.isnan(off.correlation.loc['k1', 'k1'])
     # Collinearity: the (k1, k2) pair is (numerically) singular.
     assert ident.gamma(['k1', 'k2']) > 1e3
     col = ident.collinearity(subset_size=2)

@@ -90,8 +90,10 @@ def _real(name, value):
 
 
 def _value_map(name, mapping):
-    """Validate a ``{selection: value}`` mapping; return a plain dict of
-    finite floats."""
+    """Validate a ``{selection: value}`` mapping (or a pandas Series, e.g.
+    ``FitResult.estimates``); return a plain dict of finite floats."""
+    if isinstance(mapping, pd.Series):
+        mapping = mapping.to_dict()
     if not isinstance(mapping, Mapping):
         raise TypeError(f'{name} must be a mapping of model ids to numbers; '
                         f'got {type(mapping).__name__}.')
@@ -143,7 +145,7 @@ class Condition:
 
     Parameters
     ----------
-    initial : mapping of str to float, optional
+    initial : mapping or pandas.Series of str to float, optional
         Values set *after* the reset and the parameters, i.e. the initial
         state of this run, as RoadRunner selections in the model's own units:
         ``{'[S]': 50.0}`` (concentration), ``'S'`` (amount), compartments
@@ -155,7 +157,7 @@ class Condition:
         ``{'env': 2, '[S]': 50}`` starts 2 L at ``[S] = 50``. A species may
         be given as an amount or a concentration, not both. ``init(x)``
         entries re-initialize the model; see Notes. Defaults to ``{}``.
-    parameters : mapping of str to float, optional
+    parameters : mapping or pandas.Series of str to float, optional
         Values set right after the reset (before ``initial``) and restored to
         their pre-run values when the run ends, e.g. ``{'k': 0.4}``. They are
         applied in the same fixed order as ``initial`` (``init()`` keys, then
@@ -385,8 +387,15 @@ class Condition:
 
         Parameters
         ----------
-        mapping : mapping of str to float, optional
-            ``{id: value}`` entries to add or override.
+        mapping : mapping or pandas.Series of str to float, optional
+            ``{id: value}`` entries to add or override, e.g. a fit's global
+            model-parameter estimates (``fit.estimates[names]``) or those
+            columns of a ``FitResult.sample`` row. Only model ids belong
+            here: per-experiment estimates (``'name@experiment'``) and
+            observable scales/offsets are not model ids (use
+            ``FitResult.predict(experiment)``, or ``FitResult.apply`` and
+            the dict it returns), and fitted initial-value targets such as
+            ``'[X]'`` go through :meth:`with_initial`.
         **values : float
             More ``id=value`` entries (plain ids); applied after ``mapping``.
 
@@ -402,7 +411,8 @@ class Condition:
             As for the constructor (e.g. an id that is also in ``initial``).
         """
         merged = dict(self.parameters)
-        merged.update(mapping or {})
+        if mapping is not None:
+            merged.update(_value_map('parameters', mapping))
         merged.update(values)
         return self.replace(parameters=merged)
 
@@ -411,7 +421,7 @@ class Condition:
 
         Parameters
         ----------
-        mapping : mapping of str to float, optional
+        mapping : mapping or pandas.Series of str to float, optional
             ``{selection: value}`` entries to add or override, e.g.
             ``{'[S]': 30.0}``.
         **values : float
@@ -430,7 +440,8 @@ class Condition:
             ``parameters``).
         """
         merged = dict(self.initial)
-        merged.update(mapping or {})
+        if mapping is not None:
+            merged.update(_value_map('initial', mapping))
         merged.update(values)
         return self.replace(initial=merged)
 

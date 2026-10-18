@@ -8,6 +8,7 @@
 """Tests of nskinetics.analysis.profile_likelihood and ProfileResult."""
 import dataclasses
 import math
+import warnings
 
 import matplotlib
 import numpy as np
@@ -241,7 +242,127 @@ def test_local_and_observable_parameters_are_fixed_where_they_apply():
         for _, row in prof.profile.iterrows():
             theta = {n: row[f'estimate:{n}'] for n in fit.names if n != name}
             theta[name] = row['value']
-            assert math.isclose(prob.cost(theta), row['cost'], rel_tol=1e-9)
+            # the natural values round-trip through the fitting space, and
+            # an ulp's change in a parameter moves CVODE's steps (about
+            # 1e-8 relative in the cost with older numpy/scipy); a
+            # mis-pinned parameter would change the cost by O(1)
+            assert math.isclose(prob.cost(theta), row['cost'], rel_tol=1e-6,
+                                abs_tol=1e-12)
+
+
+# --- (e) fed-batch profiles across event jumps ---------------------------------
+# The README's toy: a feed adds 18 g/L of S (90 SD) whenever S drops below 2.
+FEED_TOY = """
+model toy()
+  species S = 20, P = 0;
+  kcat = 2; E = 1; Km = 5; n = 0;
+  J: S => P; kcat*E*S/(Km + S);
+  feed: at (S < 2 && n < 2): S = S + 18, n = n + 1;
+end
+"""
+
+
+def test_fed_batch_profile_follows_the_valley_across_feeds():
+    """kcat and Km are correlated, and the second feed comes about 0.1 h
+    after the 29-h sample: started from the optimum's Km, the first upper
+    kcat point re-optimized with the feed before that sample (delta about
+    7900) and the interval ended at the estimate. Started along the fit's
+    tangent, every point stays in the valley, and the profile intervals
+    match the Wald ones."""
+    km = _model(FEED_TOY)
+    cond = nsk.Condition(t_end=48, n_steps=49)
+    truth = km.copy().run(cond.with_parameters(kcat=2.5, Km=8))
+    noise = np.random.default_rng(0).normal(0, 0.2, (2, 49))
+    wide = pd.DataFrame({'run': 'A', 'time': truth.time,
+                         'S': truth['[S]'] + noise[0],
+                         'P': truth['[P]'] + noise[1]})
+    data = nsk.analysis.Dataset.from_wide(wide, experiment='run',
+                                          time='time', columns=['S', 'P'])
+    prob = CalibrationProblem(
+        km, [Experiment('A', cond, data)],
+        [Observable('S', '[S]', sigma=0.2), Observable('P', '[P]', sigma=0.2)],
+        [FitParameter('kcat', bounds=(0.1, 10)),
+         FitParameter('Km', bounds=(0.5, 50))])
+    fit = fit_parameters(prob, seed=0)
+    assert np.allclose(fit.estimates, [2.4775, 7.8487], rtol=1e-3)
+    with warnings.catch_warnings():
+        warnings.simplefilter('error')
+        profiles = profile_likelihood(fit, ['kcat', 'Km'])
+    for name in ('kcat', 'Km'):
+        prof = profiles[name]
+        est, (lo, hi) = fit.estimates[name], prof.confidence_interval
+        wald = fit.ci.loc[name]
+        assert prof.is_identifiable and prof.abrupt_ends == (False, False)
+        assert hi > est + 0.8 * (wald['upper'] - est)
+        assert lo < est - 0.8 * (est - wald['lower'])
+        assert lo == pytest.approx(wald['lower'], rel=5e-3)
+        assert hi == pytest.approx(wald['upper'], rel=5e-3)
+        # no grid step jumps
+        frame = prof.profile
+        for side in ('lower', 'upper'):
+            d = frame.loc[frame['side'].isin([side, 'center']), 'delta']
+            assert np.abs(np.diff(d.to_numpy())).max() < 2.0
+
+
+def _synthetic_profile(delta, se=0.1):
+    """A ProfileResult at x = 0 (linear, absolute sigmas) with the given
+    delta at x = -0.1 k ... 0.1 k."""
+    n = len(delta) // 2
+    x = 0.1 * np.arange(-n, n + 1)
+    cost = 0.5 * np.asarray(delta, dtype=float)
+    frame = cal._typed_frame({
+        'side': ['lower'] * n + ['center'] + ['upper'] * n, 'x': x,
+        'value': x, 'cost': cost, 'chi2': 2 * cost,
+        'status': ['ok'] * x.size, 'success': [True] * x.size,
+        'nfev': [1] * x.size, 'n_failed_evals': [0] * x.size,
+        'message': [''] * x.size}, cal._PROFILE_SCHEMA)
+    return ProfileResult(name='p', log=False, x=0.0, se=se, lower=-10.0,
+                         upper=10.0, cost=0.0, scale=1.0, profile=frame)
+
+
+def test_an_end_interpolated_across_a_jump_is_flagged(tmp_path):
+    # the Wald parabola (delta = k**2 at x = 0.1 k, se = 0.1), and the same
+    # with a jump to 100 at the upper side's crossing step
+    quad = [float(k * k) for k in range(-6, 7)]
+    jump = quad[:8] + [100.0, 101.0, 102.0, 103.0, 104.0]
+    prof = _synthetic_profile(jump)
+    assert prof.is_identifiable
+    assert prof.abrupt_ends == (False, True)
+    assert prof._abrupt_steps[1] == pytest.approx((0.1, 1.0, 0.2, 100.0))
+    path = tmp_path / 'profile.csv'
+    prof.to_csv(path)
+    back = ProfileResult.from_csv(path)
+    _assert_same_profile(prof, back)
+    # a smooth (Wald) profile is not flagged, even on a coarse grid (steps
+    # of 3 SE: delta 0 -> 9 at the crossing)
+    assert _synthetic_profile(quad).abrupt_ends == (False, False)
+    coarse = _synthetic_profile([9.0 * q for q in quad], se=0.1 / 3)
+    assert coarse.confidence_interval == pytest.approx(
+        (-0.196 / 3, 0.196 / 3), rel=1e-3)
+    assert coarse.abrupt_ends == (False, False)
+    # without a finite SE any rise above the threshold within a step is
+    assert _synthetic_profile([4.0 * q for q in quad],
+                              se=math.inf).abrupt_ends == (True, True)
+    assert _synthetic_profile(quad, se=math.inf).abrupt_ends == (False,
+                                                                  False)
+
+
+def test_profile_likelihood_warns_about_an_abrupt_end(mm_fit, monkeypatch):
+    """The warning names the parameter, the side and the jump."""
+    real = cal._profile_point
+
+    def cliff(model, spec, j, xj, start):
+        rec = real(model, spec, j, xj, start)
+        if j == 0 and xj > mm_fit.x[0] + 2 * mm_fit.se.iloc[0]:
+            rec = dict(rec, cost=rec['cost'] + 50.0)
+        return rec
+
+    monkeypatch.setattr(cal, '_profile_point', cliff)
+    with pytest.warns(UserWarning, match=r"upper end of the profile interval "
+                                         r"of 'Vmax' is not resolved: delta "
+                                         r"rose from"):
+        prof = profile_likelihood(mm_fit, 'Vmax', n_points=11)['Vmax']
+    assert prof.abrupt_ends == (False, True)
 
 
 # --- grid rules ---------------------------------------------------------------
@@ -389,7 +510,13 @@ def test_estimate_at_a_bound_leaves_that_side_open():
         [Observable('S', '[S]', sigma=0.1)], [FitParameter('k', (0.6, 2))])
     fit = fit_parameters(prob, n_starts=1, seed=0)
     assert fit.active_mask.tolist() == [-1]
-    prof = profile_likelihood(fit, 'k', n_points=7)['k']
+    # the cost rises linearly from the bound, much faster than the Wald
+    # parabola within the first grid step: that end is not resolved (and
+    # the truth outside the bounds leaves the fit flagged lack_of_fit)
+    with pytest.warns(UserWarning, match='upper end .* not resolved'), \
+            pytest.warns(UserWarning, match='flagged lack_of_fit'):
+        prof = profile_likelihood(fit, 'k', n_points=7)['k']
+    assert prof.abrupt_ends == (False, True)
     assert list(prof.profile['side']) == ['center'] + ['upper'] * 3
     lo, hi = prof.confidence_interval
     assert lo == 0.0 and 0.6 < hi < 0.61
@@ -401,7 +528,11 @@ def test_a_profile_below_the_optimum_warns(tmp_path):
     the lowest one as the reference."""
     fit = fit_parameters(_decay_problem(), n_starts=1, seed=0, max_nfev=1)
     assert not fit.success
-    with pytest.warns(UserWarning, match='below the fit'):
+    # (two points per side are too coarse for this profile: an end is not
+    # resolved either; the unconverged fit is flagged lack_of_fit)
+    with pytest.warns(UserWarning, match='below the fit'), \
+            pytest.warns(UserWarning, match='not resolved'), \
+            pytest.warns(UserWarning, match='flagged lack_of_fit'):
         prof = profile_likelihood(fit, 'k', n_points=5)['k']
     assert prof.reference_cost == prof.profile['cost'].min() < fit.cost
     assert prof.profile['delta'].min() == 0.0
@@ -470,6 +601,7 @@ def _assert_same_profile(a, b):
     assert a.confidence_interval == b.confidence_interval
     assert a.is_identifiable == b.is_identifiable
     assert a.reference_cost == b.reference_cost
+    assert a.abrupt_ends == b.abrupt_ends
 
 
 def test_csv_round_trip_is_exact(mm_profiles, tmp_path):

@@ -882,13 +882,22 @@ def run_many(model, conditions, *, metrics=None, workers=1, keep_results=True,
     ``reset_func`` that changes a setting -- such as the shipped model's
     ``reset_spike_cap`` -- cannot leak into later runs.
 
+    Each call first builds its private copy of the model (one per worker
+    process with ``workers > 1``), which takes about a second for the
+    shipped yeast model, far longer than one of its runs. Put many
+    conditions in one call (or one :func:`scan`) rather than calling
+    :func:`run_many` in a loop.
+
     On macOS and Windows, ``workers > 1`` starts processes with ``spawn``:
     each worker re-imports the main module, so call :func:`run_many` /
     :func:`scan` under ``if __name__ == '__main__':`` in scripts, and define
     metrics and any ``reset_func`` at module level (not as lambdas or
-    closures). Such workers also import nskinetics afresh, which takes
-    several seconds each; prefer ``workers=1`` for small batches. RoadRunner
-    instances are never shared between threads or processes.
+    closures). Such workers also import nskinetics afresh, and every
+    parallel call starts a new pool, so each call with ``workers > 1``
+    first waits about as long as ``import nskinetics`` itself (tens of
+    seconds on some machines); prefer ``workers=1`` unless the batch runs
+    for minutes. RoadRunner instances are never shared between threads or
+    processes.
 
     Examples
     --------

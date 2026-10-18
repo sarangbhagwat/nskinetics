@@ -588,7 +588,11 @@ class Observable:
         - ``'proportional'``: ``sigma_i = rel_sigma * max(|y_i|,
           relative_floor * max|y|)``, with ``y`` the data of this
           observable in that experiment and ``relative_floor`` from
-          :class:`CalibrationProblem` (default ``1e-3``);
+          :class:`CalibrationProblem` (default ``1e-3``): the bounded
+          relative form of ``sigma=('relative', rel)`` in
+          :func:`~nskinetics.analysis.identifiability` (same
+          ``relative_floor``), computed from the data rather than from
+          the nominal model output;
         - ``'combined'``: ``sigma_i = sqrt(sigma**2 +
           proportional_i**2)``.
 
@@ -3280,6 +3284,75 @@ class FitResult:
                              'a file); pass model=.')
         return self.problem._ready()
 
+    def _prediction_base(self, condition):
+        """``(experiment, base condition, skipped)`` of a prediction:
+        ``experiment`` is the experiment named by ``condition`` (else
+        ``None``); ``skipped`` is ``(matches, names)`` of the local
+        estimates an experiment's own Condition object leaves out."""
+        skipped = None
+        if isinstance(condition, str):
+            if self.problem is None:
+                raise ValueError('An experiment name needs the fitted problem '
+                                 '(this FitResult was read from a file); pass '
+                                 'its Condition.')
+            names = [e.name for e in self.problem.experiments]
+            if condition not in names:
+                raise ValueError(f'Unknown experiment {condition!r}; the '
+                                 f'problem has {names}.')
+            return (condition,
+                    self.problem.experiments[names.index(condition)].condition,
+                    skipped)
+        if not isinstance(condition, Condition):
+            raise TypeError(f'condition must be a Condition or an experiment '
+                            f'name; got {type(condition).__name__}.')
+        # an experiment's own Condition object (or an equal one): its local
+        # estimates are not applied, which is easy to miss
+        matches = ([] if self.problem is None else
+                   [e.name for e in self.problem.experiments
+                    if e.condition == condition])
+        names = [self.names[j] for j in range(self.n_free)
+                 if self.kinds[j] == 'model' and self.experiments[j] in matches]
+        if names:
+            skipped = (matches, names)
+        return None, condition, skipped
+
+    def _prediction_runs(self, model, base, experiment, skipped, n_samples,
+                         seed):
+        """The runs of a prediction: ``(conditions, use, seed sequence)``,
+        the nominal run (labelled ``'nominal'``, at the estimates) first,
+        then one per draw of :meth:`sample` (``'sample <i>'``), each with
+        the estimates ``use`` (indices of the global, and ``experiment``'s
+        local, model parameters) pinned into ``base``."""
+        use = [j for j in range(self.n_free) if self.kinds[j] == 'model'
+               and self.experiments[j] in (None, experiment)]
+        if not use:
+            raise ValueError(
+                'No fitted model parameter applies to this condition (local '
+                'estimates apply only to their experiment: pass its name).')
+        if experiment is None and skipped:
+            matches, names = skipped
+            warnings.warn(
+                f'This condition equals the condition of experiment(s) '
+                f'{matches}; their local estimates {names} are not applied '
+                "(the condition's own values are used). Pass an experiment's "
+                f'name instead (e.g. {matches[0]!r}) to apply them.',
+                UserWarning, stacklevel=3)
+        ss = _seed_sequence(seed)
+        draws = self.sample(n_samples, seed=ss)
+        targets = [self.targets[j] for j in use]
+        place = {t: _ex._placement_for(model, base, t) for t in targets}
+        values = [self.estimates.to_numpy()[use]] + [
+            row for row in draws.to_numpy()[:, use]]
+        conditions = [
+            _fd.pin(model, base, dict(zip(targets, map(float, v))),
+                    place).replace(label=f'sample {i - 1}' if i
+                                   else 'nominal')
+            for i, v in enumerate(values)]
+        # user -> predict / predict_metrics -> here -> the helper
+        _warn_lack_of_fit(self, 'predicted bands and percentiles',
+                          stacklevel=4)
+        return conditions, use, ss
+
     def predict(self, condition, n_samples=200, q=(5, 50, 95), seed=None,
                 workers=1, outputs=None, *, model=None):
         """Prediction bands of model outputs under parameter uncertainty.
@@ -3349,13 +3422,19 @@ class FitResult:
             ``Observable('S', '[S]')``), before any run. If ``condition``
             is a Condition equal to the condition of an experiment that has
             local estimates of model parameters, which are then not applied
-            (pass the experiment's name to apply them), before any run.
+            (pass the experiment's name to apply them), before any run. If
+            the fit is flagged ``lack_of_fit`` (:attr:`flags`), before any
+            run: the bands assume that the model matches the data, are
+            local to this optimum and may be far too narrow.
 
         Notes
         -----
         The bands inherit the Laplace approximation of :meth:`sample`
         (normal draws, or Student-t ones with ``absolute_sigma=False``) and
         only the parameter uncertainty (no measurement noise is added).
+        For scalar metrics of a run (titer, yield, productivity, spike
+        count), use :meth:`predict_metrics`: a percentile of a ratio is not
+        the ratio of the percentiles.
 
         The bands are of model selections in model units: observables
         (their scale, offset and transform) are not applied, and fitted
@@ -3375,30 +3454,7 @@ class FitResult:
         n_samples = _count('n_samples', n_samples, 1)
         q = _quantiles(q)
         workers = _ex._check_workers(workers)
-        if isinstance(condition, str):
-            if self.problem is None:
-                raise ValueError('An experiment name needs the fitted problem '
-                                 '(this FitResult was read from a file); pass '
-                                 'its Condition.')
-            names = [e.name for e in self.problem.experiments]
-            if condition not in names:
-                raise ValueError(f'Unknown experiment {condition!r}; the '
-                                 f'problem has {names}.')
-            experiment, base = condition, \
-                self.problem.experiments[names.index(condition)].condition
-        elif isinstance(condition, Condition):
-            experiment, base = None, condition
-            # an experiment's own Condition object (or an equal one): its
-            # local estimates are not applied, which is easy to miss
-            matches = ([] if self.problem is None else
-                       [e.name for e in self.problem.experiments
-                        if e.condition == condition])
-            skipped = [self.names[j] for j in range(self.n_free)
-                       if self.kinds[j] == 'model'
-                       and self.experiments[j] in matches]
-        else:
-            raise TypeError(f'condition must be a Condition or an experiment '
-                            f'name; got {type(condition).__name__}.')
+        experiment, base, skipped = self._prediction_base(condition)
         if outputs is not None:
             if isinstance(outputs, str):
                 outputs = [outputs]
@@ -3415,30 +3471,8 @@ class FitResult:
         sels = [s for s in model._run_selections(base) if s != 'time']
         if not sels:
             raise ValueError('No output to predict; pass outputs=.')
-        use = [j for j in range(self.n_free) if self.kinds[j] == 'model'
-               and self.experiments[j] in (None, experiment)]
-        if not use:
-            raise ValueError(
-                'No fitted model parameter applies to this condition (local '
-                'estimates apply only to their experiment: pass its name).')
-        if experiment is None and skipped:
-            warnings.warn(
-                f'This condition equals the condition of experiment(s) '
-                f'{matches}; their local estimates {skipped} are not applied '
-                "(the condition's own values are used). Pass an experiment's "
-                f'name (e.g. predict({matches[0]!r})) to apply them.',
-                UserWarning, stacklevel=2)
-        ss = _seed_sequence(seed)
-        draws = self.sample(n_samples, seed=ss)
-        targets = [self.targets[j] for j in use]
-        place = {t: _ex._placement_for(model, base, t) for t in targets}
-        values = [self.estimates.to_numpy()[use]] + [
-            row for row in draws.to_numpy()[:, use]]
-        conditions = [
-            _fd.pin(model, base, dict(zip(targets, map(float, v))),
-                    place).replace(label=f'sample {i - 1}' if i
-                                   else 'nominal')
-            for i, v in enumerate(values)]
+        conditions, use, ss = self._prediction_runs(model, base, experiment,
+                                                    skipped, n_samples, seed)
         batch = _ex.run_many(model, conditions, workers=workers)
         ok = batch.ok
         n_failed = int((~ok[1:]).sum())
@@ -3469,6 +3503,129 @@ class FitResult:
         for i, value in enumerate(q):
             data[_quantile_name(value)] = bands[i].T.ravel()
         out = pd.DataFrame(data)
+        out.attrs.update(n_samples=n_samples, n_failed=n_failed,
+                         quantiles=tuple(q),
+                         parameters=[self.names[j] for j in use],
+                         seed=_seed_record(ss), units=dict(self.units))
+        return out
+
+    def predict_metrics(self, condition, metrics, n_samples=200,
+                        q=(5, 50, 95), seed=None, workers=1, *, model=None):
+        """Percentiles of run metrics under parameter uncertainty.
+
+        The counterpart of :meth:`predict` for scalar metrics of a run
+        (titer, yield, productivity, spike count...): the same draws (the
+        same ``seed`` gives the same parameter sets as :meth:`predict` and
+        :meth:`sample`), run with :func:`~nskinetics.run_many`, each metric
+        evaluated on every run, and its percentiles taken over the
+        successful runs. A percentile of a ratio such as a yield is not the
+        ratio of the percentiles of its parts, so derived metrics need this
+        rather than the bands of :meth:`predict`.
+
+        Parameters
+        ----------
+        condition : Condition or str
+            The run to predict, as for :meth:`predict`: a
+            :class:`~nskinetics.Condition` gets the *global* estimates; an
+            experiment's name also gets its local estimates.
+        metrics : mapping or sequence
+            ``{name: callable}`` or a sequence of named metrics, as for
+            :func:`~nskinetics.run_many` (e.g. ``[Final('[P]'),
+            Yield('[P]', '[S]', fed=...), EventCount('n')]`` from
+            :mod:`nskinetics.analysis`); at least one. Each is in its own
+            units (model time and concentration units for the
+            :mod:`nskinetics.analysis` metrics).
+        n_samples : int
+            Number of draws (default 200).
+        q : sequence of float
+            Percentiles in ``[0, 100]`` (default ``(5, 50, 95)``).
+        seed : None, int or numpy.random.SeedSequence
+            Seed of the draws (as for :meth:`sample`).
+        workers : int
+            Processes of :func:`~nskinetics.run_many` (default 1, serial).
+        model : KineticModel, optional
+            The model to run. Default: the fitted problem's private copy;
+            required after :meth:`from_csv`.
+
+        Returns
+        -------
+        pandas.DataFrame
+            One row per metric (index ``metric``): ``nominal`` (at the
+            estimates; ``NaN`` if that run failed), one column per
+            percentile named ``'q<value>'`` (``q5, q50, q95``) over the
+            successful sampled runs with a finite value of that metric
+            (``NaN`` if none), and ``n_ok``, the number of such runs.
+            ``attrs`` holds ``n_samples``, ``n_failed`` (failed sampled
+            runs), ``quantiles``, ``parameters`` (the names applied),
+            ``seed`` (the int that reproduces the draws, if any) and
+            ``units``.
+
+        Raises
+        ------
+        TypeError, ValueError
+            For invalid arguments (including the metrics, as for
+            :func:`~nskinetics.run_many`), an unknown experiment name, a
+            condition no fitted model parameter applies to, or a covariance
+            that cannot be sampled (see :meth:`sample`); before any run.
+        KineticSimulationError
+            If every run (the nominal one and every sample) fails.
+
+        Warns
+        -----
+        UserWarning
+            As for :meth:`predict`: if sampled runs (or the nominal run)
+            fail, if ``condition`` is an experiment's Condition object
+            whose local estimates are then not applied, and if the fit is
+            flagged ``lack_of_fit`` (the percentiles may then be far too
+            narrow).
+
+        Notes
+        -----
+        The percentiles inherit the Laplace approximation of :meth:`sample`
+        and only the parameter uncertainty. Fitted observable scales and
+        offsets are not drawn: metrics read model selections.
+        """
+        model = self._model_for(model)
+        n_samples = _count('n_samples', n_samples, 1)
+        q = _quantiles(q)
+        workers = _ex._check_workers(workers)
+        names = list(_ex._normalize_metrics(metrics))
+        if not names:
+            raise ValueError('metrics must name at least one metric.')
+        experiment, base, skipped = self._prediction_base(condition)
+        conditions, use, ss = self._prediction_runs(model, base, experiment,
+                                                    skipped, n_samples, seed)
+        batch = _ex.run_many(model, conditions, metrics=metrics,
+                             workers=workers, keep_results=False)
+        ok = batch.ok
+        n_failed = int((~ok[1:]).sum())
+        if n_failed:
+            warnings.warn(f'{n_failed} of {n_samples} sampled runs failed; '
+                          'the percentiles use the others.', UserWarning,
+                          stacklevel=2)
+        if not ok[0]:
+            warnings.warn('The nominal run failed: '
+                          f'{batch.metrics["error"].iloc[0]}', UserWarning,
+                          stacklevel=2)
+        if not ok.any():
+            raise KineticSimulationError(
+                f'Every run of the prediction failed (nominal: '
+                f'{batch.metrics["error"].iloc[0]}).')
+        values = batch.metrics[names].to_numpy(dtype=float)
+        nominal = values[0] if ok[0] else np.full(len(names), math.nan)
+        samples = values[1:][ok[1:]]
+        data = {'nominal': nominal}
+        bands, n_ok = np.full((len(q), len(names)), math.nan), []
+        for k in range(len(names)):
+            finite = samples[:, k][np.isfinite(samples[:, k])]
+            n_ok.append(finite.size)
+            if finite.size:
+                bands[:, k] = np.percentile(finite, q)
+        for i, value in enumerate(q):
+            data[_quantile_name(value)] = bands[i]
+        data['n_ok'] = np.asarray(n_ok, dtype=np.int64)
+        out = pd.DataFrame(data, index=pd.Index(names, name='metric',
+                                                dtype=object))
         out.attrs.update(n_samples=n_samples, n_failed=n_failed,
                          quantiles=tuple(q),
                          parameters=[self.names[j] for j in use],
@@ -3787,6 +3944,27 @@ def _warn_observable_outputs(problem, outputs):
                           'model quantity.', UserWarning, stacklevel=3)
 
 
+def _warn_lack_of_fit(fit, what, stacklevel):
+    """Warn once that ``fit`` is flagged ``lack_of_fit``: ``what`` (profile
+    intervals or prediction bands) assume that the model matches the data.
+    Only this flag is propagated: ``no_covariance`` already raises in
+    :meth:`FitResult.sample`, and ``at_bound`` is handled where it matters
+    (the profile grid stops at the bound)."""
+    flags = fit.flags
+    hit = flags[flags['flag'] == 'lack_of_fit']
+    if hit.empty:
+        return
+    value = float(hit['value'].iloc[0])
+    stat = 'reduced chi2' if fit.loss == 'linear' else '2*cost/dof'
+    warnings.warn(
+        f'This fit is flagged lack_of_fit ({stat} = {value:.3g}): the {what} '
+        'assume that the model matches the data within the given standard '
+        'deviations. They are local to this optimum and may be far too '
+        'narrow. See fit.summary(); if the optimum is a wrong local minimum, '
+        "refit with more starts or method='hybrid'.",
+        UserWarning, stacklevel=stacklevel)
+
+
 # --- profile likelihood ------------------------------------------------------
 def _fixed_spec(model, spec, j, value):
     """``spec`` with free parameter ``j`` fixed at the natural ``value``:
@@ -3830,17 +4008,59 @@ def _profile_point(model, spec, j, xj, start):
                       {'max_nfev': None})
 
 
+def _profile_slopes(fit):
+    """Per free parameter ``j``, the tangent ``d(others)/dx_j`` of the
+    profile path at the optimum (fitting space): the linearized
+    re-optimization of the others, ``-lstsq(J_others, J_j)``, from the
+    fit's weighted-residual Jacobian. At full rank it is ``Cov[others, j] /
+    Cov[j, j]``; on a rank-deficient direction it is still the
+    compensating move (``-1`` for ``k2`` of a product ``k1 * k2`` in log
+    space), where the pseudo-inverse covariance is not. Zeros (no
+    prediction) if the Jacobian is not finite."""
+    k = len(fit.names)
+    slopes = [np.zeros(k - 1) for _ in range(k)]
+    if k < 2 or not np.all(np.isfinite(fit.jacobian)):
+        return slopes
+    jac = np.where(fit._unseen, 0.0, fit.jacobian)
+    for j in range(k):
+        try:
+            with np.errstate(all='ignore'):
+                s = -np.linalg.lstsq(np.delete(jac, j, axis=1), jac[:, j],
+                                     rcond=None)[0]
+        except np.linalg.LinAlgError:
+            continue
+        if np.all(np.isfinite(s)):
+            slopes[j] = s
+    return slopes
+
+
+def _predicted_start(path, xj, slope):
+    """Start for the others at ``xj``: extrapolated linearly along the
+    ``path`` of re-optimized ``(x_j, others)`` pairs (in the order run),
+    through its last two points (a secant), or along ``slope`` from its
+    only point (the optimum)."""
+    x1, s1 = path[-1]
+    if len(path) == 1:
+        return s1 + slope * (xj - x1)
+    x0, s0 = path[-2]
+    return s1 + (s1 - s0) * ((xj - x1) / (x1 - x0))
+
+
 def _profile_side(model, item, *, spec, threshold):
     """One side of one profile: re-optimize at each grid point outward
-    from the optimum, each warm-started from the previous solution; past
-    the grid, continue with doubling steps until the threshold is crossed
-    or the bound is reached, then bisect the last bracket (below, above
-    the threshold) down to the grid step, so that an interval end is
-    never interpolated over more than one grid step. Returns
-    ``[(xj, record)]`` in the order run."""
-    j, xs, step, bound, extend, start, cost0, scale = item
+    from the optimum, each started from a prediction of the others
+    (along the fit's tangent ``slope`` for the first point, then along
+    the secant through the last two re-optimized points); past the grid,
+    continue with doubling steps until the threshold is crossed or the
+    bound is reached, then bisect the last bracket (below, above the
+    threshold) down to the grid step, so that an interval end is never
+    interpolated over more than one grid step. Returns ``[(xj, record)]``
+    in the order run."""
+    j, xs, step, bound, extend, start, cost0, scale, x0, slope = item
     base = step
     out = []
+    # the re-optimized points of this side so far, from the optimum out
+    path = [(float(x0), np.asarray(start, dtype=float))]
     last_ok = None      # the last point that re-optimized (its x)
 
     def run(xj, warm):
@@ -3853,34 +4073,37 @@ def _profile_side(model, item, *, spec, threshold):
 
     crossed = False
     for xj in xs:
-        rec = run(xj, start)
+        rec = run(xj, _predicted_start(path, xj, slope))
         if rec['ok']:
-            last_ok, start = xj, rec['x']
+            last_ok = xj
+            path.append((float(xj), rec['x']))
         crossed = crossed or above(rec)
     xj = xs[-1] if xs else None
     while extend and not crossed and xj != bound:
-        # no point so far crossed the threshold: the last ok one and its
-        # solution are the inner end of the next bracket
-        inner, inner_start = last_ok, start
+        # no point so far crossed the threshold: the last ok one is the
+        # inner end of the next bracket
+        inner, inner_path = last_ok, path[-2:]
         step *= 2.0
         xj = (min(xj + step, bound) if bound > xj else max(xj - step, bound))
-        rec = run(xj, start)
+        rec = run(xj, _predicted_start(path, xj, slope))
         if rec['ok']:
-            last_ok, start = xj, rec['x']
+            last_ok = xj
+            path.append((float(xj), rec['x']))
         crossed = above(rec)
         if not crossed or inner is None:
             continue
-        # bisect, each point warm-started from the inner solution
+        # bisect, each point predicted from the inner end's path
         outer = xj
         while abs(outer - inner) > base * (1.0 + 1e-9):
             mid = 0.5 * (inner + outer)
-            rec = run(mid, inner_start)
+            rec = run(mid, _predicted_start(inner_path, mid, slope))
             if not rec['ok']:
                 break
             if above(rec):
                 outer = mid
             else:
-                inner, inner_start = mid, rec['x']
+                inner = mid
+                inner_path = [inner_path[-1], (float(mid), rec['x'])]
     return out
 
 
@@ -3915,8 +4138,11 @@ def profile_likelihood(fit, names, *, n_points=21, span=3.0, workers=1):
 
     For each parameter, a grid of fixed values runs outward from the
     estimate on both sides; at each value every other free parameter is
-    re-optimized (``least_squares``, warm-started from the solution at the
-    previous grid value, the first from the optimum). The profile is
+    re-optimized (``least_squares``), started from a prediction: for the
+    first value, the optimum moved along the fit's tangent (the
+    linearized re-optimization from its Jacobian, ``Cov[others, j] /
+    Cov[j, j]`` at full rank), then the line through the solutions at
+    the two previous values. The profile is
     ``delta = 2 * (cost - cost_min) / s2`` with ``cost`` the problem's
     objective ``0.5 * sum(rho(r**2))`` -- for the linear loss the increase
     of the weighted sum of squared residuals (chi-square) -- and ``s2 = 1``
@@ -3973,7 +4199,14 @@ def profile_likelihood(fit, names, *, n_points=21, span=3.0, workers=1):
         If a profile goes below the fit's optimum by more than
         ``PROFILE_DROP_WARN`` (0.01, in units of ``delta``): the fit had
         not reached the minimum, and the lowest cost found is used as
-        ``cost_min``.
+        ``cost_min``. Also once per interval end interpolated across a
+        step in which ``delta`` rose by more than the threshold beyond the
+        Wald parabola (:attr:`ProfileResult.abrupt_ends`): the profile may
+        jump there and that end may be too narrow (see Notes), or the grid
+        is too coarse for the profile's shape. Also, before any run, if the
+        fit is flagged ``lack_of_fit`` (:attr:`FitResult.flags`): the
+        intervals assume that the model matches the data, are local to
+        this optimum and may be far too narrow.
 
     Notes
     -----
@@ -3997,6 +4230,18 @@ def profile_likelihood(fit, names, *, n_points=21, span=3.0, workers=1):
     ``high_correlation``, an infinite ``se``). Unlike the Wald interval
     this follows the actual objective, so it is reliable for skewed or
     flat profiles.
+
+    The re-optimization is local. With fed-batch data the objective jumps
+    where an event crosses a sample time, and a re-optimization can stay
+    on the far side of such a jump although other values of the free
+    parameters would avoid it; the predicted start follows the valley of
+    the objective and avoids most of these, but not all. The profile then
+    rises by the size of the jump within one step and the interval ends
+    there, too narrow: such an end is flagged in
+    :attr:`ProfileResult.abrupt_ends` with a warning. Check it by fixing
+    the parameter just beyond that end in the conditions and refitting
+    the others with ``method='hybrid'``, or raise ``n_points`` if the
+    grid was merely too coarse.
 
     With a robust loss the threshold is not calibrated: the robust cost
     rises more slowly than chi-square, even for residuals within
@@ -4045,9 +4290,12 @@ def profile_likelihood(fit, names, *, n_points=21, span=3.0, workers=1):
         raise ValueError('With absolute_sigma=False the profile is scaled by '
                          'the reduced chi-square, which needs n_data > n_free '
                          'and a nonzero chi2.')
+    # user -> profile_likelihood -> the helper
+    _warn_lack_of_fit(fit, 'profile intervals', stacklevel=3)
     problem = fit.problem
     spec, private = problem._spec, problem._ready()
     x, se = fit.x, fit.se.to_numpy()
+    slopes = _profile_slopes(fit)
     items = []
     for name in names:
         j = fit.names.index(name)
@@ -4056,7 +4304,7 @@ def profile_likelihood(fit, names, *, n_points=21, span=3.0, workers=1):
                 x[j], se[j], spec.lo[j], spec.hi[j], n_points, span,
                 fit.active_mask[j]):
             items.append((j, points, step, bound, extend, others, fit.cost,
-                          scale))
+                          scale, x[j], slopes[j]))
     task = functools.partial(_profile_side, spec=spec, threshold=threshold)
     if workers == 1:
         sides = [task(private, item) for item in items]
@@ -4111,6 +4359,23 @@ def profile_likelihood(fit, names, *, n_points=21, span=3.0, workers=1):
                 f'optimum (delta = {-drop:.3g}): the fit had not found the '
                 'minimum. Its lowest cost is used as the reference; refit '
                 '(e.g. more starts) before trusting the intervals.',
+                UserWarning, stacklevel=2)
+        for side, step in zip(('lower', 'upper'), result._abrupt_steps):
+            if step is None:
+                continue
+            a, da, b, db = step
+            warnings.warn(
+                f'The {side} end of the profile interval of {name!r} is not '
+                f'resolved: delta rose from {da:.3g} to {db:.3g} within one '
+                f'grid step ({a:.6g} to {b:.6g}), by more than the threshold '
+                f'({threshold:.3g}) beyond the Wald parabola. The profile may '
+                'jump there: the re-optimization of the other parameters '
+                'may have stayed on the far side of a jump in the objective '
+                '(e.g. an event crossing a sample time), and the end may be '
+                'too narrow. Check it by fixing the parameter beyond that '
+                'end in the conditions and refitting the others with '
+                "method='hybrid'; if the profile is merely steep there "
+                '(e.g. next to a bound), raise n_points.',
                 UserWarning, stacklevel=2)
         out[name] = result
     return out
@@ -4181,6 +4446,17 @@ class ProfileResult:
         ``k2``). The interval then reflects the box constraints, not the
         data; read it together with the fit's flags (``rank_deficient``,
         ``high_correlation``, an infinite ``se``).
+    abrupt_ends : (bool, bool)
+        Per side (lower, upper), whether its interval end is interpolated
+        across a step in which ``delta`` rose by more than ``threshold``
+        beyond the rise of the Wald parabola ``((x - x_hat) / se)**2``
+        over the same step (by more than ``threshold`` with a non-finite
+        ``se``). Such an end is not resolved by the grid
+        (:func:`profile_likelihood` warns): either the profile jumps
+        there, e.g. because the re-optimization stayed on the far side of
+        an event crossing a sample time, and the end may be too narrow, or
+        the grid is too coarse for the profile's shape (e.g. a steep rise
+        next to a bound). ``False`` for an open side.
     n_failed : int
         Grid values whose re-optimization failed.
 
@@ -4232,12 +4508,14 @@ class ProfileResult:
         if lowest.size and np.min(delta[lowest]) < d0:
             i0 = lowest[np.argmin(delta[lowest])]
             x0, d0 = x[i0], delta[i0]
+        wald = np.isfinite(self.se) and self.se > 0
+        steps = []
         for sign in (-1.0, 1.0):
             # outward from x0: x0 itself, then this side's values
             side = np.flatnonzero(ok & (sign * (x - x0) > 0))
             side = side[np.argsort(sign * (x[side] - x0), kind='stable')]
             prev_x, prev_d = x0, d0
-            end = None
+            end = step = None
             for i in side:
                 if delta[i] >= self.threshold:
                     # linear in sqrt(delta), exact for a quadratic profile
@@ -4246,14 +4524,31 @@ class ProfileResult:
                     w = ((math.sqrt(self.threshold) - root)
                          / (math.sqrt(delta[i]) - root))
                     end = prev_x + w * (x[i] - prev_x)
+                    # the crossing step: did delta rise by more than the
+                    # threshold beyond the Wald parabola's rise over it?
+                    rise = 0.0
+                    if wald:
+                        with np.errstate(all='ignore'):
+                            rise = float(((x[i] - self.x) ** 2
+                                          - (prev_x - self.x) ** 2)
+                                         / self.se ** 2)
+                        rise = rise if math.isfinite(rise) else 0.0
+                    if delta[i] - prev_d > self.threshold + max(rise, 0.0):
+                        a, b = (math.exp(v) if self.log else float(v)
+                                for v in (prev_x, x[i]))
+                        step = (a, float(prev_d), b, float(delta[i]))
                     break
                 prev_x, prev_d = x[i], delta[i]
             closed.append(end is not None)
+            steps.append(step)
             if end is None:
                 end = sign * math.inf
             ends.append(math.exp(end) if self.log else end)
         self.confidence_interval = (ends[0], ends[1])
         self.is_identifiable = all(closed)
+        # (value, delta) before and after each abrupt crossing step
+        self._abrupt_steps = tuple(steps)
+        self.abrupt_ends = tuple(step is not None for step in steps)
 
     def __repr__(self):
         lo, hi = self.confidence_interval

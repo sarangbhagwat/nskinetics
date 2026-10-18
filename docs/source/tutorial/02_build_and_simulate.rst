@@ -331,7 +331,10 @@ up to four processes, each with its own copy of the model; the default
 processes start with ``spawn`` and re-import your script, so call
 ``run_many`` under ``if __name__ == '__main__':`` and define metrics as
 module-level functions: the ``lambda`` above works with ``workers > 1`` only
-on Linux.
+on Linux. The ready-made metrics of :mod:`nskinetics.analysis` (e.g.
+``Final('[P]')``, ``Yield`` and ``Productivity``; see
+:doc:`07_sensitivity_identifiability`) state their basis explicitly and work
+with any number of workers.
 
 :func:`~nskinetics.scan` builds the conditions for you from a grid of
 values. It returns a :class:`~nskinetics.ScanResult`, which can arrange a
