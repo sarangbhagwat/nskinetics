@@ -4,6 +4,31 @@ Configuration for pytest to run with and without numba JIT compiled functions.
 """
 import pytest
 import os
+import sys
+
+@pytest.fixture(autouse=True)
+def _restore_roadrunner_properties():
+    """Undo libroadrunner's class-level property churn after every test.
+
+    libroadrunner installs one Python property per model id (``r.k``,
+    ``r.s_glu``...) on the ``roadrunner.roadrunner.RoadRunner`` class and
+    deletes the previous model's on every load. A test that loads a toy model
+    would otherwise make later attribute-style writes on a long-lived model
+    (e.g. the shipped ``te_r``, ``r.env = 1.``) silently create instance
+    attributes, so results would depend on test order. Properties removed
+    during a test are put back afterwards (ones the test's own models define
+    are left alone). roadrunner is looked up lazily so this file never
+    imports it.
+    """
+    rrm = sys.modules.get('roadrunner.roadrunner')
+    rr = getattr(rrm, 'RoadRunner', None)
+    saved = ({n: rr.__dict__[n] for n in list(getattr(rr, '_properties', ()))
+              if n in rr.__dict__} if rr is not None else {})
+    yield
+    for name, prop in saved.items():
+        if name not in rr.__dict__:
+            setattr(rr, name, prop)
+            rr._properties.append(name)
 
 def pytest_ignore_collect(collection_path):
     # pytest >= 8 passes `collection_path` (pathlib.Path); the old `path`

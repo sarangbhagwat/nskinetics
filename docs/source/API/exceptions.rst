@@ -9,3 +9,5 @@ All NSKinetics-specific errors subclass :exc:`NSKError`.
 .. autoexception:: KineticSimulationError
 .. autoexception:: MassBalanceError
 .. autoexception:: EventCompilationError
+.. autoexception:: FeedingStrategyError
+.. autoexception:: FittingError

@@ -7,7 +7,7 @@
 # for license details.
 
 __all__ = ('NSKError', 'KineticSimulationError', 'MassBalanceError',
-           'EventCompilationError', 'FeedingStrategyError')
+           'EventCompilationError', 'FeedingStrategyError', 'FittingError')
 
 
 class NSKError(Exception):
@@ -29,3 +29,9 @@ class EventCompilationError(NSKError):
 class FeedingStrategyError(NSKError):
     """Raised when a fed-batch feeding-strategy specification cannot be met
     (e.g. a target concentration is unreachable within an actuator's bounds)."""
+
+
+class FittingError(NSKError):
+    """Raised when a parameter estimation cannot produce any estimate, e.g.
+    when every start of :func:`nskinetics.analysis.fit_parameters` ends at a
+    point where the model cannot be integrated."""

@@ -6,15 +6,21 @@
 # https://github.com/sarangbhagwat/nskinetics/blob/main/LICENSE
 # for license details.
 
+from . import conditions
+from .conditions import *
 from . import kinetic_model
 from .kinetic_model import *
 from . import events
 from .events import *
 from . import flux_analysis
 from .flux_analysis import *
+from . import execution
+from .execution import *
 
 __all__ = (
+     *conditions.__all__,
      *kinetic_model.__all__,
      *events.__all__,
      *flux_analysis.__all__,
+     *execution.__all__,
      )

@@ -161,9 +161,9 @@ Requesting the bracketed (concentration) selectors ``'[s_glu]'`` and
 resolution shows the mechanism directly — each spike snaps the substrate
 concentration back up near ``target`` while ``env`` grows by the volume
 ``a`` computed, and ``[p_eth]`` dips by exactly the corresponding dilution
-factor. This rebuilds the same setup from scratch and simulates it
-**once**, rather than re-simulating the ``r``/``km`` from the block above
-(see the note below for why):
+factor. This rebuilds the same setup from scratch so that the block runs on
+its own. Calling ``km.reset()`` on the ``km`` from the block above and
+re-simulating gives the same numbers (see the note below):
 
 .. code-block:: python
 
@@ -236,25 +236,24 @@ range would be flattened into an unreadable line at the axis floor.
    the feed volume that event **a** computed. It is flat everywhere else —
    volume changes only at a spike.
 
-.. warning::
+.. note::
 
-   Reusing the *same* compiled ``r``/``km`` for a second ``simulate()``
-   call — even after calling ``reset()`` in between — is not reliable, and
-   this is independent of point count.
-   :meth:`~nskinetics.KineticModel.reset` calls a bare
-   ``self._te.reset()``, which only resets RoadRunner's default selection
-   (time, floating species, and rate-rule-governed variables) to their
-   origin values. It does **not** restore compartments (like ``env`` here)
-   or plain, event-only bookkeeping parameters that carry no rate rule
-   (``n_spk``, ``last_vol``, ``tot_vol`` here) — once an event has changed
-   them, ``reset()`` leaves them exactly as the event left them. Re-running
-   :meth:`~nskinetics.KineticModel.compile_events` does not help
-   either: it is guarded (``if self._events_compiled: return``, see
-   :doc:`03_events`), so a second call after the first succeeded is a
-   no-op. The reliable way to run an independent simulation is to build a
-   fresh model and a fresh ``KineticModel``, as the standalone
-   script above does, rather than re-simulating an already-fired
-   event-bearing model in place.
+   Reusing the *same* compiled ``km`` for a second run is reliable. For a
+   model without a custom reset function,
+   :meth:`~nskinetics.KineticModel.reset` restores the model's *baseline*.
+   Besides time and the species, that includes the compartment ``env`` and
+   the event-only bookkeeping parameters ``n_spk``, ``last_vol`` and
+   ``tot_vol``, which the spikes change. On the ``km`` from the first block,
+   ``km.reset()`` followed by the second block's ``simulate`` call
+   reproduces its printed output exactly.
+
+   Earlier versions of NSKinetics reset only what RoadRunner's own
+   ``reset()`` restores: time, floating species and rate-rule variables. A
+   second run therefore started from the first run's grown volume, with
+   its spikes already used up. ``km.reset(mode='roadrunner')`` still does
+   that: here it would start the second run at ``env = 1.392`` with
+   ``n_spk = 2``, so no spike could fire. :doc:`../concepts` explains the
+   reset modes.
 
 At the first spike (between ``t=2.3`` and ``t=2.31`` h), ``[s_glu]`` jumps
 from just under the 10 g/L threshold back up to about ``99.26`` g/L —

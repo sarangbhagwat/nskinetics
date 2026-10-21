@@ -95,7 +95,37 @@ before. Rather than poking the raw RoadRunner object directly, this page
 attaches a custom ``reset_func`` to ``km`` — the same mechanism
 ``KineticModel(..., reset=...)`` accepts at construction time — so
 that every ``km.reset()`` call, including ones a process unit triggers
-internally, re-seeds the fed-batch bookkeeping consistently:
+internally, re-seeds the fed-batch bookkeeping consistently.
+
+Which variables make up that bookkeeping? There is no need to guess from
+their names. :attr:`~nskinetics.KineticModel.parameters` lists every global
+parameter with its value, origin value and role, read from the model's own
+structure: its rules, events and rate laws. The parameters the events
+assign are the run-to-run state that a reset has to re-seed:
+
+.. code-block:: python
+
+   print(km.parameters.query('assigned_by_events').index.tolist())
+
+.. code-block:: text
+
+   ['is_aerobic', 'tot_vol_glu_feed_added', 'n_glu_spikes', 'last_vol_glu_feed_added']
+
+These event-assigned parameters, together with the working volume ``env``
+(a compartment) and the model's two rate-rule variables, are exactly what a
+baseline reset restores to their origin values;
+:attr:`~nskinetics.KineticModel.baseline_variables` lists them:
+
+.. code-block:: python
+
+   print(km.baseline_variables)
+
+.. code-block:: text
+
+   ('env', 'X_a', 'X_AcDH', 'last_vol_glu_feed_added', 'tot_vol_glu_feed_added', 'n_glu_spikes', 'is_aerobic')
+
+So the reset below starts from the baseline reset instead of listing those
+ids by hand, and adds only what the baseline does not cover:
 
 .. code-block:: python
 
@@ -103,26 +133,51 @@ internally, re-seeds the fed-batch bookkeeping consistently:
    integ.absolute_tolerance = 1e-10
    integ.relative_tolerance = 1e-9
 
-   # Give the kinetic model its own reset: it restores the RoadRunner model
-   # and re-seeds the fed-batch bookkeeping. Attaching it to `km` means every
-   # `km.reset()` (including the ones a process unit calls internally) runs it.
-   def reset_model(km):
-       km._te.reset()
-       m = km._te
-       m.n_glu_spikes = 0; m.last_vol_glu_feed_added = 0.; m.tot_vol_glu_feed_added = 0.
-       m.env = 1.; m.is_aerobic = 1; m.max_n_glu_spikes = 20
+   # Give the kinetic model its own reset: the baseline reset plus the spike
+   # cap. Attaching it to `km` means every `km.reset()` (including the ones a
+   # process unit calls internally) runs it.
+   def reset_model(km, reset_spike_cap=True):
+       km.reset(mode='baseline')   # volume, counters, stage flag, species
+       if reset_spike_cap:
+           km._te['max_n_glu_spikes'] = 20
 
    km.reset_func = reset_model
    km.reset()
-   r.s_glu = 140; r.x = 1
-   r.threshold_conc_glu_spike = 100   # refill trigger (SBML default: 10 g/L)
-   r.target_conc_glu_spike = 140      # refill target  (SBML default: 100 g/L)
+   r['[s_glu]'] = 140; r['[x]'] = 1
+   r['threshold_conc_glu_spike'] = 100   # refill trigger (SBML default: 10 g/L)
+   r['target_conc_glu_spike'] = 140      # refill target  (SBML default: 100 g/L)
 
-A custom ``reset_func`` **fully replaces** the default reset behavior rather
-than layering on top of it, so ``reset_model`` must call ``km._te.reset()``
-itself to restore the RoadRunner model before re-seeding the bookkeeping
-variables — omitting that call would leave the model wherever the previous
-run left it. The initial concentrations ``s_glu`` and ``x`` are set *after*
+A custom ``reset_func`` **replaces** the default reset rather than layering
+on top of it, so it must restore the model's state itself — otherwise the
+model would start wherever the previous run left it. There are two ways to
+do that. Start with ``km.reset(mode='baseline')``, as ``reset_model`` does.
+Or call ``km._te.reset()`` with the volumes and event-assigned variables set
+*before* that call as well as after it: RoadRunner's reset converts initial
+concentrations to amounts at the *current* ``env`` volume, so resetting at
+the previous run's end volume would start the species from values that
+depend on that run. The shipped model's builder module
+(``reset_nsk_kinetic_model``) uses that hand-written form; the two are
+equivalent for this model (see :doc:`../concepts`, "Writing a reset
+function").
+
+Every write here uses item access, ``km._te['max_n_glu_spikes'] = 20`` (or
+``km.set_value('max_n_glu_spikes', 20)``), never attribute access such as
+``km._te.max_n_glu_spikes = 20``. libroadrunner removes the ``r.<id>``
+attribute properties whenever another model is loaded, and from then on an
+attribute write silently creates a Python attribute the model never sees
+(see :doc:`../concepts`, "Writing a reset function").
+
+The default reset of a model *without* a ``reset_func`` is that same
+baseline reset: it already restores the working volume and every
+event-assigned variable to its origin value (see :doc:`../concepts`).
+``reset_model`` exists for what it adds on top: the spike cap
+``max_n_glu_spikes``, which is not event-assigned, set to 20 (the SBML says
+5). Keyword arguments passed to ``km.reset(...)`` reach the ``reset_func``.
+``reset_spike_cap=False`` keeps whatever cap the model holds; a process
+unit's spike-count retry relies on this to keep a reduced cap while it
+re-simulates.
+
+The initial concentrations ``s_glu`` and ``x`` are set *after*
 ``km.reset()`` returns, not inside ``reset_model`` and not before it:
 ``reset()`` restores every floating species to its SBML-defined origin value,
 so setting them any earlier would simply be overwritten.
@@ -173,8 +228,7 @@ Running the full snippet above end to end prints:
 
 .. code-block:: text
 
-   final: {'time': 200.0, '[s_glu]': 124.84688666549971, '[s_EtOH]': 106.52919597573849,
-           '[s_IBO]': 0.0, '[x]': 12.899819897336942, 'n_glu_spikes': 8.0, 'f_O2': 1.0}
+   final: {'time': 200.0, '[s_glu]': 124.84688365540983, '[s_EtOH]': 106.52919734291154, '[s_IBO]': 0.0, '[x]': 12.899820003343597, 'n_glu_spikes': 8.0, 'f_O2': 1.0}
 
 .. code-block:: python
 
@@ -245,6 +299,58 @@ strain-design scenarios, with optimized ones (see
 :doc:`../case_studies/isobutanol/kinetic_optimization`). Nothing about the
 fed-batch feeding or stage-switch machinery above changes between the two
 cases — only the kinetic parameters do.
+
+The same run as a ``Condition``
+--------------------------------
+
+The run above depends on four values set by hand after ``km.reset()``: the
+two initial concentrations and the two feed parameters. The two parameters
+also stay changed on ``km`` afterwards. A :class:`~nskinetics.Condition`
+(see :doc:`02_build_and_simulate`) records all four with the run. Its
+``reset_kwargs`` are passed to ``reset_model``. Its ``parameters`` are put
+back when the run ends:
+
+.. code-block:: python
+
+   import numpy as np
+
+   band = nsk.Condition(
+       initial={'[s_glu]': 140, '[x]': 1},
+       parameters={'threshold_conc_glu_spike': 100, 'target_conc_glu_spike': 140},
+       t_end=200, n_steps=2001, selections=cols,
+       reset_kwargs={'reset_spike_cap': True}, label='refill 100 -> 140 g/L')
+   run1 = km.run(band)
+   run2 = km.run(band)
+   print(np.array_equal(run1.array, res), np.array_equal(run1.array, run2.array))
+
+.. code-block:: text
+
+   True True
+
+Running the condition reproduces the hand-driven run bit for bit, and
+running it twice gives the same result twice. To see the ``reset_kwargs``
+at work, lower the cap to three spikes, as a spike-count retry would, and
+run once with ``reset_spike_cap=False`` and once with the condition as
+written:
+
+.. code-block:: python
+
+   km.set_value('max_n_glu_spikes', 3)
+   kept = km.run(band.replace(reset_kwargs={'reset_spike_cap': False}))
+   reseeded = km.run(band)
+   print(kept.final['n_glu_spikes'], reseeded.final['n_glu_spikes'],
+         km.get_value('max_n_glu_spikes'))
+
+.. code-block:: text
+
+   3.0 8.0 20.0
+
+With ``reset_spike_cap=False``, ``reset_model`` leaves the lowered cap in
+place, and the feed stops after three spikes. The condition as written
+re-seeds the cap to 20 and gets all eight spikes back. A cap meant for
+one run only belongs in the condition instead, for example
+``band.with_parameters(max_n_glu_spikes=3)``, which puts the cap back when
+the run ends.
 
 Describing a parameter change
 -----------------------------

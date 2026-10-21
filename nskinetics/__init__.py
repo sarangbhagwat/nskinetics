@@ -33,6 +33,10 @@ from . import processes
 
 from . import visualization
 
+# Analysis tools (metrics, sensitivities, ...) stay in their own namespace:
+# ``nskinetics.analysis.local_sensitivity``, not ``nskinetics.local_sensitivity``.
+from . import analysis
+
 __all__ = (
      *exceptions.__all__,
      *engine.__all__,
@@ -42,5 +46,6 @@ __all__ = (
      'models',
      'biorefineries',
      'processes',
-     'visualization'
+     'visualization',
+     'analysis',
      )
