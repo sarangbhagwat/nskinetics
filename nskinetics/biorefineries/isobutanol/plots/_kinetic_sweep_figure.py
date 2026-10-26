@@ -116,6 +116,8 @@ COMPARISON_HATCH_LINE_WIDTH = 0.6
 BASELINE_MARKER_SIZE = 7 # pt
 
 G_PER_L_PER_H =r'$\mathrm{g·L}^{-1}\mathrm{·h}^{-1}$'
+# per gram of active cells (rate laws of the form k·f(s)·a, e.g. r13)
+G_PER_G_PER_H =r'$\mathrm{g·g}^{-1}\mathrm{·h}^{-1}$'
 
 
 @dataclass

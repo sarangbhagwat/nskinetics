@@ -7,8 +7,9 @@
 # for license details.
 """
 IRR contour of the opt_PI_TRY_informed k_13 x inhib_isobutanol-multiplier
-kinetic sweep (enzyme burden ON), marked with the opt_PI_TRY_informed point
-(k_13 = its baseline 4.0, multiplier = 1.0) -- the TRY-informed PI optimum,
+kinetic sweep (enzyme burden ON; multiplier x the wild-type (A) values),
+marked with the opt_PI_TRY_informed point
+(k_13 = its baseline 4.0, multiplier = 0.75) -- the TRY-informed PI optimum,
 relay trial #1912 -- as a star in the blue the old opt_IRR figure used (the
 IRR study's HUE_COLORS[0] in plot_kin_opt_parameter_sets.py; that figure draws
 the relay campaign in RELAY_COLOR instead). The view spans the full grid:
@@ -130,7 +131,7 @@ BASELINE_MARKER = ('D', 'white', 7)   # (shape, fill color, size)
 # same as the old opt_IRR's (split_12d trial 1602). (The OPT_IRR_* names are
 # kept from the opt_IRR version of this plotter.)
 OPT_IRR_K13 = 4.0
-OPT_IRR_MULT = 1.0
+OPT_IRR_MULT = 0.75   # x wild-type (A), the sweep's multiplier basis since 2026-10-26
 OPT_IRR_COLOR = '#18C4DC'
 OPT_IRR_MARKER = ('*', OPT_IRR_COLOR, 15)   # (shape, fill color, size)
 
@@ -139,7 +140,7 @@ OPT_IRR_MARKER = ('*', OPT_IRR_COLOR, 15)   # (shape, fill color, size)
 x_label = r"$\mathbf{k}_{13}$"
 y_label = r"$\mathbf{inhib\_isobutanol\ multiplier}$"
 x_units = r"$\mathrm{g} \cdot \mathrm{L}^{-1} \cdot \mathrm{h}^{-1}$"
-y_units = r""   # dimensionless (x opt_PI_TRY_informed baseline of each family member)
+y_units = r""   # dimensionless (x wild-type (A) value of each family member)
 x_ticks = [0, 4, 8, 12, 16]   # full k_13 grid (see XLIM below)
 y_ticks = [0.75, 1.0, 1.25, 1.5]
 XLIM = (0.0, 16.0)    # view limit on k_13 (the grid runs 0.004 -> 16.0)
