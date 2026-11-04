@@ -1,0 +1,23 @@
+{
+  "scenario": "opt_PI_TRY_informed",
+  "separation_processes": [
+    "IBO_EtOH"
+  ],
+  "feeding_kwargs": {
+    "threshold_conc": 189.19244688495075,
+    "target_conc": 194.19244688495075
+  },
+  "max_n_spikes": 1,
+  "burden_on": true,
+  "n_glu_spikes": 1.0,
+  "tau": 40.84084084084084,
+  "tau_stop_aeration": 11.651651651651651,
+  "EtOH_titer": 40.63227325894434,
+  "IBO_titer": 39.64762788094534,
+  "cell_density": 14.191584645294283,
+  "MPSPs": {
+    "ethanol": 0.46075942236591033,
+    "isobutanol": 1.1124197306991652
+  },
+  "IRR": 0.27915895509643984
+}

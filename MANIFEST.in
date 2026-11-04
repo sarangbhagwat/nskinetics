@@ -26,8 +26,9 @@ include nskinetics/biorefineries/isobutanol/plots/voronoi/*.mjs
 include nskinetics/biorefineries/isobutanol/plots/voronoi/*.js
 include nskinetics/biorefineries/isobutanol/plots/voronoi/treemap.html
 
-# Never ship analysis results (analyses/results/ holds the ~87 MB local-only
-# publication set), figure outputs or node tooling. Prunes come after the
+# Never ship analysis results (analyses/results/, including the per-figure
+# manuscript folders under publication/ that git tracks), figure outputs or
+# node tooling. Prunes come after the
 # includes so they win.
 prune nskinetics/biorefineries/isobutanol/analyses/results
 prune nskinetics/biorefineries/isobutanol/plots/results

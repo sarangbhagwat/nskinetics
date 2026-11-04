@@ -74,7 +74,8 @@ setup(
         # never matches Excel '~$' lock files), small JSON/CSV inputs, the
         # analysis scripts (plain folders without __init__.py, so they ship
         # as data) and the plotting extras. analyses/results/ (including the
-        # ~87 MB local-only publication set) is never shipped: see
+        # git-tracked per-figure manuscript folders under publication/) is
+        # never shipped: see
         # exclude_package_data below and the prunes in MANIFEST.in.
         'nskinetics.biorefineries.isobutanol': [
             'data/parameter_distributions/parameter-distributions_*.xlsx',
