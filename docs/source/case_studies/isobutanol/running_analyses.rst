@@ -22,7 +22,7 @@ The API is on :doc:`/API/biorefineries`.
 Installation
 ------------
 
-The case study needs NSKinetics 0.7.0 or later. Until 0.7.0 is on PyPI,
+The case study needs NSKinetics 0.8.0 or later. Until 0.8.0 is on PyPI,
 install from the ``dev`` branch with the ``isobutanol`` extra (or
 ``requirements_isobutanol.txt``), then check it with smoke case 1:
 
