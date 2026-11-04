@@ -10,7 +10,7 @@ mixer, heat exchanger), a
 :class:`~nskinetics.units.FermentationSaccharomycesEthanolIsobutanol` fermentor
 driven by the shipped *S. cerevisiae* kinetic model, and a compressed-air
 aeration loop. The complete biorefinery built around this section ships with
-NSKinetics as the :doc:`isobutanol biorefinery case study
+NSKinetics as the :doc:`isobutanol biorefinery demonstration
 <../case_studies/isobutanol/index>`. This page runs the section end to end:
 build, simulate, change the fed-batch strategy, and inspect the reactor.
 Total simulation time is a few seconds once the imports are loaded; every

@@ -1,11 +1,11 @@
-Case Studies
-============
+Demonstrations
+==============
 
 The tutorials build kinetic models and run them inside a single process unit.
-The case studies go one step further: they plug an NSKinetics model into a
+The demonstrations go one step further: they plug an NSKinetics model into a
 complete process model with a techno-economic analysis (TEA), so a change to
 an enzyme capacity, a product tolerance or a feeding setpoint is priced all
-the way to the plant's selling price and rate of return. Each case study
+the way to the plant's selling price and rate of return. Each demonstration
 ships with NSKinetics as a subpackage of ``nskinetics.biorefineries``, with
 its flowsheet, scenarios and the scripts behind every analysis shown.
 

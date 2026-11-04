@@ -28,7 +28,7 @@ import sys
 sys.dont_write_bytecode = True
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-PY = r'C:\Users\saran\anaconda3\envs\IBO_2026\python.exe'
+PY = sys.executable
 DATA = os.path.join(HERE, 'data')
 OUT = os.path.join(HERE, 'output')
 JSON = os.path.join(DATA, 'tea_breakdowns_split12d_2026.09.24-17.48.json')

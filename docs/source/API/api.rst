@@ -3,7 +3,7 @@ API Reference
 
 The current public API of NSKinetics centers on the Tellurium/SBML workflow,
 the biosteam process bridge, and ready-made process section factories. The
-last page documents the isobutanol biorefinery that ships as a case study
+last page documents the isobutanol biorefinery that ships as a demonstration
 (``nskinetics.biorefineries.isobutanol``; optional dependencies).
 
 .. toctree::

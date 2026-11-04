@@ -3,7 +3,7 @@
 Running the analyses
 ====================
 
-How to install the case study, check an installation and run its scripts.
+How to install the demonstration, check an installation and run its scripts.
 The API is on :doc:`/API/biorefineries`.
 
 .. admonition:: Rules for every simulating run
@@ -22,7 +22,7 @@ The API is on :doc:`/API/biorefineries`.
 Installation
 ------------
 
-The case study needs NSKinetics 0.9.1 or later. Until 0.9.1 is on PyPI,
+The demonstration needs NSKinetics 0.9.1 or later. Until 0.9.1 is on PyPI,
 install from the ``dev`` branch with the ``isobutanol`` extra (or
 ``requirements_isobutanol.txt``), then check it with smoke case 1:
 

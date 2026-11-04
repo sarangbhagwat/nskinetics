@@ -8,7 +8,7 @@ Sugar preparation and fermentation
 
 :obj:`create_sugar_prep_and_fermentation_system` packages the sugar-solution
 preparation and fermentation section of the
-:doc:`isobutanol biorefinery case study </case_studies/isobutanol/index>`
+:doc:`isobutanol biorefinery demonstration </case_studies/isobutanol/index>`
 (whose flowsheet builds its fermentor ``V406`` with this factory) as a
 biosteam ``SystemFactory``: saccharified sugar slurry and seed culture in;
 fermentation vent, fermentation effluent, and two evaporator condensates
@@ -35,8 +35,8 @@ Beer stripper for ethanol + isobutanol beer
 step of recovering ethanol and isobutanol from a whole beer: a shortcut
 **beer stripper** that lifts every volatile off the corn solids, plus a
 matching chemical set and a standalone beer feed with the composition of
-the case study's scenario-B fermentation effluent (``P301-0``). The full
-solvent-free separation train of the case study is
+the demonstration's scenario-B fermentation effluent (``P301-0``). The full
+solvent-free separation train of the demonstration is
 :obj:`nskinetics.biorefineries.isobutanol.separations.create_separation_system`.
 
 .. autofunction:: create_ethanol_isobutanol_separation_chemicals

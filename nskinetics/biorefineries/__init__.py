@@ -5,7 +5,7 @@
 # This module is under the MIT open-source license. See
 # https://github.com/sarangbhagwat/nskinetics/blob/main/LICENSE
 # for license details.
-"""Complete biorefinery case studies built on NSKinetics.
+"""Complete biorefinery demonstrations built on NSKinetics.
 
 Each biorefinery is a subpackage that is imported explicitly, e.g.::
 

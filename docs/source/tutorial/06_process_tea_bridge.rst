@@ -243,7 +243,7 @@ validators that raise on negative concentrations or yields exceeding the
 theoretical maximum. ``FermentationSaccharomycesEthanolIsobutanol`` is what actually drives the
 *S. cerevisiae* fed-batch model from :doc:`05_real_model` inside a process
 flowsheet: the isobutanol biorefinery that ships with NSKinetics as a
-case study (``nskinetics.biorefineries.isobutanol``, a full corn biorefinery
+demonstration (``nskinetics.biorefineries.isobutanol``, a full corn biorefinery
 model built on `BioSTEAM <https://biosteam.readthedocs.io/>`_) instantiates
 one ``FermentationSaccharomycesEthanolIsobutanol`` unit wired to that exact kinetic model to drive its
 corn-to-ethanol(-and-isobutanol) fermentation step, feeding sized equipment
@@ -259,7 +259,7 @@ activate its own chemical set (``set_thermo=True``). The
 :doc:`quickstart <01_quickstart>` walks through it end to end, and
 :doc:`the API reference </API/processes>` documents every argument.
 
-The next step is the whole biorefinery. With the case study and its
+The next step is the whole biorefinery. With the demonstration and its
 optional dependencies installed (it needs NSKinetics 0.9.1 or later, the
 first release that ships ``nskinetics.biorefineries``; until 0.9.1 is on
 PyPI, install from source as described in :ref:`isobutanol-installation`),
@@ -275,5 +275,5 @@ solve give the plant's selling prices and rate of return:
    bundle = isobutanol.load_scenario('A')   # wild-type ethanol strain
    print(bundle['solve_TEA']())             # {'IRR': ..., 'MPSPs': {...}}
 
-The :doc:`isobutanol biorefinery case study </case_studies/isobutanol/index>`
+The :doc:`isobutanol biorefinery demonstration </case_studies/isobutanol/index>`
 walks through the process, its scenarios and the analyses built on it.

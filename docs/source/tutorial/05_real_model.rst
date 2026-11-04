@@ -6,7 +6,7 @@ A real fed-batch model
 same machinery on a **shipped, production-scale** model: the *S. cerevisiae*
 fed-batch fermentation SBML that ships inside the NSKinetics package and
 drives the fermentor of the
-:doc:`isobutanol biorefinery case study <../case_studies/isobutanol/index>`. It has
+:doc:`isobutanol biorefinery demonstration <../case_studies/isobutanol/index>`. It has
 ten floating species (glucose, ethanol, isobutanol, biomass, and six
 pathway intermediates) and dozens of kinetic parameters — the same shape of
 model as :doc:`04_fed_batch_feeding`'s toy example, just larger.

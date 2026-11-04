@@ -1,4 +1,4 @@
-.. _isobutanol-case-study:
+.. _isobutanol-demonstration:
 
 Isobutanol biorefinery
 ======================

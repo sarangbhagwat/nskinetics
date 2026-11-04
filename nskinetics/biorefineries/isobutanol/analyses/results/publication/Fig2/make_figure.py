@@ -20,9 +20,7 @@ import sys
 import subprocess
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-PY = r"C:\Users\saran\anaconda3\envs\IBO_2026\python.exe"
-if not os.path.exists(PY):
-    PY = sys.executable
+PY = sys.executable
 SCRIPT_DIR = os.path.join(HERE, 'code', 'models',
                           's_cerevisiae_ferm_fb_inhib_mod_ibo')
 DATA = os.path.join(HERE, 'data')

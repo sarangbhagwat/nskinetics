@@ -63,7 +63,7 @@ mixer, heat exchanger), a
 :class:`~nskinetics.units.FermentationSaccharomycesEthanolIsobutanol` fermentor
 driven by the shipped *S. cerevisiae* kinetic model, and a compressed-air
 aeration loop. The complete biorefinery built around this section ships with
-NSKinetics as the :doc:`isobutanol biorefinery case study
+NSKinetics as the :doc:`isobutanol biorefinery demonstration
 <case_studies/isobutanol/index>`. The interactive demo below runs the section
 end to end: build, simulate, change the fed-batch strategy, and inspect the
 reactor.
@@ -130,7 +130,7 @@ bridge behind ``V406``.
        The ideas behind NSKinetics
 
 
-    .. grid-item-card:: Case Studies
+    .. grid-item-card:: Demonstrations
        :text-align: center
        :link: case_studies/index
        :link-type: doc
@@ -185,7 +185,7 @@ To get the git version, use:
 
 Or download directly from the `GitHub page <https://github.com/sarangbhagwat/nskinetics>`__.
 
-The isobutanol biorefinery case study needs NSKinetics 0.9.1 or later (the
+The isobutanol biorefinery demonstration needs NSKinetics 0.9.1 or later (the
 first release that ships ``nskinetics.biorefineries``) with its optional
 dependencies (the ``isobutanol`` extra); until 0.9.1 is on PyPI, install it
 from source. See :ref:`isobutanol-installation`.

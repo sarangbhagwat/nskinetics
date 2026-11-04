@@ -1,4 +1,4 @@
-# Optional dependencies of the isobutanol biorefinery case study
+# Optional dependencies of the isobutanol biorefinery demonstration
 # (nskinetics.biorefineries.isobutanol), on top of requirements_install.txt.
 # Mirrors extras_require['isobutanol'] in setup.py -- keep the two in sync;
 # `pip install "nskinetics[isobutanol]"` installs the same set.

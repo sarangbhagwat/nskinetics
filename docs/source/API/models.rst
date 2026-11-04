@@ -32,7 +32,7 @@ with no product or cross-product term of any kind, so it carries no strip at
 all. ``r17`` is the Adh6 reductase, a structural mirror of ``r6``, and it
 carries the ethanol and acetate strips together with its own isobutanol
 terms ``K_17e``/``k_17r``. The lumped step's ``K_16i``/``k_16r`` and
-``k_16ia``/``k_16ie`` stay declared at 0 for the isobutanol case study's
+``k_16ia``/``k_16ie`` stay declared at 0 for the isobutanol demonstration's
 parameter workbooks that set them, but do nothing; the live knobs with those meanings are ``K_17e``
 and ``k_17ia``/``k_17ie``.
 
@@ -40,7 +40,7 @@ and ``k_17ia``/``k_17ie``.
 changes only the Ehrlich rate constants between its two panels, never the
 fed-batch feeding strategy, so panel **b** is scenario A's process with the
 Ehrlich branch switched on -- not the full scenario-B configuration of the
-:doc:`isobutanol biorefinery case study </case_studies/isobutanol/index>`.
+:doc:`isobutanol biorefinery demonstration </case_studies/isobutanol/index>`.
 
 .. currentmodule:: nskinetics.models.s_cerevisiae_ferm_fb_inhib_mod_ibo.flux_map_spec
 

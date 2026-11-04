@@ -13,5 +13,5 @@
   nine breakdown CSVs are unchanged. The PDF md5 varied per run before (it carried the render-time
   CreationDate). It is now pinned to D:20261002190900Z.
 - None of these files lives in the old theme folders (now
-  publication/_archive_pre_reorg/<theme>/). The manuscript-side copy is in
-  C:\Users\saran\Documents\Academia\Manuscripts_Postdoc\01_NSKinetics\Figures and the BP results root.
+  publication/_archive_pre_reorg/<theme>/). The manuscript-side copy is kept outside
+  this repository, with the Bioindustrial-Park results root.

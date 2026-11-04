@@ -29,9 +29,7 @@ import sys
 sys.dont_write_bytecode = True
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-PYTHON = r'C:\Users\saran\anaconda3\envs\IBO_2026\python.exe'
-if not os.path.exists(PYTHON):
-    PYTHON = sys.executable
+PYTHON = sys.executable
 CODE = os.path.join(HERE, 'code')
 SCRIPT = os.path.join(CODE, 'nskinetics', 'biorefineries', 'isobutanol',
                       'plots', 'plot_kin_opt_parameter_sets.py')

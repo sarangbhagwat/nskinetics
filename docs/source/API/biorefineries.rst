@@ -1,5 +1,5 @@
-Isobutanol biorefinery (case study)
-===================================
+Isobutanol biorefinery (demonstration)
+======================================
 
 ``nskinetics.biorefineries.isobutanol`` is the corn-to-ethanol and
 isobutanol biorefinery of the :doc:`/case_studies/isobutanol/index`: a

@@ -32,7 +32,7 @@ campaign CSVs are not shipped, so a missing one fails before the build.
 
 Run (ASK-FIRST; two simulations, a few minutes; one fresh process per
 scenario, one at a time, never next to another simulation):
-  & "C:/Users/saran/anaconda3/envs/IBO_2026/python.exe" analyses/opt_scenarios/verify_opt_scenarios.py opt_PI_TRY_informed
+  python analyses/opt_scenarios/verify_opt_scenarios.py opt_PI_TRY_informed
 """
 import os
 import sys

@@ -28,7 +28,7 @@ import subprocess
 sys.dont_write_bytecode = True
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-PY = r'C:\Users\saran\anaconda3\envs\IBO_2026\python.exe'
+PY = sys.executable
 DATA = os.path.join(HERE, 'data')
 OUT = os.path.join(HERE, 'output')
 STEM = 'k_3_try_informed_sweep_etoh_yield'

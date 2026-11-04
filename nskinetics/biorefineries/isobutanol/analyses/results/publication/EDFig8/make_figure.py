@@ -21,9 +21,7 @@ import sys
 sys.dont_write_bytecode = True
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-PYTHON = r'C:\Users\saran\anaconda3\envs\IBO_2026\python.exe'
-if not os.path.exists(PYTHON):
-    PYTHON = sys.executable
+PYTHON = sys.executable
 SCRIPT = os.path.join(HERE, 'code', 'plots', 'plot_k13_inhib_isobutanol_opt_PI_TRY_informed.py')
 DATA = os.path.join(HERE, 'data')
 PRODUCED = os.path.join(DATA, 'publication', 'Kinetic-sweeps')

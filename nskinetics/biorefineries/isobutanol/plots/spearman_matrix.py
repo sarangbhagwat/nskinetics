@@ -16,7 +16,7 @@ Run as a script to draw the newest scenario-A workbook in the results root::
 
 Created on Fri Feb 20 01:51:07 2026
 
-@author: saran
+@author: Sarang S. Bhagwat
 """
 import argparse
 import glob
