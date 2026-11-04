@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Figure 1 – Framework overview</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Arimo:ital,wght@0,400;0,700;1,400;1,700&amp;display=swap">
+<style>
+body{margin:0;background:#ffffff;font-family:Arimo,Arial,'Liberation Sans',Helvetica,sans-serif;color:#1f1f1f}
+</style>
+</helmet>
+<div style="position: relative; width: 1440px; height: 846px; overflow: hidden; background: #ffffff; font-family: Arimo, Arial, 'Liberation Sans', Helvetica, sans-serif; color: #1f1f1f">
+
+<svg style="position: absolute; left: 0px; top: 0px; font-family: Arimo, Arial, 'Liberation Sans', Helvetica, sans-serif" width="1440" height="846" viewBox="0 0 1440 846" aria-hidden="true">
+<rect x="36" y="20" width="1092" height="238" rx="14" fill="#FBF3D9" stroke="#E2C57A" stroke-width="1.5"></rect>
+<path d="M1154 20 H1390 A14 14 0 0 1 1404 34 V812 A14 14 0 0 1 1390 826 H602 A14 14 0 0 1 588 812 V596 A14 14 0 0 1 602 582 H1126 A14 14 0 0 0 1140 568 V34 A14 14 0 0 1 1154 20 Z" fill="#EEF8F9" stroke="#A3D6DD" stroke-width="1.5"></path>
+<path d="M50 270 H286 A14 14 0 0 1 300 284 V568 A14 14 0 0 0 314 582 H562 A14 14 0 0 1 576 596 V812 A14 14 0 0 1 562 826 H50 A14 14 0 0 1 36 812 V284 A14 14 0 0 1 50 270 Z" fill="#FCE6D6" stroke="#E8A77C" stroke-width="1.5"></path>
+
+<path d="M288 152 H316 M564 152 H592 M840 152 H868 M1116 152 H1144" fill="none" stroke="#3a3a3a" stroke-width="2.5"></path>
+<polygon points="326,152 313,146 313,158" fill="#3a3a3a"></polygon>
+<polygon points="602,152 589,146 589,158" fill="#3a3a3a"></polygon>
+<polygon points="878,152 865,146 865,158" fill="#3a3a3a"></polygon>
+<polygon points="1154,152 1141,146 1141,158" fill="#3a3a3a"></polygon>
+<path d="M1330 246 V586" fill="none" stroke="#3a3a3a" stroke-width="2.5"></path>
+<polygon points="1330,596 1324,583 1336,583" fill="#3a3a3a"></polygon>
+<path d="M1152 688 H1124 M876 688 H848 M600 688 H572 M324 688 H296" fill="none" stroke="#3a3a3a" stroke-width="2.5"></path>
+<polygon points="1114,688 1127,682 1127,694" fill="#3a3a3a"></polygon>
+<polygon points="838,688 851,682 851,694" fill="#3a3a3a"></polygon>
+<polygon points="562,688 575,682 575,694" fill="#3a3a3a"></polygon>
+<polygon points="286,688 299,682 299,694" fill="#3a3a3a"></polygon>
+<path d="M110 260 V594" fill="none" stroke="#C4560F" stroke-width="4.5" stroke-dasharray="12 7"></path>
+<polygon points="110,244 100.5,262 119.5,262" fill="#C4560F"></polygon>
+
+<path d="M328 264 V272 H836 V264" fill="none" stroke="#6b6b6b" stroke-width="1.5"></path>
+<text x="582" y="292" text-anchor="middle" font-size="15" fill="#3a3a3a"><tspan font-weight="700">NSKinetics</tspan> · kinetic models embedded in unit operations</text>
+<path d="M604 306 V314 H1112 V306" fill="none" stroke="#6b6b6b" stroke-width="1.5"></path>
+<text x="858" y="334" text-anchor="middle" font-size="15" fill="#3a3a3a"><tspan font-weight="700">BioSTEAM</tspan> · facility design, simulation &amp; techno-economic analysis (TEA)</text>
+
+<rect x="328" y="350" width="784" height="216" rx="12" fill="#ffffff" stroke="#E4AE87" stroke-width="1.5"></rect>
+<path d="M433 566 L444 576 L455 566" fill="#ffffff" stroke="#E4AE87" stroke-width="1.5"></path>
+<path d="M434.5 566 H453.5" fill="none" stroke="#ffffff" stroke-width="2.5"></path>
+<path d="M590 392 V552" fill="none" stroke="#E4AE87" stroke-width="1.2" stroke-dasharray="4 4"></path>
+
+<g transform="translate(342 0)">
+<path d="M20 398 V492 H228" fill="none" stroke="#3a3a3a" stroke-width="1.4"></path>
+<polygon points="20,393 16.5,401 23.5,401" fill="#3a3a3a"></polygon>
+<polygon points="233,492 225,488.5 225,495.5" fill="#3a3a3a"></polygon>
+<text transform="translate(11 445) rotate(-90)" text-anchor="middle" font-size="14" fill="#444444">objective</text>
+<text x="228" y="508" text-anchor="end" font-size="14" fill="#444444">design space</text>
+<path d="M22.0 478.2 L23.4 478.9 L24.7 479.3 L26.1 477.2 L27.4 475.2 L28.8 476.5 L30.1 480.2 L31.5 483.7 L32.8 485.5 L34.2 484.5 L35.6 481.9 L36.9 480.3 L38.3 480.8 L39.6 481.7 L41.0 480.5 L42.3 477.4 L43.7 475.1 L45.0 476.2 L46.4 479.9 L47.8 482.7 L49.1 482.2 L50.5 479.6 L51.8 477.4 L53.2 475.1 L54.5 472.5 L55.9 471.0 L57.2 468.4 L58.6 464.0 L60.0 461.5 L61.3 461.9 L62.7 461.7 L64.0 458.6 L65.4 454.3 L66.7 452.4 L68.1 453.8 L69.4 455.6 L70.8 454.3 L72.2 449.7 L73.5 445.4 L74.9 444.3 L76.2 445.9 L77.6 447.4 L78.9 446.7 L80.3 444.3 L81.7 443.3 L83.0 448.3 L84.4 457.2 L85.7 463.5 L87.1 465.6 L88.4 466.8 L89.8 469.3 L91.1 472.8 L92.5 475.1 L93.9 474.9 L95.2 473.5 L96.6 473.3 L97.9 475.2 L99.3 478.0 L100.6 479.6 L102.0 479.5 L103.3 479.3 L104.7 480.6 L106.1 483.2 L107.4 484.1 L108.8 481.0 L110.1 476.5 L111.5 475.8 L112.8 478.3 L114.2 480.5 L115.5 480.4 L116.9 478.3 L118.3 476.3 L119.6 477.1 L121.0 480.4 L122.3 483.2 L123.7 482.4 L125.0 478.7 L126.4 474.9 L127.7 472.8 L129.1 470.7 L130.5 465.2 L131.8 455.5 L133.2 444.9 L134.5 436.8 L135.9 430.1 L137.2 422.8 L138.6 417.4 L139.9 414.7 L141.3 413.5 L142.7 415.0 L144.0 418.7 L145.4 421.4 L146.7 421.8 L148.1 422.8 L149.4 427.5 L150.8 436.0 L152.1 444.6 L153.5 450.6 L154.9 454.7 L156.2 459.8 L157.6 467.1 L158.9 474.6 L160.3 479.2 L161.6 479.9 L163.0 477.9 L164.3 475.6 L165.7 476.1 L167.1 479.2 L168.4 480.2 L169.8 478.4 L171.1 477.0 L172.5 478.1 L173.8 480.6 L175.2 482.2 L176.6 482.0 L177.9 481.2 L179.3 481.6 L180.6 483.4 L182.0 484.8 L183.3 483.9 L184.7 481.3 L186.0 479.2 L187.4 479.3 L188.8 481.0 L190.1 481.4 L191.5 478.4 L192.8 474.7 L194.2 476.5 L195.5 483.1 L196.9 488.2 L198.2 488.2 L199.6 487.2 L201.0 485.0 L202.3 485.2 L203.7 486.9 L205.0 487.0 L206.4 484.1 L207.7 480.6 L209.1 480.4 L210.4 484.1 L211.8 488.2 L213.2 488.2 L214.5 488.2 L215.9 488.2 L217.2 488.2 L218.6 488.2 L219.9 488.1 L221.3 483.9 L222.6 482.8 L224.0 484.0" fill="none" stroke="#3a3a3a" stroke-width="1.8" stroke-linejoin="round"></path>
+<g fill="#22B5C8" fill-opacity="0.85">
+<circle cx="101.9" cy="480.5" r="2.6"></circle><circle cx="55.5" cy="472.1" r="2.6"></circle><circle cx="85.5" cy="464.6" r="2.6"></circle><circle cx="75.6" cy="447.7" r="2.6"></circle><circle cx="72.5" cy="448.8" r="2.6"></circle><circle cx="60.9" cy="462.2" r="2.6"></circle><circle cx="78.9" cy="451.3" r="2.6"></circle><circle cx="106.8" cy="484.2" r="2.6"></circle><circle cx="83.6" cy="456.0" r="2.6"></circle>
+</g>
+<circle cx="81.3" cy="443.1" r="5.5" fill="#ffffff" stroke="#0E97A8" stroke-width="2.2"></circle>
+<text x="81" y="431" text-anchor="middle" font-size="14" fill="#0B7F8F">local optimum</text>
+</g>
+
+<g transform="translate(606 0)">
+<path d="M20 398 V492 H228" fill="none" stroke="#3a3a3a" stroke-width="1.4"></path>
+<polygon points="20,393 16.5,401 23.5,401" fill="#3a3a3a"></polygon>
+<polygon points="233,492 225,488.5 225,495.5" fill="#3a3a3a"></polygon>
+<path d="M22.0 478.2 L23.4 478.9 L24.7 479.3 L26.1 477.2 L27.4 475.2 L28.8 476.5 L30.1 480.2 L31.5 483.7 L32.8 485.5 L34.2 484.5 L35.6 481.9 L36.9 480.3 L38.3 480.8 L39.6 481.7 L41.0 480.5 L42.3 477.4 L43.7 475.1 L45.0 476.2 L46.4 479.9 L47.8 482.7 L49.1 482.2 L50.5 479.6 L51.8 477.4 L53.2 475.1 L54.5 472.5 L55.9 471.0 L57.2 468.4 L58.6 464.0 L60.0 461.5 L61.3 461.9 L62.7 461.7 L64.0 458.6 L65.4 454.3 L66.7 452.4 L68.1 453.8 L69.4 455.6 L70.8 454.3 L72.2 449.7 L73.5 445.4 L74.9 444.3 L76.2 445.9 L77.6 447.4 L78.9 446.7 L80.3 444.3 L81.7 443.3 L83.0 448.3 L84.4 457.2 L85.7 463.5 L87.1 465.6 L88.4 466.8 L89.8 469.3 L91.1 472.8 L92.5 475.1 L93.9 474.9 L95.2 473.5 L96.6 473.3 L97.9 475.2 L99.3 478.0 L100.6 479.6 L102.0 479.5 L103.3 479.3 L104.7 480.6 L106.1 483.2 L107.4 484.1 L108.8 481.0 L110.1 476.5 L111.5 475.8 L112.8 478.3 L114.2 480.5 L115.5 480.4 L116.9 478.3 L118.3 476.3 L119.6 477.1 L121.0 480.4 L122.3 483.2 L123.7 482.4 L125.0 478.7 L126.4 474.9 L127.7 472.8 L129.1 470.7 L130.5 465.2 L131.8 455.5 L133.2 444.9 L134.5 436.8 L135.9 430.1 L137.2 422.8 L138.6 417.4 L139.9 414.7 L141.3 413.5 L142.7 415.0 L144.0 418.7 L145.4 421.4 L146.7 421.8 L148.1 422.8 L149.4 427.5 L150.8 436.0 L152.1 444.6 L153.5 450.6 L154.9 454.7 L156.2 459.8 L157.6 467.1 L158.9 474.6 L160.3 479.2 L161.6 479.9 L163.0 477.9 L164.3 475.6 L165.7 476.1 L167.1 479.2 L168.4 480.2 L169.8 478.4 L171.1 477.0 L172.5 478.1 L173.8 480.6 L175.2 482.2 L176.6 482.0 L177.9 481.2 L179.3 481.6 L180.6 483.4 L182.0 484.8 L183.3 483.9 L184.7 481.3 L186.0 479.2 L187.4 479.3 L188.8 481.0 L190.1 481.4 L191.5 478.4 L192.8 474.7 L194.2 476.5 L195.5 483.1 L196.9 488.2 L198.2 488.2 L199.6 487.2 L201.0 485.0 L202.3 485.2 L203.7 486.9 L205.0 487.0 L206.4 484.1 L207.7 480.6 L209.1 480.4 L210.4 484.1 L211.8 488.2 L213.2 488.2 L214.5 488.2 L215.9 488.2 L217.2 488.2 L218.6 488.2 L219.9 488.1 L221.3 483.9 L222.6 482.8 L224.0 484.0" fill="none" stroke="#C9C9C9" stroke-width="1.4" stroke-linejoin="round" transform="matrix(1 0 0 0.8 0 97.6)" vector-effect="non-scaling-stroke"></path>
+<path d="M22.0 422.2 L27.2 421.5 L32.4 421.4 L37.5 422.0 L42.7 423.3 L47.9 425.1 L53.1 427.5 L58.3 430.4 L63.4 433.6 L68.6 437.0 L73.8 440.7 L79.0 444.5 L84.2 448.2 L89.3 451.8 L94.5 455.4 L99.7 458.6 L104.9 461.7 L110.1 464.5 L115.2 467.0 L120.4 469.1 L125.6 471.0 L130.8 472.7 L135.9 474.0 L141.1 475.2 L146.3 476.1 L151.5 476.9 L156.7 477.5 L161.8 478.0 L167.0 478.4 L172.2 478.6 L177.4 478.9 L182.6 479.0 L187.7 479.1 L192.9 479.2 L198.1 479.3 L203.3 479.3 L208.5 479.4 L213.6 479.4 L218.8 479.4 L224.0 479.4" fill="none" stroke="#8E63BD" stroke-width="2" stroke-dasharray="6 3"></path>
+<path d="M22.0 483.0 L27.2 482.9 L32.4 482.9 L37.5 482.9 L42.7 482.9 L47.9 482.9 L53.1 482.8 L58.3 482.8 L63.4 482.7 L68.6 482.6 L73.8 482.5 L79.0 482.2 L84.2 482.0 L89.3 481.6 L94.5 481.1 L99.7 480.5 L104.9 479.6 L110.1 478.6 L115.2 477.4 L120.4 475.8 L125.6 474.0 L130.8 471.8 L135.9 469.2 L141.1 466.3 L146.3 463.1 L151.5 459.5 L156.7 455.6 L161.8 451.5 L167.0 447.2 L172.2 442.9 L177.4 438.6 L182.6 434.4 L187.7 430.6 L192.9 427.1 L198.1 424.2 L203.3 422.0 L208.5 420.4 L213.6 419.7 L218.8 419.7 L224.0 420.6" fill="none" stroke="#E8743A" stroke-width="2" stroke-dasharray="2 2"></path>
+<g fill="#8E63BD">
+<circle cx="59.4" cy="431.0" r="2.4"></circle><circle cx="133.7" cy="473.5" r="2.4"></circle><circle cx="95.3" cy="455.9" r="2.4"></circle><circle cx="81.0" cy="445.9" r="2.4"></circle><circle cx="118.8" cy="468.5" r="2.4"></circle><circle cx="110.5" cy="464.7" r="2.4"></circle><circle cx="68.9" cy="437.2" r="2.4"></circle>
+</g>
+<g fill="#E8743A">
+<circle cx="181.1" cy="435.5" r="2.4"></circle><circle cx="201.5" cy="422.7" r="2.4"></circle><circle cx="152.4" cy="458.8" r="2.4"></circle><circle cx="193.8" cy="426.6" r="2.4"></circle><circle cx="111.6" cy="478.3" r="2.4"></circle><circle cx="165.0" cy="448.6" r="2.4"></circle>
+</g>
+<circle cx="30.1" cy="421.4" r="5" fill="#ffffff" stroke="#8E63BD" stroke-width="2.2"></circle>
+<circle cx="215.9" cy="419.6" r="5" fill="#ffffff" stroke="#E8743A" stroke-width="2.2"></circle>
+<text x="40" y="404" font-size="14" fill="#6F45A0">ethanol TRY</text>
+<text x="226" y="404" text-anchor="end" font-size="14" fill="#B8521D">isobutanol TRY</text>
+</g>
+
+<path d="M838 446 H868" fill="none" stroke="#0F6F7C" stroke-width="2"></path>
+<polygon points="878,446 867,440.5 867,451.5" fill="#0F6F7C"></polygon>
+<text x="858" y="437" text-anchor="middle" font-size="14" fill="#0F6F7C">seed</text>
+
+<g transform="translate(870 0)">
+<path d="M20 398 V492 H228" fill="none" stroke="#3a3a3a" stroke-width="1.4"></path>
+<polygon points="20,393 16.5,401 23.5,401" fill="#3a3a3a"></polygon>
+<polygon points="233,492 225,488.5 225,495.5" fill="#3a3a3a"></polygon>
+<path d="M22.0 478.2 L23.4 478.9 L24.7 479.3 L26.1 477.2 L27.4 475.2 L28.8 476.5 L30.1 480.2 L31.5 483.7 L32.8 485.5 L34.2 484.5 L35.6 481.9 L36.9 480.3 L38.3 480.8 L39.6 481.7 L41.0 480.5 L42.3 477.4 L43.7 475.1 L45.0 476.2 L46.4 479.9 L47.8 482.7 L49.1 482.2 L50.5 479.6 L51.8 477.4 L53.2 475.1 L54.5 472.5 L55.9 471.0 L57.2 468.4 L58.6 464.0 L60.0 461.5 L61.3 461.9 L62.7 461.7 L64.0 458.6 L65.4 454.3 L66.7 452.4 L68.1 453.8 L69.4 455.6 L70.8 454.3 L72.2 449.7 L73.5 445.4 L74.9 444.3 L76.2 445.9 L77.6 447.4 L78.9 446.7 L80.3 444.3 L81.7 443.3 L83.0 448.3 L84.4 457.2 L85.7 463.5 L87.1 465.6 L88.4 466.8 L89.8 469.3 L91.1 472.8 L92.5 475.1 L93.9 474.9 L95.2 473.5 L96.6 473.3 L97.9 475.2 L99.3 478.0 L100.6 479.6 L102.0 479.5 L103.3 479.3 L104.7 480.6 L106.1 483.2 L107.4 484.1 L108.8 481.0 L110.1 476.5 L111.5 475.8 L112.8 478.3 L114.2 480.5 L115.5 480.4 L116.9 478.3 L118.3 476.3 L119.6 477.1 L121.0 480.4 L122.3 483.2 L123.7 482.4 L125.0 478.7 L126.4 474.9 L127.7 472.8 L129.1 470.7 L130.5 465.2 L131.8 455.5 L133.2 444.9 L134.5 436.8 L135.9 430.1 L137.2 422.8 L138.6 417.4 L139.9 414.7 L141.3 413.5 L142.7 415.0 L144.0 418.7 L145.4 421.4 L146.7 421.8 L148.1 422.8 L149.4 427.5 L150.8 436.0 L152.1 444.6 L153.5 450.6 L154.9 454.7 L156.2 459.8 L157.6 467.1 L158.9 474.6 L160.3 479.2 L161.6 479.9 L163.0 477.9 L164.3 475.6 L165.7 476.1 L167.1 479.2 L168.4 480.2 L169.8 478.4 L171.1 477.0 L172.5 478.1 L173.8 480.6 L175.2 482.2 L176.6 482.0 L177.9 481.2 L179.3 481.6 L180.6 483.4 L182.0 484.8 L183.3 483.9 L184.7 481.3 L186.0 479.2 L187.4 479.3 L188.8 481.0 L190.1 481.4 L191.5 478.4 L192.8 474.7 L194.2 476.5 L195.5 483.1 L196.9 488.2 L198.2 488.2 L199.6 487.2 L201.0 485.0 L202.3 485.2 L203.7 486.9 L205.0 487.0 L206.4 484.1 L207.7 480.6 L209.1 480.4 L210.4 484.1 L211.8 488.2 L213.2 488.2 L214.5 488.2 L215.9 488.2 L217.2 488.2 L218.6 488.2 L219.9 488.1 L221.3 483.9 L222.6 482.8 L224.0 484.0" fill="none" stroke="#3a3a3a" stroke-width="1.8" stroke-linejoin="round"></path>
+<g fill-opacity="1">
+<circle cx="58.8" cy="465.1" r="2.8"fill="#8E63BD"></circle><circle cx="64.2" cy="459.0" r="2.8"fill="#E8743A"></circle><circle cx="65.9" cy="453.6" r="2.8"fill="#8E63BD"></circle><circle cx="102.0" cy="479.5" r="2.8"fill="#E8743A"></circle><circle cx="136.0" cy="430.6" r="2.8"fill="#8E63BD"></circle><circle cx="147.0" cy="423.9" r="2.8"fill="#E8743A"></circle><circle cx="170.9" cy="477.7" r="2.8"fill="#8E63BD"></circle><circle cx="191.0" cy="482.1" r="2.8"fill="#E8743A"></circle><circle cx="204.7" cy="487.3" r="2.8"fill="#E8743A"></circle>
+</g>
+<g fill="#0F6F7C" fill-opacity="0.9">
+<circle cx="129.2" cy="474.0" r="2.6"></circle><circle cx="153.3" cy="453.6" r="2.6"></circle><circle cx="146.7" cy="424.3" r="2.6"></circle><circle cx="149.4" cy="429.1" r="2.6"></circle><circle cx="143.9" cy="420.8" r="2.6"></circle><circle cx="136.9" cy="429.0" r="2.6"></circle><circle cx="135.7" cy="436.5" r="2.6"></circle>
+</g>
+<circle cx="141.4" cy="413.4" r="6" fill="#ffffff" stroke="#0F6F7C" stroke-width="2.4"></circle>
+<text x="141" y="402" text-anchor="middle" font-size="14" fill="#0F6F7C">global optimum</text>
+</g>
+</svg>
+
+<div style="position: absolute; left: 52px; top: 28px; font-size: 19px; font-weight: 700; line-height: 24px; color: #8A5A00">Experiments &amp; mechanistic modeling from cell to facility</div>
+<div style="position: absolute; left: 52px; top: 792px; font-size: 19px; font-weight: 700; line-height: 24px; color: #B04A0C">Optimization &amp; decision-making</div>
+<div style="position: absolute; left: 604px; top: 792px; font-size: 19px; font-weight: 700; line-height: 24px; color: #0B6672">Facility-scale system analysis</div>
+
+<div style="position: absolute; left: 126px; top: 370px; width: 160px; display: flex; flex-direction: column; gap: 5px">
+<div style="font-size: 17px; font-weight: 700; line-height: 20px; color: #B04A0C">Inform experimental work</div>
+<div style="width: 150px; font-size: 14px; font-style: italic; line-height: 17px; color: #444444">prioritized strain &amp; process targets</div>
+</div>
+<div style="position: absolute; left: 1192px; top: 404px; width: 130px; text-align: right; font-size: 14px; font-style: italic; line-height: 17px; color: #444444">cost-optimal feeding policy adopted</div>
+
+<div style="position: absolute; left: 344px; top: 360px; font-size: 16px; font-weight: 700; line-height: 20px; color: #B04A0C">Process-level objectives guide system-level optimization</div>
+<div style="position: absolute; left: 900px; top: 362px; width: 198px; text-align: right; font-size: 14px; font-style: italic; line-height: 17px; color: #444444">schematic of step 9</div>
+<div style="position: absolute; left: 354px; top: 521px; width: 228px; text-align: center; font-size: 14px; line-height: 17px; color: #333333">Profitability alone: trapped in an ethanol-only local optimum</div>
+<div style="position: absolute; left: 618px; top: 521px; width: 228px; text-align: center; font-size: 14px; line-height: 17px; color: #333333">TRY campaigns cross high-profit regions but end at low-profit optima</div>
+<div style="position: absolute; left: 882px; top: 521px; width: 228px; text-align: center; font-size: 14px; line-height: 17px; color: #333333">Seeding with TRY trials reveals the co-production global optimum</div>
+
+<div style="position: absolute; left: 52px; top: 62px; width: 232px; height: 180px; box-sizing: border-box; padding: 10px 12px; background: #ffffff; border: 2px dashed #3a3a3a; border-radius: 10px; display: flex; flex-direction: column; align-items: center; gap: 4px">
+<div style="position: absolute; left: 7px; top: 7px; width: 24px; height: 24px; box-sizing: border-box; border: 1.5px solid #3a3a3a; border-radius: 50%; background: #ffffff; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: #1f1f1f">1</div>
+<svg style="flex-shrink: 0" width="126" height="58" viewBox="0 0 108 50" aria-hidden="true">
+<path d="M2 8 H26" fill="none" stroke="#3a3a3a" stroke-width="1.3"></path>
+<path d="M5 8 V3.5 H8.5" fill="none" stroke="#3a3a3a" stroke-width="1.2"></path>
+<polygon points="10.8,3.5 8,1.6 8,5.4" fill="#3a3a3a"></polygon>
+<polygon points="11.5,5 20,5 23.5,8 20,11 11.5,11" fill="#E8A33D" stroke="#3a3a3a" stroke-width="1.1" stroke-linejoin="round"></polygon>
+<path d="M13 12.5 V15.5" fill="none" stroke="#3a3a3a" stroke-width="1.3"></path>
+<polygon points="13,18.6 10.6,15 15.4,15" fill="#3a3a3a"></polygon>
+<circle cx="30.5" cy="21" r="5.5" fill="#F7CDB0" stroke="#3a3a3a" stroke-width="1.5"></circle>
+<ellipse cx="16.5" cy="31.5" rx="14" ry="12" fill="#F7CDB0" stroke="#3a3a3a" stroke-width="1.5"></ellipse>
+<path d="M12.1 36.4 A6.2 6.2 0 1 1 20.9 36.4" fill="none" stroke="#3a3a3a" stroke-width="1.7" stroke-linecap="round"></path><circle cx="16.5" cy="32" r="4.3" fill="#E8A33D" stroke="#3a3a3a" stroke-width="1.1"></circle><path d="M16.5 32 L14.1 29.1" stroke="#3a3a3a" stroke-width="1.7" stroke-linecap="round"></path>
+<path d="M33 31.5 H38.5" fill="none" stroke="#3a3a3a" stroke-width="1.4"></path>
+<polygon points="42.5,31.5 38,28.7 38,34.3" fill="#3a3a3a"></polygon>
+<g transform="translate(39 0)">
+<path d="M10.4 30 H29.6 L33.9 39.9 A2.8 2.8 0 0 1 31.3 44 H8.7 A2.8 2.8 0 0 1 6.1 39.9 Z" fill="#F6DFA6"></path>
+<path d="M13.5 5 H26.5 M16 5 V17 L6.1 39.9 A2.8 2.8 0 0 0 8.7 44 H31.3 A2.8 2.8 0 0 0 33.9 39.9 L24 17 V5" fill="none" stroke="#3a3a3a" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"></path>
+<circle cx="17" cy="36" r="1.6" fill="#ffffff" stroke="#3a3a3a" stroke-width="0.8"></circle>
+<circle cx="23" cy="33" r="1.2" fill="#ffffff" stroke="#3a3a3a" stroke-width="0.8"></circle>
+</g>
+<g transform="translate(37 0)">
+<path d="M42 8 V44 H68" fill="none" stroke="#3a3a3a" stroke-width="1.4"></path>
+<path d="M44 41 C50 40 52 36 55 28 C58 20 61 15 67 14" fill="none" stroke="#C9A23F" stroke-width="1.6"></path>
+<circle cx="46" cy="40.5" r="2" fill="#3a3a3a"></circle><circle cx="52" cy="37" r="2" fill="#3a3a3a"></circle><circle cx="56.5" cy="26" r="2" fill="#3a3a3a"></circle><circle cx="61" cy="18" r="2" fill="#3a3a3a"></circle><circle cx="66" cy="14.5" r="2" fill="#3a3a3a"></circle>
+</g>
+</svg>
+<div style="height: 40px; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 17px; font-weight: 700; line-height: 20px; color: #1f1f1f">Experiments</div>
+<div style="text-align: center; font-size: 14px; font-style: italic; line-height: 17px; color: #444444">e.g., engineer enzyme expression &amp; tolerance; calibrate with <span style="white-space: nowrap">time-course</span> data</div>
+</div>
+
+<div style="position: absolute; left: 328px; top: 62px; width: 232px; height: 180px; box-sizing: border-box; padding: 10px 12px; background: #ffffff; border: 2px solid #3a3a3a; border-radius: 10px; display: flex; flex-direction: column; align-items: center; gap: 4px">
+<div style="position: absolute; left: 7px; top: 7px; width: 24px; height: 24px; box-sizing: border-box; border: 1.5px solid #3a3a3a; border-radius: 50%; background: #ffffff; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: #1f1f1f">2</div>
+<svg style="flex-shrink: 0" width="84" height="58" viewBox="0 0 72 50" aria-hidden="true">
+<path d="M12 39 V16 H29.5" fill="none" stroke="#D2601A" stroke-width="1.6"></path>
+<path d="M30 12.5 V19.5" fill="none" stroke="#D2601A" stroke-width="2.2"></path>
+<path d="M36 12.5 V16.5" stroke="#3a3a3a" stroke-width="1.5"></path>
+<polygon points="36,20.3 32.8,16 39.2,16" fill="#3a3a3a"></polygon>
+<path d="M31.9 29.7 L26.1 34.9" stroke="#3a3a3a" stroke-width="1.5"></path>
+<polygon points="21.3,39.1 27.0,38.0 23.0,33.6" fill="#3a3a3a"></polygon>
+<path d="M40.1 29.7 L45.9 34.9" stroke="#3a3a3a" stroke-width="1.5"></path>
+<polygon points="50.7,39.1 45.0,38.0 49.0,33.6" fill="#3a3a3a"></polygon>
+<circle cx="36" cy="7" r="5.5" fill="#EAF2FA" stroke="#3a3a3a" stroke-width="1.4"></circle>
+<circle cx="36" cy="26" r="5.5" fill="#ffffff" stroke="#3a3a3a" stroke-width="1.4"></circle>
+<circle cx="17" cy="43" r="5.5" fill="#FBEEE4" stroke="#3a3a3a" stroke-width="1.4"></circle>
+<circle cx="55" cy="43" r="5.5" fill="#FBEEE4" stroke="#3a3a3a" stroke-width="1.4"></circle>
+</svg>
+<div style="height: 40px; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 17px; font-weight: 700; line-height: 20px; color: #1f1f1f">Kinetic modeling</div>
+<div style="text-align: center; font-size: 14px; font-style: italic; line-height: 17px; color: #444444">e.g., biochemically structured <span style="font-style: italic">S.&nbsp;cerevisiae</span> model: growth, ethanol &amp; isobutanol (Fig.&nbsp;2)</div>
+</div>
+
+<div style="position: absolute; left: 604px; top: 62px; width: 232px; height: 180px; box-sizing: border-box; padding: 10px 12px; background: #ffffff; border: 2px solid #3a3a3a; border-radius: 10px; display: flex; flex-direction: column; align-items: center; gap: 4px">
+<div style="position: absolute; left: 7px; top: 7px; width: 24px; height: 24px; box-sizing: border-box; border: 1.5px solid #3a3a3a; border-radius: 50%; background: #ffffff; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: #1f1f1f">3</div>
+<svg style="flex-shrink: 0" width="84" height="58" viewBox="0 0 72 50" aria-hidden="true">
+<rect x="21.8" y="20" width="28.4" height="25.2" rx="4.2" fill="#F6DFA6"></rect>
+<rect x="21" y="9" width="30" height="37" rx="5" fill="none" stroke="#3a3a3a" stroke-width="1.6"></rect>
+<rect x="32" y="1" width="8" height="5" rx="1" fill="#3a3a3a"></rect>
+<path d="M36 6 V36" stroke="#3a3a3a" stroke-width="1.6"></path>
+<path d="M30.5 27 H41.5 M29 36 H43" stroke="#3a3a3a" stroke-width="2.6" stroke-linecap="round"></path>
+<path d="M3 14 H14" stroke="#3a3a3a" stroke-width="1.6"></path>
+<polygon points="20,14 13.5,10.5 13.5,17.5" fill="#3a3a3a"></polygon>
+<path d="M69 41 H58" stroke="#3E8FC4" stroke-width="1.6"></path>
+<polygon points="52,41 58.5,37.5 58.5,44.5" fill="#3E8FC4"></polygon>
+<circle cx="46" cy="37" r="1.6" fill="#ffffff" stroke="#3E8FC4" stroke-width="0.9"></circle>
+<circle cx="45" cy="31" r="1.3" fill="#ffffff" stroke="#3E8FC4" stroke-width="0.9"></circle>
+<circle cx="47" cy="24.5" r="1.4" fill="#ffffff" stroke="#3E8FC4" stroke-width="0.9"></circle>
+</svg>
+<div style="height: 40px; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 17px; font-weight: 700; line-height: 20px; color: #1f1f1f">Fermentation bioreactor modeling</div>
+<div style="text-align: center; font-size: 14px; font-style: italic; line-height: 17px; color: #444444">e.g., fed-batch glucose spikes, aerobic stage, harvest at peak ethanol titer</div>
+</div>
+
+<div style="position: absolute; left: 880px; top: 62px; width: 232px; height: 180px; box-sizing: border-box; padding: 10px 12px; background: #ffffff; border: 2px solid #3a3a3a; border-radius: 10px; display: flex; flex-direction: column; align-items: center; gap: 4px">
+<div style="position: absolute; left: 7px; top: 7px; width: 24px; height: 24px; box-sizing: border-box; border: 1.5px solid #3a3a3a; border-radius: 50%; background: #ffffff; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: #1f1f1f">4</div>
+<svg style="flex-shrink: 0" width="84" height="58" viewBox="0 0 72 50" aria-hidden="true">
+<rect x="3" y="18" width="15" height="14" fill="#F6DFA6" stroke="#3a3a3a" stroke-width="1.3"></rect>
+<path d="M18 25 H21.5" stroke="#3a3a3a" stroke-width="1.4"></path>
+<polygon points="25.5,25 21,22 21,28" fill="#3a3a3a"></polygon>
+<rect x="25.5" y="12" width="17" height="26" rx="2" fill="#F6DFA6" stroke="#3a3a3a" stroke-width="1.3"></rect>
+<path d="M42.5 25 H46" stroke="#3a3a3a" stroke-width="1.4"></path>
+<polygon points="50,25 45.5,22 45.5,28" fill="#3a3a3a"></polygon>
+<rect x="50" y="4" width="13" height="42" rx="2" fill="#A9DDE4" stroke="#3a3a3a" stroke-width="1.3"></rect>
+<path d="M52 12 H61 M52 20 H61 M52 28 H61 M52 36 H61" stroke="#3a3a3a" stroke-width="0.9"></path>
+<path d="M63 9 H66" stroke="#3a3a3a" stroke-width="1.4"></path>
+<polygon points="70,9 65.5,6 65.5,12" fill="#3a3a3a"></polygon>
+</svg>
+<div style="height: 40px; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 17px; font-weight: 700; line-height: 20px; color: #1f1f1f">Facility design &amp; modeling</div>
+<div style="text-align: center; font-size: 14px; font-style: italic; line-height: 17px; color: #444444">e.g., corn biorefinery: evaporation, aeration, separations &amp; TEA (Fig. 3)</div>
+</div>
+
+<div style="position: absolute; left: 1156px; top: 62px; width: 232px; height: 180px; box-sizing: border-box; padding: 10px 12px; background: #ffffff; border: 2px solid #3a3a3a; border-radius: 10px; display: flex; flex-direction: column; align-items: center; gap: 4px">
+<div style="position: absolute; left: 7px; top: 7px; width: 24px; height: 24px; box-sizing: border-box; border: 1.5px solid #3a3a3a; border-radius: 50%; background: #ffffff; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: #1f1f1f">5</div>
+<svg style="flex-shrink: 0" width="84" height="58" viewBox="0 0 72 50" aria-hidden="true">
+<rect x="12" y="5" width="8.5" height="8.5" fill="#D2EDF1"></rect><rect x="20.5" y="5" width="8.5" height="8.5" fill="#AEDCE3"></rect><rect x="29" y="5" width="8.5" height="8.5" fill="#A6DAE1"></rect><rect x="37.5" y="5" width="8.5" height="8.5" fill="#52AAB7"></rect><rect x="46" y="5" width="8.5" height="8.5" fill="#2F8D9B"></rect><rect x="54.5" y="5" width="8.5" height="8.5" fill="#52AAB7"></rect>
+<rect x="12" y="13.5" width="8.5" height="8.5" fill="#D2EDF1"></rect><rect x="20.5" y="13.5" width="8.5" height="8.5" fill="#AEDCE3"></rect><rect x="29" y="13.5" width="8.5" height="8.5" fill="#7DC5CF"></rect><rect x="37.5" y="13.5" width="8.5" height="8.5" fill="#2F8D9B"></rect><rect x="46" y="13.5" width="8.5" height="8.5" fill="#1B6F7C"></rect><rect x="54.5" y="13.5" width="8.5" height="8.5" fill="#2F8D9B"></rect>
+<rect x="12" y="22" width="8.5" height="8.5" fill="#D2EDF1"></rect><rect x="20.5" y="22" width="8.5" height="8.5" fill="#AEDCE3"></rect><rect x="29" y="22" width="8.5" height="8.5" fill="#A6DAE1"></rect><rect x="37.5" y="22" width="8.5" height="8.5" fill="#52AAB7"></rect><rect x="46" y="22" width="8.5" height="8.5" fill="#2F8D9B"></rect><rect x="54.5" y="22" width="8.5" height="8.5" fill="#52AAB7"></rect>
+<rect x="12" y="30.5" width="8.5" height="8.5" fill="#D2EDF1"></rect><rect x="20.5" y="30.5" width="8.5" height="8.5" fill="#D2EDF1"></rect><rect x="29" y="30.5" width="8.5" height="8.5" fill="#AEDCE3"></rect><rect x="37.5" y="30.5" width="8.5" height="8.5" fill="#AEDCE3"></rect><rect x="46" y="30.5" width="8.5" height="8.5" fill="#A6DAE1"></rect><rect x="54.5" y="30.5" width="8.5" height="8.5" fill="#AEDCE3"></rect>
+<path d="M10 3 V41 H66" fill="none" stroke="#3a3a3a" stroke-width="1.3"></path>
+<polygon points="50.2,11.8 51.8,15.6 56.0,15.9 52.8,18.6 53.8,22.6 50.2,20.4 46.7,22.6 47.7,18.6 44.5,15.9 48.7,15.6" fill="#E8A33D" stroke="#3a3a3a" stroke-width="0.9" stroke-linejoin="round"></polygon>
+</svg>
+<div style="height: 40px; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 17px; font-weight: 700; line-height: 20px; color: #1f1f1f">Optimize feeding strategy</div>
+<div style="text-align: center; font-size: 14px; font-style: italic; line-height: 17px; color: #444444">e.g., 24,570 simulations across batch and fed-batch feeding policies (Extended&nbsp;Data&nbsp;Fig.&nbsp;1)</div>
+</div>
+
+<div style="position: absolute; left: 1156px; top: 598px; width: 232px; height: 180px; box-sizing: border-box; padding: 10px 12px; background: #ffffff; border: 2px solid #3a3a3a; border-radius: 10px; display: flex; flex-direction: column; align-items: center; gap: 4px">
+<div style="position: absolute; left: 7px; top: 7px; width: 24px; height: 24px; box-sizing: border-box; border: 1.5px solid #3a3a3a; border-radius: 50%; background: #ffffff; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: #1f1f1f">6</div>
+<svg style="flex-shrink: 0" width="84" height="58" viewBox="0 0 72 50" aria-hidden="true">
+<g transform="rotate(-25 38 25)">
+<ellipse cx="38" cy="25" rx="24" ry="11" fill="#E6F5F7" stroke="#A6DAE1" stroke-width="1"></ellipse>
+<ellipse cx="38" cy="25" rx="15.5" ry="7" fill="#BFE4EA" stroke="#7DC5CF" stroke-width="1"></ellipse>
+<ellipse cx="38" cy="25" rx="7.5" ry="3.5" fill="#7DC5CF"></ellipse>
+</g>
+<g fill="#5c5c5c">
+<circle cx="38.6" cy="26.3" r="1.2"></circle><circle cx="33.4" cy="22.2" r="1.2"></circle><circle cx="31.4" cy="22.6" r="1.2"></circle><circle cx="41.4" cy="30.8" r="1.2"></circle><circle cx="31.8" cy="24.5" r="1.2"></circle><circle cx="43.6" cy="24.3" r="1.2"></circle><circle cx="37.1" cy="20.3" r="1.2"></circle><circle cx="39.2" cy="28.3" r="1.2"></circle><circle cx="23.6" cy="29.2" r="1.2"></circle><circle cx="16.3" cy="28.0" r="1.2"></circle><circle cx="19.1" cy="32.5" r="1.2"></circle><circle cx="25.9" cy="32.1" r="1.2"></circle><circle cx="46.2" cy="18.4" r="1.2"></circle><circle cx="53.5" cy="14.9" r="1.2"></circle><circle cx="50.8" cy="21.7" r="1.2"></circle><circle cx="21.7" cy="29.9" r="1.2"></circle>
+</g>
+<polygon points="36,20.5 39.5,24 36,27.5 32.5,24" fill="#D2601A" stroke="#3a3a3a" stroke-width="0.8"></polygon>
+<path d="M8 3 V45 H68" fill="none" stroke="#3a3a3a" stroke-width="1.3"></path>
+</svg>
+<div style="height: 40px; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 17px; font-weight: 700; line-height: 20px; color: #1f1f1f">Uncertainty analysis</div>
+<div style="text-align: center; font-size: 14px; font-style: italic; line-height: 17px; color: #444444">e.g., 6,000 Monte Carlo simulations; 57 parameters, 40&nbsp;kinetic (Fig.&nbsp;4)</div>
+</div>
+
+<div style="position: absolute; left: 880px; top: 598px; width: 232px; height: 180px; box-sizing: border-box; padding: 10px 12px; background: #ffffff; border: 2px solid #3a3a3a; border-radius: 10px; display: flex; flex-direction: column; align-items: center; gap: 4px">
+<div style="position: absolute; left: 7px; top: 7px; width: 24px; height: 24px; box-sizing: border-box; border: 1.5px solid #3a3a3a; border-radius: 50%; background: #ffffff; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: #1f1f1f">7</div>
+<svg style="flex-shrink: 0" width="84" height="58" viewBox="0 0 72 50" aria-hidden="true">
+<path d="M5.2 32.8 A11 11 0 1 1 20.8 32.8" fill="none" stroke="#3a3a3a" stroke-width="1.8" stroke-linecap="round"></path><circle cx="13" cy="25" r="7.5" fill="#E8A33D" stroke="#3a3a3a" stroke-width="1.1"></circle><path d="M13 25 L7.6 20.5" stroke="#3a3a3a" stroke-width="1.8" stroke-linecap="round"></path>
+<path d="M28.2 32.8 A11 11 0 1 1 43.8 32.8" fill="none" stroke="#3a3a3a" stroke-width="1.8" stroke-linecap="round"></path><circle cx="36" cy="25" r="7.5" fill="#E8A33D" stroke="#3a3a3a" stroke-width="1.1"></circle><path d="M36 25 L37.8 18.2" stroke="#3a3a3a" stroke-width="1.8" stroke-linecap="round"></path>
+<path d="M51.2 32.8 A11 11 0 1 1 66.8 32.8" fill="none" stroke="#3a3a3a" stroke-width="1.8" stroke-linecap="round"></path><circle cx="59" cy="25" r="7.5" fill="#E8A33D" stroke="#3a3a3a" stroke-width="1.1"></circle><path d="M59 25 L65.3 22" stroke="#3a3a3a" stroke-width="1.8" stroke-linecap="round"></path>
+</svg>
+<div style="height: 40px; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 17px; font-weight: 700; line-height: 20px; color: #1f1f1f">Select decision variables</div>
+<div style="text-align: center; font-size: 14px; font-style: italic; line-height: 17px; color: #444444">e.g., 12 metabolic &amp; bioprocess levers: expression&nbsp;(6), tolerance&nbsp;(3), feeding&nbsp;(3)</div>
+</div>
+
+<div style="position: absolute; left: 604px; top: 598px; width: 232px; height: 180px; box-sizing: border-box; padding: 10px 12px; background: #ffffff; border: 2px solid #3a3a3a; border-radius: 10px; display: flex; flex-direction: column; align-items: center; gap: 4px">
+<div style="position: absolute; left: 7px; top: 7px; width: 24px; height: 24px; box-sizing: border-box; border: 1.5px solid #3a3a3a; border-radius: 50%; background: #ffffff; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: #1f1f1f">8</div>
+<svg style="flex-shrink: 0" width="84" height="58" viewBox="0 0 72 50" aria-hidden="true">
+<rect x="12" y="5" width="42" height="8" fill="#7DC5CF"></rect><rect x="12" y="5" width="54" height="8" fill="none" stroke="#1E7F8C" stroke-width="1.2"></rect>
+<rect x="12" y="16" width="27" height="8" fill="#7DC5CF"></rect><rect x="12" y="16" width="40" height="8" fill="none" stroke="#1E7F8C" stroke-width="1.2"></rect>
+<rect x="12" y="27" width="15" height="8" fill="#7DC5CF"></rect><rect x="12" y="27" width="25" height="8" fill="none" stroke="#1E7F8C" stroke-width="1.2"></rect>
+<rect x="12" y="38" width="5" height="8" fill="#7DC5CF"></rect><rect x="12" y="38" width="13" height="8" fill="none" stroke="#1E7F8C" stroke-width="1.2"></rect>
+<path d="M12 2 V48" stroke="#3a3a3a" stroke-width="1.4"></path>
+</svg>
+<div style="height: 40px; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 17px; font-weight: 700; line-height: 20px; color: #1f1f1f">Global sensitivity analysis</div>
+<div style="text-align: center; font-size: 14px; font-style: italic; line-height: 17px; color: #444444">e.g., Sobol’ indices &amp; Shapley effects for profitability (Extended&nbsp;Data&nbsp;Fig.&nbsp;2)</div>
+</div>
+
+<div style="position: absolute; left: 328px; top: 598px; width: 232px; height: 180px; box-sizing: border-box; padding: 10px 12px; background: #ffffff; border: 2px solid #3a3a3a; border-radius: 10px; display: flex; flex-direction: column; align-items: center; gap: 4px">
+<div style="position: absolute; left: 7px; top: 7px; width: 24px; height: 24px; box-sizing: border-box; border: 1.5px solid #3a3a3a; border-radius: 50%; background: #ffffff; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: #1f1f1f">9</div>
+<svg style="flex-shrink: 0" width="84" height="58" viewBox="0 0 72 50" aria-hidden="true">
+<g fill="#E8743A">
+<circle cx="21.6" cy="41.5" r="1.8"></circle><circle cx="59.4" cy="29.3" r="1.8"></circle><circle cx="51.8" cy="16.7" r="1.8"></circle><circle cx="58.9" cy="24.8" r="1.8"></circle><circle cx="32.3" cy="33.2" r="1.8"></circle><circle cx="43.4" cy="34.1" r="1.8"></circle><circle cx="24.2" cy="37.2" r="1.8"></circle><circle cx="30" cy="28.5" r="1.8"></circle>
+</g>
+<g fill="#8E63BD">
+<circle cx="11.5" cy="43.5" r="1.8"></circle><circle cx="57.6" cy="34.2" r="1.8"></circle><circle cx="40.8" cy="30.7" r="1.8"></circle><circle cx="43.9" cy="21.5" r="1.8"></circle><circle cx="31.9" cy="42.7" r="1.8"></circle><circle cx="47.1" cy="36.4" r="1.8"></circle><circle cx="16.5" cy="41.2" r="1.8"></circle>
+</g>
+<path d="M10 41 H18 V33 H27 V25 H38 V16 H50 V11 H64" fill="none" stroke="#0F6F7C" stroke-width="2.2"></path>
+<circle cx="64" cy="11" r="3.2" fill="#ffffff" stroke="#0F6F7C" stroke-width="2"></circle>
+<path d="M8 3 V46 H68" fill="none" stroke="#3a3a3a" stroke-width="1.3"></path>
+</svg>
+<div style="height: 40px; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 17px; font-weight: 700; line-height: 20px; color: #1f1f1f">Kinetic optimization</div>
+<div style="text-align: center; font-size: 14px; font-style: italic; line-height: 17px; color: #444444">e.g., 8 Bayesian campaigns on titer, rate, yield (TRY) or profitability (Fig.&nbsp;6)</div>
+</div>
+
+<div style="position: absolute; left: 52px; top: 598px; width: 232px; height: 180px; box-sizing: border-box; padding: 10px 12px; background: #ffffff; border: 2px solid #3a3a3a; border-radius: 10px; display: flex; flex-direction: column; align-items: center; gap: 4px">
+<div style="position: absolute; left: 7px; top: 7px; width: 24px; height: 24px; box-sizing: border-box; border: 1.5px solid #3a3a3a; border-radius: 50%; background: #ffffff; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: #1f1f1f">10</div>
+<svg style="flex-shrink: 0" width="84" height="58" viewBox="0 0 72 50" aria-hidden="true">
+<circle cx="51" cy="15" r="8" fill="#F7CDB0" stroke="#3a3a3a" stroke-width="1.5"></circle>
+<ellipse cx="30" cy="28" rx="20" ry="16" fill="#F7CDB0" stroke="#3a3a3a" stroke-width="1.5"></ellipse>
+<path d="M23.1 33.9 A7 7 0 1 1 32.9 33.9" fill="none" stroke="#3a3a3a" stroke-width="1.8" stroke-linecap="round"></path><circle cx="28" cy="29" r="4.8" fill="#E8A33D" stroke="#3a3a3a" stroke-width="1.1"></circle><path d="M28 29 L30.8 25.7" stroke="#3a3a3a" stroke-width="1.8" stroke-linecap="round"></path>
+<polygon points="57.0,31.5 58.7,35.6 63.2,36.0 59.8,38.9 60.8,43.3 57.0,40.9 53.2,43.3 54.2,38.9 50.8,36.0 55.3,35.6" fill="#E8A33D" stroke="#3a3a3a" stroke-width="0.9" stroke-linejoin="round"></polygon>
+</svg>
+<div style="height: 40px; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 17px; font-weight: 700; line-height: 20px; color: #1f1f1f">Reveal cost-optimal biodesign</div>
+<div style="text-align: center; font-size: 14px; font-style: italic; line-height: 17px; color: #444444">e.g., co-production optimum (Fig.&nbsp;6); cost optima diverge from TRY optima (Fig.&nbsp;5)</div>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":846}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+Fig5: regenerated output/glycolysis_inhib_ethanol_A_IRR.png vs manuscript/Fig5_manuscript.png
+md5 output     437533082e2d7266ec6fa80783c8d86a
+md5 manuscript 437533082e2d7266ec6fa80783c8d86a
+byte-identical: True
+size 3210x2262 vs 3210x2262; max abs diff 0, mean 0, % differing pixels 0
+Re-verified 2026-11-04 after polish (PYTHONDONTWRITEBYTECODE added): output/ cleared, make_figure.py run from C:\, exit 0;
+IRR PNG md5 437533082e2d7266ec6fa80783c8d86a (= manuscript image5 = _archive_pre_reorg\Kinetic-sweeps copy).
+PDFs differ run to run only through their embedded CreationDate.

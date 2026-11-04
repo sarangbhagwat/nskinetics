@@ -1,0 +1,1955 @@
+{
+ "meta": {
+  "created": "2026-09-24T17:48:51",
+  "spec": "docs/superpowers/specs/2026-09-24-tea-breakdowns-split12d-design.md",
+  "anchor_scenario": "A",
+  "metrics": [
+   "Installed equipment cost",
+   "Cooling duty",
+   "Heating duty",
+   "Electricity consumption",
+   "Operating cost"
+  ],
+  "metric_units": {
+   "Installed equipment cost": "MM$",
+   "Cooling duty": "GJ/hr",
+   "Heating duty": "GJ/hr",
+   "Electricity consumption": "MW",
+   "Operating cost": "USD/hr"
+  },
+  "groups": [
+   "feedstock acquisition",
+   "feedstock saccharification",
+   "sugar solution preparation",
+   "fermentation",
+   "alcohol recovery",
+   "ethanol purification",
+   "isobutanol purification",
+   "storage and handling",
+   "DDGS recovery",
+   "wastewater treatment",
+   "heat exchanger network",
+   "boiler",
+   "turbogenerator",
+   "cooling utility facilities",
+   "other facilities",
+   "natural gas (for steam generation)",
+   "natural gas (for product drying)",
+   "fixed operating cost",
+   "excess electricity"
+  ],
+  "revenue_products": [
+   "ethanol",
+   "isobutanol",
+   "DDGS",
+   "corn oil"
+  ],
+  "operating_hours": 7920.0,
+  "hensmith": "C:\\Users\\saran\\AppData\\Local\\Temp\\claude\\C--Users-saran-Documents-Academia-repository-clones-Bioindustrial-Park-biorefineries-isobutanol\\cb2868f5-4dc4-4b0e-a7c8-ad487722b220\\scratchpad\\hsm\\hensmith"
+ },
+ "order": [
+  "baseline",
+  "profitability_uninformed",
+  "profitability_try_informed",
+  "ibo_yield",
+  "ibo_titer",
+  "ibo_productivity",
+  "etoh_yield",
+  "etoh_titer",
+  "etoh_productivity"
+ ],
+ "scenarios": {
+  "baseline": {
+   "key": "baseline",
+   "label": "Baseline",
+   "campaign": null,
+   "trial_number": null,
+   "objective": null,
+   "objective_value": null,
+   "MPSPs": {
+    "ethanol": 0.8623261116909731,
+    "isobutanol": NaN
+   },
+   "IRR": 0.12600776638739408,
+   "metrics": {
+    "IBO yield": 0.0,
+    "IBO titer": 0.0,
+    "IBO titer (broth)": 0.0,
+    "IBO productivity": 0.0,
+    "EtOH yield": 0.4601826881779852,
+    "EtOH titer": 114.54273229237701,
+    "EtOH titer (broth)": 92.57185035835413,
+    "EtOH productivity": 1.858807497727171,
+    "Cell density": 12.969728542650005,
+    "Cell density (broth)": 10.67891400618225,
+    "IRR": 0.12600776638739408,
+    "TCI": 139.32697035735663,
+    "PI": -0.1383485838876559,
+    "PI (log-tail)": -0.12957860153077747,
+    "tau": 61.62162162162162,
+    "n_glu_spikes": 7.0,
+    "Acetate titer": 1.2505075685232323,
+    "Acetate titer (broth)": 1.0260283439295297,
+    "spike_feed_residual": -0.0001573616922150741,
+    "n_sims_run": 1.0,
+    "final_drift": 8.701336865751951e-08
+   },
+   "reproduction": {
+    "baseline_pin": 0.86233,
+    "baseline_pin_ok": true
+   },
+   "totals": {
+    "installed_equipment_cost": 132.69235272129202,
+    "AOC": 115.92677353924141,
+    "TCI": 139.32697035735663,
+    "sales": 138.30574136096922,
+    "operating_hours": 7920.0
+   },
+   "breakdown": {
+    "feedstock acquisition": {
+     "Installed equipment cost": 0.4596077674945977,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.11922757618436133,
+     "Operating cost": 9921.104080000001
+    },
+    "feedstock saccharification": {
+     "Installed equipment cost": 8.013957004801515,
+     "Cooling duty": 139.0021045950737,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.6957595548120158,
+     "Operating cost": 1142.1113919895622
+    },
+    "sugar solution preparation": {
+     "Installed equipment cost": 0.6496914933221971,
+     "Cooling duty": 11.692253458915607,
+     "Heating duty": 16.02404094236293,
+     "Electricity consumption": 0.013946682057958034,
+     "Operating cost": 0.0
+    },
+    "fermentation": {
+     "Installed equipment cost": 13.743751351386331,
+     "Cooling duty": 37.14644129361755,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.8922784710293464,
+     "Operating cost": 33.04653701041548
+    },
+    "alcohol recovery": {
+     "Installed equipment cost": 4.491790009219463,
+     "Cooling duty": 75.54342624300003,
+     "Heating duty": 151.29368176282802,
+     "Electricity consumption": 0.07497551935640603,
+     "Operating cost": 0.0
+    },
+    "ethanol purification": {
+     "Installed equipment cost": 6.515187128741751,
+     "Cooling duty": 18.746271840523093,
+     "Heating duty": 1.4967146514391587,
+     "Electricity consumption": 0.12048211406061793,
+     "Operating cost": 0.0
+    },
+    "isobutanol purification": {
+     "Installed equipment cost": 0.0,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.0,
+     "Operating cost": 0.0
+    },
+    "storage and handling": {
+     "Installed equipment cost": 3.7230019381372164,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.036732367472072126,
+     "Operating cost": 403.7585417716381
+    },
+    "DDGS recovery": {
+     "Installed equipment cost": 14.78317062613751,
+     "Cooling duty": 66.98353950024676,
+     "Heating duty": 55.0944503215211,
+     "Electricity consumption": 0.8420392861542549,
+     "Operating cost": 314.0480508272369
+    },
+    "wastewater treatment": {
+     "Installed equipment cost": 11.995371890747316,
+     "Cooling duty": 34.77056266757202,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.4972352008934408,
+     "Operating cost": 0.2776508440782639
+    },
+    "heat exchanger network": {
+     "Installed equipment cost": 0.6466737653906215,
+     "Cooling duty": -43.928870920525206,
+     "Heating duty": -46.24091675739071,
+     "Electricity consumption": 0.0,
+     "Operating cost": 0.0
+    },
+    "boiler": {
+     "Installed equipment cost": 46.03544240198334,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.5937008710529843,
+     "Operating cost": 2.013847406894109
+    },
+    "turbogenerator": {
+     "Installed equipment cost": 10.981102594628704,
+     "Cooling duty": 6.913674134658739,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.0,
+     "Operating cost": 0.0
+    },
+    "cooling utility facilities": {
+     "Installed equipment cost": 7.546606259127646,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 6.869727500778187,
+     "Operating cost": 5.185039860898337
+    },
+    "other facilities": {
+     "Installed equipment cost": 3.10699849017387,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.12653006811117465,
+     "Operating cost": 1.9417382966615888
+    },
+    "natural gas (for steam generation)": {
+     "Installed equipment cost": 0.0,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.0,
+     "Operating cost": 1471.585875749419
+    },
+    "natural gas (for product drying)": {
+     "Installed equipment cost": 0.0,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.0,
+     "Operating cost": 525.6638790833792
+    },
+    "fixed operating cost": {
+     "Installed equipment cost": 0.0,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.0,
+     "Operating cost": 816.4822483771632
+    },
+    "excess electricity": {
+     "Installed equipment cost": 0.0,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.0,
+     "Operating cost": 0.0
+    }
+   },
+   "revenue": {
+    "ethanol": 14806.961773723722,
+    "isobutanol": 0.0,
+    "DDGS": 2150.487055164586,
+    "corn oil": 505.3973025472018
+   }
+  },
+  "profitability_uninformed": {
+   "key": "profitability_uninformed",
+   "label": "Profitability (uninformed)",
+   "campaign": "kin_opt_ethanol_isobutanol_metabolic_split_12d_pi_log-tail_gp_rb0.001-4_ib0.75-1.5_aA_rs350_burden",
+   "trial_number": 103,
+   "objective": "PI (log-tail)",
+   "objective_value": 0.049270144407260734,
+   "MPSPs": {
+    "ethanol": 0.8257560579290218,
+    "isobutanol": NaN
+   },
+   "IRR": 0.1582626894339547,
+   "metrics": {
+    "IBO yield": 1.470813498511578e-07,
+    "IBO titer": 4.0863495933727615e-05,
+    "IBO titer (broth)": 3.20116401187218e-05,
+    "IBO productivity": 9.294770591483126e-07,
+    "EtOH yield": 0.4788650775316735,
+    "EtOH titer": 133.0427084625078,
+    "EtOH titer (broth)": 105.06991448822001,
+    "EtOH productivity": 3.026176360520157,
+    "Cell density": 7.629774431563693,
+    "Cell density (broth)": 6.150194617484192,
+    "IRR": 0.1582626894339547,
+    "TCI": 137.0435526118519,
+    "PI": 0.049322212067407,
+    "PI (log-tail)": 0.049322212067407,
+    "tau": 43.96396396396396,
+    "n_glu_spikes": 9.0,
+    "Acetate titer": 0.7575587197147644,
+    "Acetate titer (broth)": 0.6082770377013894,
+    "spike_feed_residual": -6.352922876192594e-06,
+    "n_sims_run": 3.0,
+    "final_drift": 3.431402766857795e-05
+   },
+   "reproduction": {
+    "metric_warnings": [],
+    "max_rel_delta": 0.001055663522858784,
+    "cross_check_max_rel_delta": 0.0,
+    "cross_check_mismatches": 0,
+    "recorded": {
+     "IBO yield": 1.4708134933303275e-07,
+     "IBO titer": 4.0863495789778066e-05,
+     "IBO titer (broth)": 3.201164332267948e-05,
+     "IBO productivity": 9.294770558740503e-07,
+     "EtOH yield": 0.47886507879187545,
+     "EtOH titer": 133.04270881263108,
+     "EtOH titer (broth)": 105.06992360712341,
+     "EtOH productivity": 3.026176368484027,
+     "Cell density": 7.629774432307535,
+     "Cell density (broth)": 6.150194837609759,
+     "IRR": 0.1582540448900441,
+     "TCI": 137.0492284528698,
+     "PI": 0.049270144407260734,
+     "PI (log-tail)": 0.049270144407260734,
+     "tau": 43.96396396396396,
+     "n_glu_spikes": 9.0,
+     "Acetate titer": 0.7575587193992777,
+     "Acetate titer (broth)": 0.608277064723971,
+     "spike_feed_residual": -2.9417640682785417e-06,
+     "n_sims_run": 4.0,
+     "final_drift": 2.3068949581809136e-05
+    }
+   },
+   "totals": {
+    "installed_equipment_cost": 130.51766915414467,
+    "AOC": 114.82976436019635,
+    "TCI": 137.0435526118519,
+    "sales": 141.96833527811668,
+    "operating_hours": 7920.0
+   },
+   "breakdown": {
+    "feedstock acquisition": {
+     "Installed equipment cost": 0.4596077674945976,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.11922757618436129,
+     "Operating cost": 9921.104079999997
+    },
+    "feedstock saccharification": {
+     "Installed equipment cost": 7.929813202675185,
+     "Cooling duty": 138.8997344181409,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.6955725066656424,
+     "Operating cost": 1074.0852510406437
+    },
+    "sugar solution preparation": {
+     "Installed equipment cost": 0.7630781858281541,
+     "Cooling duty": 16.67287902840145,
+     "Heating duty": 22.495250478648632,
+     "Electricity consumption": 0.013960555055850175,
+     "Operating cost": 0.0
+    },
+    "fermentation": {
+     "Installed equipment cost": 11.187173799578291,
+     "Cooling duty": 42.65341615302874,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.8355350576734117,
+     "Operating cost": 28.666772866013705
+    },
+    "alcohol recovery": {
+     "Installed equipment cost": 4.629155282234127,
+     "Cooling duty": 77.24925589612027,
+     "Heating duty": 149.08326224544757,
+     "Electricity consumption": 0.06970990092666916,
+     "Operating cost": 0.0
+    },
+    "ethanol purification": {
+     "Installed equipment cost": 6.671039167499754,
+     "Cooling duty": 19.51393607265328,
+     "Heating duty": 1.5580054677353095,
+     "Electricity consumption": 0.12539950802547703,
+     "Operating cost": 0.0
+    },
+    "isobutanol purification": {
+     "Installed equipment cost": 0.0,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.0,
+     "Operating cost": 0.0
+    },
+    "storage and handling": {
+     "Installed equipment cost": 4.41941931075576,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.03428401182130975,
+     "Operating cost": 420.29254883031695
+    },
+    "DDGS recovery": {
+     "Installed equipment cost": 13.910954893844949,
+     "Cooling duty": 60.61915031107479,
+     "Heating duty": 49.83958039338197,
+     "Electricity consumption": 0.7841527947608732,
+     "Operating cost": 284.4443689800322
+    },
+    "wastewater treatment": {
+     "Installed equipment cost": 11.706921118191168,
+     "Cooling duty": 33.2672879522028,
+     "Heating duty": 5.019338507401315e-13,
+     "Electricity consumption": 0.47775046992597814,
+     "Operating cost": 0.2662013712961844
+    },
+    "heat exchanger network": {
+     "Installed equipment cost": 1.113159516290099,
+     "Cooling duty": -43.19064725713442,
+     "Heating duty": -45.46383921703264,
+     "Electricity consumption": 0.0,
+     "Operating cost": 0.0
+    },
+    "boiler": {
+     "Installed equipment cost": 46.00730362038884,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.5930961823233802,
+     "Operating cost": 2.0103257040538898
+    },
+    "turbogenerator": {
+     "Installed equipment cost": 10.970780083380063,
+     "Cooling duty": 6.902845817863099,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.0,
+     "Operating cost": 0.0
+    },
+    "cooling utility facilities": {
+     "Installed equipment cost": 7.639008259642787,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 6.989571247804739,
+     "Operating cost": 5.272423490204954
+    },
+    "other facilities": {
+     "Installed equipment cost": 3.1102549463409046,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.12733082806126253,
+     "Operating cost": 5.098963053780562
+    },
+    "natural gas (for steam generation)": {
+     "Installed equipment cost": 0.0,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.0,
+     "Operating cost": 1470.810743294127
+    },
+    "natural gas (for product drying)": {
+     "Installed equipment cost": 0.0,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.0,
+     "Operating cost": 475.9399006573278
+    },
+    "fixed operating cost": {
+     "Installed equipment cost": 0.0,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.0,
+     "Operating cost": 810.716041949121
+    },
+    "excess electricity": {
+     "Installed equipment cost": 0.0,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.0,
+     "Operating cost": -1.689768396317959e-13
+    }
+   },
+   "revenue": {
+    "ethanol": 15413.31033395506,
+    "isobutanol": 0.0,
+    "DDGS": 2006.5872218458037,
+    "corn oil": 505.3973025472016
+   }
+  },
+  "profitability_try_informed": {
+   "key": "profitability_try_informed",
+   "label": "Profitability (TRY-informed)",
+   "campaign": "kin_opt_ethanol_isobutanol_metabolic_split_12d_pi_log-tail_gp_rb0.001-4_ib0.75-1.5_aA_rl15c111dc_burden",
+   "trial_number": 1912,
+   "objective": "PI (log-tail)",
+   "objective_value": 0.8083239719037087,
+   "MPSPs": {
+    "ethanol": 0.4749454815426661,
+    "isobutanol": 1.1271476674759553
+   },
+   "IRR": 0.27260732131906246,
+   "metrics": {
+    "IBO yield": 0.19910265453195033,
+    "IBO titer": 39.64762839698809,
+    "IBO titer (broth)": 33.4197721876593,
+    "IBO productivity": 0.970783842367429,
+    "EtOH yield": 0.20404734838308383,
+    "EtOH titer": 40.63227315126058,
+    "EtOH titer (broth)": 34.52183108615446,
+    "EtOH productivity": 0.9948931587771891,
+    "Cell density": 14.191584827191452,
+    "Cell density (broth)": 12.24586410250076,
+    "IRR": 0.27260732131906246,
+    "TCI": 137.68505369188867,
+    "PI": 0.8085807610457177,
+    "PI (log-tail)": 0.8085807610457177,
+    "tau": 40.84084084084084,
+    "n_glu_spikes": 1.0,
+    "Acetate titer": 1.012350992510449,
+    "Acetate titer (broth)": 0.8710332182438401,
+    "spike_feed_residual": 9.314912683643498e-06,
+    "n_sims_run": 3.0,
+    "final_drift": 4.300027978724179e-05
+   },
+   "reproduction": {
+    "metric_warnings": [],
+    "max_rel_delta": 0.00031758007904726307,
+    "cross_check_max_rel_delta": 0.0,
+    "cross_check_mismatches": 0,
+    "recorded": {
+     "IBO yield": 0.19910248596050636,
+     "IBO titer": 39.64759482908822,
+     "IBO titer (broth)": 33.419741261058576,
+     "IBO productivity": 0.9707830204475277,
+     "EtOH yield": 0.20404738972130215,
+     "EtOH titer": 40.63228138300576,
+     "EtOH titer (broth)": 34.52183635496968,
+     "EtOH productivity": 0.9948933603338911,
+     "Cell density": 14.191562233506968,
+     "Cell density (broth)": 12.24584464883886,
+     "IRR": 0.27257147630519457,
+     "TCI": 137.68503852185736,
+     "PI": 0.8083239719037087,
+     "PI (log-tail)": 0.8083239719037087,
+     "tau": 40.84084084084084,
+     "n_glu_spikes": 1.0,
+     "Acetate titer": 1.012349627478435,
+     "Acetate titer (broth)": 0.8710320382139863,
+     "spike_feed_residual": -2.1294329379806707e-05,
+     "n_sims_run": 3.0,
+     "final_drift": 1.3574802451929819e-05
+    }
+   },
+   "totals": {
+    "installed_equipment_cost": 131.1286225637035,
+    "AOC": 116.16918755229223,
+    "TCI": 137.68505369188867,
+    "sales": 164.55372819802375,
+    "operating_hours": 7920.0
+   },
+   "breakdown": {
+    "feedstock acquisition": {
+     "Installed equipment cost": 0.4596077674945977,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.11922757618436133,
+     "Operating cost": 9921.104080000001
+    },
+    "feedstock saccharification": {
+     "Installed equipment cost": 8.101430550599005,
+     "Cooling duty": 139.07652502983237,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.6958954878621253,
+     "Operating cost": 1207.7667524531832
+    },
+    "sugar solution preparation": {
+     "Installed equipment cost": 0.31323157914736754,
+     "Cooling duty": 2.4354700014271997,
+     "Heating duty": 4.199442976549515,
+     "Electricity consumption": 0.013481862907864708,
+     "Operating cost": 0.0
+    },
+    "fermentation": {
+     "Installed equipment cost": 12.559821052071753,
+     "Cooling duty": 4.517942801382435,
+     "Heating duty": 21.123013199570305,
+     "Electricity consumption": 1.1320550269609961,
+     "Operating cost": 42.786324462355225
+    },
+    "alcohol recovery": {
+     "Installed equipment cost": 3.5383664481957156,
+     "Cooling duty": 47.07197507373835,
+     "Heating duty": 125.35895246079782,
+     "Electricity consumption": 0.08789988937002582,
+     "Operating cost": 0.0
+    },
+    "ethanol purification": {
+     "Installed equipment cost": 3.9821013627309094,
+     "Cooling duty": 8.332362175584919,
+     "Heating duty": 0.6652612666341977,
+     "Electricity consumption": 0.05371095574867295,
+     "Operating cost": 0.0
+    },
+    "isobutanol purification": {
+     "Installed equipment cost": 1.7578201358700007,
+     "Cooling duty": 31.481443349514894,
+     "Heating duty": 30.696273878110485,
+     "Electricity consumption": 0.002676638847832936,
+     "Operating cost": 0.0
+    },
+    "storage and handling": {
+     "Installed equipment cost": 3.721671278537834,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.03885533042010982,
+     "Operating cost": 179.46301164026235
+    },
+    "DDGS recovery": {
+     "Installed equipment cost": 16.75835793670236,
+     "Cooling duty": 82.96164962083489,
+     "Heating duty": 68.40359544323668,
+     "Electricity consumption": 0.9533612305681125,
+     "Operating cost": 375.4686679583791
+    },
+    "wastewater treatment": {
+     "Installed equipment cost": 12.85189590913833,
+     "Cooling duty": 39.51125860972547,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.558889431766584,
+     "Operating cost": 0.3142916347976832
+    },
+    "heat exchanger network": {
+     "Installed equipment cost": 1.4641067856856236,
+     "Cooling duty": -61.55546286220673,
+     "Heating duty": -64.80876854775643,
+     "Electricity consumption": 0.0,
+     "Operating cost": 0.0
+    },
+    "boiler": {
+     "Installed equipment cost": 46.24619641511936,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.598238048036135,
+     "Operating cost": 2.008513403002654
+    },
+    "turbogenerator": {
+     "Installed equipment cost": 10.060290439386405,
+     "Cooling duty": 5.9747057611829195,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.0,
+     "Operating cost": 0.0
+    },
+    "cooling utility facilities": {
+     "Installed equipment cost": 6.17335422204311,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 5.021860580988414,
+     "Operating cost": 4.481573741024313
+    },
+    "other facilities": {
+     "Installed equipment cost": 3.140370680981161,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.12847737923779778,
+     "Operating cost": 0.0
+    },
+    "natural gas (for steam generation)": {
+     "Installed equipment cost": 0.0,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.0,
+     "Operating cost": 1493.1329022505752
+    },
+    "natural gas (for product drying)": {
+     "Installed equipment cost": 0.0,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.0,
+     "Operating cost": 628.9645994329944
+    },
+    "fixed operating cost": {
+     "Installed equipment cost": 0.0,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.0,
+     "Operating cost": 812.335994171436
+    },
+    "excess electricity": {
+     "Installed equipment cost": 0.0,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.0,
+     "Operating cost": -6.759073585271836e-13
+    }
+   },
+   "revenue": {
+    "ethanol": 6581.413588167861,
+    "isobutanol": 11412.199341691932,
+    "DDGS": 2277.975651181859,
+    "corn oil": 505.3973025472018
+   }
+  },
+  "ibo_yield": {
+   "key": "ibo_yield",
+   "label": "Isobutanol yield",
+   "campaign": "kin_opt_ethanol_isobutanol_metabolic_split_12d_ibo_yield_gp_rb0.001-4_ib0.75-1.5_aA_rs350_burden",
+   "trial_number": 841,
+   "objective": "IBO yield",
+   "objective_value": 0.3814326763281755,
+   "MPSPs": {
+    "ethanol": 5768.98747906497,
+    "isobutanol": 1.8537784653302216
+   },
+   "IRR": 0.01680103748907272,
+   "metrics": {
+    "IBO yield": 0.3814326597619914,
+    "IBO titer": 20.899822245238873,
+    "IBO titer (broth)": 19.89301895558684,
+    "IBO productivity": 0.20445478283385857,
+    "EtOH yield": 2.292108541696487e-05,
+    "EtOH titer": 0.00125591398277594,
+    "EtOH titer (broth)": 0.0011999089523463933,
+    "EtOH productivity": 1.2286115048895067e-05,
+    "Cell density": 2.2092872683338483,
+    "Cell density (broth)": 2.1223759878300723,
+    "IRR": 0.01680103748907272,
+    "TCI": 315.5685571244475,
+    "PI": -0.6828954605968207,
+    "PI (log-tail)": -0.5205157983637243,
+    "tau": 102.22222222222221,
+    "n_glu_spikes": 3.0,
+    "Acetate titer": 0.1024672251448478,
+    "Acetate titer (broth)": 0.0983394897603645,
+    "spike_feed_residual": -3.170276284044661e-05,
+    "n_sims_run": 3.0,
+    "final_drift": 8.063983822035795e-05
+   },
+   "reproduction": {
+    "metric_warnings": [],
+    "max_rel_delta": 0.00036704248731350524,
+    "cross_check_max_rel_delta": 0.0,
+    "cross_check_mismatches": 0,
+    "recorded": {
+     "IBO yield": 0.3814326763281755,
+     "IBO titer": 20.899823152949196,
+     "IBO titer (broth)": 19.89302900410181,
+     "IBO productivity": 0.20445479171363345,
+     "EtOH yield": 2.2921136706485256e-05,
+     "EtOH titer": 0.0012559167930802895,
+     "EtOH titer (broth)": 0.001199912027527871,
+     "EtOH productivity": 1.2286142541002833e-05,
+     "Cell density": 2.2092872571822837,
+     "Cell density (broth)": 2.122376246033362,
+     "IRR": 0.01680720644793216,
+     "TCI": 315.63505609890666,
+     "PI": -0.6828676877763761,
+     "PI (log-tail)": -0.5204992952295339,
+     "tau": 102.22222222222221,
+     "n_glu_spikes": 3.0,
+     "Acetate titer": 0.1024672343479792,
+     "Acetate titer (broth)": 0.09833951454557414,
+     "spike_feed_residual": 8.827495812858444e-06,
+     "n_sims_run": 5.0,
+     "final_drift": 5.774332377697046e-06
+    }
+   },
+   "totals": {
+    "installed_equipment_cost": 300.54148297566434,
+    "AOC": 173.87125903920017,
+    "TCI": 315.5685571244475,
+    "sales": 192.80592060358654,
+    "operating_hours": 7920.0
+   },
+   "breakdown": {
+    "feedstock acquisition": {
+     "Installed equipment cost": 0.4596077674945976,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.11922757618436129,
+     "Operating cost": 9921.104079999997
+    },
+    "feedstock saccharification": {
+     "Installed equipment cost": 7.945551617909775,
+     "Cooling duty": 138.95797427885248,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.6956789625849699,
+     "Operating cost": 1097.6915983157073
+    },
+    "sugar solution preparation": {
+     "Installed equipment cost": 0.9400270796233273,
+     "Cooling duty": 19.14082662222101,
+     "Heating duty": 43.34633681479147,
+     "Electricity consumption": 0.013960348666631187,
+     "Operating cost": 0.0
+    },
+    "fermentation": {
+     "Installed equipment cost": 56.12578451556845,
+     "Cooling duty": 1.2998232609115785,
+     "Heating duty": 60.05459892183404,
+     "Electricity consumption": 1.8553479376321735,
+     "Operating cost": 127.7444124538218
+    },
+    "alcohol recovery": {
+     "Installed equipment cost": 9.069795321195869,
+     "Cooling duty": 427.7348401288398,
+     "Heating duty": 671.7848108143028,
+     "Electricity consumption": 0.2541818086435122,
+     "Operating cost": 0.0
+    },
+    "ethanol purification": {
+     "Installed equipment cost": 0.040291658040143494,
+     "Cooling duty": 0.0009358474003571882,
+     "Heating duty": 7.471867086649294e-05,
+     "Electricity consumption": 6.032534022030437e-06,
+     "Operating cost": 0.0
+    },
+    "isobutanol purification": {
+     "Installed equipment cost": 2.2899070469174223,
+     "Cooling duty": 59.76959682854391,
+     "Heating duty": 58.28635060893554,
+     "Electricity consumption": 0.0043304838655547325,
+     "Operating cost": 0.0
+    },
+    "storage and handling": {
+     "Installed equipment cost": 3.3962834372385218,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.03700222884089484,
+     "Operating cost": 0.020156348147699375
+    },
+    "DDGS recovery": {
+     "Installed equipment cost": 47.306478807228444,
+     "Cooling duty": 290.9212942496028,
+     "Heating duty": 241.8134223855622,
+     "Electricity consumption": 2.0328923688152924,
+     "Operating cost": 1091.3334853943222
+    },
+    "wastewater treatment": {
+     "Installed equipment cost": 30.44509710578276,
+     "Cooling duty": 142.7176668070431,
+     "Heating duty": 0.0,
+     "Electricity consumption": 1.8913667089841262,
+     "Operating cost": 1.134271587181847
+    },
+    "heat exchanger network": {
+     "Installed equipment cost": 3.34144784597221,
+     "Cooling duty": -219.37036182508373,
+     "Heating duty": -230.91617034164707,
+     "Electricity consumption": 0.0,
+     "Operating cost": 0.0
+    },
+    "boiler": {
+     "Installed equipment cost": 108.30421081320232,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 2.470742920943156,
+     "Operating cost": 7.212589753287433
+    },
+    "turbogenerator": {
+     "Installed equipment cost": 16.056985202282522,
+     "Cooling duty": 13.023838512873903,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.0,
+     "Operating cost": 0.0
+    },
+    "cooling utility facilities": {
+     "Installed equipment cost": 11.179046765084632,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 10.953461697674019,
+     "Operating cost": 13.134693319510035
+    },
+    "other facilities": {
+     "Installed equipment cost": 3.6409679921232625,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.17228747267353145,
+     "Operating cost": 0.0
+    },
+    "natural gas (for steam generation)": {
+     "Installed equipment cost": 0.0,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.0,
+     "Operating cost": 6594.553934602162
+    },
+    "natural gas (for product drying)": {
+     "Installed equipment cost": 0.0,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.0,
+     "Operating cost": 1837.9758156894027
+    },
+    "fixed operating cost": {
+     "Installed equipment cost": 0.0,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.0,
+     "Operating cost": 1261.5367604152716
+    },
+    "excess electricity": {
+     "Installed equipment cost": 0.0,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.0,
+     "Operating cost": -1.3518147170543672e-12
+    }
+   },
+   "revenue": {
+    "ethanol": 0.7391900000710186,
+    "isobutanol": 21666.503309207263,
+    "DDGS": 2171.5420926377037,
+    "corn oil": 505.3973025472016
+   }
+  },
+  "ibo_titer": {
+   "key": "ibo_titer",
+   "label": "Isobutanol titer",
+   "campaign": "kin_opt_ethanol_isobutanol_metabolic_split_12d_ibo_titer_gp_rb0.001-4_ib0.75-1.5_aA_rs350_burden",
+   "trial_number": 84,
+   "objective": "IBO titer",
+   "objective_value": 46.03743070849376,
+   "MPSPs": {
+    "ethanol": 209.89939716038424,
+    "isobutanol": 2.47383376395145
+   },
+   "IRR": -Infinity,
+   "metrics": {
+    "IBO yield": 0.15098297220467197,
+    "IBO titer": 46.03743086896565,
+    "IBO titer (broth)": 38.64406087080825,
+    "IBO productivity": 1.6663548347136479,
+    "EtOH yield": 0.0006960662260025447,
+    "EtOH titer": 0.21224314432208785,
+    "EtOH titer (broth)": 0.1810681351071906,
+    "EtOH productivity": 0.007682279028179919,
+    "Cell density": 14.448725112752351,
+    "Cell density (broth)": 12.659279003219988,
+    "IRR": -Infinity,
+    "TCI": 148.24477592745885,
+    "PI": -1.756513260539521,
+    "PI (log-tail)": -1.0139665696797888,
+    "tau": 27.62762762762763,
+    "n_glu_spikes": 1.0,
+    "Acetate titer": 0.9181759692635167,
+    "Acetate titer (broth)": 0.8005744104460458,
+    "spike_feed_residual": -2.712361186297761e-05,
+    "n_sims_run": 4.0,
+    "final_drift": 2.998839196931498e-06
+   },
+   "reproduction": {
+    "metric_warnings": [],
+    "max_rel_delta": 0.00014104060864090972,
+    "cross_check_max_rel_delta": 0.0,
+    "cross_check_mismatches": 0,
+    "recorded": {
+     "IBO yield": 0.15098297167839347,
+     "IBO titer": 46.03743070849376,
+     "IBO titer (broth)": 38.64405679825736,
+     "IBO productivity": 1.6663548289052632,
+     "EtOH yield": 0.0006960662247940796,
+     "EtOH titer": 0.21224314395360463,
+     "EtOH titer (broth)": 0.18106812114010318,
+     "EtOH productivity": 0.007682279014842429,
+     "Cell density": 14.44872511898774,
+     "Cell density (broth)": 12.65927859382562,
+     "IRR": -Infinity,
+     "TCI": 148.23795052354296,
+     "PI": -1.7562655208401687,
+     "PI (log-tail)": -1.0138766913409896,
+     "tau": 27.62762762762763,
+     "n_glu_spikes": 1.0,
+     "Acetate titer": 0.9181759675351556,
+     "Acetate titer (broth)": 0.8005743765667175,
+     "spike_feed_residual": -4.5462299901041554e-05,
+     "n_sims_run": 3.0,
+     "final_drift": 4.044820711621946e-06
+    }
+   },
+   "totals": {
+    "installed_equipment_cost": 141.18550088329414,
+    "AOC": 123.02408054462656,
+    "TCI": 148.24477592745885,
+    "sales": 106.39691547199594,
+    "operating_hours": 7920.0
+   },
+   "breakdown": {
+    "feedstock acquisition": {
+     "Installed equipment cost": 0.45960776749459775,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.11922757618436133,
+     "Operating cost": 9921.104080000001
+    },
+    "feedstock saccharification": {
+     "Installed equipment cost": 8.056176097133585,
+     "Cooling duty": 138.97261196131564,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.6957055824044066,
+     "Operating cost": 1153.428461142155
+    },
+    "sugar solution preparation": {
+     "Installed equipment cost": 1.3886704009601551,
+     "Cooling duty": 48.72467906103185,
+     "Heating duty": 57.78539895592583,
+     "Electricity consumption": 0.02021913589836349,
+     "Operating cost": 0.0
+    },
+    "fermentation": {
+     "Installed equipment cost": 9.769371270770218,
+     "Cooling duty": 79.88095030456654,
+     "Heating duty": 0.0,
+     "Electricity consumption": 1.3452928593590265,
+     "Operating cost": 30.98368890883878
+    },
+    "alcohol recovery": {
+     "Installed equipment cost": 5.547192369195977,
+     "Cooling duty": 171.45502895150045,
+     "Heating duty": 230.03798186269876,
+     "Electricity consumption": 0.06278918034126073,
+     "Operating cost": 0.0
+    },
+    "ethanol purification": {
+     "Installed equipment cost": 0.15502328457727366,
+     "Cooling duty": 0.028424622611765284,
+     "Heating duty": 0.002269440531247038,
+     "Electricity consumption": 0.0001832269907502048,
+     "Operating cost": 0.0
+    },
+    "isobutanol purification": {
+     "Installed equipment cost": 1.6074904698543986,
+     "Cooling duty": 23.89485956595165,
+     "Heating duty": 23.301910043867252,
+     "Electricity consumption": 0.002192033760301018,
+     "Operating cost": 0.0
+    },
+    "storage and handling": {
+     "Installed equipment cost": 2.231509467615649,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.07232346244845489,
+     "Operating cost": 0.6122115519165134
+    },
+    "DDGS recovery": {
+     "Installed equipment cost": 14.490041718918187,
+     "Cooling duty": 54.27013702118486,
+     "Heating duty": 43.87681160117165,
+     "Electricity consumption": 0.9682253624440401,
+     "Operating cost": 399.53975046216704
+    },
+    "wastewater treatment": {
+     "Installed equipment cost": 9.972943932847446,
+     "Cooling duty": 25.53799515827131,
+     "Heating duty": 2.5096692537006576e-13,
+     "Electricity consumption": 0.3773979299677333,
+     "Operating cost": 0.20341453168184076
+    },
+    "heat exchanger network": {
+     "Installed equipment cost": 1.2952806680850593,
+     "Cooling duty": -46.72650725176485,
+     "Heating duty": -49.18579710653773,
+     "Electricity consumption": 0.0,
+     "Operating cost": 0.0
+    },
+    "boiler": {
+     "Installed equipment cost": 61.52473596045604,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.9627178703366894,
+     "Operating cost": 3.020120546191102
+    },
+    "turbogenerator": {
+     "Installed equipment cost": 12.476322289617686,
+     "Cooling duty": 8.552832477175116,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.0,
+     "Operating cost": 0.0
+    },
+    "cooling utility facilities": {
+     "Installed equipment cost": 9.083880534607468,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 8.703019794432128,
+     "Operating cost": 7.565625508613586
+    },
+    "other facilities": {
+     "Installed equipment cost": 3.12725465116042,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.13349784765257675,
+     "Operating cost": 30.632748372985077
+    },
+    "natural gas (for steam generation)": {
+     "Installed equipment cost": 0.0,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.0,
+     "Operating cost": 2486.1155637606853
+    },
+    "natural gas (for product drying)": {
+     "Installed equipment cost": 0.0,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.0,
+     "Operating cost": 661.1358789114055
+    },
+    "fixed operating cost": {
+     "Installed equipment cost": 0.0,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.0,
+     "Operating cost": 839.0019594127748
+    },
+    "excess electricity": {
+     "Installed equipment cost": 0.0,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.0,
+     "Operating cost": 5.069305188953877e-13
+    }
+   },
+   "revenue": {
+    "ethanol": 22.451520175607737,
+    "isobutanol": 8661.680585477956,
+    "DDGS": 4244.4245655360955,
+    "corn oil": 505.3973025472018
+   }
+  },
+  "ibo_productivity": {
+   "key": "ibo_productivity",
+   "label": "Isobutanol productivity",
+   "campaign": "kin_opt_ethanol_isobutanol_metabolic_split_12d_ibo_productivity_gp_rb0.001-4_ib0.75-1.5_aA_rs350_burden",
+   "trial_number": 1472,
+   "objective": "IBO productivity",
+   "objective_value": 2.0628577437657647,
+   "MPSPs": {
+    "ethanol": 499.4176500040314,
+    "isobutanol": 2.282325190193567
+   },
+   "IRR": -Infinity,
+   "metrics": {
+    "IBO yield": 0.14871439814564277,
+    "IBO titer": 45.34570172965504,
+    "IBO titer (broth)": 38.83138271635528,
+    "IBO productivity": 2.062857742619553,
+    "EtOH yield": 0.00023100153783413933,
+    "EtOH titer": 0.07043653448713105,
+    "EtOH titer (broth)": 0.06085844726746731,
+    "EtOH productivity": 0.0032042849705211257,
+    "Cell density": 10.908093879477963,
+    "Cell density (broth)": 9.564778217566726,
+    "IRR": -Infinity,
+    "TCI": 139.3463961719486,
+    "PI": -1.4594405435950277,
+    "PI (log-tail)": -0.8999339027772912,
+    "tau": 21.98198198198198,
+    "n_glu_spikes": 1.0,
+    "Acetate titer": 0.6270272172306727,
+    "Acetate titer (broth)": 0.5483317030080509,
+    "spike_feed_residual": -2.718203953859527e-05,
+    "n_sims_run": 3.0,
+    "final_drift": 2.118557208972985e-05
+   },
+   "reproduction": {
+    "metric_warnings": [],
+    "max_rel_delta": 0.0007144285630248713,
+    "cross_check_max_rel_delta": 0.0,
+    "cross_check_mismatches": 0,
+    "recorded": {
+     "IBO yield": 0.14871439822827467,
+     "IBO titer": 45.34570175485104,
+     "IBO titer (broth)": 38.83141187198207,
+     "IBO productivity": 2.0628577437657647,
+     "EtOH yield": 0.0002310015378398485,
+     "EtOH titer": 0.07043653448887195,
+     "EtOH titer (broth)": 0.06085848098847544,
+     "EtOH productivity": 0.0032042849706003223,
+     "Cell density": 10.908093882888783,
+     "Cell density (broth)": 9.564780456405323,
+     "IRR": -Infinity,
+     "TCI": 139.3411021026779,
+     "PI": -1.458397877584647,
+     "PI (log-tail)": -0.8995098685017797,
+     "tau": 21.98198198198198,
+     "n_glu_spikes": 1.0,
+     "Acetate titer": 0.6270272173279197,
+     "Acetate titer (broth)": 0.5483318631441771,
+     "spike_feed_residual": 0.00010348127073250562,
+     "n_sims_run": 4.0,
+     "final_drift": 1.0066294187118523e-05
+    }
+   },
+   "totals": {
+    "installed_equipment_cost": 132.7108534970939,
+    "AOC": 122.34974682091692,
+    "TCI": 139.3463961719486,
+    "sales": 113.33433823856281,
+    "operating_hours": 7920.0
+   },
+   "breakdown": {
+    "feedstock acquisition": {
+     "Installed equipment cost": 0.4596077674945976,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.11922757618436129,
+     "Operating cost": 9921.104079999997
+    },
+    "feedstock saccharification": {
+     "Installed equipment cost": 8.030267927677793,
+     "Cooling duty": 138.92222079266836,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.695613490598461,
+     "Operating cost": 1126.6757543180472
+    },
+    "sugar solution preparation": {
+     "Installed equipment cost": 1.3889542770599619,
+     "Cooling duty": 48.72700015210937,
+     "Heating duty": 57.79509036769578,
+     "Electricity consumption": 0.020211360356622656,
+     "Operating cost": 0.0
+    },
+    "fermentation": {
+     "Installed equipment cost": 8.834862830556004,
+     "Cooling duty": 9.67151531954284,
+     "Heating duty": 0.0,
+     "Electricity consumption": 1.3102322812536393,
+     "Operating cost": 30.975242339738173
+    },
+    "alcohol recovery": {
+     "Installed equipment cost": 5.122611157273086,
+     "Cooling duty": 168.68525000279237,
+     "Heating duty": 225.42460679363364,
+     "Electricity consumption": 0.06203919414788563,
+     "Operating cost": 0.0
+    },
+    "ethanol purification": {
+     "Installed equipment cost": 0.09122017605707419,
+     "Cooling duty": 0.00943299478282989,
+     "Heating duty": 0.0007531364966068252,
+     "Electricity consumption": 6.080570607487698e-05,
+     "Operating cost": 0.0
+    },
+    "isobutanol purification": {
+     "Installed equipment cost": 1.6001889318607045,
+     "Cooling duty": 23.543256480968747,
+     "Heating duty": 22.959089721970514,
+     "Electricity consumption": 0.002165263406770107,
+     "Operating cost": 0.0
+    },
+    "storage and handling": {
+     "Installed equipment cost": 2.337835252307184,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.08968618479904684,
+     "Operating cost": 0.20316851534297328
+    },
+    "DDGS recovery": {
+     "Installed equipment cost": 14.563625779471852,
+     "Cooling duty": 49.855035062262836,
+     "Heating duty": 39.88113419276263,
+     "Electricity consumption": 1.0385322927688423,
+     "Operating cost": 448.2242258741869
+    },
+    "wastewater treatment": {
+     "Installed equipment cost": 9.467596701303489,
+     "Cooling duty": 23.2759170106318,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.34547705245183113,
+     "Operating cost": 0.18544974237456627
+    },
+    "heat exchanger network": {
+     "Installed equipment cost": 1.2715401708737928,
+     "Cooling duty": -45.20425742025378,
+     "Heating duty": -47.58342886287517,
+     "Electricity consumption": 0.0,
+     "Operating cost": 0.0
+    },
+    "boiler": {
+     "Installed equipment cost": 59.27568669613943,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.9047811075891729,
+     "Operating cost": 2.8588518988410936
+    },
+    "turbogenerator": {
+     "Installed equipment cost": 10.463064677122505,
+     "Cooling duty": 6.378675473780401,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.0,
+     "Operating cost": 0.0
+    },
+    "cooling utility facilities": {
+     "Installed equipment cost": 6.689616946189232,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 5.320414786151786,
+     "Operating cost": 6.3675299582618585
+    },
+    "other facilities": {
+     "Installed equipment cost": 3.1141742057072084,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.13206629479539253,
+     "Operating cost": 27.825984056579088
+    },
+    "natural gas (for steam generation)": {
+     "Installed equipment cost": 0.0,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.0,
+     "Operating cost": 2328.2736283427093
+    },
+    "natural gas (for product drying)": {
+     "Installed equipment cost": 0.0,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.0,
+     "Operating cost": 738.9751376657858
+    },
+    "fixed operating cost": {
+     "Installed equipment cost": 0.0,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.0,
+     "Operating cost": 816.5313034645167
+    },
+    "excess electricity": {
+     "Installed equipment cost": 0.0,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.0,
+     "Operating cost": -1.0138610377907755e-12
+    }
+   },
+   "revenue": {
+    "ethanol": 7.4507611086258505,
+    "isobutanol": 8533.650685862707,
+    "DDGS": 5263.392442219194,
+    "corn oil": 505.3973025472016
+   }
+  },
+  "etoh_yield": {
+   "key": "etoh_yield",
+   "label": "Ethanol yield",
+   "campaign": "kin_opt_ethanol_isobutanol_metabolic_split_12d_etoh_yield_gp_rb0.001-4_ib0.75-1.5_aA_rs350_burden",
+   "trial_number": 1923,
+   "objective": "EtOH yield",
+   "objective_value": 0.4846660672354445,
+   "MPSPs": {
+    "ethanol": 0.8703350925805715,
+    "isobutanol": NaN
+   },
+   "IRR": 0.120599589179676,
+   "metrics": {
+    "IBO yield": 2.0094046680441497e-06,
+    "IBO titer": 0.0005120133429678757,
+    "IBO titer (broth)": 0.00040788406200050376,
+    "IBO productivity": 1.0029437835782509e-05,
+    "EtOH yield": 0.48466606791891126,
+    "EtOH titer": 123.49702257823407,
+    "EtOH titer (broth)": 99.19786448494152,
+    "EtOH productivity": 2.4190887363854086,
+    "Cell density": 4.192760570168458,
+    "Cell density (broth)": 3.435229795638784,
+    "IRR": 0.120599589179676,
+    "TCI": 155.9534565541046,
+    "PI": -0.16849695783133303,
+    "PI (log-tail)": -0.15571827151142933,
+    "tau": 51.05105105105105,
+    "n_glu_spikes": 8.0,
+    "Acetate titer": 0.5015536572399625,
+    "Acetate titer (broth)": 0.40939534755572443,
+    "spike_feed_residual": 3.91092312476805e-05,
+    "n_sims_run": 4.0,
+    "final_drift": 1.801338295219237e-05
+   },
+   "reproduction": {
+    "metric_warnings": [],
+    "max_rel_delta": 0.001286488860064154,
+    "cross_check_max_rel_delta": 0.0,
+    "cross_check_mismatches": 0,
+    "recorded": {
+     "IBO yield": 2.009404664461287e-06,
+     "IBO titer": 0.000512013342054949,
+     "IBO titer (broth)": 0.0004078818506797629,
+     "IBO productivity": 1.0029437817899885e-05,
+     "EtOH yield": 0.4846660672354445,
+     "EtOH titer": 123.49702240408504,
+     "EtOH titer (broth)": 99.19743111965552,
+     "EtOH productivity": 2.419088732974137,
+     "Cell density": 4.192760564893839,
+     "Cell density (broth)": 3.43522333712527,
+     "IRR": 0.12056039015995915,
+     "TCI": 155.96892469793323,
+     "PI": -0.16871400652125942,
+     "PI (log-tail)": -0.15590400458718573,
+     "tau": 51.05105105105105,
+     "n_glu_spikes": 8.0,
+     "Acetate titer": 0.5015536584366135,
+     "Acetate titer (broth)": 0.409394388001009,
+     "spike_feed_residual": -2.6070947945613393e-05,
+     "n_sims_run": 4.0,
+     "final_drift": 1.2761411266106078e-05
+    }
+   },
+   "totals": {
+    "installed_equipment_cost": 148.52710148009962,
+    "AOC": 118.80055855531263,
+    "TCI": 155.9534565541046,
+    "sales": 142.9185997082437,
+    "operating_hours": 7920.0
+   },
+   "breakdown": {
+    "feedstock acquisition": {
+     "Installed equipment cost": 0.45960776749459775,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.11922757618436133,
+     "Operating cost": 9921.104080000001
+    },
+    "feedstock saccharification": {
+     "Installed equipment cost": 7.690804924784101,
+     "Cooling duty": 138.880383338449,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.6955373733794711,
+     "Operating cost": 978.7868332444657
+    },
+    "sugar solution preparation": {
+     "Installed equipment cost": 1.370123287931147,
+     "Cooling duty": 46.773080756051,
+     "Heating duty": 65.24969047409634,
+     "Electricity consumption": 0.014129363897186581,
+     "Operating cost": 0.0
+    },
+    "fermentation": {
+     "Installed equipment cost": 14.323099502112127,
+     "Cooling duty": 54.93228720818014,
+     "Heating duty": 0.0,
+     "Electricity consumption": 2.2397225509024974,
+     "Operating cost": 21.49458544575101
+    },
+    "alcohol recovery": {
+     "Installed equipment cost": 4.850040777392267,
+     "Cooling duty": 79.18763151081714,
+     "Heating duty": 156.89878938635513,
+     "Electricity consumption": 0.07444475579800139,
+     "Operating cost": 0.0
+    },
+    "ethanol purification": {
+     "Installed equipment cost": 6.717547320089151,
+     "Cooling duty": 19.745333854041696,
+     "Heating duty": 1.5764804185234245,
+     "Electricity consumption": 0.12688171876745014,
+     "Operating cost": 0.0
+    },
+    "isobutanol purification": {
+     "Installed equipment cost": 0.0,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.0,
+     "Operating cost": 0.0
+    },
+    "storage and handling": {
+     "Installed equipment cost": 4.445485588295452,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.033215203332418494,
+     "Operating cost": 425.276410772435
+    },
+    "DDGS recovery": {
+     "Installed equipment cost": 14.765861930000955,
+     "Cooling duty": 68.163143217659,
+     "Heating duty": 56.146641712799784,
+     "Electricity consumption": 0.8279881251171437,
+     "Operating cost": 307.4439419505407
+    },
+    "wastewater treatment": {
+     "Installed equipment cost": 14.30068987455743,
+     "Cooling duty": 45.95696152929067,
+     "Heating duty": 5.019338507401315e-13,
+     "Electricity consumption": 0.6468333903236171,
+     "Operating cost": 0.3700787206623371
+    },
+    "heat exchanger network": {
+     "Installed equipment cost": 0.7196667170104184,
+     "Cooling duty": -46.11411372641852,
+     "Heating duty": -48.541172343018204,
+     "Electricity consumption": 0.0,
+     "Operating cost": 0.0
+    },
+    "boiler": {
+     "Installed equipment cost": 53.987776733084814,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.7742968561777283,
+     "Operating cost": 2.5165345668011923
+    },
+    "turbogenerator": {
+     "Installed equipment cost": 12.927056682286862,
+     "Cooling duty": 9.073992428430632,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.0,
+     "Operating cost": 0.0
+    },
+    "cooling utility facilities": {
+     "Installed equipment cost": 8.800548950228437,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 8.600368492386139,
+     "Operating cost": 6.215608902600315
+    },
+    "other facilities": {
+     "Installed equipment cost": 3.168791424831783,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.13049082367109086,
+     "Operating cost": 0.0
+    },
+    "natural gas (for steam generation)": {
+     "Installed equipment cost": 0.0,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.0,
+     "Operating cost": 1963.472646370886
+    },
+    "natural gas (for product drying)": {
+     "Installed equipment cost": 0.0,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.0,
+     "Operating cost": 514.9214800549668
+    },
+    "fixed operating cost": {
+     "Installed equipment cost": 0.0,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.0,
+     "Operating cost": 858.4683246315772
+    },
+    "excess electricity": {
+     "Installed equipment cost": 0.0,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.0,
+     "Operating cost": -1.689768396317959e-13
+    }
+   },
+   "revenue": {
+    "ethanol": 15596.082574360553,
+    "isobutanol": 0.0,
+    "DDGS": 1943.7978640321069,
+    "corn oil": 505.3973025472018
+   }
+  },
+  "etoh_titer": {
+   "key": "etoh_titer",
+   "label": "Ethanol titer",
+   "campaign": "kin_opt_ethanol_isobutanol_metabolic_split_12d_etoh_titer_gp_rb0.001-4_ib0.75-1.5_aA_rs350_burden",
+   "trial_number": 1820,
+   "objective": "EtOH titer",
+   "objective_value": 168.45160115662406,
+   "MPSPs": {
+    "ethanol": 0.8613609534557204,
+    "isobutanol": NaN
+   },
+   "IRR": 0.1268191243298609,
+   "metrics": {
+    "IBO yield": 2.2751948695391104e-06,
+    "IBO titer": 0.000823565538206452,
+    "IBO titer (broth)": 0.0006093852667973399,
+    "IBO productivity": 3.074521572003907e-05,
+    "EtOH yield": 0.46536699359719064,
+    "EtOH titer": 168.45160108110935,
+    "EtOH titer (broth)": 125.6179348224395,
+    "EtOH productivity": 6.28860797757953,
+    "Cell density": 13.563157615723792,
+    "Cell density (broth)": 10.362266924411394,
+    "IRR": 0.1268191243298609,
+    "TCI": 140.61553974061852,
+    "PI": -0.13379389431026062,
+    "PI (log-tail)": -0.12556943773768395,
+    "tau": 26.786786786786788,
+    "n_glu_spikes": 14.0,
+    "Acetate titer": 0.9256796678079664,
+    "Acetate titer (broth)": 0.7039077995994032,
+    "spike_feed_residual": -2.71135999174965e-05,
+    "n_sims_run": 3.0,
+    "final_drift": 2.8867138966839575e-05
+   },
+   "reproduction": {
+    "metric_warnings": [],
+    "max_rel_delta": 0.0010916722827360597,
+    "cross_check_max_rel_delta": 0.0,
+    "cross_check_mismatches": 0,
+    "recorded": {
+     "IBO yield": 2.2751948280578576e-06,
+     "IBO titer": 0.0008235655231912442,
+     "IBO titer (broth)": 0.0006093835710312217,
+     "IBO productivity": 3.0745215159493755e-05,
+     "EtOH yield": 0.4653669938058072,
+     "EtOH titer": 168.45160115662406,
+     "EtOH titer (broth)": 125.61764049334124,
+     "EtOH productivity": 6.288607980398633,
+     "Cell density": 13.563157604384308,
+     "Cell density (broth)": 10.362255981262406,
+     "IRR": 0.12679311381481678,
+     "TCI": 140.62629543660398,
+     "PI": -0.1339401130191902,
+     "PI (log-tail)": -0.12569839352232148,
+     "tau": 26.786786786786788,
+     "n_glu_spikes": 14.0,
+     "Acetate titer": 0.9256796707475876,
+     "Acetate titer (broth)": 0.7039068849702019,
+     "spike_feed_residual": -8.473265254884825e-05,
+     "n_sims_run": 4.0,
+     "final_drift": 9.261131183444087e-06
+    }
+   },
+   "totals": {
+    "installed_equipment_cost": 133.91956165773192,
+    "AOC": 116.28661531832375,
+    "TCI": 140.61553974061852,
+    "sales": 138.99906146394991,
+    "operating_hours": 7920.0
+   },
+   "breakdown": {
+    "feedstock acquisition": {
+     "Installed equipment cost": 0.4596077674945976,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.11922757618436132,
+     "Operating cost": 9921.10408
+    },
+    "feedstock saccharification": {
+     "Installed equipment cost": 7.917201822169318,
+     "Cooling duty": 138.94899968564033,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.6956625889162742,
+     "Operating cost": 1082.771780302097
+    },
+    "sugar solution preparation": {
+     "Installed equipment cost": 1.744708217566631,
+     "Cooling duty": 54.39899837430816,
+     "Heating duty": 68.18101168618004,
+     "Electricity consumption": 0.01976963388799294,
+     "Operating cost": 0.0
+    },
+    "fermentation": {
+     "Installed equipment cost": 10.019247150896152,
+     "Cooling duty": 51.84932647392394,
+     "Heating duty": 0.0,
+     "Electricity consumption": 1.741333001833572,
+     "Operating cost": 21.0472660668226
+    },
+    "alcohol recovery": {
+     "Installed equipment cost": 4.532937795047097,
+     "Cooling duty": 73.35030040373066,
+     "Heating duty": 136.19131483648508,
+     "Electricity consumption": 0.05898406343809302,
+     "Operating cost": 0.0
+    },
+    "ethanol purification": {
+     "Installed equipment cost": 6.560851750753276,
+     "Cooling duty": 18.96995469355583,
+     "Heating duty": 1.5145736372822212,
+     "Electricity consumption": 0.12191497335312047,
+     "Operating cost": 0.0
+    },
+    "isobutanol purification": {
+     "Installed equipment cost": 0.0,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.0,
+     "Operating cost": 0.0
+    },
+    "storage and handling": {
+     "Installed equipment cost": 4.332457650444957,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.03521455022267466,
+     "Operating cost": 408.57623903582595
+    },
+    "DDGS recovery": {
+     "Installed equipment cost": 12.472940213182335,
+     "Cooling duty": 48.98641952400381,
+     "Heating duty": 40.12933327294111,
+     "Electricity consumption": 0.7089401522645675,
+     "Operating cost": 246.4346201881106
+    },
+    "wastewater treatment": {
+     "Installed equipment cost": 10.948738452704406,
+     "Cooling duty": 29.63290570644045,
+     "Heating duty": 5.019338507401315e-13,
+     "Electricity consumption": 0.4312575198427627,
+     "Operating cost": 0.23809496897796267
+    },
+    "heat exchanger network": {
+     "Installed equipment cost": 0.9662108666818034,
+     "Cooling duty": -36.001974976155836,
+     "Heating duty": -37.89681576378384,
+     "Electricity consumption": 0.0,
+     "Operating cost": 0.0
+    },
+    "boiler": {
+     "Installed equipment cost": 50.557434925691005,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.6940482870563441,
+     "Operating cost": 2.287438090148629
+    },
+    "turbogenerator": {
+     "Installed equipment cost": 12.00301602378022,
+     "Cooling duty": 8.018927749513372,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.0,
+     "Operating cost": 0.0
+    },
+    "cooling utility facilities": {
+     "Installed equipment cost": 8.281569539902488,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 7.8658233607867984,
+     "Operating cost": 5.797857184634454
+    },
+    "other facilities": {
+     "Installed equipment cost": 3.1226394814176452,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.13021056459560265,
+     "Operating cost": 15.695287937511706
+    },
+    "natural gas (for steam generation)": {
+     "Installed equipment cost": 0.0,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.0,
+     "Operating cost": 1747.3905963047896
+    },
+    "natural gas (for product drying)": {
+     "Installed equipment cost": 0.0,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.0,
+     "Operating cost": 411.57397773817695
+    },
+    "fixed operating cost": {
+     "Installed equipment cost": 0.0,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.0,
+     "Operating cost": 819.7362114662084
+    },
+    "excess electricity": {
+     "Installed equipment cost": 0.0,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.0,
+     "Operating cost": 3.379536792635918e-13
+    }
+   },
+   "revenue": {
+    "ethanol": 14983.640287855444,
+    "isobutanol": 0.0,
+    "DDGS": 2061.3489580758796,
+    "corn oil": 505.3973025472016
+   }
+  },
+  "etoh_productivity": {
+   "key": "etoh_productivity",
+   "label": "Ethanol productivity",
+   "campaign": "kin_opt_ethanol_isobutanol_metabolic_split_12d_etoh_productivity_gp_rb0.001-4_ib0.75-1.5_aA_rs350_burden",
+   "trial_number": 365,
+   "objective": "EtOH productivity",
+   "objective_value": 6.896774753921807,
+   "MPSPs": {
+    "ethanol": 0.9129840477913143,
+    "isobutanol": NaN
+   },
+   "IRR": 0.08069033669005632,
+   "metrics": {
+    "IBO yield": 9.218351094052103e-06,
+    "IBO titer": 0.0033727905701679472,
+    "IBO titer (broth)": 0.0025031268765430977,
+    "IBO productivity": 0.00014473444070437196,
+    "EtOH yield": 0.43926580852409725,
+    "EtOH titer": 160.71763395334403,
+    "EtOH titer (broth)": 120.3821062022086,
+    "EtOH productivity": 6.896774755987573,
+    "Cell density": 13.369840411837718,
+    "Cell density (broth)": 10.291432498714606,
+    "IRR": 0.08069033669005632,
+    "TCI": 141.08707610203558,
+    "PI": -0.38079928140381786,
+    "PI (log-tail)": -0.32266252092671277,
+    "tau": 23.303303303303302,
+    "n_glu_spikes": 15.0,
+    "Acetate titer": 0.9009462607350711,
+    "Acetate titer (broth)": 0.6898641866148517,
+    "spike_feed_residual": -2.7138336413446874e-05,
+    "n_sims_run": 3.0,
+    "final_drift": 3.621506199690016e-05
+   },
+   "reproduction": {
+    "metric_warnings": [],
+    "max_rel_delta": 0.0017292936516781227,
+    "cross_check_max_rel_delta": 0.0,
+    "cross_check_mismatches": 0,
+    "recorded": {
+     "IBO yield": 9.218351087270571e-06,
+     "IBO titer": 0.003372790567686711,
+     "IBO titer (broth)": 0.002503130384329871,
+     "IBO productivity": 0.00014473444059789623,
+     "EtOH yield": 0.4392658083925287,
+     "EtOH titer": 160.71763390520488,
+     "EtOH titer (broth)": 120.38224829372459,
+     "EtOH productivity": 6.896774753921807,
+     "Cell density": 13.369840402266517,
+     "Cell density (broth)": 10.29143801917124,
+     "IRR": 0.08056113129963653,
+     "TCI": 141.21809811224998,
+     "PI": -0.38145893592008034,
+     "PI (log-tail)": -0.3231401406688972,
+     "tau": 23.303303303303302,
+     "n_glu_spikes": 15.0,
+     "Acetate titer": 0.9009462605874491,
+     "Acetate titer (broth)": 0.689864641697478,
+     "spike_feed_residual": 9.537781091374507e-09,
+     "n_sims_run": 4.0,
+     "final_drift": 2.594185000866665e-05
+    }
+   },
+   "totals": {
+    "installed_equipment_cost": 134.36864390670056,
+    "AOC": 116.17177078851428,
+    "TCI": 141.08707610203558,
+    "sales": 132.25923382944944,
+    "operating_hours": 7920.0
+   },
+   "breakdown": {
+    "feedstock acquisition": {
+     "Installed equipment cost": 0.4596077674945976,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.11922757618436132,
+     "Operating cost": 9921.10408
+    },
+    "feedstock saccharification": {
+     "Installed equipment cost": 7.907773147162446,
+     "Cooling duty": 138.9460779263339,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.6956572583133533,
+     "Operating cost": 1077.9128761293962
+    },
+    "sugar solution preparation": {
+     "Installed equipment cost": 1.7552909283582596,
+     "Cooling duty": 54.722454765577105,
+     "Heating duty": 68.77376864696325,
+     "Electricity consumption": 0.019778822088275246,
+     "Operating cost": 0.0
+    },
+    "fermentation": {
+     "Installed equipment cost": 9.8333906218577,
+     "Cooling duty": 75.62438432261756,
+     "Heating duty": 0.0,
+     "Electricity consumption": 1.8259310719403956,
+     "Operating cost": 20.480946848972184
+    },
+    "alcohol recovery": {
+     "Installed equipment cost": 4.49002477226387,
+     "Cooling duty": 69.7874517954974,
+     "Heating duty": 131.73535949679444,
+     "Electricity consumption": 0.05826316613041501,
+     "Operating cost": 0.0
+    },
+    "ethanol purification": {
+     "Installed equipment cost": 6.34123810926787,
+     "Cooling duty": 17.90369704695621,
+     "Heating duty": 1.4294429267360664,
+     "Electricity consumption": 0.11508459965420913,
+     "Operating cost": 0.0
+    },
+    "isobutanol purification": {
+     "Installed equipment cost": 0.0,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.0,
+     "Operating cost": 0.0
+    },
+    "storage and handling": {
+     "Installed equipment cost": 3.5633226883330638,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.03505967599342216,
+     "Operating cost": 385.611105690576
+    },
+    "DDGS recovery": {
+     "Installed equipment cost": 12.526313365627194,
+     "Cooling duty": 49.507040833558264,
+     "Heating duty": 40.56622248254183,
+     "Electricity consumption": 0.711525084686535,
+     "Operating cost": 247.7424762693314
+    },
+    "wastewater treatment": {
+     "Installed equipment cost": 11.075197723483667,
+     "Cooling duty": 30.234619844978333,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.43888196909491,
+     "Operating cost": 0.2429913121765494
+    },
+    "heat exchanger network": {
+     "Installed equipment cost": 0.973036484882221,
+     "Cooling duty": -36.257850348105165,
+     "Heating duty": -38.166158260574015,
+     "Electricity consumption": 0.0,
+     "Operating cost": 0.0
+    },
+    "boiler": {
+     "Installed equipment cost": 50.68683848699901,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.6970115779923737,
+     "Operating cost": 2.295865425928889
+    },
+    "turbogenerator": {
+     "Installed equipment cost": 12.651200037709526,
+     "Cooling duty": 8.753569723077312,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.0,
+     "Operating cost": 0.0
+    },
+    "cooling utility facilities": {
+     "Installed equipment cost": 8.979072273062446,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 8.931723777746916,
+     "Operating cost": 6.107977380211235
+    },
+    "other facilities": {
+     "Installed equipment cost": 3.12633750019869,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.13062257687059758,
+     "Operating cost": 16.525029933442877
+    },
+    "natural gas (for steam generation)": {
+     "Installed equipment cost": 0.0,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.0,
+     "Operating cost": 1755.3956162154475
+    },
+    "natural gas (for product drying)": {
+     "Installed equipment cost": 0.0,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.0,
+     "Operating cost": 413.8069522785561
+    },
+    "fixed operating cost": {
+     "Installed equipment cost": 0.0,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.0,
+     "Operating cost": 820.9269598536252
+    },
+    "excess electricity": {
+     "Installed equipment cost": 0.0,
+     "Cooling duty": 0.0,
+     "Heating duty": 0.0,
+     "Electricity consumption": 0.0,
+     "Operating cost": 1.689768396317959e-13
+    }
+   },
+   "revenue": {
+    "ethanol": 14141.444231570124,
+    "isobutanol": 0.0,
+    "DDGS": 2052.556676671744,
+    "corn oil": 505.3973025472016
+   }
+  }
+ }
+}

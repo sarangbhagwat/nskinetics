@@ -1,0 +1,9 @@
+EDFig1 comparison (2026-11-04)
+output/feeding_strategy_baseline_A.png  md5 8c5b78b8e843ec7bd15e593196f6ab36  6965x2524 RGBA
+manuscript/EDFig1_manuscript.png (docx image7)  md5 8c5b78b8e843ec7bd15e593196f6ab36  6965x2524 RGBA
+=> byte-identical. Pixel diff: max 0, mean 0, 0.000 % pixels differ.
+Also identical to the pre-reorg publication PNG (now publication/_archive_pre_reorg/Feed-strat/
+feeding_strategy_baseline_A.png) and to the Bioindustrial-Park copy.
+Script stdout: MESP grid optimum (threshold, target) = (226.1, 230.0) g/L, 3.8234 $/GGE;
+panel B baseline feeding (217.125, 221.25) g/L, 7 spikes, tau 61.62 h, end of aeration 12.13 h,
+ethanol 114.5 g/L, MESP 3.8346 $/GGE.

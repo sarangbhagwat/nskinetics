@@ -1,0 +1,6 @@
+EDFig7: regenerated (2850, 1860) scaled to 2100x1371 (factor 0.7368); best vertical offset dy=0 px (manuscript row = regenerated row + dy); overlap rows 0..1371 of regenerated
+  whole overlap: max abs 21, mean abs 0.239, % px >16: 0.001, % px >64: 0.000
+  rows 0%-10% of overlap: max abs 17, mean abs 0.092, % px >16: 0.001, % px >64: 0.000
+  rows 10%-40% of overlap: max abs 21, mean abs 0.295, % px >16: 0.002, % px >64: 0.000
+  rows 40%-60% of overlap: max abs 19, mean abs 0.283, % px >16: 0.002, % px >64: 0.000
+  rows 60%-100% of overlap: max abs 18, mean abs 0.211, % px >16: 0.000, % px >64: 0.000

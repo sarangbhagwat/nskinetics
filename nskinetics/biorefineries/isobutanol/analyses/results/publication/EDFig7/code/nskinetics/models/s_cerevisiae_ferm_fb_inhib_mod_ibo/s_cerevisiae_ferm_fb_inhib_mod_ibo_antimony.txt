@@ -1,0 +1,707 @@
+// Created by libAntimony v3.0.0
+model *bhagwat2026()
+
+  // Compartments and Species:
+  var compartment env, cell;
+  species s_glu in env, s_pyr in env, s_acetate in env, s_acetald in env;
+  species s_EtOH in env, x in env, $a in env, $AcDH in env, $CO2 in env, $Red in env;
+  species $S_f in env;
+  species s_AL in env, s_DHI in env, s_KIV in env;
+  species s_isobutald in env, s_IBO in env;
+
+  // Assignment Rules:
+  a := x*X_a;
+  AcDH := x*X_AcDH;
+  qO2 := is_aerobic*(1000/32)*((0.178*r1 + 0.908*r2 + 0.363*r4 + 1.066*r5 - 0.363*r6 - 0.222*r17 - 0.121*r14) + 0.063*r7 + 0.214*r8)/(x*env);
+  qCO2 := (1000/44.01)*(1.499*r2 + 0.5*r3 + 1.466*r5 + 0.127*r7 + 0.325*r8 + 0.250*r13 + 0.379*r16)/(x*env);
+  qO2_TCA_growth_only := (1000/32)*((0.908*r2 + 1.066*r5) + 0.063*r7 + 0.214*r8)/(x*env);
+  cell := x*env*0.0015;
+
+  // Oxygen-transfer bound. The four O2-dependent rate laws are written once,
+  // unscaled (v*_0, g/h basis, exactly the reactions' expressions without
+  // their is_aerobic prefactor); the reactions below apply f_O2 to them.
+  // OUR_gated is the respiratory + growth-associated O2 demand f_O2 can
+  // throttle; OUR_committed is the growth-associated O2 of the ungated
+  // anaerobic_growth_mult share of r7, which runs regardless. Realized
+  // respiratory O2 is f_O2*OUR_gated + OUR_committed, so f_O2 is chosen to
+  // make that equal OTR_max exactly when the cap binds (clamped to [0, 1]).
+  // Coefficients are those of qO2_TCA_growth_only; units mmol O2/L/h.
+  // Scope: the cap covers those qO2_TCA_growth_only terms only. The
+  // model's total qO2 also carries the ungated aerobic NAD(P)H re-oxidation
+  // term 0.178*r1 + 0.363*r4 - 0.363*r6 - 0.222*r17 - 0.121*r14, so qO2*x -- what
+  // AerationSpec sizes the air stream from -- can exceed OTR_max (by
+  // ~20 % in a bound 100 g/L batch). Extending the cap to total qO2 is
+  // a follow-up.
+  v2_0 := (k_2*s_pyr/((s_pyr + K_2)*(K_2i*s_glu + 1)))*a*env;
+  v5_0 := (k_5*s_acetate/(s_acetate + K_5) + k_5e*s_acetate/((s_acetate + K_5e)*(1 + K_5i*s_glu)))*a*env;
+  v7_0 := (k_7*s_glu*2.71828^(-k_7ie*s_EtOH)*2.71828^(-k_7ia*s_acetate)*2.71828^(-k_7ii*s_IBO)/(s_glu + K_7))*a*env;
+  v8_0 := (k_8*s_acetate/((s_acetate + K_5e)*(1 + K_5i*s_glu)))*a*env;
+  OTR_max := kLa*C_O2_sat;
+  OUR_gated := (1000/32)*(0.908*v2_0 + 1.066*v5_0 + 0.214*v8_0 + (1.0-anaerobic_growth_mult)*0.063*v7_0)/env;
+  OUR_committed := (1000/32)*anaerobic_growth_mult*0.063*v7_0/env;
+  OUR_demand := OUR_gated + OUR_committed;
+  f_O2 := is_aerobic*piecewise(1, OUR_demand <= OTR_max, 0, OUR_committed >= OTR_max, (OTR_max - OUR_committed)/OUR_gated);
+
+  tot_mass_glu := (conc_glu_feed_spike*tot_vol_glu_feed_added) + target_conc_glu_spike*(env - tot_vol_glu_feed_added);
+  y_EtOH_glu_added := s_EtOH*env/tot_mass_glu;
+  y_EtOH_glu_consumed := s_EtOH*env/(tot_mass_glu-s_glu*env);
+
+  y_IBO_glu_added := s_IBO*env/tot_mass_glu;
+  y_IBO_glu_consumed := s_IBO*env/(tot_mass_glu-s_glu*env);
+
+  y_EtOH_IBO_glu_added := y_EtOH_glu_added + y_IBO_glu_added;
+
+  prod_EtOH := s_EtOH/time;
+  
+  curr_n_glu_spikes := n_glu_spikes;
+  curr_env := env;
+  curr_tot_vol_glu_feed_added := tot_vol_glu_feed_added;
+  curr_a := a;
+
+  // Rate Rules:
+  X_a' = ((0.732*r7 + 0.619*r8)*(1 - X_a) - r9 - r10)/(x*env);
+  X_AcDH' = (r9 - r11 - (0.732*r7 + 0.619*r8)*X_AcDH)/(x*env);
+
+  // Reactions:
+  r1: s_glu => 0.978 s_pyr + 0.178 $Red; (k_1l*s_glu/(s_glu + K_1l) + k_1h*s_glu/(s_glu + K_1h) + k_1e*s_acetald*s_glu/(s_glu*(K_1i*s_acetald + 1) + K_1e))*2.71828^(-k_1ie*s_EtOH)*2.71828^(-k_1ia*s_acetate)*2.71828^(-k_1ii*s_IBO)*a*env;
+  r2: s_pyr => 1.499 $CO2 + 0.908 $Red; f_O2*v2_0;
+  r3: s_pyr => 0.5 s_acetald + 0.33 $CO2; (k_3*s_pyr^4/(s_pyr^4 + K_3))*a*env;
+  r4: s_acetald => 1.363 s_acetate + 0.363 $Red; (k_4*s_acetald*2.71828^(-k_4ie*s_EtOH)*2.71828^(-k_4ia*s_acetate)*2.71828^(-k_4ii*s_IBO)/(s_acetald + K_4))*a*X_AcDH*env;
+  r5: s_acetate => 1.446 $CO2 + 1.066 $Red; f_O2*v5_0;
+  r6: s_acetald + 0.363 $Red -> 1.045 s_EtOH; (k_6*(s_acetald - k_6r*s_EtOH)/(s_acetald + K_6 + K_6e*s_EtOH))*2.71828^(-k_6ia*s_acetate)*2.71828^(-k_6ii*s_IBO)*a*env;
+  r7: s_glu => 0.732 x + 0.127 $CO2 + 0.063 $Red; (anaerobic_growth_mult + (1.0-anaerobic_growth_mult)*f_O2)*v7_0;
+  r8: s_acetate => 0.619 x + 0.325 $CO2 + 0.214 $Red; f_O2*v8_0;
+  r9: $a => $AcDH; ((k_9*s_glu/(s_glu + K_9) + k_9e*s_EtOH/(s_EtOH + K_9e))/(K_9i*s_glu + 1) + k_9c*s_glu/(s_glu + K_9))*a*env;
+  r10: $a => ; k_10*piecewise(2.71828^(k_10ie*(s_EtOH - P_10e)), s_EtOH > P_10e, 1)*piecewise(2.71828^(k_10ia*(s_acetate - P_10a)), s_acetate > P_10a, 1)*piecewise(2.71828^(k_10ii*(s_IBO - P_10i)), s_IBO > P_10i, 1)*a*env;
+  r11: $AcDH => ; k_11*AcDH*env;
+
+  s_glu_in: $S_f => s_glu; S_f*D*env;
+  s_glu_out: s_glu => ; s_glu*D*env;
+  s_pyr_out: s_pyr => ; s_pyr*D*env;
+  s_acetate_out: s_acetate => ; s_acetate*D*env;
+  s_acetald_out: s_acetald => ; s_acetald*D*env;
+  s_EtOH_out: s_EtOH => ; s_EtOH*D*env;
+  a_out: $a => ; a*D*env;
+  x_out: x => ; x*D*env;
+  AcDH_out: $AcDH => ; AcDH*D*env;
+
+  // r13 (acetolactate synthase, Ilv2/Ilv6 or B. subtilis AlsS) is hyperbolic
+  // in pyruvate: purified ALS follows Michaelis-Menten kinetics (Pang &
+  // Duggleby 1999 Biochemistry 38:5222, doi:10.1021/bi983013m; AlsS Km 13.6 mM,
+  // Atsumi et al. 2009 AEM 75:6306, doi:10.1128/AEM.01160-09), and the
+  // sigmoidal ALS seen in glucose-grown crude extracts is an artifact of
+  // competition with pyruvate decarboxylase (McDonald et al. 1973 J. Bacteriol.
+  // 114:332, doi:10.1128/jb.114.1.332-340.1973) -- the competition r3/r13
+  // resolve explicitly. The Hill n=4 form of r3 is Lei's fitted overflow switch
+  // and was previously copied here verbatim, which pinned r13/r3 = k_13/k_3 at
+  // every pyruvate level. See isobutanol docs/reports/r13-rate-law.md.
+  r13: s_pyr => 0.750 s_AL + 0.250 $CO2; (k_13*s_pyr/(K_13 + s_pyr))*a*env;
+  r14: s_AL + 0.121 $Red => 1.015 s_DHI; (k_14*s_AL/(K_14 + s_AL))*a*env;
+  r15: s_DHI => 0.866 s_KIV; (k_15*s_DHI/(K_15 + s_DHI))*a*env;
+  // r16 (Aro10, a branched-chain 2-keto-acid decarboxylase) and r17 (Adh6, a
+  // broad-specificity NADPH-dependent alcohol dehydrogenase) were one lumped
+  // reaction until 2026-09-15. The lump was Aro10-limited -- per unit flux the
+  // decarboxylase is ~15x the more expensive enzyme of the pair (Aro10 kcat
+  // 19 /s on KIV vs Adh6 296 /s on the aldehyde; isobutanol burden model) --
+  // so it was written as a decarboxylase law and could not express an Adh6
+  // knob at all. They are split so the two alcohol dehydrogenases of the
+  // model, Adh1 (r6, ethanol) and Adh6 (r17, isobutanol), can be tuned
+  // independently.
+  //
+  // r16 is Michaelis-Menten in KIV (Aro10 Km 8.5 mM on KIV, Kneen et al. 2011
+  // FEBS J. 278:1842, doi:10.1111/j.1742-4658.2011.08103.x) and irreversible:
+  // the decarboxylation releases CO2, so isobutyraldehyde cannot be carried
+  // back to KIV. It carries no product, cross-product or cofactor term at all
+  // -- a decarboxylase binds neither alcohol, and the cross-product
+  // exponentials belong on the alcohol-forming step -- exactly like r3 (Pdc),
+  // the decarboxylase it parallels. k_16r and K_16i (the Haldane and
+  // competitive terms once copied here from r6) and k_16ia and k_16ie (the
+  // cross-product exponentials the lumped step carried) remain declared at 0
+  // and inert, with no carrier (see their declarations below).
+  //
+  // r17 is a full structural mirror of r6 (Adh1): reversible Michaelis-Menten
+  // with a Haldane reverse term (k_17r), a competitive isobutanol term (K_17e)
+  // and the acetate/ethanol cross-product exponentials (k_17ia, k_17ie) -- the
+  // products it does not itself make. Adh6 genuinely is reversible and
+  // product-inhibited (Larroy et al. 2002 Biochem. J. 361:163: Km 0.13-0.21 mM
+  // on branched aldehydes, ~50-fold higher catalytic efficiency on aldehydes
+  // than on alcohols), so unlike the lumped law it is a real carrier for those
+  // terms. Isobutanol toxicity elsewhere is carried by the k_*ii terms on
+  // r1/r4/r6/r7 and by r10.
+  //
+  // Stoichiometry (g per g substrate; one NAD(P)H bookkept as 16 g
+  // O-equivalents per mole, Lei's $Red convention): r14 takes one NADPH per
+  // mole acetolactate, 16/132.11 = 0.121 $Red; r16 splits KIV into
+  // isobutyraldehyde (72.11/116.12 = 0.621) and CO2 (44.01/116.12 = 0.379);
+  // r17 takes one NADPH per mole aldehyde, 16/72.11 = 0.222 $Red, and makes
+  // 74.12/72.11 = 1.028 g isobutanol per g aldehyde. The split is taken at the
+  // molar node, so at steady flux it is mass-identical to the lumped law it
+  // replaces: 0.621*1.028 = 0.638 g IBO and 0.621*0.222 = 0.138 g $Red per g
+  // KIV, its own coefficients. The NADPH credit in qO2 therefore moves with
+  // the step that consumes it (- 0.138*r16 -> - 0.222*r17); the CO2 in qCO2
+  // stays on r16. $CO2 is a boundary species: effluent CO2 in the process
+  // bridge comes from its carbon balance, so qCO2 is a diagnostic. The
+  // affinity anchoring behind K_13-K_17 is documented at their declarations
+  // below; the rate-law rationale is in the 2026-09-13 and 2026-09-15
+  // model(ibo) commit history.
+  r16: s_KIV => 0.621 s_isobutald + 0.379 $CO2; (k_16*s_KIV/(s_KIV + K_16))*a*env;
+  r17: s_isobutald + 0.222 $Red -> 1.028 s_IBO; (k_17*(s_isobutald - k_17r*s_IBO)/(s_isobutald + K_17 + K_17e*s_IBO))*2.71828^(-k_17ia*s_acetate)*2.71828^(-k_17ie*s_EtOH)*a*env;
+
+  // Events:
+
+  // Species initializations:
+  s_glu = 15/env;
+  s_pyr = 0;
+  s_acetate = 0;
+  s_acetald = 0;
+  s_EtOH = 0;
+  x = 0.002/env;
+  CO2 = 0;
+  Red = 0;
+  S_f = 15;
+  s_AL = 0;
+  s_DHI = 0;
+  s_KIV = 0;
+  s_isobutald = 0;
+  s_IBO = 0;
+
+  // Compartment initializations:
+  env = 1;
+
+  // Variable initializations:
+  X_a = 0.1;
+  X_a has dimensionless;
+  X_AcDH = 0.0075;
+  X_AcDH has dimensionless;
+
+  n_glu_spikes = 0;
+  n_glu_spikes has dimensionless;
+  max_n_glu_spikes = 5;
+  max_n_glu_spikes has dimensionless;
+  threshold_conc_glu_spike = 10;
+  threshold_conc_glu_spike has g_per_l;
+  target_conc_glu_spike = 100;
+  target_conc_glu_spike has g_per_l;
+  conc_glu_feed_spike = 600;
+  conc_glu_feed_spike has g_per_l;
+  last_vol_glu_feed_added = 0;
+  last_vol_glu_feed_added has volume;
+  tot_vol_glu_feed_added = 0;
+  tot_vol_glu_feed_added has volume;
+  glucose_feed_spikeDelay = 0;
+  glucose_feed_spikeDelay has time_unit;
+  glucose_feed_spike_dissolveDelay = 0.001;
+  glucose_feed_spike_dissolveDelay has time_unit;
+
+  is_aerobic = 1;
+  is_aerobic has dimensionless;
+  stage_1_max_time = infinity;
+  stage_1_max_time has time_unit;
+  stage_1_max_x = infinity;
+  stage_1_max_x has g_per_l;
+  anaerobic_growth_mult = 0.75;
+  anaerobic_growth_mult has dimensionless;
+
+  // Oxygen-transfer capacity of the vessel, OTR_max = kLa*C_O2_sat
+  // (40 mmol O2/L/h at the defaults). Operation parameters, not kinetics.
+  // kLa = 200 /h is mid-industrial: air-sparged pilot S. cerevisiae
+  // fermentations measure 136-473 /h over 150-500 rpm (Hensirisak 1997,
+  // Scale-up the use of a microbubble dispersion to increase oxygen
+  // transfer in aerobic fermentation of baker's yeast, Virginia Tech
+  // thesis); stirred-tank fermentors sit in this band and O2 transfer is
+  // usually the rate-limiting step (Garcia-Ochoa & Gomez, Biotechnol. Adv.
+  // 2009, doi:10.1016/j.biotechadv.2008.10.006); industrial high-cell-
+  // density baker's-yeast fed-batch is explicitly OTR-limited (van Hoek et
+  // al., Biotechnol. Bioeng. 2000, Fermentative capacity in high-cell-
+  // density fed-batch cultures of baker's yeast).
+  // C_O2_sat = 0.20 mmol/L: air-saturated water at 32 C is ~0.23 mmol/L;
+  // medium sugars and salts depress it log-additively (Quicker et al.,
+  // Biotechnol. Bioeng. 1981, Comparison of measured and calculated oxygen
+  // solubilities in fermentation media), by ~30 % at the ~220 g/L sugar the
+  // shipped process starts at (Slininger et al., Biotechnol. Bioeng. 1989,
+  // Measurement of oxygen solubility in fermentation media). 0.20 is a
+  // mid-run value. In the shipped process (aeration off at x = 5 g/L) the
+  // total qO2*x peaks at ~19.6 mmol/L/h -- OUR_demand, the quantity that
+  // the cap compares against, is lower still while aerated -- and the
+  // bound never binds; a glucose-lean,
+  // fully aerobic batch climbing past ~10 g/L biomass does bind (unbounded
+  // demand ~69 mmol/L/h; f_O2 bottoms at ~0.58). Glucose-rich runs stay
+  // under the cap because r2/r5/r8 are glucose-inhibited (K_2i, K_5i).
+  kLa = 200;
+  kLa has per_h;
+  C_O2_sat = 0.2;
+  C_O2_sat has mmole_per_l;
+  OTR_max has mmole_per_l_per_h;
+  OUR_gated has mmole_per_l_per_h;
+  OUR_committed has mmole_per_l_per_h;
+  OUR_demand has mmole_per_l_per_h;
+  f_O2 has dimensionless;
+
+  qO2 has mmole_per_g_per_h;
+  qCO2 has mmole_per_g_per_h;
+
+  k_1h = 0.584;
+  k_1h has g_per_l_per_h;
+  K_1h = 0.0116;
+  K_1h has g_per_l;
+  k_1l = 1.43;
+  k_1l has g_per_l_per_h;
+  K_1l = 0.94;
+  K_1l has g_per_l;
+  k_1e = 47.1;
+  k_1e has g_per_l_per_h;
+  K_1e = 0.12;
+  K_1e has g_per_l;
+  K_1i = 14.2;
+  K_1i has l_per_g;
+  k_2 = 0.501;
+  k_2 has g_per_l_per_h;
+  K_2 = 2e-05;
+  K_2 has g_per_l;
+  K_2i = 0.101;
+  K_2i has l_per_g;
+  k_3 = 5.81;
+  k_3 has g_per_l_per_h;
+  K_3 = 5e-07;
+  K_3 has g_per_l;
+  k_4 = 4.8;
+  k_4 has g_per_l_per_h;
+  K_4 = 0.000264;
+  K_4 has g_per_l;
+  k_5 = 0.0104;
+  k_5 has g_per_l_per_h;
+  K_5 = 0.0102;
+  K_5 has g_per_l;
+  k_5e = 0.775;
+  k_5e has g_per_l_per_h;
+  K_5e = 0.1;
+  K_5e has g_per_l;
+  K_5i = 440;
+  K_5i has l_per_g;
+  k_6 = 2.82;
+  k_6 has g_per_l_per_h;
+  K_6 = 0.034;
+  K_6 has g_per_l;
+  k_6r = 0.0125;
+  k_6r has dimensionless;
+  K_6e = 0.057;
+  K_6e has dimensionless;
+  // Cross-product inhibition of the alcohol-forming steps (r6 Adh1, r17 Adh6):
+  // each terminal step is inhibited by the products it does NOT itself make.
+  // r6 already self-inhibits on ethanol (K_6e/k_6r) and so takes acetate +
+  // isobutanol here; r17 self-inhibits on isobutanol (K_17e/k_17r) and takes
+  // acetate + ethanol (below). r16 (Aro10) takes none: a decarboxylase binds
+  // no alcohol; the coefficients that used to sit on the lumped step (k_16ia,
+  // k_16ie) live on as k_17ia/k_17ie since the 2026-09-15 split, and the old
+  // names stay declared at 0 without a carrier. Coefficients are
+  // 0.5x the growth (r7) set, matching the r1 production-step rationale that
+  // fermentation is less product-sensitive than growth
+  // (Eur. J. Appl. Microbiol. Biotechnol. 1981, doi:10.1007/BF00511253);
+  // within each set the relative potency acetate < isobutanol < ethanol-onset
+  // tracks lipid solubility, as elsewhere in the model.
+  k_6ia = 0.06;
+  k_6ia has l_per_g;
+  k_6ii = 0.075;
+  k_6ii has l_per_g;
+  k_7 = 1.203;
+  k_7 has g_per_l_per_h;
+  K_7 = 0.0101;
+  K_7 has g_per_l;
+  k_8 = 0.589;
+  k_8 has g_per_l_per_h;
+  k_9 = 0.008;
+  k_9 has g_per_l_per_h;
+  K_9 = 1e-06;
+  K_9 has g_per_l;
+  k_9e = 0.0751;
+  k_9e has g_per_l_per_h;
+  K_9e = 13;
+  K_9e has g_per_l;
+  K_9i = 25;
+  K_9i has l_per_g;
+  k_9c = 0.00399;
+  k_9c has g_per_l_per_h;
+  k_11 = 0.02;
+  k_11 has g_per_l_per_h;
+  D = 0;
+  D has per_h;
+  k_7ie = 0.04;
+  k_7ie has l_per_g;
+  k_7ia = 0.12;
+  k_7ia has l_per_g;
+  k_7ii = 0.15;
+  k_7ii has l_per_g;
+  // Glycolysis (r1) product-inhibition coefficients are 0.5x the corresponding
+  // growth (r7) coefficients: fermentation is less product-sensitive than growth.
+  // Eur. J. Appl. Microbiol. Biotechnol. 1981, https://doi.org/10.1007/BF00511253
+  k_1ie = 0.02;
+  k_1ie has l_per_g;
+  k_1ia = 0.06;
+  k_1ia has l_per_g;
+  k_1ii = 0.075;
+  k_1ii has l_per_g;
+  k_4ie = 0.04;
+  k_4ie has l_per_g;
+  k_4ia = 0.12;
+  k_4ia has l_per_g;
+  k_4ii = 0.15;
+  k_4ii has l_per_g;
+  k_10 = 0.06;
+  k_10 has g_per_l_per_h;
+  // Product enhancement of active-biomass decay (r10): threshold-gated
+  // exponential, one factor per product, multiplied (shared membrane target,
+  // Viegas et al. Int. J. Food Microbiol. 1997, doi:10.1016/S0168-1605(97)00016-9).
+  // Death is unchanged until each product passes its lethal floor P_10*, then
+  // climbs as exp(k_10i*(P - P_10*)) (van Uden 1985; Salgueiro et al. AEM 1988;
+  // Jones et al. Biotechnol. Lett. 1984 — exponential death applies above the
+  // ethanol concentration at which growth ceases). Steepnesses mirror the
+  // sublethal growth (r7) coefficients (same order / lipid-solubility scaling,
+  // per Salgueiro); thresholds are death-onset concentrations from the
+  // literature. EtOH: floor 100 g/L (Sanchez-Gonzalez 2009 lethal-at-100;
+  // Nabais et al. AEM 1988 X_mf ~103 g/L). Acetate: 5 g/L total (Casey et al.
+  // FEMS 2010; Thomas et al. AEM 2002). IBO: 25 g/L (EtOH floor / 3.75
+  // lipid-solubility potency). In the shipped diagnostic only the EtOH factor
+  // activates (acetate peaks ~1.2 g/L, IBO is 0 while the Ehrlich branch is off).
+  k_10ie = 0.04;
+  k_10ie has l_per_g;
+  k_10ia = 0.12;
+  k_10ia has l_per_g;
+  k_10ii = 0.15;
+  k_10ii has l_per_g;
+  P_10e = 100;
+  P_10e has g_per_l;
+  P_10a = 5;
+  P_10a has g_per_l;
+  P_10i = 25;
+  P_10i has g_per_l;
+  k_13 = 0.0;
+  k_13 has g_per_l_per_h;
+  // K_13: ALS/Pdc pyruvate-affinity ratio (Ilv2/Ilv6 Km 3.9 mM, BRENDA EC 2.2.1.6;
+  // Pdc wild-type Km 0.5-1.1 mM, BRENDA EC 4.1.1.1) x r3's half-saturation
+  // K_3^(1/4) = 0.027 g/L -> 0.10 g/L (was 5e-7, copied from K_3, i.e. the same
+  // affinity as Pdc; an AlsS basis would be ~0.35 g/L). A true g/L quantity now.
+  K_13 = 0.1;
+  K_13 has g_per_l;
+  k_14 = 0.0;
+  k_14 has g_per_l_per_h;
+  // K_14: KARI (Ilv5) acetolactate affinity. No S. cerevisiae Km is
+  // published; the N. crassa reductoisomerase surrogate gives Km 0.32 mM
+  // (Kiritani et al. 1966 JBC 241:2047; BRENDA EC 1.1.1.86) = 0.042 g/L
+  // acetolactate (132.11 g/mol). Transferred to this broth-volume
+  // pseudo-concentration model with the scale factor S = K_model/Km_in-vitro
+  // = 0.4, the geometric mean of what Lei's fitted r3/r4/r6 constants imply
+  // against their enzymes' Km (S = 0.27-0.60, 0.17-0.25, 0.70) -> 0.017 g/L
+  // (band 0.007-0.030 over the S range; was 2.64e-4, copied from K_4).
+  K_14 = 0.017;
+  K_14 has g_per_l;
+  k_15 = 0.0;
+  k_15 has g_per_l_per_h;
+  // K_15: DHAD (Ilv3) DHIV affinity. E. coli IlvD surrogate, Km 1.5 mM
+  // (Flint et al. 1993 JBC 268:14732; BRENDA EC 4.2.1.9) = 0.201 g/L DHIV
+  // (134.13 g/mol); S = 0.4 -> 0.080 g/L (band 0.034-0.14 over the S range;
+  // was 2.64e-4, copied from K_4).
+  K_15 = 0.080;
+  K_15 has g_per_l;
+  // k_16 = 0.02115 g/L/h: the Aro10 vmax, transferred from the fitted Pdc
+  // vmax k_3 by the same three-ratio rule as k_17 -- a vmax is
+  // kcat x [E] x MW_substrate -- so it stays consistent with K_16's own
+  // anchoring to K_3 (which already carries the MW term):
+  //   k_16 = k_3 x (kcat_Aro10/kcat_Pdc1) x ([Aro10]/[Pdc1]) x (MW_KIV/MW_pyr)
+  //        = 5.81 x (19/60) x (5068/581219) x (116.12/88.06).
+  // kcat_Aro10 = 19 /s on KIV (Kneen et al. 2011 FEBS J. 278:1842, the same
+  // Aro10 source as K_16's Km); kcat_Pdc1 = 60 /s on pyruvate (Balakrishnan
+  // et al. 2012 JACS 134:3873); both from the isobutanol burden model's
+  // EHRLICH_STEPS / ANCHOR_STEPS. [Aro10]/[Pdc1] = 5068/581219 = 0.00872
+  // (~1:115) are the SGD quantitative-proteomics medians (yeastgenome.org
+  // loci S000002788 ARO10, S000004034 PDC1) -- the same median set that
+  // anchors k_17's [Adh6]/[Adh1]; Aro10 is barely induced on glucose, hence
+  // the low wild-type level. MW_KIV/MW_pyr = 116.12/88.06 converts k_3's
+  // g-pyruvate basis to k_16's g-KIV basis. Aro10, like Adh6 (k_17), is a
+  // native constitutive enzyme, so k_16 defaults to this nonzero wild-type
+  // level and the branch is gated upstream by the engineered block k_13-k_15
+  // (with k_13 = 0 no acetolactate, hence no KIV, is made). Scenario B
+  // overexpresses Aro10 to k_16 = 2.82 (scenarios.py); the scenario-A preset
+  // re-zeros the whole k_13-k_16 block for a clean "branch off" state.
+  k_16 = 0.02115;
+  k_16 has g_per_l_per_h;
+  // K_16: Aro10 (the rate-limiting decarboxylase of the lumped r16) KIV
+  // affinity, Km 8.5 mM (Kneen et al. 2011; BRENDA EC 4.1.1.43). Anchored by
+  // ratio to r3's Pdc exactly as K_13 was, with the molar-mass correction:
+  // (8.5/1.1) x 0.302 mM x 116.12 g/mol = 0.27 g/L (band 0.27-0.60 for Pdc
+  // Km 1.1-0.5 mM; S = 0.4 would give 0.39; was 0.034, copied from K_6).
+  K_16 = 0.27;
+  K_16 has g_per_l;
+  // k_16r, K_16i: the reverse and isobutanol product terms r16 no longer
+  // carries (see the r16/r17 block) -- inert since 2026-09-13; the live
+  // terms with that meaning are k_17r/K_17e on r17. Declared, at 0, only
+  // because the isobutanol repo's scenario-B / opt_* workbooks exec
+  // `K_16i = x` onto this model at load time and kinetic_optimization.py
+  // sweeps K_16i: they must keep resolving, and they do nothing.
+  k_16r = 0.0;
+  k_16r has dimensionless;
+  K_16i = 0.0;
+  K_16i has dimensionless;
+  // k_16ia, k_16ie: the acetate/ethanol cross-product exponentials the
+  // lumped r16 carried until 2026-09-15 -- inert since the split, which left
+  // r16 a pure decarboxylase with no carrier for them; the live coefficients
+  // are k_17ia/k_17ie on r17 (below). Declared, at 0, for the same reason as
+  // K_16i: the scenario-B / opt_* workbooks exec `k_16ia = x` / `k_16ie = x`
+  // onto this model at load time (their baseline rows carry the 0.06/0.02
+  // that k_17ia/k_17ie now default to) and kinetic_optimization.py lists
+  // both in its inhibition groups. They must keep resolving, and do nothing.
+  k_16ia = 0.0;
+  k_16ia has l_per_g;
+  k_16ie = 0.0;
+  k_16ie has l_per_g;
+  // r17 (Adh6) parameters. Every affinity is anchored to its fitted
+  // ethanol-branch analog through the in-vitro Km ratio, so the in-vitro ->
+  // in-vivo transfer the fitted constant already embeds carries over: the
+  // Adh6 reductase pairs with the Adh1 reductase, K_17 <- K_6 and
+  // K_17e <- K_6e. In-vitro inputs: Adh1 acetaldehyde Km 1.1 mM and ethanol
+  // Km ~18 mM (Ganzhorn et al. 1987 JBC 262:3754; FEMS Yeast Res. 12:33),
+  // Adh6 branched-aldehyde Km 0.13-0.21 mM (midpoint 0.17; Larroy et al. 2002
+  // Biochem. J. 361:163, 3-methylbutanal as the tested surrogate for
+  // isobutyraldehyde) with ~50-fold higher catalytic efficiency on aldehydes
+  // than on alcohols.
+  //
+  // K_17 = K_6 x (0.17/1.1) x (72.11/44.05) = 0.0086 g/L: the Adh6:Adh1
+  // aldehyde-affinity ratio with the molar-mass correction (isobutyraldehyde
+  // 72.11 vs acetaldehyde 44.05 g/mol).
+  // K_17e = K_17/Ki_IBO,model = 0.020 (the competitive term is K_sub/Ki_prod),
+  // with Ki_IBO,model = 0.70 x 50 x 0.17 mM = 0.44 g/L isobutanol. The 0.70 is
+  // r6's own transfer factor, read back out of the fitted pair: K_6/K_6e =
+  // 0.034/0.057 = 0.60 g/L = 12.9 mM against the in-vitro ethanol Km ~18 mM.
+  // K_17e is therefore anchored to r6 end-to-end, not to a blanket scale.
+  // k_17r = k_6r/50 = 2.5e-4: the fitted Adh1 reverse balance scaled by Adh6's
+  // 50-fold aldehyde preference. Small, as it should be -- Adh6 is
+  // functionally an aldehyde reductase.
+  // k_17 = 0.1077 g/L/h: a vmax (= kcat x [E] x MW_substrate), transferred from
+  // the fitted Adh1 vmax k_6 to Adh6 by all three of those ratios, so it stays
+  // consistent with K_17's anchoring (which already carries the same MW term):
+  //   k_17 = k_6 x (kcat_Adh6/kcat_Adh1) x ([Adh6]/[Adh1]) x (MW_ibald/MW_acetald)
+  //        = 2.82 x (296/1800) x (14717/103727) x (72.11/44.05).
+  // kcat_Adh6 = 296 /s on the branched aldehyde (Larroy et al. 2002), kcat_Adh1
+  // = 1800 /s on acetaldehyde (Ganzhorn et al. 1987 JBC 262:3754, the same Adh1
+  // source as K_17's Km); both taken from the isobutanol burden model's
+  // ANCHOR_STEPS. [Adh6]/[Adh1] = 14717/103727 = 0.142 (~7:1) from the SGD
+  // quantitative-proteomics medians (yeastgenome.org loci S000004937 ADH6,
+  // S000005446 ADH1) -- the same abundances the burden model charges Adh6's
+  // pool by, so the kinetics and the proteome cost now assume one Adh6
+  // abundance instead of contradicting each other. MW_ibald/MW_acetald =
+  // 72.11/44.05 converts k_6's g-acetaldehyde basis to k_17's g-
+  // isobutyraldehyde basis. (Earlier drafts: 44 g/L/h used Aro10's kcat 19 /s
+  // against the arbitrary scenario-B k_16; 0.4637 kept the kcat ratio but
+  // dropped the abundance and MW terms, treating Adh6 as ~as abundant as
+  // Adh1.) Adh6 is constitutive (native, broad-specificity) and, like Aro10
+  // (k_16 since 2026-09-16), defaults to a nonzero wild-type vmax. The branch
+  // is gated by the engineered upstream block k_13-k_15 (with k_13 = 0 no KIV
+  // is made for r16/r17 to act on), not by the native terminal steps k_16/k_17.
+  // Adh6 alone is not a scenario key -- unlike k_16 it is neither overexpressed
+  // in B nor zeroed in A -- so a caller that sets only the historical k_13-k_16
+  // capacities still gets the correct terminal ADH.
+  k_17 = 0.1077;
+  k_17 has g_per_l_per_h;
+  K_17 = 0.0086;
+  K_17 has g_per_l;
+  k_17r = 0.00025;
+  k_17r has dimensionless;
+  K_17e = 0.020;
+  K_17e has dimensionless;
+  // r17 cross-product inhibition (acetate + ethanol); see the r6 block above.
+  // The lumped r16's k_16ia/k_16ie, re-homed by the 2026-09-15 split: they
+  // inhibit the alcohol-forming step, which is now r17. Dormant while the
+  // Ehrlich branch is off (k_16 = 0 leaves no aldehyde to reduce), kept
+  // symmetric with r6.
+  k_17ia = 0.06;
+  k_17ia has l_per_g;
+  k_17ie = 0.02;
+  k_17ie has l_per_g;
+
+  // Other declarations:
+  var X_a, X_AcDH, qO2, qCO2;
+  var v2_0, v5_0, v7_0, v8_0, OTR_max, OUR_gated, OUR_committed, OUR_demand, f_O2;
+
+  var n_glu_spikes, glucose_feed_spikeDelay, threshold_conc_glu_spike, target_conc_glu_spike, conc_glu_feed_spike, last_vol_glu_feed_added, tot_vol_glu_feed_added;
+  var tot_mass_glu, y_EtOH_glu_added, y_EtOH_glu_consumed;
+  var curr_n_glu_spikes, curr_env, curr_tot_vol_glu_feed_added;
+
+  const k_7ie, k_7ia, k_7ii, k_1ie, k_1ia, k_1ii, k_4ie, k_4ia, k_4ii, k_10;
+  const k_10ie, k_10ia, k_10ii, P_10e, P_10a, P_10i;
+  const k_6ia, k_6ii, k_16ia, k_16ie, k_17ia, k_17ie;
+  const k_1h, K_1h, k_1l, K_1l, k_1e, K_1e, K_1i, k_2, K_2, K_2i;
+  const k_3, K_3, k_4, K_4, k_5, K_5, k_5e, K_5e, K_5i, k_6, K_6, k_6r, K_6e;
+  const k_7, K_7, k_8, k_9, K_9, k_9e, K_9e, K_9i, k_9c, k_11, D;
+  const kLa, C_O2_sat;
+  const k_13, K_13, k_14, K_14, k_15, K_15, k_16, K_16, k_16r, K_16i, k_17, K_17, k_17r, K_17e
+
+  // Unit definitions:
+  unit substance = gram;
+  unit time_unit = 3600 second;
+  unit volume = litre;
+  unit per_h = 1 / 3600 second;
+  unit g_per_l = gram / litre;
+  unit l_per_g = litre / gram;
+  unit g_per_l_per_h = gram / (litre * 3600 second);
+  unit mmole_per_g_per_h = 1e-3 mole / (3600 second * gram);
+  unit mmole_per_l = 1e-3 mole / litre;
+  unit mmole_per_l_per_h = 1e-3 mole / (litre * 3600 second);
+
+  // Display Names:
+  substance is "gram";
+  time_unit is "hours";
+  volume is "liter";
+  per_h is "per hour";
+  g_per_l is "gram  per liter";
+  l_per_g is "liter  per gram";
+  g_per_l_per_h is "gram  per liter per hour";
+  mmole_per_g_per_h is "mmole per gram BM per hour";
+  mmole_per_l is "mmole per liter";
+  mmole_per_l_per_h is "mmole per liter per hour";
+  env is "environment";
+  s_glu is "Glucose";
+  s_pyr is "Pyruvate";
+  s_acetate is "Acetate";
+  s_acetald is "Acetaldehyde";
+  s_EtOH is "EtOH";
+  s_IBO is "Isobutanol";
+  s_isobutald is "Isobutyraldehyde";
+  x is "BM";
+  a is "BM(active)";
+  AcDH is "BM(AcDH)";
+  Red is "Red. Equ. (NADH)";
+  S_f is "Glucose(feed)";
+  r2 is "TCA (pyruvate)";
+  r5 is "TCA (acetate)";
+  r6 is "ADH";
+  r8 is "BM growth (acetate)";
+  r3 is "Pyruvate Dehydrogenase";
+  r9 is "Acdh production";
+  r11 is "Acdh degradation";
+  D is "Dilutionrate";
+  s_glu_in is "Glucose inflow";
+  s_glu_out is "Glucose outflow";
+  s_pyr_out is "Pyruvate outflow";
+  s_acetate_out is "Acetate outflow";
+  s_acetald_out is "Acetaldehyde outflow";
+  s_EtOH_out is "EtOH outflow";
+  a_out is "active BM outflow";
+  x_out is "BM outflow";
+  AcDH_out is "AcDH BM outflow";
+
+  // SBO terms:
+  env.sboTerm = 290
+  cell.sboTerm = 290
+  s_glu.sboTerm = 247
+  s_pyr.sboTerm = 247
+  s_acetate.sboTerm = 247
+  s_acetald.sboTerm = 247
+  s_EtOH.sboTerm = 247
+  s_isobutald.sboTerm = 247
+  x.sboTerm = 240
+  a.sboTerm = 241
+  AcDH.sboTerm = 241
+  CO2.sboTerm = 247
+  Red.sboTerm = 247
+  S_f.sboTerm = 247
+  r2.sboTerm = 205
+  r5.sboTerm = 205
+  r6.sboTerm = 200
+  r8.sboTerm = 205
+  r3.sboTerm = 200
+  r9.sboTerm = 184
+  r11.sboTerm = 179
+  s_glu_in.sboTerm = 185
+  s_glu_out.sboTerm = 185
+  s_pyr_out.sboTerm = 185
+  s_acetate_out.sboTerm = 185
+  s_acetald_out.sboTerm = 185
+  s_EtOH_out.sboTerm = 185
+  a_out.sboTerm = 185
+  x_out.sboTerm = 185
+  AcDH_out.sboTerm = 185
+
+  // CV terms:
+  env biological_system "http://identifiers.org/go/GO:0005576"
+  cell identity "http://identifiers.org/go/GO:0005623"
+  s_glu identity "http://identifiers.org/chebi/CHEBI:17234",
+                 "http://identifiers.org/kegg.compound/C00293"
+  s_pyr identity "http://identifiers.org/chebi/CHEBI:15361",
+                 "http://identifiers.org/kegg.compound/C00022"
+  s_acetate identity "http://identifiers.org/chebi/CHEBI:40480",
+                     "http://identifiers.org/kegg.compound/C00033"
+  s_acetald identity "http://identifiers.org/chebi/CHEBI:15343",
+                     "http://identifiers.org/kegg.compound/C00084"
+  s_EtOH identity "http://identifiers.org/chebi/CHEBI:16236",
+                  "http://identifiers.org/kegg.compound/C00469"
+  s_isobutald identity "http://identifiers.org/chebi/CHEBI:48943",
+                       "http://identifiers.org/kegg.compound/C22919"
+  CO2 identity "http://identifiers.org/chebi/CHEBI:16526",
+               "http://identifiers.org/kegg.compound/C00011"
+  Red identity "http://identifiers.org/chebi/CHEBI:16908",
+               "http://identifiers.org/kegg.compound/C00004"
+  S_f version "http://identifiers.org/chebi/CHEBI:17234",
+              "http://identifiers.org/kegg.compound/C00293"
+  r2 identity "http://identifiers.org/go/GO:0006099"
+  r5 identity "http://identifiers.org/go/GO:0006099"
+  r6 version "http://identifiers.org/kegg.reaction/R00754"
+  r6 biological_system "http://identifiers.org/ec-code/1.1.1.1",
+                       "http://identifiers.org/go/GO:0004022"
+  r8 biological_system "http://identifiers.org/go/GO:0016049",
+                       "http://identifiers.org/go/GO:0008283"
+  r3 version "http://identifiers.org/ec-code/1.2.4.1",
+             "http://identifiers.org/ec-code/2.3.1.12"
+  r3 biological_system "http://identifiers.org/kegg.reaction/R00209",
+                       "http://identifiers.org/go/GO:0004738"
+  r9 biological_system "http://identifiers.org/go/GO:0006412"
+  r11 biological_system "http://identifiers.org/go/GO:0030163"
+
+  model model_source "http://identifiers.org/biomodels.db/MODEL1003250000"
+  model model_source "http://identifiers.org/biomodels.db/BIOMD0000000245"
+  model publication "http://identifiers.org/pubmed/11434967"
+  model taxon "http://identifiers.org/taxonomy/4932"
+  model version "http://identifiers.org/kegg.pathway/sce00020",
+                "http://identifiers.org/kegg.pathway/sce00010"
+  model version "http://identifiers.org/go/GO:0006006",
+                "http://identifiers.org/go/GO:0006099"
+  model property "http://identifiers.org/mamo/MAMO_0000046"
+  model created "2010-03-25T02:28:31Z"
+  model modified "2010-06-03T10:40:01Z"
+  model creator1.givenName "Lukas"
+  model creator1.familyName "Endler"
+  model creator1.organization "EMBL-EBI"
+  model creator1.email "lukas@ebi.ac.uk"
+
+  // Notes:
+  model notes ```
+This the model from the article: 
+**A biochemically structured model for Saccharomyces cerevisiae.** 
+Lei F, Rotbøll M, Jørgensen SB. *J Biotechnol.* 2001 Jul
+12;88(3):205-21. 	 PMID: [11434967](http://www.ncbi.nlm.nih.gov/pubmed/11434967) ,DOI: [10.1016/S0168-1656(01)00269-3](http://dx.doi.org/10.1016/S0168-1656(01)00269-3)
+
+**Abstract:** 
+A biochemically structured model for the aerobic growth of Saccharomyces
+cerevisiae on glucose and ethanol is presented. The model focuses on the pyruvate
+and acetaldehyde branch points where overflow metabolism occurs when the growth changes
+from oxidative to oxido-reductive. The model is designed to describe the onset of
+aerobic alcoholic fermentation during steady-state as well as under dynamical conditions,
+by triggering an increase in the glycolytic flux using a key signalling component
+which is assumed to be closely related to acetaldehyde. An investigation of the modelled
+process dynamics in a continuous cultivation revealed multiple steady states in a
+region of dilution rates around the transition between oxidative and oxido-reductive
+growth. A bifurcation analysis using the two external variables, the dilution rate,
+D, and the inlet concentration of glucose, S(f), as parameters, showed that a fold
+bifurcation occurs close to the critical dilution rate resulting in multiple steady-states.
+The region of dilution rates within which multiple steady states may occur depends
+strongly on the substrate feed concentration. Consequently a single steady state
+may prevail at low feed concentrations, whereas multiple steady states may occur
+over a relatively wide range of dilution rates at higher feed concentrations. 
+
+
+This model originates from BioModels Database: A Database of Annotated Published
+Models. It is copyright (c) 2005-2010 The BioModels Team. 
+For more information see the [terms of use](http://www.ebi.ac.uk/biomodels/legal.html) . 
+To cite BioModels Database, please use [Le Novère N., Bornstein B., Broicher A., Courtot M., Donizelli M., Dharuri H., Li L., Sauro H., Schilstra M., Shapiro B., Snoep J.L., Hucka M. (2006) BioModels Database: A Free, Centralized Database of Curated, Published, Quantitative Kinetic Models of Biochemical and Cellular Systems Nucleic Acids Res., 34: D689-D691.](http://www.pubmedcentral.nih.gov/articlerender.fcgi?tool=pubmed&pubmedid=16381960)
+```
+end
+
+bhagwat2026 is "Bhagwat2026_Yeast_Ethanol_Isobutanol"

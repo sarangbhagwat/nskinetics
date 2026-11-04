@@ -1,0 +1,8 @@
+EDFig9 comparison (2026-11-04)
+output/trajectory_opt_PI_TRY_informed.png  md5 4d74aefeccd1ac14420e5e92b80ead5a  6562x2582 RGBA
+manuscript/EDFig9_manuscript.png (docx image15)  md5 4d74aefeccd1ac14420e5e92b80ead5a  6562x2582 RGBA
+=> byte-identical. Pixel diff: max 0, mean 0, 0.000 % pixels differ.
+Also identical to repository_clones\_superseded\Kinetic-trajectories\trajectory_opt_PI_TRY_informed.png
+(mtime 2026-10-26 04:06, the original render; copied to manuscript/superseded_trajectory_opt_PI_TRY_informed.png).
+Re-verified 2026-11-04 after polish (make_figure.py now sets PYTHONDONTWRITEBYTECODE=1): output/ emptied,
+make_figure.py re-run from C:\ (exit 0), output PNG md5 again 4d74aefeccd1ac14420e5e92b80ead5a == image15; no __pycache__.

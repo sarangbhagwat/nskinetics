@@ -1,0 +1,15 @@
+{
+  "scenario": "A",
+  "feeding_kwargs": {
+    "threshold_conc": 217.125,
+    "target_conc": 221.25
+  },
+  "max_n_spikes": 16,
+  "n_glu_spikes": 7.0,
+  "tau": 61.62162162162162,
+  "tau_stop_aeration": 12.132132132132131,
+  "EtOH_titer": 114.54273229237701,
+  "cell_density": 12.969728542650005,
+  "ethanol_MPSP": 0.8602058474777036,
+  "IRR": 0.12788684434779662
+}

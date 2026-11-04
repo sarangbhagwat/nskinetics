@@ -1,0 +1,7 @@
+EDFig8: regenerated output/k13_inhib_isobutanol_opt_PI_TRY_informed_IRR.png vs manuscript/EDFig8_manuscript.png
+md5 output     dced9ead49fcb11e43b01f6ac859cacb
+md5 manuscript dced9ead49fcb11e43b01f6ac859cacb
+byte-identical: True
+size 3266x2282 vs 3266x2282; max abs diff 0, mean 0, % differing pixels 0
+also identical to publication\_archive_pre_reorg\Kinetic-sweeps\k13_inhib_isobutanol_opt_PI_TRY_informed_IRR.png (dced9ead49fcb11e43b01f6ac859cacb) and scratchpad docx image14.png
+PDF md5 differs run to run (CreationDate metadata); PNG is deterministic.

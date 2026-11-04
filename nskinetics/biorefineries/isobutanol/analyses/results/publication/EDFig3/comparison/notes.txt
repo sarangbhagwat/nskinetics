@@ -1,0 +1,10 @@
+EDFig3: regenerated PNG md5 == raw PNG embedded in Figures_optimization_campaigns.pptx.
+Composite diff: regenerated PNG Lanczos-scaled to the manuscript width and aligned by the best vertical offset;
+EDFig3_diff_mask.png: red = |diff| > 16, pink = 1..16. EDFig3_side_by_side_*.png: left regenerated, right manuscript.
+
+EDFig3: regenerated (2850, 2956) scaled to 2310x2396 (factor 0.8105); best vertical offset dy=0 px (manuscript row = regenerated row + dy); overlap rows 0..2396 of regenerated
+  whole overlap: max abs 255, mean abs 1.277, % px >16: 0.399, % px >64: 0.355
+  rows 0%-10% of overlap: max abs 255, mean abs 8.292, % px >16: 3.992, % px >64: 3.556
+  rows 10%-40% of overlap: max abs 21, mean abs 0.487, % px >16: 0.002, % px >64: 0.000
+  rows 40%-60% of overlap: max abs 18, mean abs 0.282, % px >16: 0.001, % px >64: 0.000
+  rows 60%-100% of overlap: max abs 19, mean abs 0.618, % px >16: 0.001, % px >64: 0.000
