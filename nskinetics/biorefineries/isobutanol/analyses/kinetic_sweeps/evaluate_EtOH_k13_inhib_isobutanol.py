@@ -27,16 +27,18 @@ isobutanol, so its isobutanol-inhibition coefficients are inert):
 * **inhib_isobutanol multiplier (y-axis):** the grouped decision variable
   (``kinetic_optimization.METABOLIC_MINIMAL_SUBSET_GROUPS['inhib_isobutanol']``
   = k_1ii, k_4ii, k_6ii, k_7ii, k_10ii), swept over **[0.75, 1.5]** x each
-  member's ``opt_PI_TRY_informed`` baseline -- the ``metabolic_14d`` default
-  group band (0.75x baseline at the floor, its ceiling at the top). Every
-  member is set to its ``opt_PI_TRY_informed`` baseline x the multiplier, so
-  intra-family ratios are preserved (exactly
-  ``kinetic_optimization.expand_grouped_values`` for a single group).
+  member's WILD-TYPE (scenario A) value -- the campaigns' optimization band
+  for the group (they anchor on A). Every member is set to its A value x the
+  multiplier, so intra-family ratios are preserved (exactly
+  ``kinetic_optimization.expand_grouped_values`` for a single group). The
+  ``opt_PI_TRY_informed`` optimum sits at the band floor, 0.75x. (Until
+  2026-10-26 the multiplier was relative to the optimum's own coefficients,
+  i.e. 0.5625-1.125x A.)
 
 Both axes are linear grids over these bounds (a contour sweep spaces them
-evenly, matching the sibling ``evaluate_*`` scripts). ``(k_13 =
-opt_PI_TRY_informed baseline, inhib_isobutanol multiplier = 1.0)`` lies on the
-grid interior and reproduces the ``opt_PI_TRY_informed`` baseline point.
+evenly, matching the sibling ``evaluate_*`` scripts). The optimum, ``(k_13 =
+4.0, inhib_isobutanol multiplier = 0.75)``, lies on the bottom grid row
+between two k_13 columns (3.695 and 4.105).
 
 Baseline: ``opt_PI_TRY_informed`` (since 2026-10-08; it succeeds the removed
 ``opt_IRR`` scenario) is trial #1912 of the 2026-09-24 TRY-informed PI
@@ -52,12 +54,16 @@ burden-feasible (Phi_M 0.130). Its baseline kinetics + feeding strategy
 script reads them live. Its baseline ``k_13`` is 4.0 (top of the split-preset
 rate band, as was opt_IRR's), so the x-axis still spans [0.004, 16.0] g/L/h.
 
+Run it with the campaigns' hensmith ``2b5b27d`` on PYTHONPATH (a ``git
+archive`` export) so the grid's TEA metrics are comparable with the campaign
+record (the TEA metrics move by ~1-5 % between hensmith versions).
+
 STALE RESULTS: result CSVs / figures of this sweep produced before 2026-10-08
 are of the OLD ``opt_IRR`` point (split_12d trial 1602: IBO 41.7 + EtOH 29.2
-g/L, tau 28.35 h, IRR ~0.273, 50-spike cap / 170.91 / 175.91). Re-run this
-script to regenerate them for the ``opt_PI_TRY_informed`` baseline. (The
-``file_to_save`` prefix encodes ``max_n``, which is now 1, not opt_IRR's 50, so
-the new CSVs do not overwrite the old ones.)
+g/L, tau 28.35 h, IRR ~0.273, 50-spike cap / 170.91 / 175.91), with the
+multiplier relative to that point's own coefficients. (The ``file_to_save``
+prefix encodes ``max_n``, which is now 1, not opt_IRR's 50, so the new CSVs do
+not overwrite the old ones.)
 
 Enzyme burden: installed A-referenced via
 ``scenarios.load_scenario('opt_PI_TRY_informed', burden=True)`` (the
@@ -82,7 +88,8 @@ Crash resilience: the grid is checkpointed per point and resumes on relaunch
 or hung process relaunched automatically.
 
 Run: not ask-first, but LONG-RUNNING -- 40 x 40 = 1600 grid points of full
-flowsheet simulations (~15-25 s each, i.e. about 7-11 h).
+flowsheet simulations (~2-3 s each on opt_PI_TRY_informed's short 1-spike
+fermentation, i.e. about 1 h; measured 2026-10-26).
 Writes, under the results root (paths.results_dir(): analyses/results
 unless NSKINETICS_IBO_RESULTS_DIR is set): one <file_to_save>_<metric>.csv
 per metric and the contour plots
@@ -192,12 +199,26 @@ baseline_k_13 = _available.get('k_13', getattr(r, 'k_13'))
 print('\n%s baseline k_13 = %s' % (scenario, baseline_k_13))
 print('%s inhib_isobutanol baselines: %s' % (scenario, baseline_inhib_isobutanol))
 
+# The multiplier's basis: each member's WILD-TYPE (scenario A) value, the
+# campaigns' anchor. load_scenario(..., burden=True) cached A's live kinetics
+# (the burden reference) before applying the opt_PI_TRY_informed workbook.
+A_kinetics = scenarios._A_REFERENCE[0]
+assert A_kinetics is not None, 'scenario A reference kinetics not cached'
+wild_type_inhib_isobutanol = {m: A_kinetics[m] for m in INHIB_ISOBUTANOL_MEMBERS}
+# the optimum's own multiplier (one group value: every member's ratio agrees)
+_ratios = [baseline_inhib_isobutanol[m] / wild_type_inhib_isobutanol[m]
+           for m in INHIB_ISOBUTANOL_MEMBERS]
+assert np.allclose(_ratios, _ratios[0], rtol=1e-9), _ratios
+baseline_inhib_isobutanol_multiplier = float(_ratios[0])
+print('wild-type (A) inhib_isobutanol values: %s' % wild_type_inhib_isobutanol)
+print('%s inhib_isobutanol multiplier (x A) = %s' % (scenario, baseline_inhib_isobutanol_multiplier))
+
 
 def apply_inhib_isobutanol_multiplier(multiplier):
-    """Set every inhib_isobutanol member to its opt_PI_TRY_informed baseline x
-    `multiplier` (intra-family ratios preserved; == expand_grouped_values
-    for the single inhib_isobutanol group)."""
-    for member, base in baseline_inhib_isobutanol.items():
+    """Set every inhib_isobutanol member to its wild-type (scenario A) value
+    x `multiplier` (intra-family ratios preserved; == expand_grouped_values
+    for the single inhib_isobutanol group on the A anchor)."""
+    for member, base in wild_type_inhib_isobutanol.items():
         setattr(r, member, base * multiplier)
 
 
@@ -302,8 +323,8 @@ spec_1 = nsk_k_13es = np.linspace(K_13_MULTIPLIER_BOUNDS[0]*baseline_k_13,
                                   K_13_MULTIPLIER_BOUNDS[1]*baseline_k_13,
                                   steps[0])
 
-# USER-SPECIFIED band: inhib_isobutanol multiplier x [0.75, 1.5] (metabolic_14d
-# default group band: 0.75x baseline at the low end, ceiling at the top).
+# USER-SPECIFIED band: inhib_isobutanol multiplier x [0.75, 1.5] of the
+# wild-type (A) values (the campaigns' group band; the optimum is at 0.75x).
 INHIB_ISOBUTANOL_MULTIPLIER_BOUNDS = (0.75, 1.5)
 spec_2 = inhib_isobutanol_multipliers = np.linspace(INHIB_ISOBUTANOL_MULTIPLIER_BOUNDS[0],
                                                     INHIB_ISOBUTANOL_MULTIPLIER_BOUNDS[1],
@@ -326,7 +347,7 @@ x_units = r"$\mathrm{g} \cdot \mathrm{L}^{-1} \cdot \mathrm{h}^{-1}$"
 x_ticks = [float(np.round(t, 1)) for t in np.linspace(spec_1[0], spec_1[-1], 5)]
 
 y_label = "inhib_isobutanol multiplier" # title of the y axis
-y_units = r"" # dimensionless (x opt_PI_TRY_informed baseline of each member)
+y_units = r"" # dimensionless (x wild-type (A) value of each member)
 y_ticks = [0.75, 1.0, 1.25, 1.5]
 
 z_label = "Spike feed glucose concentration" # title of the x axis
@@ -403,7 +424,7 @@ replot_from_csv = os.environ.get('IBO_SWEEP_REPLOT_FROM_CSV', '') == '1'
 _script_stem = os.path.splitext(os.path.basename(__file__))[0]
 checkpoint_filepath = isobutanol_results_filepath + _script_stem + '_checkpoint.csv'
 inflight_filepath = isobutanol_results_filepath + _script_stem + '_inflight.json'
-checkpoint_fieldnames = ['i_row', 'i_col', 'k_13', 'inhib_isobutanol_multiplier',
+checkpoint_fieldnames = ['i_row', 'i_col', 'k_13', 'inhib_isobutanol_multiplier_vs_A',
                          'state'] + list(metrics.keys())
 
 def append_checkpoint_row(i2, i1, state, metric_values):
@@ -413,7 +434,7 @@ def append_checkpoint_row(i2, i1, state, metric_values):
         if is_new: writer.writeheader()
         writer.writerow({'i_row': i2, 'i_col': i1,
                          'k_13': repr(float(spec_1[i1])),
-                         'inhib_isobutanol_multiplier': repr(float(spec_2[i2])),
+                         'inhib_isobutanol_multiplier_vs_A': repr(float(spec_2[i2])),
                          'state': state,
                          **{k: repr(float(v)) for k, v in metric_values.items()}})
         fh.flush()
@@ -432,7 +453,7 @@ def load_checkpoint():
             i2, i1 = int(row['i_row']), int(row['i_col'])
             if not (i2 < len(spec_2) and i1 < len(spec_1)
                     and np.isclose(float(row['k_13']), spec_1[i1])
-                    and np.isclose(float(row['inhib_isobutanol_multiplier']), spec_2[i2])):
+                    and np.isclose(float(row['inhib_isobutanol_multiplier_vs_A']), spec_2[i2])):
                 raise RuntimeError(f'Checkpoint is of a different grid: {checkpoint_filepath} '
                                    '(delete it or set IBO_SWEEP_FRESH=1).')
             points[(i2, i1)] = {k: float(row[k]) for k in metrics.keys()}
@@ -442,7 +463,7 @@ def write_inflight(i2, i1):
     with open(inflight_filepath, 'w') as fh:
         json.dump({'i_row': i2, 'i_col': i1,
                    'k_13': float(spec_1[i1]),
-                   'inhib_isobutanol_multiplier': float(spec_2[i2])}, fh)
+                   'inhib_isobutanol_multiplier_vs_A': float(spec_2[i2])}, fh)
         fh.flush()
         os.fsync(fh.fileno())
 
@@ -462,7 +483,7 @@ if not replot_from_csv:
         if _lost_point not in checkpointed_points:
             print(f'\nThe previous process died at grid point {_lost_point} '
                   f'(k_13 = {_lost["k_13"]}, inhib_isobutanol multiplier = '
-                  f'{_lost["inhib_isobutanol_multiplier"]}); logging it as LOST (NaN).')
+                  f'{_lost["inhib_isobutanol_multiplier_vs_A"]}); logging it as LOST (NaN).')
             checkpointed_points[_lost_point] = {k: np.nan for k in metrics.keys()}
             append_checkpoint_row(*_lost_point, 'LOST', checkpointed_points[_lost_point])
         clear_inflight()
@@ -477,7 +498,7 @@ if not replot_from_csv:
     print('\n\nSimulating the initial point to avoid bugs ...')
     curr_spec = fbs_spec.current_specifications
     r.k_13 = baseline_k_13  # baseline k_13 (known-good; low grid points are near-knockouts)
-    apply_inhib_isobutanol_multiplier(1.0)  # baseline inhib_isobutanol (known-good)
+    apply_inhib_isobutanol_multiplier(baseline_inhib_isobutanol_multiplier)  # baseline inhib_isobutanol (known-good)
     model_specification(**curr_spec,
         n_sims=3,
         plot=True,

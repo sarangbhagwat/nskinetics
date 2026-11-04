@@ -105,6 +105,7 @@ from matplotlib.lines import Line2D, TICKDOWN, TICKLEFT
 from matplotlib.ticker import (AutoMinorLocator, FixedLocator, FuncFormatter,
                                LogLocator, MultipleLocator, NullFormatter,
                                NullLocator, PercentFormatter)
+from matplotlib.transforms import blended_transform_factory
 
 # --- sim-safe module loads (by file path; never import the package) ----------
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -1905,19 +1906,25 @@ def draw_burden(fig, gs_cell, sets, colors, offset_scale=1.0):
         draw_stack(axL, s, y, c)
         draw_stack(axR, s, y, c)
 
-    # un-derated translation demand (in the left window), spanning just the
-    # bar rows -- not the legend headroom above them
-    axL.plot([demand_x, demand_x], [0.5, n + 0.6], color='0.15', ls='--',
+    # the sector-demand brackets (drawn below) hover at height `by` above the
+    # top bar, with end caps of half-height `cap`
+    by = n + 0.83                          # above the top border spine (n+0.50)
+    cap = 0.10                             # end-cap half-height
+    line_top = by - cap + 0.02             # dashed lines reach into the end caps
+    # un-derated translation demand (in the left window), spanning the bar
+    # rows up to the bracket end caps
+    axL.plot([demand_x, demand_x], [0.5, line_top], color='0.15', ls='--',
              lw=1.0, zorder=4)   # above the raised metabolic sectors (zorder 3)
     # a second dashed line where the housekeeping sector begins (the flexible
     # sector edge, F_flex = PC - housekeeping); also in the left window
     hk_start = PC - housekeeping
-    axL.plot([hk_start, hk_start], [0.5, n + 0.6], color='0.15', ls='--',
+    axL.plot([hk_start, hk_start], [0.5, line_top], color='0.15', ls='--',
              lw=1.0, zorder=4)
     # the proteome cap at PC (the right end of every bar) -- a dashed line in
     # the right stub, labelled parallel to it (rotated 90 deg) in the empty gap
     # between the cap and the 0.5 edge
-    axR.plot([PC, PC], [0.5, n + 0.6], color='0.15', ls='--', lw=1.0, zorder=4)
+    axR.plot([PC, PC], [0.5, line_top], color='0.15', ls='--', lw=1.0,
+             zorder=4)
     axR.text(0.5 * (PC + xmax), 0.5 * (0.5 + n + 0.6), 'proteome cap',
              ha='center', va='center', rotation=90, rotation_mode='anchor',
              fontsize=11, color='0.15', clip_on=False, zorder=5)
@@ -1927,22 +1934,36 @@ def draw_burden(fig, gs_cell, sets, colors, offset_scale=1.0):
     #  * penalty-free metabolic budget -- metabolism grows from the start of
     #    glycolysis (the origin) and only derates translation once it passes the
     #    un-derated demand line, so that span (F_flex - phi_T,demand) is free;
-    #  * translation demand -- from the demand line to the housekeeping edge.
-    by = n + 0.68                          # above the top border spine (n+0.50)
-    cap = 0.10                             # end-cap half-height
+    #  * translation demand -- from the demand line to the housekeeping edge;
+    #  * housekeeping -- from the housekeeping edge to the proteome cap. It
+    #    straddles the axis break, so its one unbroken arrow runs from the left
+    #    window into the right one across the cut, and its label is centred
+    #    over the whole span once the axis limits are set below.
+    bracket_line = dict(color='0.15', lw=1.0)
 
-    def bracket(ax, x0, x1, label):
-        ax.annotate('', xy=(x1, by), xytext=(x0, by), annotation_clip=False,
-                    arrowprops=dict(arrowstyle='<->', color='0.15', lw=1.0,
-                                    shrinkA=0.0, shrinkB=0.0), zorder=5)
-        for bx in (x0, x1):                 # vertical end caps ('|')
-            ax.plot([bx, bx], [by - cap, by + cap], color='0.15', lw=1.0,
-                    solid_capstyle='butt', clip_on=False, zorder=5)
-        ax.text(0.5 * (x0 + x1), by + cap + 0.06, label, ha='center',
-                va='bottom', fontsize=11, color='0.15', clip_on=False, zorder=5)
+    def end_cap(ax, bx):                    # vertical end cap ('|')
+        ax.plot([bx, bx], [by - cap, by + cap], solid_capstyle='butt',
+                clip_on=False, zorder=5, **bracket_line)
+
+    def bracket(ax, x0, x1, label=None, ax1=None):
+        # ax1, when given, holds x1 (an arrow across the axis break). The arrow
+        # belongs to ax1, the axes drawn later, so ax1's white background does
+        # not paint over the part of it that crosses into ax1.
+        ax1 = ax if ax1 is None else ax1
+        ax1.annotate('', xy=(x1, by), xycoords=ax1.transData,
+                     xytext=(x0, by), textcoords=ax.transData,
+                     annotation_clip=False, clip_on=False, zorder=5,
+                    arrowprops=dict(arrowstyle='<->', shrinkA=0.0, shrinkB=0.0,
+                                    **bracket_line))
+        end_cap(ax, x0); end_cap(ax1, x1)
+        if label is not None:
+            ax.text(0.5 * (x0 + x1), by + cap + 0.06, label, ha='center',
+                    va='bottom', fontsize=11, color='0.15', clip_on=False,
+                    zorder=5)
 
     bracket(axL, 0.0, demand_x, 'penalty-free metabolic budget')
     bracket(axL, demand_x, hk_start, 'translation demand')
+    bracket(axL, hk_start, PC, ax1=axR)     # housekeeping (label set below)
 
     top_edge = n + 0.50                              # top border, below the brackets
     axL.set_ylim(0.4, n + 1.05)                      # shared: sets both windows
@@ -1975,6 +1996,15 @@ def draw_burden(fig, gs_cell, sets, colors, offset_scale=1.0):
     axR.spines['left'].set_visible(False)
     axL.set_xlim(0, BREAK_L)
     axR.set_xlim(BREAK_R, xmax)
+    # the housekeeping bracket's label, centred over its whole broken span
+    # (housekeeping edge in the left window to the cap in the right one): x in
+    # figure fraction, y in data units, so it sits level with the other labels
+    to_fig = fig.transFigure.inverted()
+    hk_x0 = to_fig.transform(axL.transData.transform((hk_start, by)))[0]
+    hk_x1 = to_fig.transform(axR.transData.transform((PC, by)))[0]
+    fig.text(0.5 * (hk_x0 + hk_x1), by + cap + 0.06, 'housekeeping',
+             transform=blended_transform_factory(fig.transFigure, axL.transData),
+             ha='center', va='bottom', fontsize=11, color='0.15', zorder=5)
     # mirror the bottom x-axis onto the top border: a secondary x-axis at
     # top_edge gives a real spine + ticks there, and because each window keeps
     # its own xlim the break gap is reproduced on top. Ticks point inward only
