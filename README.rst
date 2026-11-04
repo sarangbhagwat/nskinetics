@@ -82,6 +82,23 @@ The demonstration needs NSKinetics 0.9.1 or later, the first release that ships 
 
 Once 0.9.1 is on PyPI, ``pip install "nskinetics[isobutanol]>=0.9.1"`` installs the same package and dependencies. `Running the analyses <https://nskinetics.readthedocs.io/en/latest/case_studies/isobutanol/running_analyses.html>`__ has the full installation instructions (including the validated dependency versions) and lists every analysis script, its runtime and its outputs; the `demonstration documentation <https://nskinetics.readthedocs.io/en/latest/case_studies/isobutanol/index.html>`__ presents the findings.
 
+Figure code and data
+~~~~~~~~~~~~~~~~~~~~
+
+The code and data behind the figures of Bhagwat et al., 2026 are in two folders:
+
+- `analyses/results/publication/ <https://github.com/sarangbhagwat/nskinetics/tree/main/nskinetics/biorefineries/isobutanol/analyses/results/publication>`__: one folder per figure (``Fig1``–``Fig6``, ``EDFig1``–``EDFig9``). Each holds the figure's plotting code (``code/``), a snapshot of its data (``data/``; the diagrams in ``Fig1``–``Fig3`` need none) and ``make_figure.py``, which redraws the figure from that snapshot without running any simulation.
+- `analyses/ <https://github.com/sarangbhagwat/nskinetics/tree/main/nskinetics/biorefineries/isobutanol/analyses>`__: the scripts that simulate the biorefinery and generate those data, one subfolder per analysis:
+
+  - ``feeding_strategies/``: sweep of the fed-batch glucose-feeding strategy.
+  - ``kinetic_sweeps/``: 2-D sweeps of kinetic parameters (e.g. glycolysis capacity × ethanol inhibition) and a one-at-a-time sweep of every kinetic parameter.
+  - ``kinetic_optimization/``: the Bayesian-optimization strain-design campaigns.
+  - ``objective_landscape/``: 1-D sweeps of each decision variable through the best co-production design.
+  - ``sensitivity/``: the Sobol'/Shapley global sensitivity analysis.
+  - ``uncertainty/``: the Monte Carlo uncertainty analysis.
+  - ``tea_breakdowns/``: per-unit-group equipment-cost, utility and operating-cost breakdowns of the optimized designs.
+  - ``opt_scenarios/``: turns campaign optima into the reusable ``opt_*`` scenarios.
+
 
 Bug reports
 -----------
