@@ -1,7 +1,6 @@
 # Manuscript figures: code and data
 
-One folder per figure of Bhagwat et al. (NSKinetics + isobutanol biorefinery
-manuscript). Each folder holds everything needed to redraw that figure:
+One folder per figure in Bhagwat et al., 2026. Each folder holds everything needed to redraw that figure:
 
 - `make_figure.py`: regenerates the figure into `output\`, using only the folder's own `code\` and `data\`.
 - `manuscript\`: the image as placed in the manuscript, plus the PowerPoint source for composites.

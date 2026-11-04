@@ -38,7 +38,7 @@ setup(
                       # 'python-libsbml>=5.20.5,<6.0.0',
 		     ],
     extras_require={
-        # Optional dependencies of the isobutanol biorefinery case study
+        # Optional dependencies of the isobutanol biorefinery demonstration
         # (nskinetics.biorefineries.isobutanol); `import nskinetics` never
         # needs them. Install with: pip install "nskinetics[isobutanol]".
         # `biorefineries` (Bioindustrial-Park: the corn / cellulosic / ethanol
@@ -69,7 +69,7 @@ setup(
         'nskinetics.tests': ['data/*.txt',
                              'isobutanol/fixtures/*.csv',
                              'isobutanol/scripts/*.py'],
-        # Isobutanol biorefinery case study: the parameter-distribution
+        # Isobutanol biorefinery demonstration: the parameter-distribution
         # workbooks read at run time (the 'parameter-distributions_*' glob
         # never matches Excel '~$' lock files), small JSON/CSV inputs, the
         # analysis scripts (plain folders without __init__.py, so they ship

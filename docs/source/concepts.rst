@@ -97,7 +97,7 @@ Beyond single units, ``nskinetics.processes`` ships whole flowsheet sections
 as biosteam system factories.
 :obj:`~nskinetics.processes.create_sugar_prep_and_fermentation_system`
 builds the sugar-solution preparation and fermentation section of the
-:doc:`isobutanol biorefinery case study <case_studies/isobutanol/index>` — a
+:doc:`isobutanol biorefinery demonstration <case_studies/isobutanol/index>` — a
 splitter, two evaporator/dilution/heat-exchange conditioning trains (initial
 feed and spike feed), the
 :class:`~nskinetics.units.FermentationSaccharomycesEthanolIsobutanol`

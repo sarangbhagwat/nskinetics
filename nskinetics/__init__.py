@@ -24,7 +24,7 @@ from . import units
 
 from . import models
 
-# An empty shell: the biorefinery case studies (e.g.
+# An empty shell: the biorefinery demonstrations (e.g.
 # ``nskinetics.biorefineries.isobutanol``) need optional dependencies and are
 # imported explicitly, so this pulls in nothing heavy.
 from . import biorefineries

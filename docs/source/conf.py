@@ -55,7 +55,7 @@ html_theme_options = {
     ],
 }
 
-# Case-study pages carry dense 1600-px publication figures and wide numeric
+# Demonstration pages carry dense 1600-px publication figures and wide numeric
 # tables. On those pages the "On this page" contents move from the right
 # (secondary) sidebar into the left sidebar, under the section navigation,
 # so the article gets the full content width (about 920 px instead of
@@ -94,9 +94,9 @@ autodoc_default_options = {
 # everything is installed. numpy/pandas are cheap wheels used at import
 # time (e.g. np.inf default args), so they are never mocked.
 # The second group are the optional dependencies of the isobutanol
-# biorefinery case study (the ``isobutanol`` extra) and of the shipped
+# biorefinery demonstration (the ``isobutanol`` extra) and of the shipped
 # model; Read the Docs does not install them, so they are mocked there and
-# the case-study API page (API/biorefineries.rst) can still be autodoc'd.
+# the demonstration API page (API/biorefineries.rst) can still be autodoc'd.
 # Importing nskinetics.biorefineries.isobutanol is build-free; never call
 # its load() from this file or from a docs page.
 import importlib.util

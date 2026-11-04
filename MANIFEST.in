@@ -13,7 +13,7 @@ recursive-include nskinetics/tests/data *.txt
 recursive-include nskinetics/tests/isobutanol/fixtures *.csv
 recursive-include nskinetics/tests/isobutanol/scripts *.py
 
-# Isobutanol biorefinery case study (mirrors package_data in setup.py):
+# Isobutanol biorefinery demonstration (mirrors package_data in setup.py):
 # parameter-distribution workbooks and small JSON inputs, the analysis scripts
 # (plain folders, shipped as data) with their JSON inputs, and the
 # plotting extras (figure-idea scripts/captions, Voronoi treemap JS source).

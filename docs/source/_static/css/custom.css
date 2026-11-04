@@ -53,7 +53,7 @@ p.landing-lede {
   text-align: center;
 }
 
-/* Case-study figures (``:class: pub-figure``) are matplotlib PNGs drawn on
+/* Demonstration figures (``:class: pub-figure``) are matplotlib PNGs drawn on
    white. In dark mode, sit them on a light rounded card rather than leaving
    a raw white box flush against the dark page. Must follow the
    ``img:not(.only-dark)`` rule above, which has the same specificity.
@@ -69,13 +69,13 @@ html[data-theme="dark"] .bd-content .ibo-case-card img.sd-card-img-top {
   filter: none;
 }
 
-/* Each case-study figure links to its full-resolution PNG (``:target:``),
+/* Each demonstration figure links to its full-resolution PNG (``:target:``),
    since dense panels are hard to read at the text-column width. */
 .bd-article a.image-reference img.pub-figure {
   cursor: zoom-in;
 }
 
-/* The case-study card on the Case Studies landing page: keep its figure
+/* The demonstration card on the Demonstrations landing page: keep its figure
    to a readable height and centre it on white in both themes. */
 .ibo-case-card img.sd-card-img-top {
   max-height: 24rem;
@@ -83,7 +83,7 @@ html[data-theme="dark"] .bd-content .ibo-case-card img.sd-card-img-top {
   background: #fff;
 }
 
-/* Stat cards on the case-study pages (``grid-item-card`` with
+/* Stat cards on the demonstration pages (``grid-item-card`` with
    ``:class-card: ibo-stat``): the card title is the number, the body says
    what it measures, the optional footer names its source. */
 .sd-card.ibo-stat .sd-card-title {
@@ -93,7 +93,7 @@ html[data-theme="dark"] .bd-content .ibo-case-card img.sd-card-img-top {
   font-variant-numeric: tabular-nums;
 }
 
-/* Card footers (``+++``; used only by the case-study cards) carry the
+/* Card footers (``+++``; used only by the demonstration cards) carry the
    source or scope line, so set them small and muted like the stat cards'. */
 .bd-article .sd-card .sd-card-footer {
   font-size: 0.85rem;
@@ -103,7 +103,7 @@ html[data-theme="dark"] .bd-content .ibo-case-card img.sd-card-img-top {
 /* A linked card (``:link:``) is covered by sphinx-design's stretched-link
    overlay (``.sd-stretched-link::after``: absolutely positioned, z-index 1).
    Lift the ordinary links inside such a card above it, so an inline link
-   (the "scope" link on the Case Studies landing card) opens its own target;
+   (the "scope" link on the Demonstrations landing card) opens its own target;
    the rest of the card still opens the card's page. */
 .bd-article .sd-card a.reference:not(.sd-stretched-link) {
   position: relative;
@@ -192,7 +192,7 @@ table.ibo-scenarios td:nth-child(5) {
 }
 
 /* Figure captions: the theme sets them in its light (300) caption weight,
-   which reads faintly at the length of the case-study captions. */
+   which reads faintly at the length of the demonstration captions. */
 .bd-article figure figcaption {
   font-weight: 400;
 }
@@ -221,7 +221,7 @@ table.ibo-scenarios td:nth-child(5) {
   font-size: 0.85em;
 }
 
-/* Case-study pages put "On this page" in the left sidebar, under the
+/* Demonstration pages put "On this page" in the left sidebar, under the
    section navigation (html_sidebars in conf.py), so their figures and
    tables get the full content width. Separate the two lists. Below the
    ten-entry section navigation there is room for the h2 entries only, so
@@ -253,12 +253,12 @@ table.ibo-scenarios td:nth-child(5) {
   }
 }
 
-/* Case Studies landing card: set the case-study title above body size. */
+/* Demonstrations landing card: set the demonstration title above body size. */
 .ibo-case-card .sd-card-title {
   font-size: 1.25rem;
 }
 
-/* Text measure on the case-study pages. They have no right sidebar
+/* Text measure on the demonstration pages. They have no right sidebar
    (conf.py), so their column is about 870 px wide at 1280 px: right for
    the publication figures and wide tables, too wide for prose (115-130
    characters per line). Hold running text -- paragraphs, lists, figure
