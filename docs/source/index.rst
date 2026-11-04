@@ -185,9 +185,9 @@ To get the git version, use:
 
 Or download directly from the `GitHub page <https://github.com/sarangbhagwat/nskinetics>`__.
 
-The isobutanol biorefinery case study needs NSKinetics 0.9.0 or later (the
+The isobutanol biorefinery case study needs NSKinetics 0.9.1 or later (the
 first release that ships ``nskinetics.biorefineries``) with its optional
-dependencies (the ``isobutanol`` extra); until 0.9.0 is on PyPI, install it
+dependencies (the ``isobutanol`` extra); until 0.9.1 is on PyPI, install it
 from source. See :ref:`isobutanol-installation`.
 
 Common Issues
