@@ -22,9 +22,7 @@ import subprocess
 sys.dont_write_bytecode = True
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-PY = r"C:\Users\saran\anaconda3\envs\IBO_2026\python.exe"
-if not os.path.exists(PY):
-    PY = sys.executable
+PY = sys.executable
 TAG = "_IBO_2026.9.29-23.45_['A']_6000sims_A"
 SCRIPT = os.path.join(HERE, 'code', 'plots', 'plot_uncertainty_MPSP_vs_TCI.py')
 DATA = os.path.join(HERE, 'data')

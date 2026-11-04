@@ -22,7 +22,7 @@ import sys
 sys.dont_write_bytecode = True  # keep this folder free of __pycache__
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-PY = r'C:\Users\saran\anaconda3\envs\IBO_2026\python.exe'
+PY = sys.executable
 STUDY = ('kin_sobol_ethanol_isobutanol_metabolic_split_12d_custom9f1df84b'
          '_aA_burden_seed20260922')
 DATA = os.path.join(HERE, 'data')

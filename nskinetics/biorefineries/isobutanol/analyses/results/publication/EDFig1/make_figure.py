@@ -20,7 +20,7 @@ import sys
 sys.dont_write_bytecode = True
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-PYTHON = r'C:\Users\saran\anaconda3\envs\IBO_2026\python.exe'
+PYTHON = sys.executable
 SCRIPT = os.path.join(HERE, 'code', 'plots', 'plot_feeding_strategy_baseline_A.py')
 DATA = os.path.join(HERE, 'data')
 OUTPUT = os.path.join(HERE, 'output')

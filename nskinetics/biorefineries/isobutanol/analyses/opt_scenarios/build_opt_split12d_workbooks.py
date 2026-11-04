@@ -59,7 +59,7 @@ Writes: data/parameter_distributions/parameter-distributions_corn_IBO_EtOH_
 
 Run (ASK-FIRST; a few minutes; one fresh process per scenario, one at a
 time, never next to another simulation):
-  & "C:/Users/saran/anaconda3/envs/IBO_2026/python.exe" analyses/opt_scenarios/build_opt_split12d_workbooks.py opt_PI_TRY_informed
+  python analyses/opt_scenarios/build_opt_split12d_workbooks.py opt_PI_TRY_informed
 """
 import os
 import re

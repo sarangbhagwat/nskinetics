@@ -21,7 +21,7 @@ sys.dont_write_bytecode = True  # keep __pycache__ out of this folder
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 # Hardcoded on purpose (the IBO_2026 env); edit this line to port elsewhere.
-PYTHON = r'C:\Users\saran\anaconda3\envs\IBO_2026\python.exe'
+PYTHON = sys.executable
 SCRIPT = os.path.join(HERE, 'code', 'plots', 'plot_trajectory_opt_PI_TRY_informed.py')
 DATA = os.path.join(HERE, 'data')
 OUTPUT = os.path.join(HERE, 'output')
