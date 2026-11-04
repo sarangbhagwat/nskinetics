@@ -7,5 +7,6 @@ xlsxwriter>=3.2.5,<4.0.0
 scikit-learn
 pandas>=2.2.2,<4.0.0
 tellurium
+six>=1.16.0,<2.0.0
 simplesbml
 biosteam>=2.53.11,<2.55.0

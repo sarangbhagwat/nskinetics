@@ -12,7 +12,7 @@ setup(
 
     packages=find_packages(),
     license='MIT',
-    version='0.8.0',
+    version='0.9.0',
     description='Simulation of Non-Steady state enzyme Kinetics and inhibitory phenomena',
     long_description=open('README.rst', encoding='utf-8').read(),
     long_description_content_type="text/x-rst",
@@ -30,6 +30,10 @@ setup(
                       'scikit-learn',
                       'pandas>=2.2.2,<4.0.0',
                       'tellurium',
+                      # tellurium (<=2.2.13.1) imports six at module level
+                      # (tellurium/visualization/sbmldiagram.py) without
+                      # declaring it; python-dateutil>=4 no longer pulls it in.
+                      'six>=1.16.0,<2.0.0',
                       'biosteam>=2.53.11,<2.55.0',
                       # 'python-libsbml>=5.20.5,<6.0.0',
 		     ],
