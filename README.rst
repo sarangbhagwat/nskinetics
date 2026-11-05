@@ -5,18 +5,18 @@
 The (Non-)Steady state Kinetics simulation package (NSKinetics)
 ===============================================================
 
-.. image:: http://img.shields.io/pypi/v/nskinetics.svg?style=flat
-   :target: https://pypi.python.org/pypi/nskinetics
-   :alt: Version_status
-.. image:: http://img.shields.io/badge/docs-latest-brightgreen.svg?style=flat
+.. image:: https://img.shields.io/pypi/v/nskinetics.svg?style=flat
+   :target: https://pypi.org/project/nskinetics/
+   :alt: PyPI version
+.. image:: https://img.shields.io/badge/docs-latest-brightgreen.svg?style=flat
    :target: https://nskinetics.readthedocs.io/en/latest/
    :alt: Documentation
-.. image:: http://img.shields.io/badge/license-MIT-blue.svg?style=flat
+.. image:: https://img.shields.io/pypi/l/nskinetics.svg?style=flat&color=blue
    :target: https://github.com/sarangbhagwat/nskinetics/blob/main/LICENSE
-   :alt: license
-.. image:: https://img.shields.io/pypi/pyversions/nskinetics.svg
-   :target: https://pypi.python.org/pypi/nskinetics
-   :alt: Supported_versions
+   :alt: License
+.. image:: https://img.shields.io/pypi/pyversions/nskinetics.svg?style=flat
+   :target: https://pypi.org/project/nskinetics/
+   :alt: Supported Python versions
 .. image:: https://coveralls.io/repos/github/sarangbhagwat/nskinetics/badge.svg?cachebuster=202507072
    :target: https://coveralls.io/github/sarangbhagwat/nskinetics?branch=main
 
