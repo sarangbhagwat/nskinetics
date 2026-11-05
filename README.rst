@@ -5,7 +5,7 @@
 The (Non-)Steady state Kinetics simulation package (NSKinetics)
 ===============================================================
 
-.. image:: https://img.shields.io/pypi/v/nskinetics.svg?style=flat
+.. image:: https://img.shields.io/pypi/v/nskinetics?style=flat
    :target: https://pypi.org/project/nskinetics/
    :alt: PyPI version
 .. image:: https://img.shields.io/badge/docs-latest-brightgreen.svg?style=flat
