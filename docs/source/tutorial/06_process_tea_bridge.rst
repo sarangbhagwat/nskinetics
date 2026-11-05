@@ -261,8 +261,8 @@ activate its own chemical set (``set_thermo=True``). The
 
 The next step is the whole biorefinery. With the demonstration and its
 optional dependencies installed (it needs NSKinetics 0.9.2 or later, the
-first release that ships ``nskinetics.biorefineries``; until 0.9.2 is on
-PyPI, install from source as described in :ref:`isobutanol-installation`),
+first release that ships ``nskinetics.biorefineries``; see
+:ref:`isobutanol-installation`),
 one call builds the corn-to-ethanol + isobutanol flowsheet around that
 section and simulates its baseline, and a registered scenario plus a TEA
 solve give the plant's selling prices and rate of return:
