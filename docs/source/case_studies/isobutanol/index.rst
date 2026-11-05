@@ -129,7 +129,7 @@ freezing the best design of one optimization campaign
 Quick start
 -----------
 
-Install from source with the ``isobutanol`` extra
+Install NSKinetics with the ``isobutanol`` extra
 (:ref:`isobutanol-installation`), then build the flowsheet, load a scenario
 and solve its TEA:
 

@@ -22,17 +22,24 @@ The API is on :doc:`/API/biorefineries`.
 Installation
 ------------
 
-The demonstration needs NSKinetics 0.9.2 or later. Until 0.9.2 is on PyPI,
-install from the ``dev`` branch with the ``isobutanol`` extra (or
-``requirements_isobutanol.txt``), then check it with smoke case 1:
+The demonstration needs NSKinetics 0.9.2 or later. Install it with the
+``isobutanol`` extra (or ``requirements_isobutanol.txt``), then check it with
+smoke case 1:
+
+.. code-block:: bash
+
+   pip install "nskinetics[isobutanol]>=0.9.2"
+   python -m nskinetics.biorefineries.isobutanol.smoke 1
+
+To edit the code, or to redraw the manuscript figures (their folders under
+``analyses/results/publication/`` are in the repository but not in the PyPI
+package), install from source instead:
 
 .. code-block:: bash
 
    git clone https://github.com/sarangbhagwat/nskinetics
    cd nskinetics
-   git checkout dev
    pip install -e ".[isobutanol]"
-   python -m nskinetics.biorefineries.isobutanol.smoke 1
 
 The extra adds the Bioindustrial-Park ``biorefineries`` package, ``hensmith``,
 ``contourplots``, ``optuna``, ``SALib`` and ``openpyxl``. The pins were

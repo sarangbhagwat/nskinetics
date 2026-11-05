@@ -70,17 +70,14 @@ Demonstration: isobutanol biorefinery
 
 NSKinetics ships a complete corn dry-grind biorefinery as a demonstration, ``nskinetics.biorefineries.isobutanol``: a `BioSTEAM <https://biosteam.readthedocs.io/en/latest/>`__ flowsheet whose fermentor runs the shipped *S. cerevisiae* fed-batch model with an engineered isobutanol pathway, so titer, rate and yield are outputs of the strain kinetics and the feeding policy rather than inputs to the techno-economic analysis. It comes with ten scenarios (the wild-type ethanol plant, an engineered ethanol + isobutanol co-producer and eight strain-design optima), its TEA, and the scripts behind its feeding-strategy and kinetic sweeps, Bayesian strain-design optimization, objective-landscape, enzyme-burden (proteome allocation), global sensitivity and uncertainty analyses.
 
-The demonstration needs NSKinetics 0.9.2 or later, the first release that ships ``nskinetics.biorefineries``; earlier releases do not include it. Until 0.9.2 is on PyPI, install it from source, with its optional ``isobutanol`` dependencies, and check the installation with a pinned smoke case (a few minutes):
+The demonstration needs NSKinetics 0.9.2 or later, the first release that ships ``nskinetics.biorefineries``. Install it with its optional ``isobutanol`` dependencies and check the installation with a pinned smoke case (a few minutes):
 
 .. code-block:: bash
 
-    $ git clone https://github.com/sarangbhagwat/nskinetics
-    $ cd nskinetics
-    $ git checkout dev
-    $ pip install -e ".[isobutanol]"
+    $ pip install "nskinetics[isobutanol]>=0.9.2"
     $ python -m nskinetics.biorefineries.isobutanol.smoke 1
 
-Once 0.9.2 is on PyPI, ``pip install "nskinetics[isobutanol]>=0.9.2"`` installs the same package and dependencies. `Running the analyses <https://nskinetics.readthedocs.io/en/latest/case_studies/isobutanol/running_analyses.html>`__ has the full installation instructions (including the validated dependency versions) and lists every analysis script, its runtime and its outputs; the `demonstration documentation <https://nskinetics.readthedocs.io/en/latest/case_studies/isobutanol/index.html>`__ presents the findings.
+`Running the analyses <https://nskinetics.readthedocs.io/en/latest/case_studies/isobutanol/running_analyses.html>`__ has the full installation instructions (including installing from source and the validated dependency versions) and lists every analysis script, its runtime and its outputs; the `demonstration documentation <https://nskinetics.readthedocs.io/en/latest/case_studies/isobutanol/index.html>`__ presents the findings.
 
 Figure code and data
 ~~~~~~~~~~~~~~~~~~~~
