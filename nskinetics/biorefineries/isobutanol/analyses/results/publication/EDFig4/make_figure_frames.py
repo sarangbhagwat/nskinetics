@@ -40,7 +40,8 @@ def main():
                SOURCE_DATE_EPOCH='1790294400')
     script = os.path.join(HERE, 'code', 'frames',
                           'plot_k_3_try_informed_sweep_frames.py')
-    subprocess.run([PY, script, *sys.argv[1:]], env=env, check=True)
+    # the child's exit code is passed on (no second traceback on its errors)
+    sys.exit(subprocess.run([PY, script, *sys.argv[1:]], env=env).returncode)
 
 if __name__ == '__main__':
     main()

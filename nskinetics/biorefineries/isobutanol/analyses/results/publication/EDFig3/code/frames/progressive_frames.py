@@ -122,7 +122,8 @@ def save_frames(fig, groups, frames, out_dir, stem, dpi, formats=('png',),
             is the complete figure.
 
     Files are <stem>_frame<NN>_<frame name>.<ext> (NN from 01); frames of
-    `stem` left in out_dir by an earlier run are removed first. An artist that
+    `stem` left in out_dir by an earlier run, in any format, are removed
+    first, so the folder only ever holds one cut of the sequence. An artist that
     is already invisible in the finished figure stays invisible. The figure
     is left as it was (everything visible) on return.
     """
@@ -145,10 +146,9 @@ def save_frames(fig, groups, frames, out_dir, stem, dpi, formats=('png',),
              for name, artists in groups.items()}
 
     os.makedirs(out_dir, exist_ok=True)
-    for ext in formats:
-        for old in glob.glob(os.path.join(
-                glob.escape(out_dir), f'{glob.escape(stem)}_frame[0-9][0-9]_*.{ext}')):
-            os.remove(old)
+    for old in glob.glob(os.path.join(
+            glob.escape(out_dir), f'{glob.escape(stem)}_frame[0-9][0-9]_*.*')):
+        os.remove(old)
 
     paths = []
     try:

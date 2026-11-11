@@ -37,8 +37,9 @@ DATA = os.path.join(HERE, 'data')
 def main():
     env = dict(os.environ, NSKINETICS_IBO_RESULTS_DIR=DATA, MPLBACKEND='Agg',
                PYTHONDONTWRITEBYTECODE='1')
-    subprocess.run([PYTHON, SCRIPT, *sys.argv[1:]], env=env,
-                   cwd=os.path.dirname(SCRIPT), check=True)
+    # the child's exit code is passed on (no second traceback on its errors)
+    sys.exit(subprocess.run([PYTHON, SCRIPT, *sys.argv[1:]], env=env,
+                            cwd=os.path.dirname(SCRIPT)).returncode)
 
 
 if __name__ == '__main__':

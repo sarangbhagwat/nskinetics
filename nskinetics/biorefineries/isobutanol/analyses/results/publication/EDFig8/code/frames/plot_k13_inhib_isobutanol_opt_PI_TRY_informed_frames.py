@@ -153,7 +153,11 @@ def build_figure():
         raise RuntimeError(f'{len(markers)} markers and {len(callouts)} callouts '
                            f'drawn for {len(expected)} optima')
     for (marker,), callout in zip(markers, callouts):
-        groups[_group_name(callout.get_text())] = [marker, callout]
+        name = _group_name(callout.get_text())
+        if name in groups:   # else the first one would be left in every frame
+            raise RuntimeError(f'two optima labelled {name!r}; optimum '
+                               'labels must be unique')
+        groups[name] = [marker, callout]
     missing = sorted(set(expected) - set(groups))
     if missing:
         raise RuntimeError(f'no marker + callout drawn for {missing}')
