@@ -13,7 +13,8 @@ NSKINETICS_IBO_RESULTS_DIR = data/, as make_figure.py runs the plot script.
 It draws the figure once with the unmodified snapshot, titles panel A
 "Optimization trajectories" and adds the manuscript's four panel-A
 annotations on a canvas extended upwards to hold them, then saves one PNG
-per frame: the uninformed profitability campaign, the process-level (TRY)
+per frame: the baseline, the uninformed profitability campaign, the
+process-level (TRY)
 campaigns, the TRY-informed campaign's preload zone and its own search, each
 followed by its annotation, then panel B row by row. The last frame is the
 complete figure. The frame sequence is the FRAMES table in that script.
@@ -45,8 +46,9 @@ def main():
     env = dict(os.environ, NSKINETICS_IBO_RESULTS_DIR=DATA, MPLBACKEND='Agg',
                PYTHONDONTWRITEBYTECODE='1',
                SOURCE_DATE_EPOCH=SOURCE_DATE_EPOCH)
-    subprocess.run([PYTHON, SHIM, FRAMES_SCRIPT, '--variant', VARIANT,
-                    *sys.argv[1:]], env=env, check=True)
+    # the child's exit code is passed on (no second traceback on its errors)
+    sys.exit(subprocess.run([PYTHON, SHIM, FRAMES_SCRIPT, '--variant',
+                             VARIANT, *sys.argv[1:]], env=env).returncode)
 
 
 if __name__ == '__main__':

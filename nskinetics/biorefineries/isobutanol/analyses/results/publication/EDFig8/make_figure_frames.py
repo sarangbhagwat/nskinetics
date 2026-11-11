@@ -17,9 +17,9 @@ Arguments are passed on to that script: --dpi N (default 600) and
 --formats png [pdf svg ...] (default png).
 
 Sim-safe: the figure script reads CSVs only and never imports nskinetics,
-biosteam, thermosteam or biorefineries. Works from any cwd. Bytecode writing is
-disabled (PYTHONDONTWRITEBYTECODE=1
-in the child), so no __pycache__ appears under code/.
+biosteam, thermosteam or biorefineries. Works from any cwd. Bytecode writing
+is disabled (PYTHONDONTWRITEBYTECODE=1 in the child), so no __pycache__
+appears under code/.
 """
 
 import os
@@ -38,8 +38,8 @@ def main():
     env = dict(os.environ, NSKINETICS_IBO_RESULTS_DIR=DATA, MPLBACKEND='Agg',
                PYTHONDONTWRITEBYTECODE='1')
     # the child's exit code is passed on (no second traceback on its errors)
-    sys.exit(subprocess.run([PYTHON, SCRIPT, *sys.argv[1:]], env=env,
-                            cwd=os.path.dirname(SCRIPT)).returncode)
+    sys.exit(subprocess.run([PYTHON, SCRIPT, *sys.argv[1:]],
+                            env=env).returncode)
 
 
 if __name__ == '__main__':

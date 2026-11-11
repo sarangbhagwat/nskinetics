@@ -26,28 +26,28 @@ visible artist, or a legend entry other than the derating one, raises, so a
 change in the plot code or the data cannot leak into frame 01 (or be hidden
 with the legend) unnoticed.
 
-Writes <out-dir>/k_3_try_informed_sweep_etoh_yield_frameNN_<name>.<ext>.
-Run it through ../../make_figure_frames.py, which points the results root
-(NSKINETICS_IBO_RESULTS_DIR) at the folder's ./data.
-
-Usage:
-    python plot_k_3_try_informed_sweep_frames.py [--dpi 300]
-        [--formats png [pdf svg ...]] [--out-dir DIR]
+Usage (through ../../make_figure_frames.py, which points the results root
+NSKINETICS_IBO_RESULTS_DIR at the folder's ./data):
+    python plot_k_3_try_informed_sweep_frames.py
+           [--dpi N] [--formats png [pdf svg ...]]
+Frames go to ../../output/frames/.
 """
-import io
-import os
 import argparse
 import contextlib
 import importlib.util
+import io
+import os
+import sys
+
+sys.dont_write_bytecode = True   # no __pycache__ under code/ when run directly
 
 from matplotlib.colors import same_color
 from matplotlib.text import Text
 from matplotlib.transforms import blended_transform_factory, offset_copy
 
-import progressive_frames as pf     # this folder's shared helper
-
 HERE = os.path.dirname(os.path.abspath(__file__))
-FIGURE_DIR = os.path.dirname(os.path.dirname(HERE))
+FOLDER = os.path.dirname(os.path.dirname(HERE))
+OUT_DIR = os.path.join(FOLDER, 'output', 'frames')
 STEM = 'k_3_try_informed_sweep_etoh_yield'
 
 # Frame sequence: (frame name, [groups it reveals]); frames are cumulative.
@@ -72,11 +72,14 @@ DERATE_LABEL_OFFSET_PT = (3.6, 9.3)
 DERATE_LABEL_SIZE = 9.5
 
 
-def load_module(name, path):
+def _load(name, path):
     spec = importlib.util.spec_from_file_location(name, path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+pf = _load('_progressive_frames', os.path.join(HERE, 'progressive_frames.py'))
 
 
 def draw_figure(dpi):
@@ -84,8 +87,8 @@ def draw_figure(dpi):
     console summary (which ends in a 'wrote' line for files it does not
     write here) is silenced, and the empty output folders it creates under
     the results root are removed again."""
-    sweep = load_module('_axis_sweep_plot', os.path.join(
-        os.path.dirname(HERE), 'plots', 'plot_axis_try_informed_sweep.py'))
+    sweep = _load('_axis_sweep_plot', os.path.join(
+        FOLDER, 'code', 'plots', 'plot_axis_try_informed_sweep.py'))
     created = [d for d in (sweep.OUT_DIR, os.path.dirname(sweep.OUT_DIR))
                if not os.path.isdir(d)]
     try:
@@ -171,15 +174,13 @@ def groups_of(sweep, fig):
     return groups
 
 
-def main(argv=None):
+def main():
     ap = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
     ap.add_argument('--dpi', type=int, default=300)
     ap.add_argument('--formats', nargs='+', default=['png'])
-    ap.add_argument('--out-dir', default=os.path.join(FIGURE_DIR, 'output',
-                                                      'frames'))
-    args = ap.parse_args(argv)
+    args = ap.parse_args()
     sweep, fig = draw_figure(args.dpi)
-    pf.save_frames(fig, groups_of(sweep, fig), FRAMES, args.out_dir, STEM,
+    pf.save_frames(fig, groups_of(sweep, fig), FRAMES, OUT_DIR, STEM,
                    args.dpi, formats=args.formats)
 
 

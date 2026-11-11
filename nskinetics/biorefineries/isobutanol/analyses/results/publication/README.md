@@ -3,6 +3,7 @@
 One folder per figure in Bhagwat et al., 2026. Each folder holds everything needed to redraw that figure:
 
 - `make_figure.py`: regenerates the figure into `output\`, using only the folder's own `code\` and `data\`.
+- `make_figure_frames.py` (four folders): the figure as progressive frames for a presentation, see below.
 - `manuscript\`: the image as placed in the manuscript, plus the PowerPoint source for composites.
 - `comparison\`: diffs and notes.
 
@@ -24,7 +25,7 @@ Four folders (`Fig6`, `EDFig3`, `EDFig4`, `EDFig8`) can also draw their figure a
 python make_figure_frames.py
 ```
 
-This writes `output\frames\<figure>_frameNN_<name>.png`. The frames are cumulative and the last one is the complete figure. The figure is drawn once, by the same code as `make_figure.py`, and each frame only switches parts of it visible, so every frame has the same size and nothing moves between frames: placed at the same position on consecutive slides, they overlay exactly.
+This writes `output\frames\<name of make_figure.py's output>_frameNN_<frame name>.png`. The frames are cumulative and the last one is the complete figure. The figure is drawn once, by the same code as `make_figure.py`, and each frame only switches parts of it visible, so every frame has the same size and nothing moves between frames: placed at the same position on consecutive slides, they overlay exactly.
 
 | Folder | Frames | Sequence |
 | --- | --- | --- |

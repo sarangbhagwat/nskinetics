@@ -24,6 +24,10 @@ wrapped so every artist is filed under a group as it is drawn:
                  the rest it adds to the figure is panel B's scaffold
   legends        one group per legend row (legend_entry), found by label
 
+Anything these do not account for raises (an artist a cell gains outside
+those calls, a legend row or figure-level artist in no group), so nothing
+can slip into every frame unnoticed.
+
 Groups (`*` stands for a campaign: the slug of its legend label, e.g.
 'isobutanol-yield', 'profitability-uninformed', 'profitability-try-informed',
 'baseline-no-optimization'; <cell> is 'irr-left' / 'irr-right' for Figure 6,
@@ -73,6 +77,9 @@ import importlib.util
 import io
 import os
 import re
+import sys
+
+sys.dont_write_bytecode = True   # no __pycache__ under code/ when run directly
 
 import numpy as np
 from matplotlib.axes import Axes
@@ -169,7 +176,9 @@ NOTES = {
         'The TRY-informed profitability campaign finds a more profitable\n'
         'region co-producing ethanol & isobutanol and optimizes further',
 }
-# the campaigns whose highest-IRR circles note:try-traverse points at
+# the campaign whose highest-IRR circle note:uninformed points at, and those
+# whose circles note:try-traverse points at
+UNINFORMED = 'Profitability (uninformed)'
 TRAVERSE_TARGETS = ('Isobutanol productivity', 'Isobutanol yield',
                     'Isobutanol titer')
 # note:try-informed's first arrow points at the TRY-informed incumbent where
@@ -185,15 +194,15 @@ NOTE_SPACE_IN = 1.0
 # lower-left note's clearance from the first note's leader, the lower-right
 # note's indent from the right cell's left edge, text inset, least gap
 # between two notes
-CELL_GAP_IN, ROW_GAP_IN, TITLE_GAP_IN = 0.15, 0.10, 0.10
-EDGE_IN, LEADER_CLEAR_IN, SCOUTS_INDENT_IN = 0.15, 0.10, 0.02
+CELL_GAP_IN, ROW_GAP_IN, TITLE_GAP_IN = 0.15, 0.13, 0.17
+EDGE_IN, LEADER_CLEAR_IN, SCOUTS_INDENT_IN = 0.15, 0.10, 0.05
 NOTE_PAD_IN, NOTE_GAP_IN = 0.075, 0.05
 # the leader bus of note:try-traverse sits this fraction of the way down from
 # the cell top to the highest target; that of note:try-informed this far
 # above the cell top, under the scouts brace's height
 BUS_DROP_FRACTION, BUS_ABOVE_IN = 0.4, 0.075
 BRACE_Y0_IN, BRACE_H_IN, BRACE_R_IN = 0.02, 0.075, 0.04
-NOTE_EDGE, NOTE_LW = '0.5', 0.8
+NOTE_EDGE, NOTE_LW = '0.4', 0.8
 LEADER_COLOR, LEADER_LW = '0.3', 0.8
 ARROW = ArrowStyle('-|>', head_length=0.5, head_width=0.22)
 ARROW_SCALE = 10
@@ -217,9 +226,10 @@ def _slug(label):
 def instrument(m, groups):
     """Wrap the plot module's drawing functions so the artists they draw are
     filed into groups ({name: [artists]}) as they are created. Returns a dict
-    that receives plot()'s sets and set_colors' colours."""
+    that receives plot()'s sets ('sets') and the frame drawn around the
+    campaign legend and mark key ('key frame'), which is background."""
     seen = {}
-    plot, set_colors = m.plot, m.set_colors
+    plot, frame_keys = m.plot, m._frame_keys
     outcome_cell, draw_preload = m.outcome_cell, m._draw_relay_preload
     draw_burden = m.draw_burden
 
@@ -230,9 +240,11 @@ def instrument(m, groups):
         seen['sets'] = sets
         return plot(sets, *args, **kwargs)
 
-    def set_colors_(sets):
-        seen['colors'] = set_colors(sets)
-        return seen['colors']
+    def frame_keys_(fig, *args, **kwargs):
+        with pf.recording(fig) as new:
+            result = frame_keys(fig, *args, **kwargs)
+        seen['key frame'] = new
+        return result
 
     def outcome_cell_(ax, sets, colors, col, *args, **kwargs):
         owner = {}
@@ -290,12 +302,18 @@ def instrument(m, groups):
             setattr(ax, method, tap(method))
         m._draw_relay_preload = draw_preload_
         try:
-            return outcome_cell(ax, sets, colors, col, *args, **kwargs)
+            with pf.recording(ax) as new:
+                result = outcome_cell(ax, sets, colors, col, *args, **kwargs)
         finally:
             m._draw_relay_preload = draw_preload
             for method in methods:
                 delattr(ax, method)
-            add(f'{cell}:axes', [ax])
+        filed = {id(a) for artists in groups.values() for a in artists}
+        loose = [a for a in new if id(a) not in filed]
+        if loose:       # drawn by a call that is not tapped above
+            raise ValueError(f'{cell}: artists in no group: {loose}')
+        add(f'{cell}:axes', [ax])
+        return result
 
     def draw_burden_(fig, gs_cell, sets, colors, *args, **kwargs):
         bars, barh = [], Axes.barh
@@ -335,7 +353,7 @@ def instrument(m, groups):
             add('B:sectors' if isinstance(a, Legend) else 'B:axes', [a])
         return result
 
-    m.plot, m.set_colors = plot_, set_colors_
+    m.plot, m._frame_keys = plot_, frame_keys_
     m.outcome_cell, m.draw_burden = outcome_cell_, draw_burden_
     return seen
 
@@ -373,6 +391,22 @@ def file_titles_and_legends(m, fig, sets, groups, variant):
                 groups[KEY_ROWS[t.get_text()]] = pf.legend_entry(
                     leg, t.get_text())
     return a_title
+
+
+def check_all_filed(fig, groups, background):
+    """Raise if the figure draws anything that is in no group and is not
+    `background` (the key frame): it would be shown in every frame. Of a
+    campaign legend or mark key only the title may be unfiled."""
+    filed = {id(a) for artists in groups.values() for a in artists}
+    for a in fig.get_children():
+        if a is fig.patch or id(a) in filed or not a.get_visible():
+            continue
+        if isinstance(a, Legend):
+            loose = [t.get_text() for t in a.get_texts() if id(t) not in filed]
+            if loose:
+                raise ValueError(f'legend rows in no group: {loose}')
+        elif not any(a is b for b in background):
+            raise ValueError(f'{a!r} is in no group')
 
 
 def add_notes(m, fig, sets, groups):
@@ -421,7 +455,7 @@ def add_notes(m, fig, sets, groups):
     h = max(sz[1] for sz in size.values())
     low = cell_top + CELL_GAP_IN                # lower row's box bottom
     up = low + h + ROW_GAP_IN                   # upper row's box bottom
-    x_unin = at(left, *best['Profitability (uninformed)'][1:])[0]
+    x_unin = at(left, *best[UNINFORMED][1:])[0]
     lefts = {'note:uninformed': EDGE_IN,
              'note:try-traverse': x_unin + LEADER_CLEAR_IN,
              'note:scouts': r_x0 + SCOUTS_INDENT_IN,
@@ -441,7 +475,7 @@ def add_notes(m, fig, sets, groups):
         t.set_y(title_y)
 
     # note:uninformed -- straight down to the uninformed campaign's circle
-    _, xu, yu = best['Profitability (uninformed)']
+    _, xu, yu = best[UNINFORMED]
     p = at(left, xu, yu)
     groups['note:uninformed'].append(arrow((p[0], up), p, mark_r))
 
@@ -465,13 +499,19 @@ def add_notes(m, fig, sets, groups):
     tx = np.asarray(relay['traj_x'], dtype=float)
     ty = np.asarray(relay['traj']['IRR'], dtype=float)
     tx, ty = tx[tx >= n_pre], ty[tx >= n_pre]
+    if not (np.all(np.isfinite(ty)) and ty[-1] > ty[0]):
+        raise ValueError('the TRY-informed incumbent does not climb from its '
+                         'seed: no knee for note:try-informed to point at')
     k = int(np.argmax(ty >= ty[0] + KNEE_FRACTION * (ty[-1] - ty[0])))
     pr, pk = at(right, xr, yr), at(right, tx[k], ty[k])
     y_knee_bus = cell_top + BUS_ABOVE_IN
+    incumbent = _one(
+        groups[f'A:irr-right:{_slug(relay["label"])}:incumbent'],
+        'TRY-informed incumbent line')
     groups['note:try-informed'] += [
         arrow((pr[0], up), pr, mark_r),
         line([pk[0], pr[0]], [y_knee_bus] * 2),
-        arrow((pk[0], y_knee_bus), pk, 3.15 / 2)]   # half the thick line
+        arrow((pk[0], y_knee_bus), pk, incumbent.get_linewidth() / 2)]
 
     for a in [a for name in NOTES for a in groups[name][1:]]:
         fig.add_artist(a)
@@ -562,6 +602,7 @@ def main():
     a_title.set_text(MANUSCRIPT_A_TITLE)
     bbox = (add_notes(m, fig, seen['sets'], groups)
             if args.variant == 'irr' else None)
+    check_all_filed(fig, groups, seen['key frame'])
     pf.save_frames(fig, groups, expand(FRAMES[args.variant], groups),
                    OUT_DIR, f'kinBO_parameter_sets_{args.variant}', args.dpi,
                    formats=args.formats, bbox_inches=bbox)

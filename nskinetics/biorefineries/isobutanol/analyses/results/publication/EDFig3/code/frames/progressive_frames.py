@@ -119,7 +119,9 @@ def save_frames(fig, groups, frames, out_dir, stem, dpi, formats=('png',),
     frames: [(frame name, [names of the groups this frame adds])], in order.
             Frames are cumulative: frame i shows the groups of frames 1..i.
             Every group must be added by exactly one frame, so the last frame
-            is the complete figure.
+            is the complete figure. A group drawn inside an Axes that is
+            itself in a group cannot come before that Axes (it would stay
+            hidden with it): such a sequence is refused.
 
     Files are <stem>_frame<NN>_<frame name>.<ext> (NN from 01); frames of
     `stem` left in out_dir by an earlier run, in any format, are removed
@@ -127,20 +129,32 @@ def save_frames(fig, groups, frames, out_dir, stem, dpi, formats=('png',),
     is already invisible in the finished figure stays invisible. The figure
     is left as it was (everything visible) on return.
     """
-    added = [g for _, names in frames for g in names]
-    unknown = sorted(set(added) - set(groups))
-    unused = sorted(set(groups) - set(added))
-    repeated = sorted({g for g in added if added.count(g) > 1})
-    if unknown or unused or repeated:
+    frame_of = {}                     # group name -> index of its frame
+    for i, (frame, names) in enumerate(frames):
+        for g in names:
+            if g in frame_of:
+                raise ValueError(f'group {g!r} is added twice: by frame '
+                                 f'{frames[frame_of[g]][0]!r} and by {frame!r}')
+            frame_of[g] = i
+    unknown = sorted(set(frame_of) - set(groups))
+    unused = sorted(set(groups) - set(frame_of))
+    if unknown or unused:
         raise ValueError(f'frames do not partition the groups: unknown '
-                         f'{unknown}, never shown {unused}, shown twice '
-                         f'{repeated}')
+                         f'{unknown}, never shown {unused}')
     owner = {}
     for name, artists in groups.items():
         for a in artists:
             if owner.setdefault(id(a), name) != name:
                 raise ValueError(f'{a!r} is in two groups: '
                                  f'{owner[id(a)]!r} and {name!r}')
+    for name, artists in groups.items():
+        for a in artists:
+            holder = owner.get(id(getattr(a, 'axes', None)))
+            if holder is not None and frame_of[holder] > frame_of[name]:
+                raise ValueError(
+                    f'group {name!r} (frame {frames[frame_of[name]][0]!r}) '
+                    f'is drawn inside the Axes of group {holder!r}, which '
+                    f'only appears in frame {frames[frame_of[holder]][0]!r}')
     # only artists that are visible in the finished figure are toggled
     shown = {name: [a for a in artists if a.get_visible()]
              for name, artists in groups.items()}

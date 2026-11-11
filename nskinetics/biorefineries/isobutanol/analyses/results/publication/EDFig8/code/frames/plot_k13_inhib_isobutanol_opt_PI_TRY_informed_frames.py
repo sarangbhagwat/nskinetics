@@ -33,9 +33,10 @@ one fixed crop (that of the complete figure), so they overlay exactly and the
 last frame is the figure make_figure.py saves. Re-cut the sequence by editing
 FRAMES only.
 
-Usage: python plot_k13_inhib_isobutanol_opt_PI_TRY_informed_frames.py
+Usage (through ../../make_figure_frames.py, which points the results root
+NSKINETICS_IBO_RESULTS_DIR at the folder's ./data):
+    python plot_k13_inhib_isobutanol_opt_PI_TRY_informed_frames.py
            [--dpi N] [--formats png [pdf svg ...]]
-(run through ../../make_figure_frames.py, which sets the results directory).
 Frames go to ../../output/frames/.
 
 Sim-safe: reads the sweep CSVs only and never imports the package.
@@ -45,8 +46,9 @@ import argparse
 import contextlib
 import importlib.util
 import os
+import sys
 
-from matplotlib import pyplot as plt
+sys.dont_write_bytecode = True   # no __pycache__ under code/ when run directly
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 FOLDER = os.path.dirname(os.path.dirname(HERE))
@@ -164,18 +166,17 @@ def build_figure():
     return fig, groups
 
 
-def main(dpi=DPI, formats=('png',)):
+def main():
+    ap = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
+    ap.add_argument('--dpi', type=int, default=DPI)
+    ap.add_argument('--formats', nargs='+', default=['png'])
+    args = ap.parse_args()
     fig, groups = build_figure()
-    bbox = pf.tight_bbox(fig, dpi)
-    paths = pf.save_frames(fig, groups, FRAMES, OUT_DIR, plot.FIGURE.output_stem,
-                           dpi, formats, bbox_inches=bbox, facecolor=FACECOLOR)
-    plt.close(fig)
-    return paths
+    pf.save_frames(fig, groups, FRAMES, OUT_DIR, plot.FIGURE.output_stem,
+                   args.dpi, formats=args.formats,
+                   bbox_inches=pf.tight_bbox(fig, args.dpi),
+                   facecolor=FACECOLOR)
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
-    parser.add_argument('--dpi', type=int, default=DPI)
-    parser.add_argument('--formats', nargs='+', default=['png'])
-    args = parser.parse_args()
-    main(args.dpi, args.formats)
+    main()

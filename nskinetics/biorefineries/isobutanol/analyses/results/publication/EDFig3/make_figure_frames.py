@@ -42,8 +42,9 @@ VARIANT = 'process'
 def main():
     env = dict(os.environ, NSKINETICS_IBO_RESULTS_DIR=DATA, MPLBACKEND='Agg',
                PYTHONDONTWRITEBYTECODE='1')
-    subprocess.run([PYTHON, SHIM, FRAMES_SCRIPT, '--variant', VARIANT,
-                    *sys.argv[1:]], env=env, check=True)
+    # the child's exit code is passed on (no second traceback on its errors)
+    sys.exit(subprocess.run([PYTHON, SHIM, FRAMES_SCRIPT, '--variant',
+                             VARIANT, *sys.argv[1:]], env=env).returncode)
 
 
 if __name__ == '__main__':
