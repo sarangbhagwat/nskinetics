@@ -72,6 +72,10 @@ MORE_TITLES = {'IBO productivity': 'Isobutanol productivity',
 FIGSIZE = (7.8, 5.2)
 MARGINS = dict(left=0.165, right=0.985, bottom=0.32, top=0.835)
 LEGEND_Y = 0.995                 # top of the legend row [figure fraction]
+# value axis: the manuscript panels' (-0.04, 1.0) with a little more room, so
+# that no error bar is cut off for any metric of the table (a share of ~1 with
+# its sd reaches past 1; a first-order index near 0 can dip below -0.04)
+YLIM = (-0.06, 1.06)
 DPI = 600                        # as the manuscript figure
 # headers above the axes [axes fraction]: bracket line, group header,
 # sub-header; the bracket stops this far [x units] short of a slot's edge
@@ -118,7 +122,8 @@ def resolve_metric(name, table):
     for m in known:
         if name.lower() in (m.lower(), TITLES.get(m, m).lower()):
             return m
-    raise SystemExit(f'no metric {name!r} in the index table; it has: '
+    raise SystemExit(f'no metric {name!r} in the index table (names or '
+                     'titles; --list shows both); it has: '
                      + ', '.join(repr(m) for m in known))
 
 
@@ -129,15 +134,15 @@ def draw_headers(ax):
     fractions)."""
     at = ax.get_xaxis_transform()
     x = 0
-    for header, subgroups in GROUPS:
+    for i, (header, subgroups) in enumerate(GROUPS):
         x0 = x
-        for subheader, parameters in subgroups:
+        for j, (subheader, parameters) in enumerate(subgroups):
             if subheader:
                 ax.text(x + (len(parameters) - 1) / 2, SUBHEADER_Y, subheader,
-                        transform=at, ha='center', va='bottom', fontsize=8.5,
+                        transform=at, ha='center', va='bottom', fontsize=8,
                         color='0.25', clip_on=False)
             x += len(parameters)
-            if parameters is not subgroups[-1][1]:
+            if j < len(subgroups) - 1:
                 ax.axvline(x - 0.5, zorder=0.4, **SUBDIVIDER)
         left, right = x0 - 0.5 + BRACKET_INSET, x - 0.5 - BRACKET_INSET
         ax.plot([left, right], [BRACKET_Y] * 2, transform=at, color='0.25',
@@ -145,7 +150,7 @@ def draw_headers(ax):
         ax.text((left + right) / 2, HEADER_Y, header, transform=at,
                 ha='center', va='bottom', fontsize=10, fontweight='bold',
                 clip_on=False)
-        if header != GROUPS[-1][0]:
+        if i < len(GROUPS) - 1:
             ax.axvline(x - 0.5, zorder=0.4, **DIVIDER)
 
 
@@ -159,6 +164,7 @@ def plot_metric(table, metric):
     fig.subplots_adjust(**MARGINS)
     sobol._draw_index_bars(ax, t, order)
     ax.set_xlim(-0.5, len(order) - 0.5)
+    ax.set_ylim(*YLIM)
     ax.set_ylabel('Share of variance for\n' + TITLES.get(metric, metric),
                   fontsize=12, fontweight='bold')
     sobol._ticks(ax)
