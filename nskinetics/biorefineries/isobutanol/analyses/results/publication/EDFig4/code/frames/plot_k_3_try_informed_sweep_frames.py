@@ -22,8 +22,9 @@ the colour plot_param gave it (PI, ethanol yield, IRR, derate line) and its
 Axes then names the y axis the curve belongs to. A y-axis group is that
 Axes' y axis (ticks, tick labels, title) plus its side spines; the x-axis
 group is the x axis plus the top / bottom spines of all three Axes. Any other
-visible artist raises, so a change in the plot code cannot leak into frame 01
-unnoticed.
+visible artist, or a legend entry other than the derating one, raises, so a
+change in the plot code or the data cannot leak into frame 01 (or be hidden
+with the legend) unnoticed.
 
 Writes <out-dir>/k_3_try_informed_sweep_etoh_yield_frameNN_<name>.<ext>.
 Run it through ../../make_figure_frames.py, which points the results root
@@ -62,7 +63,10 @@ FRAMES = [
 
 #: the label added in the manuscript beside the derate line, set to match it:
 #: offset of the label's lower-left corner from the line's foot (points; the
-#: text reads bottom to top, its first line next to the line) and font size
+#: text reads bottom to top, its first line next to the line) and font size.
+#: The label follows the line's x, but its place right of the line and below
+#: the curves was chosen for the manuscript's line at k_3 = 4.85: check the
+#: last frame if the sweep data change.
 DERATE_LABEL = 'growth derated at\nhigher $k_3$ values'
 DERATE_LABEL_OFFSET_PT = (3.6, 9.3)
 DERATE_LABEL_SIZE = 9.5
@@ -138,6 +142,11 @@ def groups_of(sweep, fig):
         raise RuntimeError('expected the PI, yield and IRR curves on three '
                            'separate Axes')
     for legend in fig.legends:   # cropped away in the manuscript
+        entries = [text.get_text() for text in legend.get_texts()]
+        if len(entries) != 1 or not entries[0].startswith('Growth derated'):
+            raise RuntimeError('expected a legend with only the growth-'
+                               f'derating entry (the label replaces it), '
+                               f'got {entries}')
         legend.set_visible(False)
     groups = {
         'x-axis': [a.xaxis for a in fig.axes]
@@ -155,6 +164,10 @@ def groups_of(sweep, fig):
                     and child is not a.patch      # the white axes background
                     and not (isinstance(child, Text) and not child.get_text())):
                 raise RuntimeError(f'ungrouped visible artist {child!r}')
+    for child in fig.get_children():   # nothing else drawn on the figure
+        if (child.get_visible() and child is not fig.patch
+                and child not in fig.axes):
+            raise RuntimeError(f'ungrouped visible artist {child!r}')
     return groups
 
 

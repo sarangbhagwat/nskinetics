@@ -35,7 +35,9 @@ DATA = os.path.join(HERE, 'data')
 
 def main():
     env = dict(os.environ, NSKINETICS_IBO_RESULTS_DIR=DATA, MPLBACKEND='Agg',
-               PYTHONDONTWRITEBYTECODE='1', SOURCE_DATE_EPOCH='1790294400')
+               PYTHONDONTWRITEBYTECODE='1',
+               # fixed PDF CreationDate (--formats pdf), as in make_figure.py
+               SOURCE_DATE_EPOCH='1790294400')
     script = os.path.join(HERE, 'code', 'frames',
                           'plot_k_3_try_informed_sweep_frames.py')
     subprocess.run([PY, script, *sys.argv[1:]], env=env, check=True)
