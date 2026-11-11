@@ -24,13 +24,14 @@ Storyboard:
                                 trials and solid incumbent, drawn along the
                                 trial axis
     3  ethanol-campaigns        the same for the ethanol cells
-    4  process-level-crosscheck every process-level campaign's incumbent in
-                                the other five cells, dashed
-    5  profitability-uninformed the uninformed profitability campaign's
+    4  isobutanol-crosscheck    the isobutanol campaigns' incumbents in the
+                                five cells each did not optimize, dashed
+    5  ethanol-crosscheck       the same for the ethanol campaigns
+    6  profitability-uninformed the uninformed profitability campaign's
                                 incumbent in every cell, dashed
-    6  profitability-try-informed  the TRY-informed campaign's incumbent from
+    7  profitability-try-informed  the TRY-informed campaign's incumbent from
                                 trial 1000, dashed
-    7-11                        panel B, as in kin_opt_animation.py
+    8-12                        panel B, as in kin_opt_animation.py
 
 Legend entries appear with what they describe. Run through ../make_gifs.py;
 see gif_engine.py for the files written and the GIF options.
@@ -61,7 +62,6 @@ def build_storyboard(fig, recorder):
     baseline = recorder.labels('baseline')[0]
     uninformed = recorder.labels('uninformed')[0]
     try_informed = recorder.labels('try-informed')[0]
-    process = recorder.labels('isobutanol', 'ethanol')
     entry = lambda *labels: ka.legend_entries(fig, *labels)  # noqa: E731
 
     def in_cells(cells, kind, labels=None):
@@ -77,15 +77,19 @@ def build_storyboard(fig, recorder):
     board.group('ethanol own', in_cells(ethanol, 'cloud'),
                 in_cells(ethanol, 'incumbent'),
                 entry(*recorder.labels('ethanol')))
-    board.group('process other', in_cells(cells, 'incumbent-other', process),
+    board.group('isobutanol other',
+                in_cells(cells, 'incumbent-other',
+                         recorder.labels('isobutanol')),
                 entry('Incumbent (other campaign)'))
+    board.group('ethanol other',
+                in_cells(cells, 'incumbent-other', recorder.labels('ethanol')))
     board.group('uninformed', in_cells(cells, 'incumbent-other', {uninformed}),
                 entry(uninformed))
     board.group('try-informed',
                 in_cells(cells, 'incumbent-other', {try_informed}),
                 entry(try_informed))
     ka.group_panel_b(board, fig, recorder)
-    ka.require_cells_grouped(board, recorder)
+    ka.require_data_grouped(board, recorder)
 
     n_preloaded = recorder.set_of(try_informed)['n_preloaded']
     whole = lambda cells: [ge.Region(c.ax) for c in cells]  # noqa: E731
@@ -94,8 +98,9 @@ def build_storyboard(fig, recorder):
     T = ka.TRACE_S
 
     board.step('baseline',
-               'The dotted grey line in each cell is the baseline strain, '
-               'before any optimization',
+               'The dotted grey line is the baseline strain before any '
+               'optimization; it makes no isobutanol, so the line lies on '
+               'the axis in the isobutanol cells',
                ge.fade('baseline', seconds=1.0))
     board.step('isobutanol-campaigns',
                'Each isobutanol cell shows the campaign that optimized that '
@@ -104,13 +109,17 @@ def build_storyboard(fig, recorder):
     board.step('ethanol-campaigns',
                'Likewise for the three ethanol metrics',
                ge.wipe('ethanol own', region=whole(ethanol), seconds=T))
-    board.step('process-level-crosscheck',
-               'Dashed: how each process-level campaign fares on the metrics '
-               'it did not optimize',
-               ge.wipe('process other', region=whole(cells), seconds=T))
+    board.step('isobutanol-crosscheck',
+               'Dashed: the isobutanol campaigns on the metrics they did not '
+               'optimize; they end up making almost no ethanol',
+               ge.wipe('isobutanol other', region=whole(cells), seconds=T))
+    board.step('ethanol-crosscheck',
+               'Dashed: the ethanol campaigns on the metrics they did not '
+               'optimize; they make almost no isobutanol',
+               ge.wipe('ethanol other', region=whole(cells), seconds=T))
     board.step('profitability-uninformed',
-               'The uninformed profitability campaign makes ethanol but '
-               'almost no isobutanol',
+               'Like the ethanol campaigns, the uninformed profitability '
+               'campaign makes ethanol but almost no isobutanol',
                ge.wipe('uninformed', region=whole(cells), seconds=T))
     board.step('profitability-try-informed',
                'The TRY-informed profitability campaign, from trial 1000, '

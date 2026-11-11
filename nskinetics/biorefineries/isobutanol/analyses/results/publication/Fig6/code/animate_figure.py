@@ -103,7 +103,9 @@ def to_inches(fig, ax, xy):
 
 
 def extent_inches(fig, artist):
-    fig.canvas.draw()
+    """The drawn extent of an artist, in figure inches. Uses the canvas's
+    current renderer without redrawing: the callers draw the canvas once
+    after every layout change."""
     box = artist.get_window_extent(fig.canvas.get_renderer())
     return Bbox(box.get_points() / fig.dpi)
 
@@ -122,11 +124,16 @@ class Annotation:
         self.artists.append(self.text)
         self.box = None
         self.inches = None
+        self._size = None
 
     def size(self):
-        """(width, height) of the box, in inches."""
-        ext = extent_inches(self.fig, self.text)
-        return ext.width + 2 * BOX_PAD_X, ext.height + 2 * BOX_PAD_Y
+        """(width, height) of the box, in inches (measured once: the text
+        and its font do not change)."""
+        if self._size is None:
+            ext = extent_inches(self.fig, self.text)
+            self._size = (ext.width + 2 * BOX_PAD_X,
+                          ext.height + 2 * BOX_PAD_Y)
+        return self._size
 
     def place(self, x0, y0):
         """Put the box's bottom-left corner at (x0, y0), once the canvas
@@ -215,6 +222,7 @@ def add_annotations(fig, recorder, left, right):
     notes = {name: Annotation(fig, text, fontsize) for name, text in (
         ('annotation 1', ANNOTATION_1), ('annotation 2', ANNOTATION_2),
         ('annotation 3', ANNOTATION_3), ('annotation 4', ANNOTATION_4))}
+    fig.canvas.draw()
     upper = max(notes[n].size()[1] for n in ('annotation 1', 'annotation 3'))
     lower = max(notes[n].size()[1] for n in ('annotation 2', 'annotation 4'))
 
@@ -222,17 +230,22 @@ def add_annotations(fig, recorder, left, right):
     top = left.ax.get_position().y1 * height
     needed = top + LOWER_ROW_GAP + lower + ROW_GAP + upper + TITLE_GAP \
         + TOP_MARGIN
+    # the panel title and its letter, placed by the plot script in figure
+    # fractions; their x is kept, in inches
+    title = [ka.figure_text(fig, content)
+             for content in ('A', 'Profitability optimization trajectories')]
+    if any(text.get_transform() is not fig.transFigure for text in title):
+        raise RuntimeError('the panel-A title is no longer placed in figure '
+                           'fractions')
+    title_x = [text.get_position()[0] * width for text in title]
     ka.grow_canvas_top(fig, needed - height)
 
     # the panel title and its letter, at the top
     title_y = needed - TOP_MARGIN
-    for content in ('A', 'Profitability optimization trajectories'):
-        text = ka.figure_text(fig, content)
-        x = text.get_position()[0] * width     # a figure fraction before
+    for text, x in zip(title, title_x):
         text.set_transform(ka.inch_transform(fig))
         text.set_position((x, title_y))
-    ka.figure_text(fig, 'Profitability optimization trajectories') \
-        .set_text(TITLE)
+    title[1].set_text(TITLE)
 
     fig.canvas.draw()
     cells_top = left.ax.get_position().y1 * fig.get_size_inches()[1]
@@ -346,7 +359,7 @@ def build_storyboard(fig, recorder):
     for name, artists in notes.items():
         board.group(name, artists)
     ka.group_panel_b(board, fig, recorder)
-    ka.require_cells_grouped(board, recorder)
+    ka.require_data_grouped(board, recorder)
 
     n_preloaded = recorder.set_of(try_informed)['n_preloaded']
     left_cell = ge.Region(left.ax)
@@ -370,8 +383,9 @@ def build_storyboard(fig, recorder):
                'process-level TRY objectives all end below the uninformed one',
                wipe('process incumbents', region=left_cell, seconds=T))
     board.step('process-level-best-trials',
-               'Yet several of them tried designs far more profitable than '
-               'the uninformed optimum',
+               'Yet the three isobutanol campaigns tried designs '
+               'considerably more profitable than the uninformed optimum '
+               '(19-23 % against 16 % IRR)',
                fade('process best', seconds=S), pause(B),
                fade('annotation 2', seconds=S))
     board.step('scout-trials',

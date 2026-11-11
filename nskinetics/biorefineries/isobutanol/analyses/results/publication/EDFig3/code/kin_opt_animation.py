@@ -99,8 +99,17 @@ def campaign_kind(plot, s):
 # -----------------------------------------------------------------------------
 @dataclasses.dataclass
 class Mark:
-    kind: str          # cloud | incumbent | incumbent-other | baseline | zone
-    label: object      # | preload | preload-mark | best;  campaign label/None
+    """One tagged artist of a panel-A cell.
+
+    kind    'cloud' (a campaign's own trials), 'incumbent' (solid: the
+            campaign owning the cell), 'incumbent-other' (dashed), 'baseline'
+            (reference line), 'zone' (the preload shading), 'preload' (the
+            preloaded trials), 'preload-mark' (a circled preloaded trial) or
+            'best' (a highest-IRR trial)
+    label   the campaign's label, or None (zone, preload)
+    """
+    kind: str
+    label: object
     artist: object
 
 
@@ -175,6 +184,10 @@ class Recorder:
         def set_colors(sets):
             colors = original(sets)
             self.sets, self.colors = list(sets), colors
+            # campaigns are told apart by colour (label_of)
+            hexes = [to_hex(colors[id(s)]).lower() for s in sets]
+            if len(set(hexes)) != len(hexes):
+                raise RuntimeError(f'campaign colours are not unique: {hexes}')
             return colors
         return set_colors
 
@@ -194,9 +207,12 @@ class Recorder:
                 setattr(ax, method, call)
 
             note('scatter', self._tag_scatter)
+            # solid = the campaign owning the cell, dashed = the others; read
+            # from the drawn line, whichever keyword the script used
             note('step', lambda lines, k: [
-                Mark('incumbent' if k.get('ls') == '-' else 'incumbent-other',
-                     self.label_of(k['color']), line) for line in lines])
+                Mark('incumbent' if line.get_linestyle() == '-'
+                     else 'incumbent-other', self.label_of(line.get_color()),
+                     line) for line in lines])
             note('axhline', lambda line, k: [
                 Mark('baseline', self.labels('baseline')[0], line)])
             note('axvspan', lambda patch, k: [Mark('zone', None, patch)])
@@ -252,12 +268,7 @@ class Recorder:
                 result = original(fig, gs_cell, sets, colors, *args, **kwargs)
             finally:
                 matplotlib.axes.Axes.barh = barh
-            n = len(sets)
-            rows, row_y = {}, {}
-            for s_index, s in enumerate(sets):    # row y = n - set index
-                row_y[s['label']] = n - s_index
-                rows[s['label']] = [patch for y, container in bars
-                                    if y == n - s_index for patch in container]
+            rows, row_y = _bar_rows(sets, colors, bars)
             self.burden = Burden(
                 [ax for ax in fig.axes if ax not in axes_before],
                 rows, row_y,
@@ -273,6 +284,48 @@ class Recorder:
                                  if a not in before]
             return result
         return frame_keys
+
+
+def _bar_rows(sets, colors, bars):
+    """Sort panel B's bars, [(y, BarContainer)], into rows by campaign.
+
+    draw_burden puts set i (of n) at y = n - i; this is checked against the
+    colours: every bar of a row is filled or outlined in its campaign's
+    colour, apart from the colourless empty slack (white, grey outline)."""
+    n = len(sets)
+    row_y = {s['label']: n - i for i, s in enumerate(sets)}
+    label_at = {y: label for label, y in row_y.items()}
+    rows = {s['label']: [] for s in sets}
+    for y, container in bars:
+        if y not in label_at:
+            raise RuntimeError(f'panel B: a bar at y = {y!r} is in no row')
+        rows[label_at[y]].extend(container)
+    for s in sets:
+        colour = to_hex(colors[id(s)]).lower()
+        faces = [to_hex(p.get_facecolor()).lower() for p in rows[s['label']]]
+        edges = [to_hex(p.get_edgecolor()).lower() for p in rows[s['label']]]
+        foreign = [i for i, (f, e) in enumerate(zip(faces, edges))
+                   if colour not in (f, e) and f != '#ffffff']
+        if colour not in faces or foreign:
+            raise RuntimeError(f'panel B: the row of {s["label"]!r} at '
+                               f'y = {row_y[s["label"]]} does not carry its '
+                               f'colour {colour}')
+    return rows, row_y
+
+
+def check_cells(recorder):
+    """Each panel-A cell has exactly one solid incumbent, of the campaign
+    that owns the cell's outcome; its trial clouds are that campaign's."""
+    plot = recorder.plot
+    for cell in recorder.cells:
+        owners = [m.label for m in cell.marks if m.kind == 'incumbent']
+        if len(owners) != 1 or not plot._owns_outcome(
+                recorder.set_of(owners[0]).get('objective'), cell.col):
+            raise RuntimeError(f'cell {cell.col!r}: solid incumbents of '
+                               f'{owners}, expected the one owning campaign')
+        clouds = {m.label for m in cell.marks if m.kind == 'cloud'}
+        if clouds != set(owners):
+            raise RuntimeError(f'cell {cell.col!r}: trial clouds of {clouds}')
 
 
 def _figure_artists(fig):
@@ -302,6 +355,7 @@ def draw_figure(variant):
     if len(recorder.cells) == 0 or recorder.burden is None:
         raise RuntimeError('the plot script drew no panel-A cells or no '
                            'panel B; has it changed?')
+    check_cells(recorder)
     return fig, recorder
 
 
@@ -339,13 +393,16 @@ def legend_entries(fig, *labels):
     return out
 
 
-def require_cells_grouped(board, recorder):
+def require_data_grouped(board, recorder):
     """Raise if a panel-A cell holds a data artist (trials, lines, marks,
-    shading) that is in no storyboard group: it would be on screen from the
-    first frame."""
+    shading), or panel B a bar, that is in no storyboard group: it would be
+    on screen from the first frame, or with the panel-B scaffold."""
     for cell in recorder.cells:
         board.require_grouped(cell.ax.collections, cell.ax.lines,
                               cell.ax.patches)
+    # panel B: its axes are grouped whole (scaffold); a bar must be in a row
+    for ax in recorder.burden.axes:
+        board.require_grouped(ax.patches, ax.collections)
 
 
 def campaign_key_frame(fig, recorder):
@@ -443,19 +500,21 @@ def panel_b_steps(board, recorder):
                grow('baseline', 2.0))
     board.step('proteome-uninformed',
                'The uninformed profitability campaign spends most of its '
-               'metabolic budget on glycolysis and ethanol production',
+               'metabolic proteome on glycolysis and ethanol production',
                grow('uninformed'))
     board.step('proteome-isobutanol',
-               'The isobutanol campaigns devote a large share of the '
-               'proteome to isobutanol production',
+               'The isobutanol campaigns spend about half of their '
+               'metabolic proteome on isobutanol production',
                grow('isobutanol', 2.0))
     board.step('proteome-ethanol',
-               'The ethanol campaigns spend their metabolic proteome mostly '
-               'on glycolysis and ethanol production',
+               'The ethanol campaigns put most of their metabolic proteome '
+               'into glycolysis, and little into ethanol production itself',
                grow('ethanol', 2.0))
     board.step('proteome-try-informed',
-               'The TRY-informed profitability campaign invests in both '
-               'ethanol and isobutanol production',
+               'The TRY-informed profitability campaign invests mainly in '
+               'isobutanol production (about half of its metabolic '
+               'proteome), keeping ethanol production near the baseline '
+               'level',
                grow('try-informed'))
 
 
