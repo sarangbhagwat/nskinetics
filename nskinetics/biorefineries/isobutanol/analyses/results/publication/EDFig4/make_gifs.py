@@ -21,8 +21,8 @@ where the one before ended, so they can be shown one per slide or click:
 The step GIFs play once and rest on their last frame; the PNGs are the
 finished state of each step; all_steps.gif runs the whole build in a loop;
 steps.txt lists what each step shows. The last step ends on the complete
-figure, as make_figure.py draws it (in Arial, or a metric-compatible face
-where Arial is not installed).
+figure, as make_figure.py draws it in Arial (where Arial is not installed the
+GIFs use a metric-compatible face, make_figure.py the wider DejaVu Sans).
 
 Runs code/animate_figure.py (which draws the figure with the unmodified
 snapshot code/plots/plot_axis_try_informed_sweep.py and animates it with
@@ -49,12 +49,13 @@ SCRIPT = os.path.join(HERE, 'code', 'animate_figure.py')
 def main():
     env = dict(os.environ, NSKINETICS_IBO_RESULTS_DIR=DATA, MPLBACKEND='Agg',
                PYTHONDONTWRITEBYTECODE='1')
-    subprocess.run([PY, SCRIPT] + sys.argv[1:], env=env, check=True)
+    done = subprocess.run([PY, SCRIPT] + sys.argv[1:], env=env)
     # drop the empty output folders the plot script creates under ./data
     src_dir = os.path.join(DATA, 'publication', 'Objective-landscape')
     for d in (src_dir, os.path.dirname(src_dir)):
         if os.path.isdir(d) and not os.listdir(d):
             os.rmdir(d)
+    sys.exit(done.returncode)   # the child has already reported any error
 
 
 if __name__ == '__main__':

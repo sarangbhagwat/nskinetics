@@ -101,14 +101,16 @@ def build_storyboard(fig, figure):
     marks = landmarks(ax, figure.optima)
     staged = ETHANOL + ISOBUTANOL + CELLS_AND_TCI + PROFITABILITY
     if set(marks) != set(staged):
-        raise ValueError('the landmarks of the plot script and of this '
-                         f'storyboard differ: {sorted(set(marks) ^ set(staged))}')
+        raise ValueError(
+            'the landmarks of the plot script and of this storyboard differ: '
+            f'{sorted(set(marks) ^ set(staged))}')
     for label in staged:
         board.group(label, marks[label])
     # anything else the plot script draws on the panel (a new marker, a
     # callout) must be given a step rather than show from the first frame
     board.require_grouped(ax.lines, ax.texts, ax.collections, ax.patches,
-                          ax.images)
+                          ax.images, fig.texts, fig.lines, fig.patches,
+                          fig.images, fig.legends)
 
     def one_by_one(labels):
         return [ge.fade(label, seconds=LANDMARK_S) for label in labels]

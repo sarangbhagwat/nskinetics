@@ -56,7 +56,8 @@ SCRIPT = os.path.join(CODE, 'animate_figure.py')
 def main():
     env = dict(os.environ, NSKINETICS_IBO_RESULTS_DIR=DATA, MPLBACKEND='Agg',
                PYTHONDONTWRITEBYTECODE='1')
-    subprocess.run([PY, SHIM, SCRIPT] + sys.argv[1:], env=env, check=True)
+    done = subprocess.run([PY, SHIM, SCRIPT] + sys.argv[1:], env=env)
+    sys.exit(done.returncode)   # the child has already reported any error
 
 
 if __name__ == '__main__':

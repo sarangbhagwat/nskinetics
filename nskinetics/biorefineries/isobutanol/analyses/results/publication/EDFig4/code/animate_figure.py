@@ -74,6 +74,8 @@ def build_storyboard(fig):
     board.group('derating', derate_line, legend)
     for axes in fig.axes:   # nothing the plot script draws is left ungrouped
         board.require_grouped(axes.lines, axes.collections, axes.texts)
+    board.require_grouped(fig.texts, fig.lines, fig.patches, fig.images,
+                          fig.legends)
 
     panel = ge.Region(ax)
     board.step('ethanol-yield',
