@@ -14,11 +14,10 @@ It draws the figure once with the unmodified snapshot, titles panel A
 "Optimization trajectories" and adds the manuscript's four panel-A
 annotations on a canvas extended upwards to hold them, then saves one PNG
 per frame: the baseline, the uninformed profitability campaign, the
-process-level (TRY)
-campaigns, the TRY-informed campaign's preload zone and its own search, each
-followed by its annotation, then panel B row by row. The last frame is the
-complete figure. The frame sequence is the FRAMES table in that script.
-Works from any cwd.
+process-level (TRY) campaigns, the TRY-informed campaign's preload zone and
+its own search, each followed by its annotation, then panel B row by row.
+The last frame is the complete figure. The frame sequence is the FRAMES
+table in that script. Works from any cwd.
 
 Arguments are passed on, e.g. python make_figure_frames.py --dpi 150
 --formats png pdf. No __pycache__ is written (PYTHONDONTWRITEBYTECODE=1 in
@@ -46,9 +45,10 @@ def main():
     env = dict(os.environ, NSKINETICS_IBO_RESULTS_DIR=DATA, MPLBACKEND='Agg',
                PYTHONDONTWRITEBYTECODE='1',
                SOURCE_DATE_EPOCH=SOURCE_DATE_EPOCH)
-    # the child's exit code is passed on (no second traceback on its errors)
-    sys.exit(subprocess.run([PYTHON, SHIM, FRAMES_SCRIPT, '--variant',
-                             VARIANT, *sys.argv[1:]], env=env).returncode)
+    # the child's exit code is passed on (no second traceback on its errors);
+    # --variant comes last, so it cannot be overridden from the command line
+    sys.exit(subprocess.run([PYTHON, SHIM, FRAMES_SCRIPT, *sys.argv[1:],
+                             '--variant', VARIANT], env=env).returncode)
 
 
 if __name__ == '__main__':

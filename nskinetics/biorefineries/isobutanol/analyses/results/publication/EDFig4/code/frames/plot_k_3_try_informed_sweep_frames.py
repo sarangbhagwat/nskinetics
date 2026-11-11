@@ -176,8 +176,11 @@ def groups_of(sweep, fig):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
-    ap.add_argument('--dpi', type=int, default=300)
-    ap.add_argument('--formats', nargs='+', default=['png'])
+    ap.add_argument('--dpi', type=int, default=300,
+                    help='resolution of the frames (default: %(default)s, '
+                         "as make_figure.py's figure)")
+    ap.add_argument('--formats', nargs='+', default=['png'],
+                    help='file formats to write (default: png)')
     args = ap.parse_args()
     sweep, fig = draw_figure(args.dpi)
     pf.save_frames(fig, groups_of(sweep, fig), FRAMES, OUT_DIR, STEM,

@@ -168,8 +168,11 @@ def build_figure():
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
-    ap.add_argument('--dpi', type=int, default=DPI)
-    ap.add_argument('--formats', nargs='+', default=['png'])
+    ap.add_argument('--dpi', type=int, default=DPI,
+                    help='resolution of the frames (default: %(default)s, '
+                         "as make_figure.py's figure)")
+    ap.add_argument('--formats', nargs='+', default=['png'],
+                    help='file formats to write (default: png)')
     args = ap.parse_args()
     fig, groups = build_figure()
     pf.save_frames(fig, groups, FRAMES, OUT_DIR, plot.FIGURE.output_stem,

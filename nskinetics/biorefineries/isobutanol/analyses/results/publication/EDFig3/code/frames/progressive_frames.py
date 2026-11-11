@@ -134,7 +134,8 @@ def save_frames(fig, groups, frames, out_dir, stem, dpi, formats=('png',),
         for g in names:
             if g in frame_of:
                 raise ValueError(f'group {g!r} is added twice: by frame '
-                                 f'{frames[frame_of[g]][0]!r} and by {frame!r}')
+                                 f'{frames[frame_of[g]][0]!r} and (again) by '
+                                 f'{frame!r}')
             frame_of[g] = i
     unknown = sorted(set(frame_of) - set(groups))
     unused = sorted(set(groups) - set(frame_of))

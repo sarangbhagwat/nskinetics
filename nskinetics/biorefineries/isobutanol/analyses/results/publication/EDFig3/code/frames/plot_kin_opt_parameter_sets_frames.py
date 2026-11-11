@@ -24,9 +24,9 @@ wrapped so every artist is filed under a group as it is drawn:
                  the rest it adds to the figure is panel B's scaffold
   legends        one group per legend row (legend_entry), found by label
 
-Anything these do not account for raises (an artist a cell gains outside
-those calls, a legend row or figure-level artist in no group), so nothing
-can slip into every frame unnoticed.
+Anything these do not account for raises (an artist a cell holds that
+none of those calls drew, a legend row or figure-level artist in no group),
+so nothing can slip into every frame unnoticed.
 
 Groups (`*` stands for a campaign: the slug of its legend label, e.g.
 'isobutanol-yield', 'profitability-uninformed', 'profitability-try-informed',
@@ -226,9 +226,11 @@ def _slug(label):
 def instrument(m, groups):
     """Wrap the plot module's drawing functions so the artists they draw are
     filed into groups ({name: [artists]}) as they are created. Returns a dict
-    that receives plot()'s sets ('sets') and the frame drawn around the
-    campaign legend and mark key ('key frame'), which is background."""
-    seen = {}
+    that receives plot()'s sets ('sets'), the frame drawn around the
+    campaign legend and mark key ('key frame'), which is background, and per
+    cell (name, axes, ids of the children it had before it was drawn on)
+    ('cells'), for check_all_filed."""
+    seen = {'cells': []}
     plot, frame_keys = m.plot, m._frame_keys
     outcome_cell, draw_preload = m.outcome_cell, m._draw_relay_preload
     draw_burden = m.draw_burden
@@ -301,19 +303,14 @@ def instrument(m, groups):
         for method in methods:
             setattr(ax, method, tap(method))
         m._draw_relay_preload = draw_preload_
+        seen['cells'].append((cell, ax, {id(a) for a in ax.get_children()}))
         try:
-            with pf.recording(ax) as new:
-                result = outcome_cell(ax, sets, colors, col, *args, **kwargs)
+            return outcome_cell(ax, sets, colors, col, *args, **kwargs)
         finally:
             m._draw_relay_preload = draw_preload
             for method in methods:
                 delattr(ax, method)
-        filed = {id(a) for artists in groups.values() for a in artists}
-        loose = [a for a in new if id(a) not in filed]
-        if loose:       # drawn by a call that is not tapped above
-            raise ValueError(f'{cell}: artists in no group: {loose}')
-        add(f'{cell}:axes', [ax])
-        return result
+            add(f'{cell}:axes', [ax])
 
     def draw_burden_(fig, gs_cell, sets, colors, *args, **kwargs):
         bars, barh = [], Axes.barh
@@ -393,11 +390,18 @@ def file_titles_and_legends(m, fig, sets, groups, variant):
     return a_title
 
 
-def check_all_filed(fig, groups, background):
+def check_all_filed(fig, groups, background, cells):
     """Raise if the figure draws anything that is in no group and is not
     `background` (the key frame): it would be shown in every frame. Of a
-    campaign legend or mark key only the title may be unfiled."""
+    campaign legend or mark key only the title may be unfiled. Likewise for
+    every panel-A cell: an artist it gained that no tapped call drew would
+    be shown with the cell's axes, before its frame."""
     filed = {id(a) for artists in groups.values() for a in artists}
+    for cell, ax, scaffold in cells:
+        loose = [a for a in ax.get_children()
+                 if id(a) not in scaffold and id(a) not in filed]
+        if loose:
+            raise ValueError(f'{cell}: artists in no group: {loose}')
     for a in fig.get_children():
         if a is fig.patch or id(a) in filed or not a.get_visible():
             continue
@@ -582,9 +586,14 @@ def expand(frames, groups):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
-    ap.add_argument('--variant', choices=sorted(FRAMES), required=True)
-    ap.add_argument('--dpi', type=int, default=300)
-    ap.add_argument('--formats', nargs='+', default=['png'])
+    ap.add_argument('--variant', choices=sorted(FRAMES), required=True,
+                    help="the folder's figure (set by make_figure_frames.py): "
+                         'irr = Figure 6, process = Extended Data Figure 3')
+    ap.add_argument('--dpi', type=int, default=300,
+                    help='resolution of the frames (default: %(default)s, '
+                         "as make_figure.py's figure)")
+    ap.add_argument('--formats', nargs='+', default=['png'],
+                    help='file formats to write (default: png)')
     args = ap.parse_args()
 
     m = _load('_plot_kin_opt_parameter_sets', PLOT_SCRIPT)
@@ -602,7 +611,7 @@ def main():
     a_title.set_text(MANUSCRIPT_A_TITLE)
     bbox = (add_notes(m, fig, seen['sets'], groups)
             if args.variant == 'irr' else None)
-    check_all_filed(fig, groups, seen['key frame'])
+    check_all_filed(fig, groups, seen['key frame'], seen['cells'])
     pf.save_frames(fig, groups, expand(FRAMES[args.variant], groups),
                    OUT_DIR, f'kinBO_parameter_sets_{args.variant}', args.dpi,
                    formats=args.formats, bbox_inches=bbox)
