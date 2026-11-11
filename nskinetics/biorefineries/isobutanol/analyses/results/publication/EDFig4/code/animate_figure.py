@@ -19,8 +19,9 @@ step by step with gif_engine.Storyboard:
     3       the IRR axis, then the IRR curve
     4       the burden-derating marker and its legend entry
 
-The last frame is pixel-identical to the static figure rendered at the same
-size. Run through ../make_gifs.py, which points the results root at ../data;
+The last frame is the complete figure (checked pixel for pixel against this
+script's own render of it). Run through ../make_gifs.py, which points the
+results root at ../data;
 see gif_engine.py for the files written and the GIF options.
 
 Sim-safe: reads the saved sweep CSV + anchor JSON only.
@@ -71,6 +72,8 @@ def build_storyboard(fig):
     board.group('IRR axis', y_axis_artists(ax_irr, 'right'))
     board.group('IRR curve', irr_line)
     board.group('derating', derate_line, legend)
+    for axes in fig.axes:   # nothing the plot script draws is left ungrouped
+        board.require_grouped(axes.lines, axes.collections, axes.texts)
 
     panel = ge.Region(ax)
     board.step('ethanol-yield',
@@ -94,7 +97,8 @@ def build_storyboard(fig):
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
+    parser = argparse.ArgumentParser(prog='make_gifs.py',
+                                     description=__doc__.split('\n\n')[0])
     ge.add_cli_arguments(parser)
     args = parser.parse_args(argv)
     out_dir = args.out_dir or os.path.join(os.path.dirname(HERE), 'output',

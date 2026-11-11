@@ -44,12 +44,14 @@ Files written by render() into ``out_dir``:
 GIF notes:
 
 * By default a step GIF carries no loop instruction, so players that follow
-  the file (PowerPoint, browsers) play it once and rest on its last frame.
-  Players that loop regardless (Google Slides, Keynote) restart only after
-  the last frame's hold, ``end_hold`` seconds (default 60).
+  the file play it once and rest on its last frame. Players that loop
+  regardless restart only after the last frame's hold, ``end_hold`` seconds
+  (default 60).
 * Every GIF of a figure shares one 256-colour palette, built from all the
   states, so a step's first frame equals the previous step's last frame
   exactly. The background and pure black are kept exact.
+* The final state is compared with the complete figure as this script renders
+  it. It matches make_figure.py's image wherever both use the same font.
 
 Fonts: the plot scripts ask for Arial. Where Arial is not installed (most
 Linux machines), use_arial_or_metric_twin() registers a metric-compatible
@@ -58,6 +60,7 @@ for Arial holds; call it before building the figure.
 
 Sim-safe: imports only the standard library, numpy, matplotlib and Pillow.
 """
+import contextlib
 import dataclasses
 import io
 import math
@@ -114,15 +117,17 @@ def capture_figure(draw, *args, **kwargs):
     figure instead, still open and with nothing written to disk.
 
     ``draw(*args, **kwargs)`` runs with Figure.savefig and pyplot.close
-    switched off; the figure it created last is returned. The plot script
-    itself stays unmodified.
+    switched off; the figure it created last is returned. What the function
+    prints is dropped (it reports files as written that are not). The plot
+    script itself stays unmodified.
     """
     before = set(plt.get_fignums())
     savefig, close = Figure.savefig, plt.close
     Figure.savefig = lambda self, *a, **k: None
     plt.close = lambda *a, **k: None
     try:
-        draw(*args, **kwargs)
+        with open(os.devnull, 'w') as sink, contextlib.redirect_stdout(sink):
+            draw(*args, **kwargs)
     finally:
         Figure.savefig, plt.close = savefig, close
     new = sorted(set(plt.get_fignums()) - before)
@@ -179,6 +184,8 @@ class Region:
             boxes.append(artist.get_window_extent(renderer))
         if not boxes:
             raise ValueError('a Region needs axes or artists')
+        if axes is None and (self.x is not None or self.y is not None):
+            raise ValueError('Region x / y limits need axes')
         pad = self.pad * fig.dpi / 72.0
         return Bbox.union(boxes).padded(pad)
 
@@ -291,6 +298,17 @@ class Storyboard:
             members.append(artist)
         return members
 
+    def require_grouped(self, *artists):
+        """Raise if any of these (visible) artists is in no group. Call it
+        with everything the plot script draws on an axes, so that an artist
+        the storyboard does not know about (a new landmark, say) is reported
+        instead of sitting on screen from the first frame."""
+        grouped = {id(a) for group in self.groups.values() for a in group}
+        loose = [a for a in _flatten(artists)
+                 if a.get_visible() and id(a) not in grouped]
+        if loose:
+            raise ValueError(f'artists in no group: {loose}')
+
     def step(self, slug, caption, *phases):
         """Add a step: one GIF, made of one or more phases played in order."""
         if not phases:
@@ -366,6 +384,7 @@ class Storyboard:
             mask = np.full(shape, _ease(t), np.float32)
         else:
             mask = np.full(shape, 1.0 if t >= 1.0 else 0.0, np.float32)
+        swept = np.full(shape, -1.0, np.float32)   # -1 = outside every region
         soft = max(1.0, phase.edge * dpi / 72.0)
         left_px = crop.x0 * dpi
         top_px = crop.y1 * dpi
@@ -391,28 +410,30 @@ class Storyboard:
             ramp = np.clip((front - along) / soft + 1.0, 0.0, 1.0)
             if t >= 1.0:
                 ramp[:] = 1.0
-            if horizontal:
-                mask[r0:r1, c0:c1] = ramp[None, :]
-            else:
-                # rows run top to bottom; 'up' already reversed `along`
-                mask[r0:r1, c0:c1] = ramp[:, None]
-        return mask
+            # rows run top to bottom; 'up' already reversed `along`
+            ramp = ramp[None, :] if horizontal else ramp[:, None]
+            # where regions overlap, the front that is further along wins
+            swept[r0:r1, c0:c1] = np.maximum(swept[r0:r1, c0:c1], ramp)
+        return np.where(swept >= 0.0, swept, mask)
 
     def render(self, out_dir, stem, width_px=1600, fps=20, speed=1.0,
-               loop=False, lead_in=0.4, end_hold=60.0, combined=True,
+               loop=False, lead_in=0.4, end_hold=None, combined=True,
                combined_pause=1.5, dither=False, stills=True, strict=True,
                verbose=True):
         """Write the step GIFs (and stills, the combined GIF and the step
         list) into out_dir. Returns the list of step GIF paths.
 
         width_px        frame width; the height follows the figure.
-        fps, speed      frame rate, and a factor on every phase duration
-                        (speed=2 halves them).
+        fps, speed      frame rate (at most 50, the fastest a GIF can play),
+                        and a factor on every phase duration (speed=2 halves
+                        them).
         loop            False: play once and rest on the last frame; True:
                         loop forever.
         lead_in         seconds the first frame is held before motion starts.
-        end_hold        seconds the last frame of a step GIF is held (matters
-                        only where the player loops).
+        end_hold        seconds the last frame of a step GIF is held. Default:
+                        60 for a play-once GIF (it matters only where the
+                        player loops regardless), 2 with loop=True. A pause()
+                        that ends a step is replaced by this hold.
         combined        also write <stem>_all_steps.gif (looping), holding
                         combined_pause seconds after each step.
         dither          Floyd-Steinberg dithering of the frames (smoother
@@ -420,20 +441,27 @@ class Storyboard:
         strict          raise if the final state differs from the complete
                         figure.
         """
+        if not 0 < fps <= 50:
+            raise ValueError(f'fps must be in (0, 50], got {fps}')
+        if speed <= 0:
+            raise ValueError(f'speed must be positive, got {speed}')
+        if width_px < 16:
+            raise ValueError(f'width_px must be at least 16, got {width_px}')
+        if end_hold is None:
+            end_hold = 2.0 if loop else 60.0
         self._check()
         fig = self.fig
-        os.makedirs(out_dir, exist_ok=True)
-        _remove_previous(out_dir, stem)
         # the quarter pixel keeps float rounding from costing a pixel column
         dpi = (width_px + 0.25) / fig.get_size_inches()[0]
         fig.set_dpi(dpi)
         fig.canvas.draw()
         renderer = fig.canvas.get_renderer()
         crop = self._crop(renderer)
-        if self.savefig_kwargs.get('bbox_inches') == 'tight':
-            # width_px is the width of the saved (cropped) frame; the tight
-            # box moves slightly with the dpi, so settle it in two passes
-            for _ in range(2):
+        requested = self.savefig_kwargs.get('bbox_inches')
+        if requested is not None:
+            # width_px is the width of the saved (cropped) frame; a tight box
+            # moves slightly with the dpi, so settle it in two passes
+            for _ in range(2 if requested == 'tight' else 1):
                 dpi = (width_px + 0.25) / crop.width
                 fig.set_dpi(dpi)
                 fig.canvas.draw()
@@ -469,20 +497,24 @@ class Storyboard:
 
         quantize = _Quantizer(_shared_palette(states), dither)
         frame_s = 1.0 / fps
-        written, lines, everything, everything_ms = [], [], [], []
+        written, lines = [], []
+        everything = []                 # [frame, seconds] of the combined GIF
 
+        os.makedirs(out_dir, exist_ok=True)
+        _remove_previous(out_dir, stem)
         if stills:
             start = os.path.join(out_dir, f'{stem}_step00_start.png')
             Image.fromarray(states[0]).save(start)
         for i, step in enumerate(self.steps):
-            frames = [quantize(states[plan_before(plan, i)])]
-            durations = [lead_in]
+            # [frame, seconds]; the first frame is the state the step starts
+            # from, held for the lead-in plus any pause that opens the step
+            shots = [[quantize(states[plan_before(plan, i)]), 0.0]]
             for index, phase, before, after in plan:
                 if index != i:
                     continue
                 seconds = phase.seconds / speed
                 if phase.kind == 'pause':
-                    durations[-1] += seconds
+                    shots[-1][1] += seconds
                     continue
                 a = states[before].astype(np.float32)
                 b = states[after].astype(np.float32)
@@ -491,36 +523,44 @@ class Storyboard:
                 for k in range(1, n):
                     m = self._mask(phase, k / n, shape, crop, renderer)
                     blend = a + (b - a) * m[:, :, None]
-                    frames.append(quantize(
-                        np.clip(blend + 0.5, 0, 255).astype(np.uint8)))
-                    durations.append(frame_s)
-                frames.append(quantize(states[after]))
-                durations.append(frame_s)
+                    shots.append([quantize(
+                        np.clip(blend + 0.5, 0, 255).astype(np.uint8)),
+                        frame_s])
+                shots.append([quantize(states[after]), frame_s])
+            opening_pause = shots[0][1] if len(shots) > 1 else 0.0
             name = f'{stem}_step{i + 1:02d}_{step.slug}'
             path = os.path.join(out_dir, name + '.gif')
-            step_ms = _milliseconds(durations)
-            _save_gif(path, frames, step_ms[:-1] + [int(end_hold * 1000)],
-                      loop)
+            frames = [frame for frame, _ in shots]
+            seconds = [lead_in + opening_pause] + [s for _, s in shots[1:]]
+            seconds[-1] = end_hold
+            count = _save_gif(path, frames, seconds, loop)
             written.append(path)
             if stills:
                 Image.fromarray(states[plan_after(plan, i)]).save(
                     os.path.join(out_dir, name + '.png'))
             lines.append(f'{i + 1:02d}  {name}.gif  {step.caption}')
             if verbose:
-                print(f'wrote {path} ({len(frames)} frames, '
+                print(f'wrote {path} ({count} frames, '
                       f'{os.path.getsize(path) / 1e6:.1f} MB)')
             if combined:
-                last = len(self.steps) - 1
-                hold = combined_pause * (2.0 if i == last else 1.0)
-                # the first frame of a later step repeats the frame before it
-                skip = 0 if i == 0 else 1
-                everything.extend(frames[skip:])
-                everything_ms.extend(step_ms[skip:-1] + [int(hold * 1000)])
+                last = i == len(self.steps) - 1
+                hold = combined_pause * (2.0 if last else 1.0)
+                if not everything:
+                    everything.append([frames[0], lead_in])
+                # a later step's first frame repeats the frame already there,
+                # which takes over the pause that opens (or is) the step
+                everything[-1][1] += shots[0][1]
+                everything.extend([frame, s] for frame, s in shots[1:])
+                if len(shots) > 1:
+                    everything[-1][1] = hold
+                elif last:
+                    everything[-1][1] = max(everything[-1][1], hold)
         if combined:
             path = os.path.join(out_dir, f'{stem}_all_steps.gif')
-            _save_gif(path, everything, everything_ms, True)
+            count = _save_gif(path, [frame for frame, _ in everything],
+                              [s for _, s in everything], True)
             if verbose:
-                print(f'wrote {path} ({len(everything)} frames, '
+                print(f'wrote {path} ({count} frames, '
                       f'{os.path.getsize(path) / 1e6:.1f} MB)')
         with open(os.path.join(out_dir, f'{stem}_steps.txt'), 'w',
                   encoding='utf-8') as handle:
@@ -554,16 +594,18 @@ def plan_after(plan, step_index):
 def _shared_palette(states, colours=256, sample_cap=1_500_000):
     """One palette, an (n, 3) uint8 array, for every frame of the figure.
 
-    Built from the distinct colours of all states and of the half-way blends
-    between consecutive states, each weighted by the square root of its pixel
+    Built from the distinct colours of all states and of the blends between
+    consecutive states (what fades and wipe fronts pass through), each weighted by the square root of its pixel
     count: thin coloured lines and markers keep accurate colours next to the
     large flat areas. The most common colour (the background) and pure black
     are then stored exactly.
     """
     samples = [state[::2, ::2].reshape(-1, 3) for state in states]
     for a, b in zip(states[:-1], states[1:]):
-        half = ((a[::3, ::3].astype(np.uint16) + b[::3, ::3]) // 2)
-        samples.append(half.astype(np.uint8).reshape(-1, 3))
+        a, b = a[::3, ::3].astype(np.uint16), b[::3, ::3].astype(np.uint16)
+        for weight in (1, 2, 3):      # quarter, half, three-quarter blends
+            blend = (a * (4 - weight) + b * weight) // 4
+            samples.append(blend.astype(np.uint8).reshape(-1, 3))
     pixels = np.concatenate(samples).astype(np.uint32)
     packed = (pixels[:, 0] << 16) | (pixels[:, 1] << 8) | pixels[:, 2]
     unique, counts = np.unique(packed, return_counts=True)
@@ -595,7 +637,8 @@ class _Quantizer:
     palette mapping works on a coarse colour grid and can move the background
     off white). The colour -> entry table is filled as colours are met, so
     later frames cost little. With dither, Pillow's Floyd-Steinberg mapping
-    is used instead.
+    is used instead, with the background and black put back exactly (entries
+    0 and 1 of the palette).
     """
 
     def __init__(self, table, dither=False):
@@ -607,8 +650,12 @@ class _Quantizer:
 
     def __call__(self, rgb):
         if self.dither:
-            return Image.fromarray(rgb).quantize(
-                palette=self.palette, dither=Image.Dither.FLOYDSTEINBERG)
+            entries = np.array(Image.fromarray(rgb).quantize(
+                palette=self.palette, dither=Image.Dither.FLOYDSTEINBERG))
+            # error diffusion must not tint the background or solid black
+            for entry in (0, 1):
+                entries[np.all(rgb == self.table[entry], axis=2)] = entry
+            return self._image(entries)
         packed = ((rgb[:, :, 0].astype(np.uint32) << 16)
                   | (rgb[:, :, 1].astype(np.uint32) << 8) | rgb[:, :, 2])
         entries = self.lookup[packed]
@@ -624,22 +671,46 @@ class _Quantizer:
                             ).sum(axis=2)
                 self.lookup[new[start:start + 20000]] = distance.argmin(axis=1)
             entries = self.lookup[packed]
+        return self._image(entries)
+
+    def _image(self, entries):
         image = Image.fromarray(entries.astype(np.uint8))
         image.putpalette(self.table.reshape(-1).tolist())   # 'L' becomes 'P'
         return image
 
 
 def _milliseconds(seconds):
-    """Frame durations in ms, on the GIF's 10 ms grid."""
-    return [max(20, int(round(s * 100)) * 10) for s in seconds]
+    """Frame durations in ms on the GIF's 10 ms grid. The rounding error is
+    carried forward, so the total stays right (20 fps is exact; 30 fps
+    alternates 30 and 40 ms). No frame is shorter than 20 ms, below which
+    players fall back to a slow default."""
+    out, elapsed, shown = [], 0.0, 0
+    for s in seconds:
+        elapsed += s
+        ms = max(20, int(round(elapsed * 100)) * 10 - shown)
+        out.append(ms)
+        shown += ms
+    return out
 
 
-def _save_gif(path, frames, durations_ms, loop):
-    kwargs = dict(save_all=True, append_images=frames[1:],
-                  duration=list(durations_ms), optimize=False, disposal=1)
+def _save_gif(path, frames, seconds, loop):
+    """Write the frames; consecutive identical frames become one, shown for
+    their summed time. Returns the number of frames stored."""
+    kept, times = [], []
+    for frame, s in zip(frames, seconds):
+        data = frame.tobytes()
+        if kept and data == kept[-1][1]:
+            times[-1] += s
+        else:
+            kept.append((frame, data))
+            times.append(s)
+    images = [frame for frame, _ in kept]
+    kwargs = dict(save_all=True, append_images=images[1:],
+                  duration=_milliseconds(times), optimize=False, disposal=1)
     if loop:
         kwargs['loop'] = 0          # forever; omitted = play once
-    frames[0].save(path, **kwargs)
+    images[0].save(path, **kwargs)
+    return len(images)
 
 
 # -----------------------------------------------------------------------------
@@ -651,15 +722,17 @@ def add_cli_arguments(parser):
                         help='where the GIFs go')
     parser.add_argument('--width-px', type=int, default=1600,
                         help='frame width in pixels (default 1600)')
-    parser.add_argument('--fps', type=float, default=20.0)
+    parser.add_argument('--fps', type=float, default=20.0,
+                        help='frames per second, at most 50 (default 20)')
     parser.add_argument('--speed', type=float, default=1.0,
                         help='factor on the animation speed (2 = twice as fast)')
     parser.add_argument('--loop', action='store_true',
                         help='loop each step GIF forever instead of playing '
                              'it once')
-    parser.add_argument('--end-hold', type=float, default=60.0,
-                        help='seconds the last frame of a step GIF is held, '
-                             'for players that loop regardless (default 60)')
+    parser.add_argument('--end-hold', type=float, default=None,
+                        help='seconds the last frame of a step GIF is held '
+                             '(default 60, for players that loop regardless; '
+                             '2 with --loop)')
     parser.add_argument('--no-combined', dest='combined', action='store_false',
                         help='skip the all-steps GIF')
     parser.add_argument('--dither', action='store_true',

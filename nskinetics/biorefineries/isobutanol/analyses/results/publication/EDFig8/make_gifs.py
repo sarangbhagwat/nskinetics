@@ -22,8 +22,9 @@ ended, so they can be shown one per slide or click:
 
 The step GIFs play once and rest on their last frame; the PNGs are the
 finished state of each step; all_steps.gif runs the whole build in a loop;
-steps.txt lists what each step shows. The last step ends on the same image
-make_figure.py draws.
+steps.txt lists what each step shows. The last step ends on the complete
+figure, as make_figure.py draws it (in Arial, or a metric-compatible face
+where Arial is not installed).
 
 Runs code/animate_figure.py (which draws the figure with the unmodified
 snapshot code/plots/plot_k13_inhib_isobutanol_opt_PI_TRY_informed.py and

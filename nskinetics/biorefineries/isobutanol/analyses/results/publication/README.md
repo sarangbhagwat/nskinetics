@@ -23,7 +23,7 @@ python make_gifs.py
 ```
 
 - `<figure>_stepNN_<what it adds>.gif`: one step. It starts on the last frame of the step before it, plays once and rests on its last frame, so the steps can go one per slide or click.
-- `<figure>_stepNN_<what it adds>.png`: the finished state of that step, as a still.
+- `<figure>_stepNN_<what it adds>.png`: the finished state of that step, as a still (`<figure>_step00_start.png` is the state before the first step).
 - `<figure>_all_steps.gif`: the whole build in a loop, for previewing.
 - `<figure>_steps.txt`: what each step shows.
 

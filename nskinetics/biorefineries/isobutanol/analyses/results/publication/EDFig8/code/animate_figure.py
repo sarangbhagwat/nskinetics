@@ -23,8 +23,9 @@ groups and reveals them step by step with gif_engine.Storyboard:
     6       the profitability (IRR) optimum
 
 Each landmark (marker, label and arrow) fades in as one, the landmarks of a
-step one after another. The last frame is pixel-identical to the static
-figure rendered at the same size. Run through ../make_gifs.py, which points
+step one after another. The last frame is the complete figure (checked
+pixel for pixel against this script's own render of it). Run through
+../make_gifs.py, which points
 the results root at ../data; see gif_engine.py for the files written and the
 GIF options.
 
@@ -98,8 +99,16 @@ def build_storyboard(fig, figure):
     board.group('IRR map', filled)
     board.group('break-even', zero_contour, cbar_zero_line)
     marks = landmarks(ax, figure.optima)
-    for label in ETHANOL + ISOBUTANOL + CELLS_AND_TCI + PROFITABILITY:
+    staged = ETHANOL + ISOBUTANOL + CELLS_AND_TCI + PROFITABILITY
+    if set(marks) != set(staged):
+        raise ValueError('the landmarks of the plot script and of this '
+                         f'storyboard differ: {sorted(set(marks) ^ set(staged))}')
+    for label in staged:
         board.group(label, marks[label])
+    # anything else the plot script draws on the panel (a new marker, a
+    # callout) must be given a step rather than show from the first frame
+    board.require_grouped(ax.lines, ax.texts, ax.collections, ax.patches,
+                          ax.images)
 
     def one_by_one(labels):
         return [ge.fade(label, seconds=LANDMARK_S) for label in labels]
@@ -112,8 +121,9 @@ def build_storyboard(fig, figure):
                        seconds=MAP_S))
     board.step('break-even',
                'The white contour marks break-even (IRR = 0): the process is '
-               'profitable from just above zero up to about 9-13 g/g/h of '
-               'ALS capacity, depending on inhibition',
+               'profitable mainly from just above zero up to about 9-13 g/g/h '
+               'of ALS capacity, depending on inhibition, plus small marginal '
+               'pockets (IRR below 4 %) at 14-16 g/g/h and low inhibition',
                ge.fade('break-even', seconds=CONTOUR_S))
     board.step('ethanol-optima',
                'Ethanol titer, yield and productivity peak at almost no ALS '
@@ -121,7 +131,7 @@ def build_storyboard(fig, figure):
                *one_by_one(ETHANOL))
     board.step('isobutanol-optima',
                'Isobutanol titer, yield and productivity peak at about '
-               '5-6 g/g/h of ALS capacity and the lowest inhibition',
+               '5-6 g/g/h of ALS capacity, at or near the lowest inhibition',
                *one_by_one(ISOBUTANOL))
     board.step('cell-density-and-tci',
                'Cell density peaks with no ALS capacity, and capital cost '
@@ -136,7 +146,8 @@ def build_storyboard(fig, figure):
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
+    parser = argparse.ArgumentParser(prog='make_gifs.py',
+                                     description=__doc__.split('\n\n')[0])
     ge.add_cli_arguments(parser)
     args = parser.parse_args(argv)
     out_dir = args.out_dir or os.path.join(os.path.dirname(HERE), 'output',
