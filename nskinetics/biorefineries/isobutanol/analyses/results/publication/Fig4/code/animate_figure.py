@@ -26,10 +26,11 @@ groups and reveals them step by step with gif_engine.Storyboard:
     12      panels B to F: the two grey ranges, panel after panel
 
 Panel A is built piece by piece because its callouts name every element of the
-figure; panels B to F then repeat those elements, in the same order. The last
-frame is the complete figure (checked pixel for pixel against this script's
-own render of it). Run through ../make_gifs.py, which points the results root
-at ../data; see gif_engine.py for the files written and the GIF options.
+figure; panels B to F then repeat those elements, with their grey ranges kept
+for one last step. The last frame is the complete figure (checked pixel for
+pixel against this script's own render of it). Run through ../make_gifs.py,
+which points the results root at ../data; see gif_engine.py for the files
+written and the GIF options.
 
 Sim-safe: reads the two saved uncertainty workbooks only.
 """
@@ -79,10 +80,11 @@ LATER_PANELS = {
 # the last step; the shares are the samples inside each light box
 RANGES_CAPTION = (
     'Panels B-F: the light boxes are the ranges of conventional corn ethanol '
-    'biorefineries (B, C) and of high-gravity fermentation (D-F), over the '
-    'same gasoline price band; they hold 93 % and 83 % of the samples in B '
-    'and C, all but one in D, over 99 % in E, and 56 % in F, where the rest '
-    'and the baseline lie below 2.0 g/L/h')
+    'biorefineries (B, C) and of high-gravity fermentation (D-F), each as '
+    'tall as the ethanol market price range, over the same gasoline price '
+    'band; they hold 93 % and 83 % of the samples in B and C, all but one '
+    'in D, over 99 % in E, and 56 % in F, where the rest and the baseline '
+    'lie below 2.0 g/L/h')
 
 
 def load_plot_module():
