@@ -159,27 +159,28 @@ FRAMES = {
     ],
     # Figure 6's panel A (irr-left / irr-right cells, notes, legend), Extended
     # Data Figure 3's (the ibo-* / etoh-* cells) and the proteome rows: one
-    # frame per step of the story, each ending on its note, with the proteome
-    # row of every campaign that has appeared
+    # frame per step of the story, each ending on its note. A campaign enters
+    # every panel in the same frame: its profitability, its incumbent in the
+    # six process cells and its proteome row
     'combined': [
         ('baseline', ['A:irr-left:axes', 'A:irr-left:baseline',
-                      'legend:baseline-no-optimization', 'B:title', 'B:axes',
-                      'B:sectors', 'B:row:baseline-no-optimization']),
+                      'A:ibo-*:axes', 'A:etoh-*:axes', 'A:ibo-*:baseline',
+                      'A:etoh-*:baseline', 'legend:baseline-no-optimization',
+                      'B:title', 'B:axes', 'B:sectors',
+                      'B:row:baseline-no-optimization']),
         ('uninformed-profitability',
          ['A:irr-left:profitability-uninformed:*',
-          'legend:profitability-uninformed', 'key:individual-trials',
-          'key:highest-irr-trial', 'key:incumbent-own', 'note:uninformed',
-          'B:row:profitability-uninformed']),
-        ('try-campaigns',
-         ['A:ibo-*:axes', 'A:etoh-*:axes', 'A:ibo-*:baseline',
-          'A:etoh-*:baseline', 'A:ibo-*:cloud', 'A:etoh-*:cloud',
-          'A:ibo-*:incumbent', 'A:etoh-*:incumbent',
-          'A:ibo-*:isobutanol-*:dashed', 'A:ibo-*:ethanol-*:dashed',
-          'A:etoh-*:isobutanol-*:dashed', 'A:etoh-*:ethanol-*:dashed',
           'A:ibo-*:profitability-uninformed:dashed',
           'A:etoh-*:profitability-uninformed:dashed',
-          'A:irr-left:isobutanol-*', 'A:irr-left:ethanol-*',
-          'legend:isobutanol-*', 'legend:ethanol-*', 'key:incumbent-other',
+          'legend:profitability-uninformed', 'key:individual-trials',
+          'key:highest-irr-trial', 'key:incumbent-own', 'key:incumbent-other',
+          'note:uninformed', 'B:row:profitability-uninformed']),
+        ('try-campaigns',
+         ['A:ibo-*:cloud', 'A:etoh-*:cloud', 'A:ibo-*:incumbent',
+          'A:etoh-*:incumbent', 'A:ibo-*:isobutanol-*:dashed',
+          'A:ibo-*:ethanol-*:dashed', 'A:etoh-*:isobutanol-*:dashed',
+          'A:etoh-*:ethanol-*:dashed', 'A:irr-left:isobutanol-*',
+          'A:irr-left:ethanol-*', 'legend:isobutanol-*', 'legend:ethanol-*',
           'note:try-traverse', 'B:row:isobutanol-*', 'B:row:ethanol-*']),
         ('try-scouts', ['A:irr-right:axes', 'A:irr-right:baseline',
                         'A:irr-right:preload-*', 'note:scouts']),
