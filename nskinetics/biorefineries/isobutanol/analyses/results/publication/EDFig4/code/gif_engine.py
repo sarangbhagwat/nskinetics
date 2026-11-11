@@ -62,6 +62,7 @@ import dataclasses
 import io
 import math
 import os
+import re
 from typing import Optional, Sequence
 
 import numpy as np
@@ -422,18 +423,26 @@ class Storyboard:
         self._check()
         fig = self.fig
         os.makedirs(out_dir, exist_ok=True)
-        dpi = float(width_px) / fig.get_size_inches()[0]
+        _remove_previous(out_dir, stem)
+        # the quarter pixel keeps float rounding from costing a pixel column
+        dpi = (width_px + 0.25) / fig.get_size_inches()[0]
         fig.set_dpi(dpi)
         fig.canvas.draw()
         renderer = fig.canvas.get_renderer()
         crop = self._crop(renderer)
         if self.savefig_kwargs.get('bbox_inches') == 'tight':
-            # width_px is the width of the saved (cropped) frame
-            dpi *= fig.get_size_inches()[0] / crop.width
-            fig.set_dpi(dpi)
-            fig.canvas.draw()
-            renderer = fig.canvas.get_renderer()
-            crop = self._crop(renderer)
+            # width_px is the width of the saved (cropped) frame; the tight
+            # box moves slightly with the dpi, so settle it in two passes
+            for _ in range(2):
+                dpi = (width_px + 0.25) / crop.width
+                fig.set_dpi(dpi)
+                fig.canvas.draw()
+                renderer = fig.canvas.get_renderer()
+                crop = self._crop(renderer)
+            # what is left of the drift (a pixel or two) comes off the padding
+            excess = crop.width - (width_px + 0.25) / dpi
+            crop = Bbox.from_extents(crop.x0 + excess / 2, crop.y0,
+                                     crop.x1 - excess / 2, crop.y1)
         reference = self._snapshot(dpi, crop)
 
         # every state, in order: all groups hidden, then phase by phase
@@ -517,6 +526,16 @@ class Storyboard:
                   encoding='utf-8') as handle:
             handle.write('\n'.join(lines) + '\n')
         return written
+
+
+def _remove_previous(out_dir, stem):
+    """Delete what an earlier render() of this stem wrote, so a changed
+    storyboard leaves no outdated step files behind."""
+    pattern = re.compile(re.escape(stem) + r'_(step\d\d_.*\.(gif|png)'
+                         r'|all_steps\.gif|steps\.txt)$')
+    for name in os.listdir(out_dir):
+        if pattern.match(name):
+            os.remove(os.path.join(out_dir, name))
 
 
 def plan_before(plan, step_index):
