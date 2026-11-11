@@ -21,8 +21,9 @@ groups and reveals them step by step with gif_engine.Storyboard:
     5       panel A: the conventional corn ethanol box and its callout
     6       panel A: the gasoline price band and its callout
     7-11    panels B to F, one per step: the samples (density, baseline, rho
-            and box plots), the binned-median line traced along x (named by
-            its callout in panel B), then the two grey ranges
+            and box plots), then the binned-median line traced along x (named
+            by its callout in panel B)
+    12      panels B to F: the two grey ranges, panel after panel
 
 Panel A is built piece by piece because its callouts name every element of the
 figure; panels B to F then repeat those elements, in the same order. The last
@@ -55,32 +56,33 @@ SAVEFIG_KWARGS = dict(facecolor='white')
 FADE_S, DENSITY_S, TRACE_S = 0.7, 1.2, 1.4
 
 # panels B to F: slug and caption of each panel's step. The numbers are those
-# the plot script reports for this run (Spearman's rho, the change of the
-# binned-median MESP from the first to the last decile of x) and the share of
-# the samples inside each light box.
+# the plot script reports for this run: Spearman's rho, and the change of the
+# binned-median MESP from the first to the last tenth of the samples along x.
 LATER_PANELS = {
     'B': ('ethanol-production',
-          'Panel B: MESP falls with ethanol production (rho = -0.43; the '
-          'binned median drops 0.21 $/GGE across the samples); 93 % of the '
-          'samples lie in the 40-60 MM gal/y of conventional corn ethanol '
-          'biorefineries'),
+          'Panel B: MESP falls with ethanol production (rho = -0.43); the '
+          'line is the binned median, which drops 0.21 $/GGE from the lowest '
+          'to the highest tenth of the samples'),
     'C': ('ddgs-revenue',
           'Panel C: MESP falls most clearly with DDGS revenue (rho = -0.51; '
-          'the binned median drops 0.23 $/GGE); 83 % of the samples lie in '
-          'the conventional DDGS revenue range, which starts at 14.7 MM$/y'),
+          'the binned median drops 0.23 $/GGE)'),
     'D': ('ethanol-yield',
-          'Panel D: MESP depends only weakly on ethanol yield (rho = -0.14); '
-          'every sample lies in the 0.42-0.48 g/g of high-gravity '
-          'fermentation'),
+          'Panel D: MESP depends only weakly on ethanol yield (rho = -0.14; '
+          'the binned median drops 0.07 $/GGE)'),
     'E': ('ethanol-titer',
-          'Panel E: MESP depends only weakly on ethanol titer (rho = -0.19); '
-          'nearly every sample lies in the 100-142 g/L of high-gravity '
-          'fermentation'),
+          'Panel E: MESP depends only weakly on ethanol titer (rho = -0.19; '
+          'the binned median drops 0.09 $/GGE)'),
     'F': ('ethanol-productivity',
           'Panel F: MESP depends only weakly on ethanol productivity '
-          '(rho = -0.16); 44 % of the samples, and the baseline, lie below '
-          'the 2.0-4.4 g/L/h of high-gravity fermentation'),
+          '(rho = -0.16; the binned median drops 0.07 $/GGE)'),
 }
+# the last step; the shares are the samples inside each light box
+RANGES_CAPTION = (
+    'Panels B-F: the light boxes are the ranges of conventional corn ethanol '
+    'biorefineries (B, C) and of high-gravity fermentation (D-F), over the '
+    'same gasoline price band; they hold 93 % and 83 % of the samples in B '
+    'and C, all but one in D, over 99 % in E, and 56 % in F, where the rest '
+    'and the baseline lie below 2.0 g/L/h')
 
 
 def load_plot_module():
@@ -101,8 +103,9 @@ def one(items, what):
 
 class Panel:
     """The artists of one joint panel and its two marginal axes, by what they
-    are. `ranges` is the light box of conventional values (and, in every
-    panel, `band` the gasoline price band)."""
+    are: `box` is the light box of conventional values, `band` the gasoline
+    price band, `labels` any plain text besides the panel letter and rho
+    (panel A's gasoline label)."""
 
     def __init__(self, letter, ax, ax_top, ax_right):
         self.letter, self.ax = letter, ax
@@ -117,8 +120,10 @@ class Panel:
         # the Pareto frontier (panel A) or the binned-median line (B to F)
         self.curve = one((line for line in ax.lines
                           if line is not self.baseline), 'curve')
-        self.callouts = {a.get_text(): a for a in ax.texts
-                         if isinstance(a, Annotation)}
+        annotations = [a for a in ax.texts if isinstance(a, Annotation)]
+        self.callouts = {a.get_text(): a for a in annotations}
+        if len(self.callouts) != len(annotations):
+            raise ValueError(f'panel {letter}: two callouts share a text')
         plain = [t for t in ax.texts if not isinstance(t, Annotation)]
         self.letter_text = one((t for t in plain if t.get_text() == letter),
                                'panel letter')
@@ -155,12 +160,16 @@ def build_storyboard(fig, plot):
                 a.callout(plot.CONVENTIONAL_CALLOUT['text']))
     # the double arrow across the band is an annotation without text; its
     # label is a plain text on top of it
-    board.group('A gasoline', a.band, a.callout(''), a.labels)
+    board.group('A gasoline', a.band, a.callout(''),
+                one(a.labels, 'gasoline label in panel A'))
     for p in later:
+        if p.labels:
+            raise ValueError(f'panel {p.letter}: texts in no step: '
+                             f'{[t.get_text() for t in p.labels]}')
         board.group(f'{p.letter} samples', p.density, p.baseline, p.rho,
                     p.marginals)
         board.group(f'{p.letter} trend', p.curve)
-        board.group(f'{p.letter} ranges', p.box, p.band, p.labels)
+        board.group(f'{p.letter} ranges', p.box, p.band)
     trend_callout = later[0].callout(plot.TREND_CALLOUT['text'])
     board.group('B trend callout', trend_callout)
 
@@ -173,7 +182,8 @@ def build_storyboard(fig, plot):
                              f'{sorted(p.callouts)}')
         board.require_grouped(p.ax.lines, p.ax.collections, p.ax.patches,
                               p.ax.images,
-                              [t for t in p.ax.texts if t is not p.letter_text])
+                              [t for t in p.ax.texts
+                               if t is not p.letter_text])
     board.require_grouped(fig.lines, fig.patches, fig.images, fig.legends)
 
     board.step('baseline',
@@ -188,8 +198,9 @@ def build_storyboard(fig, plot):
                ge.fade('A density', seconds=DENSITY_S))
     board.step('box-plots',
                'The box plots summarize each axis (box 25th-75th percentile, '
-               'whiskers 5th-95th, dots minimum and maximum): 90 % of the '
-               'samples lie within 3.64-4.08 $/GGE and 125-151 MM$',
+               'whiskers 5th-95th, dots minimum and maximum): the middle '
+               '90 % of MESP is 3.64-4.08 $/GGE, and of capital investment '
+               '125-151 MM$',
                ge.fade('A marginals', seconds=FADE_S))
     board.step('pareto-frontier',
                'The Pareto frontier joins the samples that no other sample '
@@ -214,8 +225,10 @@ def build_storyboard(fig, plot):
                           region=ge.Region(artists=[p.curve]))]
         if p is later[0]:
             phases.append(ge.fade('B trend callout', seconds=FADE_S))
-        phases.append(ge.fade(f'{p.letter} ranges', seconds=FADE_S))
         board.step(slug, caption, *phases)
+    board.step('conventional-ranges-b-to-f', RANGES_CAPTION,
+               *[ge.fade(f'{p.letter} ranges', seconds=FADE_S)
+                 for p in later])
     return board
 
 

@@ -11,9 +11,10 @@ productivity), for presentations.
 
 One GIF per step towards the full figure (panel A piece by piece: the
 baseline, the sample density, the box plots, the Pareto frontier, the
-conventional corn ethanol box and the gasoline price band; then panels B to
-F, one per step), each starting where the one before ended, so they can be
-shown one per slide or click:
+conventional corn ethanol box and the gasoline price band; then the samples
+and binned-median line of panels B to F, one panel per step; last their grey
+ranges), each starting where the one before ended, so they can be shown one
+per slide or click:
 
     output/gifs/uncertainty_bivariate_A_2026.9.29-23.45_6000sims_step00_start.png
     output/gifs/uncertainty_bivariate_A_2026.9.29-23.45_6000sims_stepNN_<what it adds>.gif
