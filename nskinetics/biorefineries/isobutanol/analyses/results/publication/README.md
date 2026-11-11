@@ -31,7 +31,7 @@ This writes `output\frames\<name of make_figure.py's output>_frameNN_<frame name
 | Folder | Frames | Sequence |
 | --- | --- | --- |
 | `Fig6` | 13 | baseline; uninformed profitability campaign; process-level (TRY) campaigns; TRY trials as scouts; TRY-informed campaign, each followed by its panel-A annotation; then the proteome rows |
-| `Fig6`, combined | 11 | `python make_figure_combined_frames.py`, frames named `kinBO_parameter_sets_combined_frameNN_<frame name>.png`: the optimization trajectories of `Fig6` (panel A, with its annotations and the campaign legend) and of `EDFig3` (panel A) side by side, without panel B: baseline; uninformed profitability campaign; TRY campaigns in their own metrics, the other campaigns' incumbents, then the TRY campaigns' profitability; TRY trials as scouts; TRY-informed campaign, with each annotation after what it describes |
+| `Fig6`, combined | 5 | `python make_figure_combined_frames.py`, frames named `kinBO_parameter_sets_combined_frameNN_<frame name>.png`: the optimization trajectories of `Fig6` (panel A, with its annotations, over the campaign legend) and of `EDFig3` (panel A, over the proteome allocation) side by side: baseline; uninformed profitability campaign; TRY campaigns; TRY trials as scouts; TRY-informed campaign, each with its annotation and the proteome rows of the campaigns shown so far |
 | `EDFig3` | 10 | baseline; isobutanol campaigns; ethanol campaigns; other campaigns' incumbents; uninformed and TRY-informed profitability campaigns; then the proteome rows |
 | `EDFig4` | 5 | x axis; IRR; profitability index; ethanol yield; growth derating |
 | `EDFig8` | 7 | axes; IRR map; break-even line; profitability optimum; ethanol optima; isobutanol optima; cell density and TCI |

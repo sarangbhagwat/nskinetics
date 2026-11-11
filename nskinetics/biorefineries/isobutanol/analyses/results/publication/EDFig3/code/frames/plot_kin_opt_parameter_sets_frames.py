@@ -8,7 +8,7 @@
 """Progressive presentation frames of Figure 6 (--variant irr) and Extended
 Data Figure 3 (--variant process): optimization trajectories (panel A) and
 final proteome allocation (panel B); and of the two panels A side by side
-(--variant combined).
+over the proteome allocation (--variant combined).
 
 The same file sits in both figure folders. It loads the folder's snapshot
 plots/plot_kin_opt_parameter_sets.py by file path and lets its main() draw
@@ -65,12 +65,13 @@ the complete figure, with panel A titled as in the manuscript
 (MANUSCRIPT_A_TITLE) and, for Figure 6, the manuscript's annotations above
 panel A on a canvas extended upwards by NOTE_SPACE_IN.
 
---variant combined is Figure 6 drawn as above (annotations included) with
-Extended Data Figure 3's panel A, the six process-metric cells, drawn at its
-own size to the right of Figure 6's panel A (add_process_cells), and without
-the panel title and panel B: the canvas is cropped to the two panels A, the
-annotations and the campaign legend. Its groups are Figure 6's A / legend /
-key / note groups plus the six process cells' A groups.
+--variant combined is one wide figure in two columns (combine): on the
+left Figure 6's panel A as drawn above (annotations included) over the
+campaign legend; on the right Extended Data Figure 3's panel A (the six
+process-metric cells) over the proteome allocation (panel B), each drawn at
+the size it has in its own figure. No panel letters, no panel-A title. Its
+groups are Figure 6's (the A:title group left out, B:title without the
+letter) plus the six process cells' A groups.
 
 Usage (through ../run_plot.py, which redirects the relay manifest path;
 ../../make_figure_frames.py does this, and for --variant combined
@@ -156,40 +157,38 @@ FRAMES = {
         ('proteome-uninformed', ['B:row:profitability-uninformed']),
         ('proteome-try-informed', ['B:row:profitability-try-informed']),
     ],
-    # Figure 6's panel A (irr-left / irr-right cells, notes, legend) next to
-    # Extended Data Figure 3's (the ibo-* / etoh-* cells): the six
-    # process-level campaigns are introduced in the metrics they optimize
-    # before their profitability is shown
+    # Figure 6's panel A (irr-left / irr-right cells, notes, legend), Extended
+    # Data Figure 3's (the ibo-* / etoh-* cells) and the proteome rows: one
+    # frame per step of the story, each ending on its note, with the proteome
+    # row of every campaign that has appeared
     'combined': [
         ('baseline', ['A:irr-left:axes', 'A:irr-left:baseline',
-                      'legend:baseline-no-optimization']),
+                      'legend:baseline-no-optimization', 'B:title', 'B:axes',
+                      'B:sectors', 'B:row:baseline-no-optimization']),
         ('uninformed-profitability',
          ['A:irr-left:profitability-uninformed:*',
           'legend:profitability-uninformed', 'key:individual-trials',
-          'key:highest-irr-trial', 'key:incumbent-own']),
-        ('note-uninformed', ['note:uninformed']),
-        ('try-campaigns', ['A:ibo-*:axes', 'A:etoh-*:axes',
-                           'A:ibo-*:baseline', 'A:etoh-*:baseline',
-                           'A:ibo-*:cloud', 'A:etoh-*:cloud',
-                           'A:ibo-*:incumbent', 'A:etoh-*:incumbent',
-                           'legend:isobutanol-*', 'legend:ethanol-*']),
-        ('other-campaign-incumbents',
-         ['A:ibo-*:isobutanol-*:dashed', 'A:ibo-*:ethanol-*:dashed',
+          'key:highest-irr-trial', 'key:incumbent-own', 'note:uninformed',
+          'B:row:profitability-uninformed']),
+        ('try-campaigns',
+         ['A:ibo-*:axes', 'A:etoh-*:axes', 'A:ibo-*:baseline',
+          'A:etoh-*:baseline', 'A:ibo-*:cloud', 'A:etoh-*:cloud',
+          'A:ibo-*:incumbent', 'A:etoh-*:incumbent',
+          'A:ibo-*:isobutanol-*:dashed', 'A:ibo-*:ethanol-*:dashed',
           'A:etoh-*:isobutanol-*:dashed', 'A:etoh-*:ethanol-*:dashed',
           'A:ibo-*:profitability-uninformed:dashed',
           'A:etoh-*:profitability-uninformed:dashed',
-          'key:incumbent-other']),
-        ('try-campaigns-profitability', ['A:irr-left:isobutanol-*',
-                                         'A:irr-left:ethanol-*']),
-        ('note-try-traverse', ['note:try-traverse']),
+          'A:irr-left:isobutanol-*', 'A:irr-left:ethanol-*',
+          'legend:isobutanol-*', 'legend:ethanol-*', 'key:incumbent-other',
+          'note:try-traverse', 'B:row:isobutanol-*', 'B:row:ethanol-*']),
         ('try-scouts', ['A:irr-right:axes', 'A:irr-right:baseline',
-                        'A:irr-right:preload-*']),
-        ('note-scouts', ['note:scouts']),
+                        'A:irr-right:preload-*', 'note:scouts']),
         ('try-informed', ['A:irr-right:profitability-try-informed:*',
                           'A:ibo-*:profitability-try-informed:dashed',
                           'A:etoh-*:profitability-try-informed:dashed',
-                          'legend:profitability-try-informed']),
-        ('note-try-informed', ['note:try-informed']),
+                          'legend:profitability-try-informed',
+                          'note:try-informed',
+                          'B:row:profitability-try-informed']),
     ],
 }
 # the plot script's figure each variant starts from
@@ -256,10 +255,14 @@ ARROW_SCALE = 10
 TIP_GAP_PT = 1.5        # arrowheads stop this far short of their target
 
 # --- the combined variant ---------------------------------------------------
-# what Figure 6 draws that the combined figure leaves out
-COMBINED_DROPPED = ('A:title', 'B:*')
-# margin of the combined canvas around the notes (top) and the legend frame
-# (bottom) [in]; left and right it keeps the figure's own margins
+# what Figure 6 draws that the combined figure leaves out (panel A's title)
+# or draws again elsewhere (panel B)
+COMBINED_DROPPED = ('A:title', 'B:axes', 'B:sectors', 'B:row:*')
+# from the bottom of the process cells to the top of the proteome axes [in]:
+# room for the cells' trial-axis titles and the proteome panel's brackets
+COMBINED_PANEL_GAP_IN = 0.95
+# margin of the combined canvas above and below what is drawn [in]; left and
+# right it keeps the figures' own margins
 COMBINED_MARGIN_IN = 0.12
 
 
@@ -281,9 +284,10 @@ def instrument(m, groups):
     """Wrap the plot module's drawing functions so the artists they draw are
     filed into groups ({name: [artists]}) as they are created. Returns a dict
     that receives plot()'s sets ('sets'), the frame drawn around the
-    campaign legend and mark key ('key frame'), which is background, and per
+    campaign legend and mark key ('key frame'), which is background, per
     cell (name, axes, ids of the children it had before it was drawn on)
-    ('cells'), for check_all_filed."""
+    ('cells'), for check_all_filed, and the arguments plot() drew panel B
+    with ('burden': sets, colors, args, kwargs), for combine."""
     seen = {'cells': []}
     plot, frame_keys = m.plot, m._frame_keys
     outcome_cell, draw_preload = m.outcome_cell, m._draw_relay_preload
@@ -367,6 +371,7 @@ def instrument(m, groups):
             add(f'{cell}:axes', [ax])
 
     def draw_burden_(fig, gs_cell, sets, colors, *args, **kwargs):
+        seen.setdefault('burden', (sets, colors, args, kwargs))
         bars, barh = [], Axes.barh
 
         def barh_(self, y, *a, **kw):
@@ -588,39 +593,65 @@ def add_notes(m, fig, sets, groups):
     return Bbox([[0, 0], [W, H + NOTE_SPACE_IN]])
 
 
-def add_process_cells(m, fig, sets, groups, key_frame):
-    """The combined variant: draw Extended Data Figure 3's panel A (the six
-    process-metric cells, m.draw_process_outcomes) right of Figure 6's panel
-    A, in a box of the same size and height one figure width further right --
-    i.e. where it sits in its own figure -- so both panels keep the sizes
-    they have in the manuscript. The cells are filed like any other
-    (instrument), the groups of COMBINED_DROPPED are hidden for good, and the
-    bbox [in] to save every frame with is returned: both panels A, from the
-    legend frame up to the notes. Raises if anything drawn falls outside
-    it."""
+def combine(m, fig, sets, groups, seen):
+    """The combined variant, from the finished Figure 6 (notes added): a
+    second column one figure width to the right, i.e. each panel at the x it
+    has in its own figure, holding
+
+      - Extended Data Figure 3's panel A (the six process-metric cells,
+        m.draw_process_outcomes) in a box the size of Figure 6's panel A,
+        its top level with the notes';
+      - under it panel B, drawn again by m.draw_burden with the arguments
+        plot() gave it, its axes the size they have in Figure 6. Its sector
+        legend, which draw_burden hangs at the figure's left edge, and its
+        title (without the letter) move over with it.
+
+    Panel A's title and the first drawing of panel B (COMBINED_DROPPED) are
+    hidden for good; the new artists are filed like any other (instrument).
+    Returns the bbox [in] to save every frame with: both columns, with
+    COMBINED_MARGIN_IN above and below. Raises if anything drawn falls
+    outside it."""
     W, H = fig.get_size_inches()
+    to_fig = fig.transFigure.inverted()
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
     pair = Bbox.union([_one(groups[f'A:{cell}:axes'], cell).get_position()
                        for cell in ('irr-left', 'irr-right')])
-    gs = fig.add_gridspec(1, 1, left=pair.x0 + 1, right=pair.x1 + 1,
-                          top=pair.y1, bottom=pair.y0)
-    m.draw_process_outcomes(fig, gs[0], sets, m.set_colors(sets),
-                            m._trial_xmax(sets))
+    bars = Bbox.union([a.get_position() for a in groups['B:axes']
+                       if isinstance(a, Axes)])
+    letter, title = groups['B:title']
+    title_rise = title.get_position()[1] - bars.y1
     for name in [g for g in groups for p in COMBINED_DROPPED
                  if fnmatch.fnmatchcase(g, p)]:
         for a in groups.pop(name):
             a.set_visible(False)
+
+    top = max(to_fig.transform(
+        groups[name][0].get_bbox_patch().get_window_extent(renderer))[1, 1]
+        for name in NOTES)
+    cells = fig.add_gridspec(1, 1, left=pair.x0 + 1, right=pair.x1 + 1,
+                             top=top, bottom=top - pair.height)
+    m.draw_process_outcomes(fig, cells[0], sets, m.set_colors(sets),
+                            m._trial_xmax(sets))
+    bars_top = top - pair.height - COMBINED_PANEL_GAP_IN / H
+    burden = fig.add_gridspec(1, 1, left=bars.x0 + 1, right=bars.x1 + 1,
+                              top=bars_top, bottom=bars_top - bars.height)
+    b_sets, b_colors, b_args, b_kwargs = seen['burden']
+    m.draw_burden(fig, burden[0], b_sets, b_colors, *b_args, **b_kwargs)
+    sectors = _one(groups['B:sectors'], 'sector legend')
+    anchor = sectors.get_bbox_to_anchor().transformed(to_fig)
+    sectors.set_bbox_to_anchor((anchor.x0 + 1, anchor.y0),
+                               transform=fig.transFigure)
+    letter.set_visible(False)
+    title.set_position((letter.get_position()[0] + 1, bars_top + title_rise))
+    groups['B:title'] = [title]
+
     fig.canvas.draw()
-    renderer = fig.canvas.get_renderer()
-    top = max(groups[name][0].get_bbox_patch().get_window_extent(renderer).y1
-              for name in NOTES) / fig.dpi + COMBINED_MARGIN_IN
-    bottom = min(a.get_window_extent(renderer).y0
-                 for a in key_frame) / fig.dpi - COMBINED_MARGIN_IN
-    # whole hundredths of an inch: whole pixels at 100, 200, 300, 600 dpi
-    crop = Bbox([[0, np.floor(bottom * 100) / 100],
-                 [2 * W, np.ceil(top * 100) / 100]])
     drawn = fig.get_tightbbox(renderer)
-    if not (crop.x0 <= drawn.x0 and drawn.x1 <= crop.x1
-            and crop.y0 <= drawn.y0 and drawn.y1 <= crop.y1):
+    # whole hundredths of an inch: whole pixels at 100, 200, 300, 600 dpi
+    crop = Bbox([[0, np.floor((drawn.y0 - COMBINED_MARGIN_IN) * 100) / 100],
+                 [2 * W, np.ceil((drawn.y1 + COMBINED_MARGIN_IN) * 100) / 100]])
+    if not (crop.x0 <= drawn.x0 and drawn.x1 <= crop.x1):
         raise ValueError(f'the combined figure {drawn.extents} [in] does not '
                          f'fit its canvas {crop.extents}')
     return crop
@@ -692,7 +723,7 @@ def main():
                     help='the figure (set by the make_figure_*frames.py '
                          'wrapper): irr = Figure 6, process = Extended Data '
                          'Figure 3, combined = their two panels A side by '
-                         'side')
+                         'side over the proteome allocation')
     ap.add_argument('--dpi', type=int, default=300,
                     help='resolution of the frames (default: %(default)s, '
                          "as make_figure.py's figure)")
@@ -715,8 +746,7 @@ def main():
     a_title.set_text(MANUSCRIPT_A_TITLE)
     bbox = add_notes(m, fig, seen['sets'], groups) if view == 'irr' else None
     if args.variant == 'combined':
-        bbox = add_process_cells(m, fig, seen['sets'], groups,
-                                 seen['key frame'])
+        bbox = combine(m, fig, seen['sets'], groups, seen)
     check_all_filed(fig, groups, seen['key frame'], seen['cells'])
     pf.save_frames(fig, groups, expand(FRAMES[args.variant], groups),
                    OUT_DIR, f'kinBO_parameter_sets_{args.variant}', args.dpi,

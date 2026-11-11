@@ -6,23 +6,25 @@
 # https://github.com/sarangbhagwat/nskinetics/blob/main/LICENSE
 # for license details.
 """Progressive presentation frames of the optimization trajectories of Figure
-6 and Extended Data Figure 3 side by side, into ./output/frames.
+6 and Extended Data Figure 3 side by side, with the proteome allocation, into
+./output/frames.
 
 Runs code/frames/plot_kin_opt_parameter_sets_frames.py --variant combined
 through code/run_plot.py (the relay-manifest MAX_PATH shim), with
 NSKINETICS_IBO_RESULTS_DIR = data/, as make_figure_frames.py does for Figure
-6 alone. The combined figure is Figure 6's panel A (the two profitability
-cells with the manuscript's four annotations, and the campaign legend under
-them) with Extended Data Figure 3's panel A (the six process-metric cells) to
-its right, both at the size they have in their own figures; no panel title,
-no panel B. This folder's snapshot and campaign CSVs draw both (they are the
-ones Extended Data Figure 3 uses). One PNG per frame, all on the same canvas:
-the baseline, the uninformed profitability campaign, the six process-level
-(TRY) campaigns in the metrics they optimize and then in profitability, their
-trials as the TRY-informed campaign's preload, and that campaign's own
-search, with each annotation after what it describes. The last frame is the
-complete figure. The frame sequence is FRAMES['combined'] in that script.
-Works from any cwd.
+6 alone. The combined figure has two columns: on the left Figure 6's panel A
+(the two profitability cells with the manuscript's four annotations) over the
+campaign legend; on the right Extended Data Figure 3's panel A (the six
+process-metric cells) over the final proteome allocation (panel B). Each
+panel has the size it has in its own figure; there are no panel letters.
+This folder's snapshot and campaign CSVs draw all of it (they are the ones
+Extended Data Figure 3 uses). One PNG per frame, all on the same canvas: the
+baseline; the uninformed profitability campaign; the six process-level (TRY)
+campaigns, in the metrics they optimize and in profitability; their trials as
+the TRY-informed campaign's preload; and that campaign's own search. Each
+frame carries the annotation of its step and the proteome rows of the
+campaigns shown so far. The last frame is the complete figure. The frame
+sequence is FRAMES['combined'] in that script. Works from any cwd.
 
 Arguments are passed on, e.g. python make_figure_combined_frames.py --dpi 150
 --formats png pdf. No __pycache__ is written (PYTHONDONTWRITEBYTECODE=1 in
