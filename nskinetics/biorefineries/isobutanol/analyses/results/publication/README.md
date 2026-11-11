@@ -3,7 +3,7 @@
 One folder per figure in Bhagwat et al., 2026. Each folder holds everything needed to redraw that figure:
 
 - `make_figure.py`: regenerates the figure into `output\`, using only the folder's own `code\` and `data\`.
-- `make_figure_frames.py` (four folders): the figure as progressive frames for a presentation, see below.
+- `make_figure_frames.py` (four folders) and `make_figure_combined_frames.py` (`Fig6`): the figure as progressive frames for a presentation, see below.
 - `make_figure_by_metric.py` (`EDFig2`): the sensitivity bars one metric per figure, see below.
 - `manuscript\`: the image as placed in the manuscript, plus the PowerPoint source for composites.
 - `comparison\`: diffs and notes.
@@ -31,6 +31,7 @@ This writes `output\frames\<name of make_figure.py's output>_frameNN_<frame name
 | Folder | Frames | Sequence |
 | --- | --- | --- |
 | `Fig6` | 13 | baseline; uninformed profitability campaign; process-level (TRY) campaigns; TRY trials as scouts; TRY-informed campaign, each followed by its panel-A annotation; then the proteome rows |
+| `Fig6`, combined | 11 | `python make_figure_combined_frames.py`: the optimization trajectories of `Fig6` (panel A, with its annotations and the campaign legend) and of `EDFig3` (panel A) side by side, without panel B: baseline; uninformed profitability campaign; TRY campaigns in their own metrics, the other campaigns' incumbents, then the TRY campaigns' profitability; TRY trials as scouts; TRY-informed campaign, with each annotation after what it describes |
 | `EDFig3` | 10 | baseline; isobutanol campaigns; ethanol campaigns; other campaigns' incumbents; uninformed and TRY-informed profitability campaigns; then the proteome rows |
 | `EDFig4` | 5 | x axis; IRR; profitability index; ethanol yield; growth derating |
 | `EDFig8` | 7 | axes; IRR map; break-even line; profitability optimum; ethanol optima; isobutanol optima; cell density and TCI |

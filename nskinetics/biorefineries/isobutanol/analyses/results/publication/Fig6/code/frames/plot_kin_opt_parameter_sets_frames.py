@@ -7,7 +7,8 @@
 # for license details.
 """Progressive presentation frames of Figure 6 (--variant irr) and Extended
 Data Figure 3 (--variant process): optimization trajectories (panel A) and
-final proteome allocation (panel B).
+final proteome allocation (panel B); and of the two panels A side by side
+(--variant combined).
 
 The same file sits in both figure folders. It loads the folder's snapshot
 plots/plot_kin_opt_parameter_sets.py by file path and lets its main() draw
@@ -64,9 +65,17 @@ the complete figure, with panel A titled as in the manuscript
 (MANUSCRIPT_A_TITLE) and, for Figure 6, the manuscript's annotations above
 panel A on a canvas extended upwards by NOTE_SPACE_IN.
 
+--variant combined is Figure 6 drawn as above (annotations included) with
+Extended Data Figure 3's panel A, the six process-metric cells, drawn at its
+own size to the right of Figure 6's panel A (add_process_cells), and without
+the panel title and panel B: the canvas is cropped to the two panels A, the
+annotations and the campaign legend. Its groups are Figure 6's A / legend /
+key / note groups plus the six process cells' A groups.
+
 Usage (through ../run_plot.py, which redirects the relay manifest path;
-../../make_figure_frames.py does this):
-    python plot_kin_opt_parameter_sets_frames.py --variant irr|process
+../../make_figure_frames.py and ../../make_figure_combined_frames.py do this):
+    python plot_kin_opt_parameter_sets_frames.py
+           --variant irr|process|combined
            [--dpi N] [--formats png [pdf svg ...]]
 Frames go to ../../output/frames/.
 """
@@ -87,7 +96,7 @@ from matplotlib.legend import Legend
 from matplotlib.lines import Line2D
 from matplotlib.patches import ArrowStyle, FancyArrowPatch, PathPatch
 from matplotlib.path import Path
-from matplotlib.transforms import Bbox
+from matplotlib.transforms import Affine2D, Bbox
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 FOLDER = os.path.dirname(os.path.dirname(HERE))
@@ -146,7 +155,44 @@ FRAMES = {
         ('proteome-uninformed', ['B:row:profitability-uninformed']),
         ('proteome-try-informed', ['B:row:profitability-try-informed']),
     ],
+    # Figure 6's panel A (irr-left / irr-right cells, notes, legend) next to
+    # Extended Data Figure 3's (the ibo-* / etoh-* cells): the six
+    # process-level campaigns are introduced in the metrics they optimize
+    # before their profitability is shown
+    'combined': [
+        ('baseline', ['A:irr-left:axes', 'A:irr-left:baseline',
+                      'legend:baseline-no-optimization']),
+        ('uninformed-profitability',
+         ['A:irr-left:profitability-uninformed:*',
+          'legend:profitability-uninformed', 'key:individual-trials',
+          'key:highest-irr-trial', 'key:incumbent-own']),
+        ('note-uninformed', ['note:uninformed']),
+        ('try-campaigns', ['A:ibo-*:axes', 'A:etoh-*:axes',
+                           'A:ibo-*:baseline', 'A:etoh-*:baseline',
+                           'A:ibo-*:cloud', 'A:etoh-*:cloud',
+                           'A:ibo-*:incumbent', 'A:etoh-*:incumbent',
+                           'legend:isobutanol-*', 'legend:ethanol-*']),
+        ('other-campaign-incumbents',
+         ['A:ibo-*:isobutanol-*:dashed', 'A:ibo-*:ethanol-*:dashed',
+          'A:etoh-*:isobutanol-*:dashed', 'A:etoh-*:ethanol-*:dashed',
+          'A:ibo-*:profitability-uninformed:dashed',
+          'A:etoh-*:profitability-uninformed:dashed',
+          'key:incumbent-other']),
+        ('try-campaigns-profitability', ['A:irr-left:isobutanol-*',
+                                         'A:irr-left:ethanol-*']),
+        ('note-try-traverse', ['note:try-traverse']),
+        ('try-scouts', ['A:irr-right:axes', 'A:irr-right:baseline',
+                        'A:irr-right:preload-*']),
+        ('note-scouts', ['note:scouts']),
+        ('try-informed', ['A:irr-right:profitability-try-informed:*',
+                          'A:ibo-*:profitability-try-informed:dashed',
+                          'A:etoh-*:profitability-try-informed:dashed',
+                          'legend:profitability-try-informed']),
+        ('note-try-informed', ['note:try-informed']),
+    ],
 }
+# the plot script's figure each variant starts from
+VIEW = {'irr': 'irr', 'process': 'process', 'combined': 'irr'}
 
 # panel A's title as the plot script writes it, and as the manuscript shows
 # it in both figures (changed in the manuscript's PowerPoint source)
@@ -207,6 +253,13 @@ LEADER_COLOR, LEADER_LW = '0.3', 0.8
 ARROW = ArrowStyle('-|>', head_length=0.5, head_width=0.22)
 ARROW_SCALE = 10
 TIP_GAP_PT = 1.5        # arrowheads stop this far short of their target
+
+# --- the combined variant ---------------------------------------------------
+# what Figure 6 draws that the combined figure leaves out
+COMBINED_DROPPED = ('A:title', 'B:*')
+# margin of the combined canvas around the notes (top) and the legend frame
+# (bottom) [in]; left and right it keeps the figure's own margins
+COMBINED_MARGIN_IN = 0.12
 
 
 def _load(name, path):
@@ -413,13 +466,23 @@ def check_all_filed(fig, groups, background, cells):
             raise ValueError(f'{a!r} is in no group')
 
 
+def _inches(fig):
+    """Inches from the figure's lower-left corner -> display. Unlike
+    fig.dpi_scale_trans it goes through fig.transFigure, so what is placed
+    with it stays with the figure when a frame is saved with a bbox that
+    does not start at the figure's corner (the combined variant's crop)."""
+    W, H = fig.get_size_inches()
+    return Affine2D().scale(1 / W, 1 / H) + fig.transFigure
+
+
 def add_notes(m, fig, sets, groups):
     """Figure 6: grow the canvas by NOTE_SPACE_IN at the top, move panel A's
     letter and title up into it and add the four annotations between the
     title and the cells, every arrow aimed at data computed by the plot
     module. Returns the bbox [in] to save every frame with."""
     W, H = fig.get_size_inches()
-    to_in = fig.dpi_scale_trans.inverted()
+    inches = _inches(fig)
+    to_in = inches.inverted()
     left = _one(groups['A:irr-left:axes'], 'left IRR cell')
     right = _one(groups['A:irr-right:axes'], 'right IRR cell')
     cell_top = left.get_position().y1 * H
@@ -437,17 +500,17 @@ def add_notes(m, fig, sets, groups):
         return FancyArrowPatch(p0, p1, arrowstyle=ARROW,
                                mutation_scale=ARROW_SCALE, shrinkA=0,
                                shrinkB=gap_pt + TIP_GAP_PT, color=LEADER_COLOR,
-                               lw=LEADER_LW, transform=fig.dpi_scale_trans)
+                               lw=LEADER_LW, transform=inches)
 
     def line(xs, ys):
         return Line2D(xs, ys, color=LEADER_COLOR, lw=LEADER_LW,
-                      solid_capstyle='butt', transform=fig.dpi_scale_trans)
+                      solid_capstyle='butt', transform=inches)
 
     # the boxes: measure the text, then place each box by its edges
     fs = m.FONTS['legend'] + 1
     pad = NOTE_PAD_IN * 72 / fs                 # boxstyle pad, in font sizes
     texts = {name: fig.text(0, 0, s, fontsize=fs, ha='left', va='bottom',
-                            transform=fig.dpi_scale_trans, zorder=6,
+                            transform=inches, zorder=6,
                             bbox=dict(boxstyle=f'square,pad={pad}',
                                       fc='white', ec=NOTE_EDGE, lw=NOTE_LW))
              for name, s in NOTES.items()}
@@ -524,6 +587,37 @@ def add_notes(m, fig, sets, groups):
     return Bbox([[0, 0], [W, H + NOTE_SPACE_IN]])
 
 
+def add_process_cells(m, fig, sets, groups, key_frame):
+    """The combined variant: draw Extended Data Figure 3's panel A (the six
+    process-metric cells, m.draw_process_outcomes) right of Figure 6's panel
+    A, in a box of the same size and height one figure width further right --
+    i.e. where it sits in its own figure -- so both panels keep the sizes
+    they have in the manuscript. The cells are filed like any other
+    (instrument), the groups of COMBINED_DROPPED are hidden for good, and the
+    bbox [in] to save every frame with is returned: both panels A, from the
+    legend frame up to the notes."""
+    W, H = fig.get_size_inches()
+    pair = Bbox.union([_one(groups[f'A:{cell}:axes'], cell).get_position()
+                       for cell in ('irr-left', 'irr-right')])
+    gs = fig.add_gridspec(1, 1, left=pair.x0 + 1, right=pair.x1 + 1,
+                          top=pair.y1, bottom=pair.y0)
+    m.draw_process_outcomes(fig, gs[0], sets, m.set_colors(sets),
+                            m._trial_xmax(sets))
+    for name in [g for g in groups for p in COMBINED_DROPPED
+                 if fnmatch.fnmatchcase(g, p)]:
+        for a in groups.pop(name):
+            a.set_visible(False)
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    top = max(groups[name][0].get_bbox_patch().get_window_extent(renderer).y1
+              for name in NOTES) / fig.dpi + COMBINED_MARGIN_IN
+    bottom = min(a.get_window_extent(renderer).y0
+                 for a in key_frame) / fig.dpi - COMBINED_MARGIN_IN
+    # whole hundredths of an inch: whole pixels at 100, 200, 300, 600 dpi
+    return Bbox([[0, np.floor(bottom * 100) / 100],
+                 [2 * W, np.ceil(top * 100) / 100]])
+
+
 def _brace(fig, x0, x1, y0):
     """A horizontal curly brace from x0 to x1 [in], ends at y0, tip up."""
     xm, ym, yt, r = (x0 + x1) / 2, y0 + BRACE_H_IN / 2, y0 + BRACE_H_IN, \
@@ -535,7 +629,7 @@ def _brace(fig, x0, x1, y0):
              Path.CURVE3, Path.CURVE3, Path.CURVE3, Path.CURVE3, Path.LINETO,
              Path.CURVE3, Path.CURVE3]
     return PathPatch(Path(verts, codes), fill=False, ec=LEADER_COLOR,
-                     lw=LEADER_LW, transform=fig.dpi_scale_trans)
+                     lw=LEADER_LW, transform=_inches(fig))
 
 
 def _check_note_layout(box, W, H, x_unin, x_traverse, x_relay, x_brace,
@@ -587,8 +681,10 @@ def expand(frames, groups):
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
     ap.add_argument('--variant', choices=sorted(FRAMES), required=True,
-                    help="the folder's figure (set by make_figure_frames.py): "
-                         'irr = Figure 6, process = Extended Data Figure 3')
+                    help='the figure (set by the make_figure_*frames.py '
+                         'wrapper): irr = Figure 6, process = Extended Data '
+                         'Figure 3, combined = their two panels A side by '
+                         'side')
     ap.add_argument('--dpi', type=int, default=300,
                     help='resolution of the frames (default: %(default)s, '
                          "as make_figure.py's figure)")
@@ -596,6 +692,7 @@ def main():
                     help='file formats to write (default: png)')
     args = ap.parse_args()
 
+    view = VIEW[args.variant]
     m = _load('_plot_kin_opt_parameter_sets', PLOT_SCRIPT)
     groups = {}
     seen = instrument(m, groups)
@@ -603,14 +700,15 @@ def main():
     # switched off it writes nothing (its --out-dir only names the stems)
     with contextlib.redirect_stdout(io.StringIO()):
         _, figures = pf.capture_figures(
-            m.main, ['--variants', args.variant, '--dpi', str(args.dpi),
+            m.main, ['--variants', view, '--dpi', str(args.dpi),
                      '--out-dir', OUT_DIR])
     fig = _one(figures, 'figure')
-    a_title = file_titles_and_legends(m, fig, seen['sets'], groups,
-                                      args.variant)
+    a_title = file_titles_and_legends(m, fig, seen['sets'], groups, view)
     a_title.set_text(MANUSCRIPT_A_TITLE)
-    bbox = (add_notes(m, fig, seen['sets'], groups)
-            if args.variant == 'irr' else None)
+    bbox = add_notes(m, fig, seen['sets'], groups) if view == 'irr' else None
+    if args.variant == 'combined':
+        bbox = add_process_cells(m, fig, seen['sets'], groups,
+                                 seen['key frame'])
     check_all_filed(fig, groups, seen['key frame'], seen['cells'])
     pf.save_frames(fig, groups, expand(FRAMES[args.variant], groups),
                    OUT_DIR, f'kinBO_parameter_sets_{args.variant}', args.dpi,
