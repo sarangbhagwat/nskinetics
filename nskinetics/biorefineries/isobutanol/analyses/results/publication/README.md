@@ -31,7 +31,7 @@ This writes `output\frames\<name of make_figure.py's output>_frameNN_<frame name
 | --- | --- | --- |
 | `Fig6` | 13 | baseline; uninformed profitability campaign; process-level (TRY) campaigns; TRY trials as scouts; TRY-informed campaign, each followed by its panel-A annotation; then the proteome rows |
 | `EDFig3` | 10 | baseline; isobutanol campaigns; ethanol campaigns; other campaigns' incumbents; uninformed and TRY-informed profitability campaigns; then the proteome rows |
-| `EDFig4` | 5 | x axis; ethanol yield; profitability index; IRR; growth derating |
+| `EDFig4` | 5 | x axis; IRR; profitability index; ethanol yield; growth derating |
 | `EDFig8` | 7 | axes; IRR map; break-even line; profitability optimum; ethanol optima; isobutanol optima; cell density and TCI |
 
 To change what each frame adds, edit the `FRAMES` table at the top of the folder's script in `code\frames\`; the groups it can name are listed there. `--dpi N` and `--formats png pdf svg` are passed on to that script.

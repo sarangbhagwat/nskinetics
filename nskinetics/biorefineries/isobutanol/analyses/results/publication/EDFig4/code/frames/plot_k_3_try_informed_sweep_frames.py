@@ -55,9 +55,9 @@ STEM = 'k_3_try_informed_sweep_etoh_yield'
 #         irr-curve, derate-line, derate-label
 FRAMES = [
     ('axes', ['x-axis']),
-    ('ethanol-yield', ['yield-axis', 'yield-curve']),
-    ('profitability-index', ['pi-axis', 'pi-curve']),
     ('irr', ['irr-axis', 'irr-curve']),
+    ('profitability-index', ['pi-axis', 'pi-curve']),
+    ('ethanol-yield', ['yield-axis', 'yield-curve']),
     ('growth-derating', ['derate-line', 'derate-label']),
 ]
 

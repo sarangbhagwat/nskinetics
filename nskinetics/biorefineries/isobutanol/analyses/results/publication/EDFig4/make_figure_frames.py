@@ -13,7 +13,7 @@ pointed at ./data (as make_figure.py does). It draws the figure once with the
 snapshot code/plots/plot_axis_try_informed_sweep.py --param k_3, applies the
 manuscript's edits (legend removed, rotated "growth derated at higher k3
 values" label added) and saves one PNG per frame on the same canvas: the x
-axis, then the ethanol-yield, profitability-index and IRR axes with their
+axis, then the IRR, profitability-index and ethanol-yield axes with their
 curves, then the burden-derating line and its label. The last frame is the
 manuscript figure. The frame sequence is the FRAMES table at the top of that
 script. Works from any cwd.
