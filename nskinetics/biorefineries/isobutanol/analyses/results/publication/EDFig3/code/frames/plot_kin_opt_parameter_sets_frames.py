@@ -73,7 +73,8 @@ annotations and the campaign legend. Its groups are Figure 6's A / legend /
 key / note groups plus the six process cells' A groups.
 
 Usage (through ../run_plot.py, which redirects the relay manifest path;
-../../make_figure_frames.py and ../../make_figure_combined_frames.py do this):
+../../make_figure_frames.py does this, and for --variant combined
+../../make_figure_combined_frames.py, which only the Figure 6 folder has):
     python plot_kin_opt_parameter_sets_frames.py
            --variant irr|process|combined
            [--dpi N] [--formats png [pdf svg ...]]
@@ -595,7 +596,8 @@ def add_process_cells(m, fig, sets, groups, key_frame):
     they have in the manuscript. The cells are filed like any other
     (instrument), the groups of COMBINED_DROPPED are hidden for good, and the
     bbox [in] to save every frame with is returned: both panels A, from the
-    legend frame up to the notes."""
+    legend frame up to the notes. Raises if anything drawn falls outside
+    it."""
     W, H = fig.get_size_inches()
     pair = Bbox.union([_one(groups[f'A:{cell}:axes'], cell).get_position()
                        for cell in ('irr-left', 'irr-right')])
@@ -614,8 +616,14 @@ def add_process_cells(m, fig, sets, groups, key_frame):
     bottom = min(a.get_window_extent(renderer).y0
                  for a in key_frame) / fig.dpi - COMBINED_MARGIN_IN
     # whole hundredths of an inch: whole pixels at 100, 200, 300, 600 dpi
-    return Bbox([[0, np.floor(bottom * 100) / 100],
+    crop = Bbox([[0, np.floor(bottom * 100) / 100],
                  [2 * W, np.ceil(top * 100) / 100]])
+    drawn = fig.get_tightbbox(renderer)
+    if not (crop.x0 <= drawn.x0 and drawn.x1 <= crop.x1
+            and crop.y0 <= drawn.y0 and drawn.y1 <= crop.y1):
+        raise ValueError(f'the combined figure {drawn.extents} [in] does not '
+                         f'fit its canvas {crop.extents}')
+    return crop
 
 
 def _brace(fig, x0, x1, y0):
