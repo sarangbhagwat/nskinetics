@@ -4,6 +4,7 @@ One folder per figure in Bhagwat et al., 2026. Each folder holds everything need
 
 - `make_figure.py`: regenerates the figure into `output\`, using only the folder's own `code\` and `data\`.
 - `make_figure_frames.py` (four folders): the figure as progressive frames for a presentation, see below.
+- `make_figure_by_metric.py` (`EDFig2`): the sensitivity bars one metric per figure, see below.
 - `manuscript\`: the image as placed in the manuscript, plus the PowerPoint source for composites.
 - `comparison\`: diffs and notes.
 
@@ -37,3 +38,15 @@ This writes `output\frames\<name of make_figure.py's output>_frameNN_<frame name
 To change what each frame adds, edit the `FRAMES` table at the top of the folder's script in `code\frames\`; the groups it can name are listed there. `--dpi N` and `--formats png pdf svg` are passed on to that script.
 
 The frames follow the manuscript versions of the figures where those differ from `make_figure.py`'s render: panel A of `Fig6` and `EDFig3` is titled "Optimization trajectories", `Fig6` carries the four panel-A annotations on a canvas extended at the top, and `EDFig4` has the label beside the growth-derating line in place of the legend.
+
+## Sensitivity bars by metric
+
+`EDFig2` can also draw its Sobol' / Shapley bars one metric per figure, with the decision variables grouped on the x axis instead of sorted by their effect on the profitability index: the six enzyme expression levels (glycolysis, ethanol production, isobutanol production), the three inhibition levels and the three substrate feeding variables.
+
+```
+python make_figure_by_metric.py
+python make_figure_by_metric.py --metric "EtOH yield"
+python make_figure_by_metric.py --list
+```
+
+Without `--metric` this writes the five metrics of the manuscript figure to `output\by_metric\EDFig2_bars_<metric>.png`; `--metric` takes one or more of the metrics that `--list` prints, by name or title. The bars are the ones `make_figure.py` draws, from the same saved index table. The x order and the canvas are the same for every metric, so the figures overlay exactly on consecutive slides. To change the grouping, edit the `GROUPS` table at the top of `code\by_metric\plot_sobol_bars_by_metric.py`. `--dpi N` and `--formats png pdf svg` are passed on to that script.
