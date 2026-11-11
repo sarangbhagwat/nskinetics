@@ -48,8 +48,10 @@ import os
 import sys
 
 import matplotlib.axes
+from matplotlib.artist import Artist
 from matplotlib.colors import to_hex
-from matplotlib.transforms import Bbox
+from matplotlib.legend import Legend
+from matplotlib.transforms import Affine2D, Bbox
 
 import gif_engine as ge
 
@@ -345,9 +347,49 @@ def campaign_key_frame(fig, recorder):
     return [legend.get_title(), recorder.key_frame]
 
 
+def grow_canvas_top(fig, inches):
+    """Grow the canvas by ``inches`` at the top (0 is fine), keeping every
+    artist where it was, measured from the bottom-left corner in inches.
+
+    The plot script places its axes, figure texts, legends and the key frame
+    in figure fractions, which would stretch with the canvas. They are
+    re-anchored on transforms built from transFigure, which savefig also
+    shifts when it crops (bbox_inches); the legends' own default anchoring
+    would not follow a crop."""
+    width, height = fig.get_size_inches()
+    to_fraction = fig.transFigure.inverted()
+    fig.canvas.draw()
+    axes = [(ax, ax.get_position(original=True)) for ax in fig.axes
+            if ax.get_axes_locator() is None]
+    anchors = [(leg, leg.get_bbox_to_anchor().transformed(to_fraction))
+               for leg in fig.legends]
+    others = [a for a in _figure_artists(fig) if not isinstance(a, Legend)
+              and Artist.get_transform(a) is fig.transFigure]
+    fig.set_size_inches(width, height + inches)
+    scale = height / (height + inches)
+    old_fraction = Affine2D().scale(1.0, scale) + fig.transFigure
+    for ax, box in axes:
+        ax.set_position(Bbox.from_extents(box.x0, box.y0 * scale,
+                                          box.x1, box.y1 * scale))
+    for leg, box in anchors:
+        leg.set_bbox_to_anchor(box, transform=old_fraction)
+    for artist in others:
+        artist.set_transform(old_fraction)
+
+
+def inch_transform(fig):
+    """Figure inches -> display, for the canvas size at the time of the
+    call. Like fig.dpi_scale_trans, but cropped with the rest of the figure
+    when savefig is given bbox_inches."""
+    width, height = fig.get_size_inches()
+    return Affine2D().scale(1.0 / width, 1.0 / height) + fig.transFigure
+
+
 def bottom_crop(fig, recorder):
     """savefig keyword arguments that drop the empty band below panel B,
-    keeping BOTTOM_MARGIN inches under its x-axis title."""
+    keeping BOTTOM_MARGIN inches under its x-axis title. Call it last,
+    once the canvas has its final size."""
+    grow_canvas_top(fig, 0.0)    # re-anchor the legends, so they follow the crop
     fig.canvas.draw()
     renderer = fig.canvas.get_renderer()
     lowest = min(a.get_window_extent(renderer).y0
