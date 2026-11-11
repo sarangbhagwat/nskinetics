@@ -69,8 +69,9 @@ MORE_TITLES = {'IBO productivity': 'Isobutanol productivity',
                'TCI': 'Total capital investment'}
 
 # Canvas [in]: the same for every metric (no tight crop), so figures overlay
-FIGSIZE = (7.8, 4.9)
-MARGINS = dict(left=0.165, right=0.985, bottom=0.34, top=0.885)
+FIGSIZE = (7.8, 5.2)
+MARGINS = dict(left=0.165, right=0.985, bottom=0.32, top=0.835)
+LEGEND_Y = 0.995                 # top of the legend row [figure fraction]
 DPI = 600                        # as the manuscript figure
 # headers above the axes [axes fraction]: bracket line, group header,
 # sub-header; the bracket stops this far [x units] short of a slot's edge
@@ -162,14 +163,16 @@ def plot_metric(table, metric):
                   fontsize=12, fontweight='bold')
     sobol._ticks(ax)
     draw_headers(ax)
-    # upper right, over the inhibition and feeding variables (small shares for
-    # most metrics); the surrogate fit under it, not in the manuscript panels'
-    # top-left corner, where the glycolysis bars now stand
-    legend = ax.legend(loc='upper right', frameon=False)
-    fig.canvas.draw()
-    box = legend.get_window_extent().transformed(ax.transAxes.inverted())
+    # the key in one row above the group headers, centred on the axes, so the
+    # panel is free of it for every metric (inside, it would straddle a group
+    # divider). The surrogate fit goes top right, over the feeding variables:
+    # the manuscript panels' top-left corner now holds the glycolysis bars.
+    fig.legend(*ax.get_legend_handles_labels(), loc='upper center', ncol=3,
+               bbox_to_anchor=((MARGINS['left'] + MARGINS['right']) / 2,
+                               LEGEND_Y),
+               frameon=False, columnspacing=1.8)
     reliable = bool(t.reliable.iloc[0])
-    ax.text(box.x1 - 0.012, box.y0 - 0.015, f'Q$^2$ = {t.Q2.iloc[0]:.2f}'
+    ax.text(0.985, 0.95, f'Q$^2$ = {t.Q2.iloc[0]:.2f}'
             + ('' if reliable else ' (unreliable)'),
             transform=ax.transAxes, ha='right', va='top', fontsize=10)
     return fig
