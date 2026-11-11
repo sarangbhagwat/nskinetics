@@ -5,8 +5,8 @@
 # This module is under the MIT open-source license. See
 # https://github.com/sarangbhagwat/nskinetics/blob/main/LICENSE
 # for license details.
-"""Build GIFs of the Extended Data Figure 4 plot panel (ethanol yield, PI and
-IRR along the 1-D k_3 slice through the TRY-informed optimum), one GIF per
+"""Build GIFs of the Extended Data Figure 4 plot panel (IRR, PI and ethanol
+yield along the 1-D k_3 slice through the TRY-informed optimum), one GIF per
 step towards the full figure, for presentations.
 
 The figure is drawn by the unmodified snapshot plots/plot_axis_try_informed_sweep.py
@@ -14,9 +14,9 @@ The figure is drawn by the unmodified snapshot plots/plot_axis_try_informed_swee
 step by step with gif_engine.Storyboard:
 
     start   the frame and the Pdc-capacity axis
-    1       the ethanol-yield axis, then the yield curve traced left to right
+    1       the IRR axis, then the IRR curve traced left to right
     2       the profitability-index axis, then the PI curve
-    3       the IRR axis, then the IRR curve
+    3       the ethanol-yield axis, then the yield curve
     4       the burden-derating marker and its legend entry
 
 The last frame is the complete figure (checked pixel for pixel against this
@@ -65,12 +65,12 @@ def build_storyboard(fig):
     (legend,) = fig.legends
 
     board = ge.Storyboard(fig)
-    board.group('yield axis', y_axis_artists(ax_yield, 'right'))
-    board.group('yield curve', yield_line)
-    board.group('PI axis', y_axis_artists(ax, 'left'))
-    board.group('PI curve', pi_line)
     board.group('IRR axis', y_axis_artists(ax_irr, 'right'))
     board.group('IRR curve', irr_line)
+    board.group('PI axis', y_axis_artists(ax, 'left'))
+    board.group('PI curve', pi_line)
+    board.group('yield axis', y_axis_artists(ax_yield, 'right'))
+    board.group('yield curve', yield_line)
     board.group('derating', derate_line, legend)
     for axes in fig.axes:   # nothing the plot script draws is left ungrouped
         board.require_grouped(axes.lines, axes.collections, axes.texts)
@@ -78,19 +78,21 @@ def build_storyboard(fig):
                           fig.legends)
 
     panel = ge.Region(ax)
-    board.step('ethanol-yield',
-               'Ethanol yield rises smoothly with Pdc capacity',
-               ge.fade('yield axis', seconds=AXIS_S),
-               ge.wipe('yield curve', region=panel, seconds=CURVE_S))
-    board.step('profitability-index',
-               'The profitability index over the same slice is rugged, with '
-               'cliffs the yield does not show',
-               ge.fade('PI axis', seconds=AXIS_S),
-               ge.wipe('PI curve', region=panel, seconds=CURVE_S))
     board.step('irr',
-               'IRR follows the profitability index',
+               'IRR along this slice of Pdc capacity is rugged: it drops and '
+               'recovers in abrupt cliffs at low capacity and peaks near '
+               '2 g/L/h',
                ge.fade('IRR axis', seconds=AXIS_S),
                ge.wipe('IRR curve', region=panel, seconds=CURVE_S))
+    board.step('profitability-index',
+               'The profitability index follows IRR, cliffs included',
+               ge.fade('PI axis', seconds=AXIS_S),
+               ge.wipe('PI curve', region=panel, seconds=CURVE_S))
+    board.step('ethanol-yield',
+               'Ethanol yield over the same slice rises smoothly and shows '
+               'none of those cliffs',
+               ge.fade('yield axis', seconds=AXIS_S),
+               ge.wipe('yield curve', region=panel, seconds=CURVE_S))
     board.step('burden-derating',
                'Above this Pdc capacity the enzyme burden derates growth',
                ge.wipe('derating', region=ge.Region(ax, pad=0),

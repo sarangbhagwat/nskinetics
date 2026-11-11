@@ -8,8 +8,8 @@
 """Animated version of make_figure.py: build GIFs of the plot panel of
 Extended Data Figure 4, for presentations.
 
-One GIF per step towards the full figure (ethanol yield, then the
-profitability index, then IRR, then the burden-derating marker), each starting
+One GIF per step towards the full figure (IRR, then the profitability
+index, then ethanol yield, then the burden-derating marker), each starting
 where the one before ended, so they can be shown one per slide or click:
 
     output/gifs/k_3_try_informed_sweep_etoh_yield_step00_start.png
