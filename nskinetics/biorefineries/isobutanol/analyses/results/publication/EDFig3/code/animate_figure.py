@@ -85,6 +85,7 @@ def build_storyboard(fig, recorder):
                 in_cells(cells, 'incumbent-other', {try_informed}),
                 entry(try_informed))
     ka.group_panel_b(board, fig, recorder)
+    ka.require_cells_grouped(board, recorder)
 
     n_preloaded = recorder.set_of(try_informed)['n_preloaded']
     whole = lambda cells: [ge.Region(c.ax) for c in cells]  # noqa: E731

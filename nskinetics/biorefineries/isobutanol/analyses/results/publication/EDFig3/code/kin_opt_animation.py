@@ -45,7 +45,6 @@ import argparse
 import dataclasses
 import importlib.util
 import os
-import sys
 
 import matplotlib.axes
 from matplotlib.artist import Artist
@@ -61,7 +60,7 @@ PLOT_SCRIPT = os.path.join(HERE, 'nskinetics', 'biorefineries', 'isobutanol',
 
 #: seconds: a fade, a trajectory being drawn along the trial axis, a bar row
 #: growing, the rest before an annotation
-FADE_S, TRACE_S, BAR_S, BEAT_S = 0.8, 3.0, 1.6, 0.5
+FADE_S, TRACE_S, BAR_S, BEAT_S = 0.8, 2.6, 1.6, 0.5
 #: white margin kept below panel B's x-axis title (inches); the static figure
 #: leaves ~0.9 in there
 BOTTOM_MARGIN = 0.25
@@ -340,6 +339,15 @@ def legend_entries(fig, *labels):
     return out
 
 
+def require_cells_grouped(board, recorder):
+    """Raise if a panel-A cell holds a data artist (trials, lines, marks,
+    shading) that is in no storyboard group: it would be on screen from the
+    first frame."""
+    for cell in recorder.cells:
+        board.require_grouped(cell.ax.collections, cell.ax.lines,
+                              cell.ax.patches)
+
+
 def campaign_key_frame(fig, recorder):
     """The campaign legend's title and the frame around the panel-A keys:
     shown with the first legend entry."""
@@ -442,12 +450,12 @@ def panel_b_steps(board, recorder):
                'proteome to isobutanol production',
                grow('isobutanol', 2.0))
     board.step('proteome-ethanol',
-               'The ethanol campaigns put their proteome into glycolysis and '
-               'ethanol production',
+               'The ethanol campaigns spend their metabolic proteome mostly '
+               'on glycolysis and ethanol production',
                grow('ethanol', 2.0))
     board.step('proteome-try-informed',
-               'The TRY-informed profitability campaign splits its proteome '
-               'between ethanol and isobutanol production',
+               'The TRY-informed profitability campaign invests in both '
+               'ethanol and isobutanol production',
                grow('try-informed'))
 
 

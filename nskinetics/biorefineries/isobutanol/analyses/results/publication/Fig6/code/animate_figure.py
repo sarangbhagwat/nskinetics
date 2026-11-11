@@ -95,7 +95,7 @@ ANNOTATION_ZORDER = 10
 
 
 # -----------------------------------------------------------------------------
-# canvas
+# geometry
 # -----------------------------------------------------------------------------
 def to_inches(fig, ax, xy):
     """Data point(s) of ``ax`` -> figure inches."""
@@ -346,6 +346,7 @@ def build_storyboard(fig, recorder):
     for name, artists in notes.items():
         board.group(name, artists)
     ka.group_panel_b(board, fig, recorder)
+    ka.require_cells_grouped(board, recorder)
 
     n_preloaded = recorder.set_of(try_informed)['n_preloaded']
     left_cell = ge.Region(left.ax)
@@ -377,7 +378,7 @@ def build_storyboard(fig, recorder):
                'The TRY-informed campaign starts from 1000 trials of the '
                'process-level campaigns, used as scouts',
                fade('right cell', seconds=S),
-               wipe('scout trials', region=scouts, seconds=2.5),
+               wipe('scout trials', region=scouts, seconds=2.0),
                fade('scout marks', seconds=S), pause(B),
                fade('annotation 4', seconds=S))
     board.step('profitability-try-informed',
