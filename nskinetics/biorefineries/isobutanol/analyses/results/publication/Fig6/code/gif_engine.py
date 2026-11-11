@@ -60,12 +60,14 @@ for Arial holds; call it before building the figure.
 
 Sim-safe: imports only the standard library, numpy, matplotlib and Pillow.
 """
+import argparse
 import contextlib
 import dataclasses
 import io
 import math
 import os
 import re
+import sys
 from typing import Optional, Sequence
 
 import numpy as np
@@ -117,19 +119,24 @@ def capture_figure(draw, *args, **kwargs):
     figure instead, still open and with nothing written to disk.
 
     ``draw(*args, **kwargs)`` runs with Figure.savefig and pyplot.close
-    switched off; the figure it created last is returned. What the function
-    prints is dropped (it reports files as written that are not). The plot
-    script itself stays unmodified.
+    switched off; the figure it created last is returned. Of what the
+    function prints, only the lines marked WARNING or NOTE are passed on (to
+    stderr); the rest reports files as written that are not. The plot script
+    itself stays unmodified.
     """
     before = set(plt.get_fignums())
     savefig, close = Figure.savefig, plt.close
     Figure.savefig = lambda self, *a, **k: None
     plt.close = lambda *a, **k: None
+    printed = io.StringIO()
     try:
-        with open(os.devnull, 'w') as sink, contextlib.redirect_stdout(sink):
+        with contextlib.redirect_stdout(printed):
             draw(*args, **kwargs)
     finally:
         Figure.savefig, plt.close = savefig, close
+        for line in printed.getvalue().splitlines():
+            if 'WARNING' in line or 'NOTE' in line:
+                print(line, file=sys.stderr)
     new = sorted(set(plt.get_fignums()) - before)
     if not new:
         raise RuntimeError('the plot function created no figure')
@@ -292,8 +299,9 @@ class Storyboard:
             if not artist.get_visible() or owner.get(id(artist)) == name:
                 continue
             if id(artist) in owner:
-                raise ValueError(f'{artist!r} is already in group '
-                                 f'{owner[id(artist)]!r}, cannot join {name!r}')
+                raise ValueError(
+                    f'{artist!r} is already in group {owner[id(artist)]!r}, '
+                    f'cannot join {name!r}')
             owner[id(artist)] = name
             members.append(artist)
         return members
@@ -476,7 +484,7 @@ class Storyboard:
         # every state, in order: all groups hidden, then phase by phase
         self._set(self.groups, False)
         states = [self._snapshot(dpi, crop)]
-        plan = []                       # (step index, phase, state before, after)
+        plan = []          # (step index, phase, state before, state after)
         for i, step in enumerate(self.steps):
             for phase in step.phases:
                 before = len(states) - 1
@@ -487,9 +495,10 @@ class Storyboard:
         fig.canvas.draw()
         renderer = fig.canvas.get_renderer()
         if not np.array_equal(states[-1], reference):
-            differing = float(np.mean(np.any(states[-1] != reference, axis=2)))
+            differing = np.any(states[-1] != reference, axis=2)
             message = (f'the final state differs from the complete figure in '
-                       f'{100 * differing:.3f} % of the pixels')
+                       f'{int(differing.sum())} pixels '
+                       f'({100 * differing.mean():.3f} %)')
             if strict:
                 raise RuntimeError(message)
             print('  WARNING ' + message)
@@ -591,31 +600,59 @@ def plan_after(plan, step_index):
 # -----------------------------------------------------------------------------
 # palette and GIF writing
 # -----------------------------------------------------------------------------
+def _pack(rgb):
+    """(n, 3) uint8 colours as 24-bit integers."""
+    rgb = rgb.astype(np.uint32)
+    return (rgb[:, 0] << 16) | (rgb[:, 1] << 8) | rgb[:, 2]
+
+
+def _unpack(packed):
+    """24-bit integers as (n, 3) uint8 colours."""
+    return np.stack([(packed >> 16) & 255, (packed >> 8) & 255,
+                     packed & 255], axis=1).astype(np.uint8)
+
+
+def _nearest(colours, table):
+    """Index of the nearest palette entry for each (n, 3) colour."""
+    colours, table = colours.astype(np.int32), table.astype(np.int32)
+    out = np.empty(len(colours), np.int64)
+    for start in range(0, len(colours), 20000):
+        block = colours[start:start + 20000]
+        out[start:start + 20000] = (
+            (block[:, None, :] - table[None, :, :]) ** 2).sum(axis=2
+                                                              ).argmin(axis=1)
+    return out
+
+
 def _shared_palette(states, colours=256, sample_cap=1_500_000):
     """One palette, an (n, 3) uint8 array, for every frame of the figure.
 
     Built from the distinct colours of all states and of the blends between
-    consecutive states (what fades and wipe fronts pass through), each weighted by the square root of its pixel
-    count: thin coloured lines and markers keep accurate colours next to the
-    large flat areas. The most common colour (the background) and pure black
-    are then stored exactly.
+    consecutive states (what fades and wipe fronts pass through), each
+    weighted by the square root of its pixel count: thin coloured lines and
+    markers keep accurate colours next to the large flat areas. An entry
+    whose share of the states' pixels is mostly one colour (a marker fill, a
+    bar, a level of a colour map) is then set to exactly that colour, and
+    the most common colour (the background) and pure black are stored
+    exactly as entries 0 and 1.
     """
-    samples = [state[::2, ::2].reshape(-1, 3) for state in states]
+    solid, solid_counts = np.unique(
+        np.concatenate([_pack(state[::2, ::2].reshape(-1, 3))
+                        for state in states]), return_counts=True)
+    samples = [solid]
     for a, b in zip(states[:-1], states[1:]):
         a, b = a[::3, ::3].astype(np.uint16), b[::3, ::3].astype(np.uint16)
         for weight in (1, 2, 3):      # quarter, half, three-quarter blends
             blend = (a * (4 - weight) + b * weight) // 4
-            samples.append(blend.astype(np.uint8).reshape(-1, 3))
-    pixels = np.concatenate(samples).astype(np.uint32)
-    packed = (pixels[:, 0] << 16) | (pixels[:, 1] << 8) | pixels[:, 2]
-    unique, counts = np.unique(packed, return_counts=True)
+            samples.append(_pack(blend.astype(np.uint8).reshape(-1, 3)))
+    unique, counts = np.unique(np.concatenate(samples), return_counts=True)
+    # the states' colours count with their own pixel numbers
+    counts[np.searchsorted(unique, solid)] += solid_counts - 1
     weights = np.sqrt(counts)
     repeats = np.maximum(
         1, np.round(weights * min(1.0, sample_cap / weights.sum()))
     ).astype(np.int64)
-    expanded = np.repeat(unique, repeats)
-    rgb = np.stack([(expanded >> 16) & 255, (expanded >> 8) & 255,
-                    expanded & 255], axis=1).astype(np.uint8)
+    rgb = _unpack(np.repeat(unique, repeats))
     side = int(math.ceil(math.sqrt(len(rgb))))
     tile = np.zeros((side * side, 3), np.uint8)
     tile[:len(rgb)] = rgb
@@ -623,10 +660,22 @@ def _shared_palette(states, colours=256, sample_cap=1_500_000):
     quantized = Image.fromarray(tile.reshape(side, side, 3)).quantize(
         colors=colours - 2, method=Image.Quantize.MEDIANCUT, kmeans=1)
     table = np.asarray(quantized.getpalette()[:3 * (colours - 2)],
-                       np.uint8).reshape(-1, 3)
-    background = unique[np.argmax(counts)]
-    exact = np.array([[(background >> 16) & 255, (background >> 8) & 255,
-                       background & 255], [0, 0, 0]], np.uint8)
+                       np.uint8).reshape(-1, 3).copy()
+
+    # entries dominated by one solid colour take that colour exactly
+    solid_rgb = _unpack(solid)
+    entry = _nearest(solid_rgb, table)
+    total = np.bincount(entry, weights=solid_counts, minlength=len(table))
+    order = np.argsort(solid_counts)          # the most common is set last
+    top = np.full(len(table), -1)
+    top[entry[order]] = order
+    for index in np.flatnonzero(top >= 0):
+        if solid_counts[top[index]] >= 0.5 * total[index]:
+            table[index] = solid_rgb[top[index]]
+
+    background = solid[np.argmax(solid_counts)]
+    exact = np.concatenate([_unpack(np.array([background])),
+                            np.zeros((1, 3), np.uint8)])
     return np.concatenate([exact, table])
 
 
@@ -656,20 +705,12 @@ class _Quantizer:
             for entry in (0, 1):
                 entries[np.all(rgb == self.table[entry], axis=2)] = entry
             return self._image(entries)
-        packed = ((rgb[:, :, 0].astype(np.uint32) << 16)
-                  | (rgb[:, :, 1].astype(np.uint32) << 8) | rgb[:, :, 2])
+        packed = _pack(rgb.reshape(-1, 3)).reshape(rgb.shape[:2])
         entries = self.lookup[packed]
         missing = entries < 0
         if missing.any():
             new = np.unique(packed[missing])
-            colours = np.stack([(new >> 16) & 255, (new >> 8) & 255,
-                                new & 255], axis=1).astype(np.int32)
-            table = self.table.astype(np.int32)
-            for start in range(0, len(new), 20000):
-                block = colours[start:start + 20000]
-                distance = ((block[:, None, :] - table[None, :, :]) ** 2
-                            ).sum(axis=2)
-                self.lookup[new[start:start + 20000]] = distance.argmin(axis=1)
+            self.lookup[new] = _nearest(_unpack(new), self.table)
             entries = self.lookup[packed]
         return self._image(entries)
 
@@ -716,16 +757,35 @@ def _save_gif(path, frames, seconds, loop):
 # -----------------------------------------------------------------------------
 # shared command line
 # -----------------------------------------------------------------------------
+def _number(kind, low, high, what):
+    """An argparse type: a number with low < value <= high."""
+    def parse(text):
+        try:
+            value = kind(text)
+        except ValueError:
+            raise argparse.ArgumentTypeError(f'{text!r} is not a number')
+        if not low < value <= high:
+            raise argparse.ArgumentTypeError(f'{what}, got {text}')
+        return value
+    return parse
+
+
 def add_cli_arguments(parser):
     """The options every figure's GIF script takes."""
     parser.add_argument('--out-dir', default=None,
                         help='where the GIFs go')
-    parser.add_argument('--width-px', type=int, default=1600,
-                        help='frame width in pixels (default 1600)')
-    parser.add_argument('--fps', type=float, default=20.0,
+    parser.add_argument('--width-px', default=1600,
+                        type=_number(int, 15, 20000, 'must be 16 to 20000'),
+                        help='frame width in pixels (default 1600); smaller '
+                             'frames make smaller files')
+    parser.add_argument('--fps', default=20.0,
+                        type=_number(float, 0, 50,
+                                     'must be above 0, at most 50'),
                         help='frames per second, at most 50 (default 20)')
-    parser.add_argument('--speed', type=float, default=1.0,
-                        help='factor on the animation speed (2 = twice as fast)')
+    parser.add_argument('--speed', default=1.0,
+                        type=_number(float, 0, math.inf, 'must be positive'),
+                        help='factor on the animation speed (2 = twice as '
+                             'fast)')
     parser.add_argument('--loop', action='store_true',
                         help='loop each step GIF forever instead of playing '
                              'it once')
