@@ -1,0 +1,347 @@
+// Selective oxidation of 3-hydroxypropionic acid (3-HP) to malonic acid (MA)
+// over 10 % Pd/C with O2 as the oxidant: the authors' SIMPLIFIED REVERSIBLE
+// five-reaction model, transcribed from their script
+// APCATB_D_25_08770_heatmap.m in the data deposit (Dryad,
+// https://doi.org/10.5061/dryad.jsxksn0q4) of
+//   Kim, Chavarrio, Install, Huber, Appl. Catal. B: Environ. Energy 386
+//   (2026) 126403, https://doi.org/10.1016/j.apcatb.2026.126403
+//
+// This is NOT the Table 3 / Fig. 9b model (that one is
+// pd_c_3hp_oxidation_o2_antimony.txt). It has no OPA intermediate: 3-HP goes
+// to MA in one step, and every step has a reverse term with an "equilibrium
+// constant" K_6..K_10. The model is not written out in the paper. It is
+// shipped because it is the model that generated the published heat maps of
+// MA selectivity and yield over temperature and time (Fig. 11); the 50 C
+// point of the Arrhenius plot (Fig. 10d) supplies three of its constants.
+// Three properties of the authors' heat-map run are part of the published
+// figure and are kept here: (1) the Arrhenius factor of each step is applied
+// to its rate constant AND to its equilibrium constant; (2) the heat maps
+// start from unit mole fractions (x_per_M below), which removes water and
+// with it the reverse of R1; (3) the two panels of Fig. 11 need two slightly
+// different constant sets (this file holds the Fig. 11b set).
+//
+// Units: time in min, liquid concentrations in M (mol/L), temperature in K.
+// See NOTES.md next to this file for the provenance of every number.
+model *kim2026_o2_simplified_reversible()
+
+  // Compartments and Species:
+  // env is the liquid phase. The five liquid species of the authors' script,
+  // in its order: 3-HP, MA, AAc (acetic acid), OXA (oxalic acid) and D (the
+  // lumped other by-products).
+  var compartment env;
+  species HP3 in env, MA in env, AAc in env, OXA in env, D in env;
+
+  // Assignment Rules:
+
+  // Arrhenius temperature dependence, as in the script's temperature_heatmap:
+  //   p(T) = p_ref*exp(-(Ea/R)*(1/T - 1/T_ref)),  T_ref = 50 C,
+  // for all ten parameters. The script applies the activation energy of
+  // step i to k_i and then again to the equilibrium constant of the same
+  // step, so k_i/K_(i+5) does not depend on temperature. This is kept
+  // because the published Fig. 11 contains it. At T = T_ref every factor is 1.
+  k_1 := k_1_ref*exp(-(Ea_1/R_gas)*(1/T - 1/T_ref));
+  k_2 := k_2_ref*exp(-(Ea_2/R_gas)*(1/T - 1/T_ref));
+  k_3 := k_3_ref*exp(-(Ea_3/R_gas)*(1/T - 1/T_ref));
+  k_4 := k_4_ref*exp(-(Ea_4/R_gas)*(1/T - 1/T_ref));
+  k_5 := k_5_ref*exp(-(Ea_5/R_gas)*(1/T - 1/T_ref));
+  K_6 := K_6_ref*exp(-(Ea_1/R_gas)*(1/T - 1/T_ref));
+  K_7 := K_7_ref*exp(-(Ea_2/R_gas)*(1/T - 1/T_ref));
+  K_8 := K_8_ref*exp(-(Ea_3/R_gas)*(1/T - 1/T_ref));
+  K_9 := K_9_ref*exp(-(Ea_4/R_gas)*(1/T - 1/T_ref));
+  K_10 := K_10_ref*exp(-(Ea_5/R_gas)*(1/T - 1/T_ref));
+
+  // Pressure factor of the script: P/f0 = 3.5 bar/1.01325 bar.
+  PF := P/f0;
+
+  // The script's variables. Its liquid states are "mole fractions"; here
+  // they are the concentrations times x_per_M (see x_per_M below for the two
+  // scales the script uses).
+  x_HP3 := x_per_M*HP3;
+  x_MA := x_per_M*MA;
+  x_AAc := x_per_M*AAc;
+  x_OXA := x_per_M*OXA;
+  x_D := x_per_M*D;
+  // Water by difference, and O2 by difference from the two gas products.
+  // (The script also integrates an H2O and an O2 state; no rate reads them,
+  // so they are left out here.)
+  x_H2O := 1 - (x_HP3 + x_MA + x_AAc + x_OXA + x_D);
+  yO2 := 1 - yH2 - yCO2;
+
+  // Rates of the script's function "rates", term for term, in 1/min on its
+  // mole-fraction basis. The numbering is the script's and differs from the
+  // six-reaction Table 3 model.
+  r_1 := k_1*(x_HP3*yO2*PF - x_MA*x_H2O/K_6);             // 3-HP + O2 -> MA + H2O
+  r_2 := k_2*(x_MA - x_AAc*yCO2*PF/K_7);                  // MA -> AAc + CO2
+  r_3 := k_3*(x_MA*yO2*PF - x_OXA*yH2*yCO2*PF^2/K_8);     // MA + O2 -> OXA + H2 + CO2
+  r_4 := k_4*(x_HP3 - x_D/K_9);                           // 3-HP -> D
+  r_5 := k_5*(x_MA - x_D/K_10);                           // MA -> D
+
+  // Plotted quantities.
+  // Water-free liquid fractions: each species over the sum of the five
+  // liquid species (same meaning as X_i in the other two models).
+  X_HP3 := HP3/(HP3 + MA + AAc + OXA + D);
+  X_MA := MA/(HP3 + MA + AAc + OXA + D);
+  X_AAc := AAc/(HP3 + MA + AAc + OXA + D);
+  X_OXA := OXA/(HP3 + MA + AAc + OXA + D);
+  X_D := D/(HP3 + MA + AAc + OXA + D);
+  // The two quantities mapped in Fig. 11, as the script computes them.
+  // "MA Selectivity" (Fig. 11a) is the water-free liquid fraction of MA, and
+  // "MA Yield" (Fig. 11b) is that fraction times the 3-HP conversion; they
+  // are not selectivity and yield in the usual sense (MA formed per 3-HP
+  // converted or fed).
+  fig11a_selectivity := X_MA;
+  fig11b_yield := (1 - X_HP3)*X_MA;
+
+  // Rate Rules:
+  // Gas "fractions" of H2 and CO2, both 0 at t = 0, in the script's units:
+  // one unit per unit of liquid mole fraction formed.
+  yH2' = r_3;
+  yCO2' = r_2 + r_3;
+
+  // Reactions:
+  // Each reaction converts one liquid species into one other. Its rate in
+  // M/min is the script's rate divided by x_per_M (times env for an amount
+  // rate), which makes the concentrations follow the script's equations
+  // exactly for either scale.
+  R1: HP3 -> MA; r_1/x_per_M*env;     // 3-HP + O2 -> MA + H2O
+  R2: MA -> AAc; r_2/x_per_M*env;     // MA -> AAc + CO2
+  R3: MA -> OXA; r_3/x_per_M*env;     // MA + O2 -> OXA + H2 + CO2
+  R4: HP3 -> D; r_4/x_per_M*env;      // 3-HP -> D
+  R5: MA -> D; r_5/x_per_M*env;       // MA -> D
+
+  // Events:
+
+  // Species initializations:
+  // 60 mM 3-HP feed, no products.
+  HP3 = C0;
+  MA = 0;
+  AAc = 0;
+  OXA = 0;
+  D = 0;
+
+  // Compartment initializations:
+  // Nominal unit liquid volume; it cancels from every concentration.
+  env = 1;
+
+  // Variable initializations:
+
+  // Initial 3-HP concentration: 60 mM (Fig. 9 caption).
+  C0 = 0.06;
+  C0 has mol_per_l;
+
+  // Gas products, none at t = 0, so that yO2 = 1.
+  yH2 = 0;
+  yH2 has dimensionless;
+  yCO2 = 0;
+  yCO2 has dimensionless;
+
+  // Reaction temperature and the Arrhenius reference temperature (50 C).
+  T = 323.15;
+  T has kelvin;
+  T_ref = 323.15;
+  T_ref has kelvin;
+  // Gas constant as used in the script.
+  R_gas = 8.314;
+  R_gas has j_per_mol_per_k;
+
+  // Pressure and reference fugacity of the script, in bar. (The script uses
+  // 3.5 bar; the figure captions give 3 bar of O2.)
+  P = 3.5;
+  P has bar;
+  f0 = 1.01325;
+  f0 has bar;
+
+  // Liquid mole fraction per molar concentration. It selects which of the
+  // script's two initial conditions is used; C0*x_per_M is the script's
+  // initial 3-HP "mole fraction".
+  //   Heat-map convention (default; the script's intg2, used for Fig. 11):
+  //     the liquid starts as 3-HP = 1 with nothing else, x_per_M = 1/C0 =
+  //     1/0.06. The five liquid fractions then always add up to 1, so
+  //     x_H2O = 0 throughout: the reverse term of R1 vanishes (R1 is
+  //     irreversible and K_6 has no effect), and yH2 = x_OXA,
+  //     yCO2 = x_AAc + x_OXA, i.e. yO2 = 1 - x_AAc - 2*x_OXA falls as
+  //     by-products form (to 0.83 at the lowest point of the heat maps).
+  //   Fitting convention (the script's intg and plotfinal, used to fit the
+  //     constants to the 50 C data): 3-HP starts at 0.000339,
+  //     x_per_M = 0.000339/0.06 = 0.00565. Then x_H2O = 0.999661, R1 has its
+  //     reverse term, and the gas fractions stay below 1e-4 (yO2 = 1).
+  // The two conventions give different curves for the same constants; the
+  // published heat maps were computed with the first one. (The value below
+  // is 1/C0 to 15 digits; the loader sets the quotient itself.)
+  x_per_M = 16.6666666666667;
+  x_per_M has l_per_mol;
+
+  // Constants at T_ref = 50 C: the set that reproduces the published
+  // Fig. 11b (yield map). The deposit does not contain the fitted values;
+  // the script only prints its starting vector to four decimals,
+  //   k0 = [0.0021 0.0001 0.0000 0.0023 0.0010 4.7840 0.5918 3.5116
+  //         81.6870 52.0472],
+  // which does not reproduce the figure. Rate constants in 1/min (they are
+  // lumped: catalyst mass, 0.2 g, is not a factor in this model).
+  // k_1, k_2, k_5: exp() of the 50 C row of the deposited Arrhenius table
+  //   11-4_Arrhenius.csv ("ln k1" = -6.14695, "ln k2" = -9.86427,
+  //   "ln k3" = -6.84713; the column labelled k3 there is this model's k_5).
+  k_1_ref = 2.139999e-3;
+  k_1_ref has per_min;
+  k_2_ref = 5.199984e-5;
+  k_2_ref has per_min;
+  // k_3, k_4: INFERRED by fitting the contour lines digitized from the
+  //   published Fig. 11b, all other constants fixed (about 1 % uncertain).
+  k_3_ref = 1.435e-5;
+  k_3_ref has per_min;
+  k_4_ref = 2.3040e-3;
+  k_4_ref has per_min;
+  k_5_ref = 1.062501e-3;
+  k_5_ref has per_min;
+  // K_6..K_10: "equilibrium constants" of steps 1..5, as printed in k0.
+  // K_6 has no effect on the heat maps (x_H2O = 0 there), and K_8 and K_7
+  // almost none (a 10 % change moves the maps by 8e-8 and 4e-5).
+  K_6_ref = 4.7840;
+  K_6_ref has dimensionless;
+  K_7_ref = 0.5918;
+  K_7_ref has dimensionless;
+  K_8_ref = 3.5116;
+  K_8_ref has dimensionless;
+  K_9_ref = 81.6870;
+  K_9_ref has dimensionless;
+  K_10_ref = 52.0472;
+  K_10_ref has dimensionless;
+  // The published Fig. 11a (selectivity map) needs a different set, which
+  // differs from the one above in four INFERRED values (fitted to the
+  // contour lines digitized from Fig. 11a):
+  //   k_3_ref = 1.4912e-5, k_4_ref = 2.2397e-3, k_5_ref = 1.1110e-3,
+  //   K_10_ref = 23.28.
+  // The loader sets it with parameter_set='fig11a'.
+
+  // Activation energies in J/mol, from the script. Ea_i belongs to step i of
+  // THIS model and is used for both k_i and K_(i+5).
+  // Ea_1: "MA production", 59.8 kJ/mol in the paper text (Section 3.4).
+  Ea_1 = 59781.2;
+  Ea_1 has j_per_mol;
+  // Ea_2: "MA conversion to AAc", 91.6 kJ/mol in the paper text.
+  Ea_2 = 91594.6;
+  Ea_2 has j_per_mol;
+  // Ea_3: MA -> OXA. A placeholder in the script; not reported in the paper.
+  Ea_3 = 10000;
+  Ea_3 has j_per_mol;
+  // Ea_4: 3-HP -> D. Script only; not reported in the paper.
+  Ea_4 = 51788.73;
+  Ea_4 has j_per_mol;
+  // Ea_5: MA "decomposition reaction" (MA -> D), 59.5 kJ/mol in the paper text.
+  Ea_5 = 59549.8;
+  Ea_5 has j_per_mol;
+
+  k_1 has per_min;
+  k_2 has per_min;
+  k_3 has per_min;
+  k_4 has per_min;
+  k_5 has per_min;
+  K_6 has dimensionless;
+  K_7 has dimensionless;
+  K_8 has dimensionless;
+  K_9 has dimensionless;
+  K_10 has dimensionless;
+  PF has dimensionless;
+  x_HP3 has dimensionless;
+  x_MA has dimensionless;
+  x_AAc has dimensionless;
+  x_OXA has dimensionless;
+  x_D has dimensionless;
+  x_H2O has dimensionless;
+  yO2 has dimensionless;
+  r_1 has per_min;
+  r_2 has per_min;
+  r_3 has per_min;
+  r_4 has per_min;
+  r_5 has per_min;
+  X_HP3 has dimensionless;
+  X_MA has dimensionless;
+  X_AAc has dimensionless;
+  X_OXA has dimensionless;
+  X_D has dimensionless;
+  fig11a_selectivity has dimensionless;
+  fig11b_yield has dimensionless;
+
+  // Other declarations:
+  var yH2, yCO2, yO2, PF;
+  var k_1, k_2, k_3, k_4, k_5, K_6, K_7, K_8, K_9, K_10;
+  var x_HP3, x_MA, x_AAc, x_OXA, x_D, x_H2O;
+  var r_1, r_2, r_3, r_4, r_5;
+  var X_HP3, X_MA, X_AAc, X_OXA, X_D, fig11a_selectivity, fig11b_yield;
+  const C0, T, T_ref, R_gas, P, f0, x_per_M;
+  const k_1_ref, k_2_ref, k_3_ref, k_4_ref, k_5_ref;
+  const K_6_ref, K_7_ref, K_8_ref, K_9_ref, K_10_ref;
+  const Ea_1, Ea_2, Ea_3, Ea_4, Ea_5;
+
+  // Unit definitions:
+  unit substance = mole;
+  unit time_unit = 60 second;
+  unit volume = litre;
+  unit per_min = 1 / 60 second;
+  unit mol_per_l = mole / litre;
+  unit l_per_mol = litre / mole;
+  unit j_per_mol = joule / mole;
+  unit j_per_mol_per_k = joule / (mole * kelvin);
+  unit bar = 1e5 pascal;
+
+  // Display Names:
+  substance is "mole";
+  time_unit is "minutes";
+  volume is "liter";
+  per_min is "per minute";
+  mol_per_l is "mole per liter";
+  l_per_mol is "liter per mole";
+  j_per_mol is "joule per mole";
+  j_per_mol_per_k is "joule per mole per kelvin";
+  env is "liquid phase";
+  HP3 is "3-Hydroxypropionic acid (3-HP)";
+  MA is "Malonic acid (MA)";
+  AAc is "Acetic acid (AAc)";
+  OXA is "Oxalic acid (OXA)";
+  D is "Other by-products (D)";
+  yH2 is "H2 gas fraction (script units)";
+  yCO2 is "CO2 gas fraction (script units)";
+  yO2 is "O2 gas fraction (script units)";
+  T is "Temperature";
+  T_ref is "Reference temperature";
+  P is "Pressure (script)";
+  f0 is "Reference fugacity (script)";
+  PF is "Pressure factor P/f0";
+  C0 is "Initial 3-HP concentration";
+  x_per_M is "Mole fraction per molar concentration";
+  x_H2O is "Water mole fraction (by difference)";
+  X_HP3 is "3-HP, water-free liquid fraction";
+  X_MA is "MA, water-free liquid fraction";
+  X_AAc is "AAc, water-free liquid fraction";
+  X_OXA is "OXA, water-free liquid fraction";
+  X_D is "Others, water-free liquid fraction";
+  fig11a_selectivity is "MA Selectivity as mapped in Fig. 11a";
+  fig11b_yield is "MA Yield as mapped in Fig. 11b";
+  R1 is "3-HP oxidation to MA";
+  R2 is "MA decarboxylation to AAc";
+  R3 is "MA oxidation to OXA";
+  R4 is "3-HP degradation to others";
+  R5 is "MA degradation to others";
+
+  // Notes:
+  model notes ```
+Simplified reversible five-reaction O2 model behind the heat maps (Fig. 11) of the article:
+**Selective oxidation of 3-hydroxypropionic acid to malonic acid over Pd/C: Mechanistic and kinetic study.**
+Kim S.Y., Chavarrio J., Install J., Huber G.W. *Appl. Catal. B: Environ. Energy* 386 (2026) 126403.
+DOI: [10.1016/j.apcatb.2026.126403](https://doi.org/10.1016/j.apcatb.2026.126403)
+
+Transcribed from the authors' script APCATB_D_25_08770_heatmap.m (Dryad, DOI
+10.5061/dryad.jsxksn0q4). This is not the Table 3 / Fig. 9b model: there is no OPA
+intermediate and every step has a reverse term. The model is not written out in the paper.
+
+Default state: the constant set that reproduces Fig. 11b, at 50 C, with the heat-map
+initial condition (unit mole fractions; x_per_M = 1/C0). The rate constants k_1, k_2 and
+k_5 come from the deposited Arrhenius table (11-4_Arrhenius.csv), the equilibrium
+constants from the script's printed starting vector, and k_3 and k_4 were inferred from
+the contour lines of the published figure; the fitted values themselves were not deposited.
+The Arrhenius factors are applied to the rate constants and to the equilibrium constants,
+as in the script.
+```
+end
+
+kim2026_o2_simplified_reversible is "Kim2026_PdC_3HP_Oxidation_O2_simplified_reversible"

@@ -18,7 +18,11 @@ from .pd_c_3hp_oxidation import *
 from . import reference
 from .reference import *
 
+from . import heat_maps
+from .heat_maps import *
+
 __all__ = (
      *pd_c_3hp_oxidation.__all__,
      *reference.__all__,
+     *heat_maps.__all__,
      )

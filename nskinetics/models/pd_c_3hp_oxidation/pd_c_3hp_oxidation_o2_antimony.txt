@@ -250,8 +250,9 @@ NSKinetics addition: the Arrhenius temperature dependence k(T) of the six steps
 (paper Eq. 6 form, T_ref = 50 C), with activation energies from the paper text and
 from the authors' heat-map script. The paper's own heat maps (Fig. 11) and the
 25/75/100 C curves (Fig. 10) were computed with a different, simplified reversible
-five-reaction model (not this file); away from 50 C this file is an extrapolation
-that the paper does not show.
+five-reaction model (pd_c_3hp_oxidation_o2_simplified_reversible_antimony.txt), not
+with this file; away from 50 C this file is an extrapolation that the paper does
+not show.
 ```
 end
 

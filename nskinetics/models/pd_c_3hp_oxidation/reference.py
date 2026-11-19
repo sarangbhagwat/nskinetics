@@ -7,9 +7,10 @@
 # for license details.
 """
 Readers for the reference data shipped in ``reference_data/``: the authors'
-deposited Fig. 9 tables (Dryad, https://doi.org/10.5061/dryad.jsxksn0q4, CC0,
-copied verbatim) and two curves digitized from SI Fig. S12 of Kim et al.,
-Appl. Catal. B: Environ. Energy 386 (2026) 126403.
+deposited Fig. 9 tables and Arrhenius table (Dryad,
+https://doi.org/10.5061/dryad.jsxksn0q4, CC0, copied verbatim), two curves
+digitized from SI Fig. S12 and the contour lines digitized from Fig. 11 of
+Kim et al., Appl. Catal. B: Environ. Energy 386 (2026) 126403.
 
 The readers return tidy tables whose column names are the model's selection
 names (``X_HP3``, ``X_MA``, ``X_AAc``, ``X_OXA``, ``X_D``, ``eq_H2O2``,
@@ -25,7 +26,10 @@ import pandas as pd
 __all__ = ('reference_data_dir',
            'read_fig9a_h2o2', 'read_fig9b_o2',
            'read_figS12a_h2o2_inset_digitized',
-           'read_figS12b_opa_inset_digitized',)
+           'read_figS12b_opa_inset_digitized',
+           'read_fig10d_arrhenius',
+           'read_fig11a_selectivity_digitized',
+           'read_fig11b_yield_digitized',)
 
 reference_data_dir = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), 'reference_data')
@@ -160,3 +164,94 @@ def read_figS12b_opa_inset_digitized():
                                   'figS12b_opa_inset_digitized.csv'))
     return df.rename(columns={'t_min': 'time', 't_unc': 'time_unc',
                               'OPA': 'x_OPA', 'HP3': 'X_HP3'})
+
+
+def read_fig10d_arrhenius():
+    """Read ``11-4_Arrhenius.csv`` (Arrhenius plot of Fig. 10d).
+
+    Returns
+    -------
+    dict of pandas.DataFrame
+        ``'points'``
+            The four fitted points (25, 50, 75 and 100 C): ``inv_T`` (1/K,
+            as printed, to five decimals) and the natural logarithms
+            ``ln_k_1``, ``ln_k_2`` and ``ln_k_5`` of three rate constants
+            of the simplified reversible model, in 1/min.
+        ``'line_k_1'``, ``'line_k_2'``, ``'line_k_5'``
+            The straight line the authors drew for each constant:
+            ``inv_T`` and the logarithm.
+
+    Notes
+    -----
+    The file labels the three constants k1, k2 and k3. They are ``k_1``
+    (3-HP to MA), ``k_2`` (MA to AAc) and ``k_5`` (MA to D) of the
+    simplified reversible model; the column labelled k3 is renamed here.
+    The 50 C row supplies ``k_1``, ``k_2`` and ``k_5`` of the ``'fig11b'``
+    constant set (see ``NOTES.md``).
+    """
+    with open(os.path.join(reference_data_dir, '11-4_Arrhenius.csv'),
+              encoding='utf-8-sig', newline='') as f:
+        rows = list(csv.reader(f))[2:]      # two header rows
+    tables = {'points': _block(rows, 0, ['inv_T', 'ln_k_1', 'ln_k_2',
+                                         'ln_k_5'])}
+    for first, name in ((4, 'k_1'), (6, 'k_2'), (8, 'k_5')):
+        tables['line_' + name] = _block(rows, first, ['inv_T', 'ln_' + name])
+    return tables
+
+
+def _read_fig11_digitized(filename):
+    df = pd.read_csv(os.path.join(reference_data_dir, filename))
+    df = df.rename(columns={'t_min': 'time'})
+    contours = df[df['series'] == 'contour']
+    stars = df[df['series'].isin(['red_star', 'purple_star'])]
+    return {
+        'contours': contours[['level', 'branch', 'time', 'T_C']].reset_index(
+            drop=True),
+        'ridge': df.loc[df['series'] == 'ridge', ['time', 'T_C']].reset_index(
+            drop=True),
+        'stars': stars.set_index('series')[['time', 'T_C']].rename_axis(None),
+        }
+
+
+def read_fig11a_selectivity_digitized():
+    """Read the lines digitized from the published Fig. 11a (selectivity map).
+
+    Returns
+    -------
+    dict of pandas.DataFrame
+        ``'contours'``
+            Samples along the 0.1, 0.3 and 0.5 contour lines of the main
+            panel: ``level``, ``branch`` (``'early'``: left of the red
+            dashed line, ``'late'``: right of it), ``time`` (plotted time,
+            min) and ``T_C`` (C).
+        ``'ridge'``
+            Samples along the red dashed line: ``time`` and ``T_C``.
+        ``'stars'``
+            Centres of the red and purple stars, indexed ``'red_star'``
+            and ``'purple_star'``: ``time`` and ``T_C``.
+
+    Notes
+    -----
+    Digitized from the published figure, not deposited data; every second
+    sample of the digitization is kept, and samples the digitization marked
+    as uncertain (crowded lines by the left frame and around the red star)
+    are left out. Reading uncertainty: about 0.3 px normal to a line, i.e.
+    1 min or 0.05 C. The plotted time is the reaction time plus 10 min.
+    """
+    return _read_fig11_digitized('fig11a_selectivity_digitized.csv')
+
+
+def read_fig11b_yield_digitized():
+    """Read the lines digitized from the published Fig. 11b (yield map).
+
+    Returns
+    -------
+    dict of pandas.DataFrame
+        ``'contours'``, ``'ridge'`` and ``'stars'``, as returned by
+        :func:`read_fig11a_selectivity_digitized`.
+
+    Notes
+    -----
+    See :func:`read_fig11a_selectivity_digitized`.
+    """
+    return _read_fig11_digitized('fig11b_yield_digitized.csv')

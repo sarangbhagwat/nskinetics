@@ -22,7 +22,11 @@ with the printed constants is expected to differ from them by up to 2e-3
 enough to fail a 2 % error in most rate constants, a missing catalyst-mass
 or oxidant factor, the SI Table S4 reaction orders, or a missing reaction.
 
-The two models are small and load in milliseconds, so this module is not
+The simplified reversible O2 model and the heat maps (Fig. 11) are tested in
+``test_pd_c_3hp_oxidation_heat_maps.py``; only the checks of the deposited
+files and of the shipped SBML cover all three models here.
+
+The models are small and load in milliseconds, so this module is not
 marked slow. It imports pytest at top level and is therefore not registered
 in ``nskinetics/tests/__init__.py``.
 """
@@ -35,7 +39,8 @@ import pytest
 import nskinetics as nsk
 import nskinetics.models.pd_c_3hp_oxidation as pkg
 from nskinetics.models.pd_c_3hp_oxidation import (
-    NORMALIZED, SPECIES, load_h2o2_model, load_o2_model, simulate_at_times)
+    NORMALIZED, SPECIES, load_h2o2_model, load_o2_model,
+    load_o2_simplified_reversible_model, simulate_at_times)
 
 _PKG_DIR = os.path.dirname(os.path.abspath(pkg.__file__))
 _NORMALIZED = list(NORMALIZED)
@@ -318,7 +323,9 @@ def test_deposited_files_are_verbatim_copies():
             ('10-1_kinetic_model_H2O2.csv',
              'eab233b4e2e28fc00743f5637d002a8d87f9c640daa8939779bfe80145b81cdc'),
             ('10-2_kinetic_model_O2.csv',
-             '3aff103e744a09925551c10116db6d987a6c8883d0c5114b9e23380c4ed7036e')):
+             '3aff103e744a09925551c10116db6d987a6c8883d0c5114b9e23380c4ed7036e'),
+            ('11-4_Arrhenius.csv',
+             '78fb6d313b1356b4951050555f14aa0867f1bb7c94431fd00bafb0b007087313')):
         with open(os.path.join(pkg.reference_data_dir, filename), 'rb') as f:
             assert hashlib.sha256(f.read()).hexdigest() == sha256, filename
 
@@ -356,7 +363,9 @@ def test_digitized_inset_readers():
 # --- 7. shipped SBML in sync with the Antimony ------------------------------
 
 _MODEL_FILES = [(pkg.h2o2_antimony_filename, load_h2o2_model),
-                (pkg.o2_antimony_filename, load_o2_model)]
+                (pkg.o2_antimony_filename, load_o2_model),
+                (pkg.o2_simplified_reversible_antimony_filename,
+                 load_o2_simplified_reversible_model)]
 
 
 def _sbml_path(antimony_filename):
@@ -370,7 +379,8 @@ def test_shipped_sbml_reproduces_the_antimony_model(antimony_filename, load):
     from_sbml._te.integrator.absolute_tolerance = 1e-10
     from_sbml._te.integrator.relative_tolerance = 1e-9
     times = [0., 20., 240., 1440.]
-    selections = _NORMALIZED + _CONCENTRATIONS
+    selections = _NORMALIZED + [
+        '[%s]' % s for s in from_sbml._te.getFloatingSpeciesIds()]
     assert np.allclose(simulate_at_times(from_sbml, times, selections),
                        simulate_at_times(load(), times, selections),
                        rtol=1e-9, atol=1e-12)
