@@ -54,8 +54,8 @@ what agrees with the publication and what does not.
       where the paper, its data deposit and the models disagree. **The
       published 50 °C model, extended to other temperatures as the paper
       describes, reproduces neither the published heat maps nor the
-      experiments at 25, 75 and 100 °C; the paper's Figs. 10 and 11 were
-      made with two other models that are not in the paper.**
+      experiments at 25, 75 and 100 °C; the paper's Figs. 10 and 11 are
+      reproduced only with two other models that are not in the paper.**
 
       +++
       ``nskinetics.models.pd_c_3hp_oxidation`` · 4 models, deposited and

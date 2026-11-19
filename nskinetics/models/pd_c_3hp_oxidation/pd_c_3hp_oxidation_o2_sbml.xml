@@ -4,10 +4,10 @@
   <model metaid="kim2026_o2" id="kim2026_o2" name="Kim2026_PdC_3HP_Oxidation_O2" substanceUnits="mole" timeUnits="time_unit" volumeUnits="litre">
     <notes>
       <body xmlns="http://www.w3.org/1999/xhtml">
-        <p>O2 model of the article: <strong>Selective oxidation of 3-hydroxypropionic acid to malonic acid over Pd/C: Mechanistic and kinetic study.</strong> Kim S.Y., Chavarrio J., Install J., Huber G.W. <i>Appl. Catal. B: Environ. Energy</i> 386 (2026) 126403. DOI: <a href="https://doi.org/10.1016/j.apcatb.2026.126403">10.1016/j.apcatb.2026.126403</a></p>
-        <p>Conditions: 60 mM 3-HP, 0.2 g 10 % Pd/C, NaOH/3-HP = 1:1, 3 bar O2, 50 C (Fig. 9b). Rate constants: Table 3 (O2 column) as printed. Six first-order irreversible steps; the reaction orders and equilibrium constants of SI Table S4 are not used. </p>
-        <p>Inferred from the authors&apos; data deposit (Dryad, DOI 10.5061/dryad.jsxksn0q4), not stated in the paper: the oxidant reference factor x_O2_ref = 15*0.000339 on reactions 1, 2 and 4, and the use of the depleting O2 activity state yO2. </p>
-        <p>NSKinetics addition: the Arrhenius temperature dependence k(T) of the six steps (paper Eq. 6 form, T_ref = 50 C), with activation energies from the paper text and from the authors&apos; heat-map script. The paper&apos;s own temperature results were not computed with this file: the heat maps (Fig. 11) come from a simplified reversible five-reaction model (pd_c_3hp_oxidation_o2_simplified_reversible_antimony.txt), whose rate constants are also the ones plotted in the Arrhenius plot (Fig. 10d), and the 25/75/100 C curves (Fig. 10a-c) from separate fits of a reversible six-reaction variant at each temperature (pd_c_3hp_oxidation_o2_reversible_antimony.txt). Away from 50 C this file is an extrapolation that the paper does not show; it does not reproduce the 25, 75 and 100 C experiments (see NOTES.md). </p>
+        <p>O2 model of the article: <strong>Selective oxidation of 3-hydroxypropionic acid to malonic acid over Pd/C: Mechanistic and kinetic study.</strong> Kim S.Y., Chavarrio J.E., Install J., Huber G.W. <i>Appl. Catal. B: Environ. Energy</i> 386 (2026) 126403. DOI: <a href="https://doi.org/10.1016/j.apcatb.2026.126403">10.1016/j.apcatb.2026.126403</a></p>
+        <p>Conditions: 60 mM 3-HP, 0.2 g 10 % Pd/C, NaOH/3-HP = 1:1, 3 bar O2, 50 C (Fig. 9b). The catalyst mass m_cat is the mass of the paper&apos;s batch (0.2 g), not a mass per litre. Rate constants: Table 3 (O2 column) as printed. Rate expressions: SI Fig. S2 with every order equal to 1 and unit activity coefficients. Six first-order irreversible steps; the reaction orders and equilibrium constants of SI Table S4 are not used. </p>
+        <p>Inferred from the authors&apos; data deposit (Dryad, DOI 10.5061/dryad.jsxksn0q4), not stated in the paper: the oxidant reference factor x_O2_ref = 15*0.000339 on reactions 1, 2 and 4, which takes the place of the O2 activity y*P/f0 of SI Fig. S2, and the use of the depleting O2 state yO2. </p>
+        <p>NSKinetics addition: the Arrhenius temperature dependence k(T) of the six steps (the Arrhenius relation of the paper, the second of its two equations numbered 6; T_ref = 50 C), with activation energies from the paper text and from the authors&apos; heat-map script. The paper&apos;s own temperature results are not reproduced by this file: the heat maps (Fig. 11) are those of a simplified reversible five-reaction model (pd_c_3hp_oxidation_o2_simplified_reversible_antimony.txt), whose rate constants the points of the Arrhenius plot (Fig. 10d) are taken to be, and the 25/75/100 C curves (Fig. 10a-c) are reproduced by a reversible six-reaction variant with a separate constant set at each temperature (pd_c_3hp_oxidation_o2_reversible_antimony.txt). Away from 50 C this file is an extrapolation that the paper does not show; it does not reproduce the 25, 75 and 100 C experiments (see NOTES.md). </p>
       </body>
     </notes>
     <listOfUnitDefinitions>
@@ -88,8 +88,8 @@
       <parameter id="X_D" name="Others, normalized (Fig. 9b)" units="dimensionless" constant="false"/>
       <parameter id="x_OPA" name="OPA mole fraction (Fig. S12b inset)" units="dimensionless" constant="false"/>
       <parameter id="x_per_M" name="Mole fraction per molar concentration" value="0.00565" units="l_per_mol" constant="true"/>
-      <parameter id="yO2" name="O2 activity (dimensionless)" value="1" units="dimensionless" constant="false"/>
-      <parameter id="m_cat" name="Catalyst mass" value="0.2" units="gram" constant="true"/>
+      <parameter id="yO2" name="O2 fraction (dimensionless, 1 at t = 0)" value="1" units="dimensionless" constant="false"/>
+      <parameter id="m_cat" name="Catalyst mass of the paper&apos;s batch" value="0.2" units="gram" constant="true"/>
       <parameter id="x_O2_ref" name="Oxidant reference factor (inferred)" value="0.005085" units="dimensionless" constant="true"/>
       <parameter id="C0" name="Initial 3-HP concentration" value="0.06" units="mol_per_l" constant="true"/>
     </listOfParameters>

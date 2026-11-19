@@ -18,11 +18,12 @@ two steps:
 * its rate laws, Arrhenius factors and initial conditions against an
   independent evaluation of the equations of the authors' script, written
   out again in this module; and
-* its heat maps against the digitized contour lines, with the tolerances of
-  the reconstruction (rms offset of at most 0.45 px per panel, where 1 px of
-  the published raster is 3.07 min or 0.148 C). Negative controls show what
-  these tolerances exclude: the constant set of the other panel, the
-  starting vector printed in the script, and the Table 3 O2 model.
+* its heat maps against the digitized contour lines: an rms offset of at
+  most 0.45 px per panel is accepted, where 1 px of the published raster is
+  3.07 min or 0.148 C and the digitization is good to about 0.3 px (the
+  measured offsets are 0.17 and 0.27 px). Negative controls show what this
+  limit excludes: the constant set of the other panel, the starting vector
+  printed in the script, and the Table 3 O2 model.
 
 The last section pins the numbers ``NOTES.md`` reports for the Table 3 O2
 model against the published maps.
@@ -32,6 +33,7 @@ pytest at top level and is therefore not registered in
 ``nskinetics/tests/__init__.py``.
 """
 import os
+import re
 
 import numpy as np
 import pytest
@@ -94,17 +96,18 @@ def script_k_adj(pars, T):
     return np.asarray(pars)*np.exp(-EA/R_GAS*(1./T - 1./T_REF))
 
 
-def contour_scores(maps, digitized, panel):
-    """Rms offset (px) over all contour samples, and (rms, mean) per branch."""
+def contour_scores(maps, digitized, panel, max_offset=30.):
+    """Rms offset (px) over all contour samples, and (rms, mean) per branch.
+
+    As for the numbers of NOTES.md, a far-off sample counts as 30 px unless
+    ``max_offset`` is None."""
     T_C, times = maps[:2]
     matrix = maps[2] if panel == 'a' else maps[3]
     per_branch, offsets = {}, []
     for (level, branch), samples in digitized['contours'].groupby(
             ['level', 'branch']):
-        # As in the reconstruction: far-off samples count as 30 px.
-        d = np.clip(contour_offsets(T_C, times, matrix, level,
-                                    samples['time'], samples['T_C']),
-                    -30., 30.)
+        d = contour_offsets(T_C, times, matrix, level, samples['time'],
+                            samples['T_C'], max_offset=max_offset)
         per_branch[level, branch] = (np.sqrt(np.mean(d**2)), d.mean())
         offsets.append(d)
     return np.sqrt(np.mean(np.concatenate(offsets)**2)), per_branch
@@ -162,8 +165,22 @@ def test_constant_sets_are_the_documented_ones():
     # The Fig. 11a set differs from the Fig. 11b set in four constants only.
     assert [n for n in _NAMES if sets['fig11a'][n] != sets['fig11b'][n]] == [
         'k_3_ref', 'k_4_ref', 'k_5_ref', 'K_10_ref']
-    with pytest.raises(KeyError):
-        load_o2_simplified_reversible_model(parameter_set='table3')
+
+
+@pytest.mark.parametrize('parameter_set', ['table3', 'fig11c', 'FIG11A',
+                                           None, ['fig11a']])
+def test_loader_rejects_an_unknown_parameter_set(parameter_set):
+    with pytest.raises(ValueError, match='unknown parameter set') as error:
+        load_o2_simplified_reversible_model(parameter_set=parameter_set)
+    assert "'fig11b', 'fig11a', 'k0_printed'" in str(error.value)
+
+
+@pytest.mark.parametrize('T', [75., 50, 0., -5., 249.9, 450.1,
+                               float('nan')])
+def test_loader_rejects_a_temperature_that_is_not_in_kelvin(T):
+    with pytest.raises(ValueError, match='T is in kelvin') as error:
+        load_o2_simplified_reversible_model(T=T)
+    assert '348.15' in str(error.value)
 
 
 def test_antimony_file_holds_the_fig11b_set_and_the_heat_map_convention():
@@ -207,8 +224,13 @@ def test_initial_condition_aliases():
         aliased = load_o2_simplified_reversible_model(initial_condition=alias)
         named = load_o2_simplified_reversible_model(initial_condition=name)
         assert aliased.get_value('x_per_M') == named.get_value('x_per_M')
-    with pytest.raises(KeyError):
-        load_o2_simplified_reversible_model(initial_condition='concentrated')
+    for unknown in ('concentrated', 'dilut', None, 1.):
+        with pytest.raises(ValueError,
+                           match='unknown initial condition') as error:
+            load_o2_simplified_reversible_model(initial_condition=unknown)
+        # the message lists the names and their aliases
+        for name in ('heatmap', 'unscaled', 'fitting', 'dilute'):
+            assert repr(name) in str(error.value)
 
 
 # --- 2. rate laws against the equations of the authors' script ----------------
@@ -366,11 +388,34 @@ def test_simulate_heat_maps_follows_the_model_and_restores_it():
     assert np.allclose(later[2][0], selectivity[1, 1:], rtol=1e-9)
 
 
+@pytest.mark.parametrize('T_C', [[323.15], [50., 348.15], [-60.], [201.],
+                                 [float('nan')]])
+def test_simulate_heat_maps_rejects_temperatures_that_are_not_in_celsius(T_C):
+    # 323.15 would otherwise be taken as 323.15 C
+    km = load_o2_simplified_reversible_model()
+    with pytest.raises(ValueError, match='degrees Celsius') as error:
+        simulate_heat_maps(km, T_C=T_C, times=[30.])
+    assert 'for 348.15 K pass 75' in str(error.value)
+    assert km.get_value('T') == T_REF       # the model is left untouched
+
+
+def test_simulate_heat_maps_accepts_minus_50_to_200_C():
+    km = load_o2_model()
+    T_C = simulate_heat_maps(km, T_C=[-50., 200.], times=[30.])[0]
+    assert list(T_C) == [-50., 200.]
+
+
 def test_fig11_heat_maps_uses_one_constant_set_per_panel(maps):
     T_C, times, selectivity, MA_yield = pkg.fig11_heat_maps()
     assert np.array_equal(selectivity, maps['fig11a'][2])
     assert np.array_equal(MA_yield, maps['fig11b'][3])
     assert not np.allclose(selectivity, maps['fig11b'][2], atol=1e-3)
+    for panel, matrix in (('a', selectivity), ('b', MA_yield)):
+        panel_T_C, panel_times, panel_matrix = pkg.fig11_panel_heat_map(panel)
+        assert panel_T_C is FIG11_T_C and panel_times is FIG11_TIMES
+        assert np.array_equal(panel_matrix, matrix)
+    with pytest.raises(ValueError, match="'a' or 'b'"):
+        pkg.fig11_panel_heat_map('c')
 
 
 def test_contour_measures_on_a_plane():
@@ -386,10 +431,58 @@ def test_contour_measures_on_a_plane():
     shifts = contour_shifts(T_C, times, matrix, 3., 'early', t, T)
     assert shifts[:2] == pytest.approx(300. - 10.*(T[:2] - 30.) - t[:2])
     assert np.isnan(shifts[2])
-    shifts = contour_shifts(T_C, times, matrix, 3., 'early', t, T, along='T')
+    shifts = contour_shifts(T_C, times, matrix, 3., 'early', t, T,
+                            along='T_C')
     assert shifts[:2] == pytest.approx(60. - t[:2]/10. - T[:2])
     # the plane never falls through the level: no 'late' crossing
     assert np.isnan(contour_shifts(T_C, times, matrix, 3., 'late', t, T)).all()
+    with pytest.raises(ValueError, match="'time' or 'T_C'"):
+        contour_shifts(T_C, times, matrix, 3., 'early', t, T, along='T')
+    # offsets can be clipped, so that far-off samples do not dominate an rms
+    clipped = contour_offsets(T_C, times, matrix, 3., t, T, min_per_px=2.,
+                              C_per_px=0.5, max_offset=5.)
+    assert clipped == pytest.approx(np.clip(offsets, -5., 5.))
+    assert np.abs(offsets).max() > 5.
+
+
+def test_contour_shifts_uses_the_crossing_nearest_to_each_sample():
+    # Every row rises through 0.5 twice, at t = 100*pi/6 = 52.36 and at
+    # t = 100*(2*pi + pi/6) = 680.68 min, and falls through it in between,
+    # at t = 100*5*pi/6 = 261.80 min, and once more at 890.12 min.
+    T_C, times = np.arange(30., 41.), np.linspace(0., 900., 9001)
+    matrix = np.tile(np.sin(times/100.), (len(T_C), 1))
+    rising = 100.*np.array([np.pi/6., 2.*np.pi + np.pi/6.])
+    falling = 100.*np.array([5.*np.pi/6., 2.*np.pi + 5.*np.pi/6.])
+    t, T = np.array([60., 300., 400., 670., 880.]), np.full(5, 35.3)
+    shifts = contour_shifts(T_C, times, matrix, 0.5, 'early', t, T)
+    assert shifts == pytest.approx(
+        [rising[0] - 60., rising[0] - 300., rising[1] - 400.,
+         rising[1] - 670., rising[1] - 880.], abs=1e-3)
+    # the sample at 670 min is 10.7 min from the second crossing, not
+    # 618 min from the first
+    assert abs(shifts[3]) < 11.
+    shifts = contour_shifts(T_C, times, matrix, 0.5, 'late', t, T)
+    assert shifts == pytest.approx(
+        [falling[0] - 60., falling[0] - 300., falling[0] - 400.,
+         falling[1] - 670., falling[1] - 880.], abs=1e-3)
+
+
+def test_raster_scale_is_the_calibration_of_panel_a():
+    # The pixel scale behind every offset in px is the axis calibration of
+    # the published raster recorded in reference_data/README.md.
+    with open(os.path.join(pkg.reference_data_dir, 'README.md'),
+              encoding='utf-8') as f:
+        readme = f.read()
+    (row,) = re.findall(r'^\| a \| t = ([\d.]+) col - [\d.]+ min '
+                        r'\| T = -([\d.]+) row \+ [\d.]+ C \|$', readme,
+                        flags=re.MULTILINE)
+    assert pkg.FIG11_MIN_PER_PX == float(row[0]) == 3.0723
+    assert pkg.FIG11_C_PER_PX == float(row[1]) == 0.1476
+    # the main panel (half a cell beyond the grid on each side) is then
+    # 545 x 481 px of the 1604 x 596 px raster
+    assert (1682.8 - 7.2)/pkg.FIG11_MIN_PER_PX == pytest.approx(545.4,
+                                                                abs=0.1)
+    assert 71./pkg.FIG11_C_PER_PX == pytest.approx(481.0, abs=0.1)
 
 
 # --- 5. the published Fig. 11 -------------------------------------------------
@@ -464,7 +557,13 @@ def test_table3_o2_model_misses_the_published_contours(table3_maps,
                                                        digitized):
     for panel in 'ab':
         rms, per_branch = contour_scores(table3_maps, digitized[panel], panel)
-        assert rms == pytest.approx(7.6, abs=0.6), (panel, rms)
+        assert rms == pytest.approx(7.6, abs=0.2), (panel, rms)
+    # Offsets this large are linearized estimates and depend on the 30 px
+    # clip: without it panel a is unchanged and panel b reads 8.8 px.
+    assert contour_scores(table3_maps, digitized['a'], 'a',
+                          max_offset=None)[0] == pytest.approx(7.6, abs=0.2)
+    assert contour_scores(table3_maps, digitized['b'], 'b',
+                          max_offset=None)[0] == pytest.approx(8.75, abs=0.1)
     # With the 10 min offset of the published figure it is hardly closer.
     shifted = pkg.table3_o2_heat_maps(time_offset=10.)
     assert contour_scores(shifted, digitized['a'], 'a')[0] == pytest.approx(
@@ -486,7 +585,8 @@ def test_table3_o2_model_late_contours_are_early(table3_maps, digitized):
             assert -0.12 < np.nanmedian(relative) < -0.07, (panel, level)
             # ... which is 1.3 to 1.8 C lower at a given time
             shift = contour_shifts(T_C, times, matrix, level, 'late',
-                                   samples['time'], samples['T_C'], along='T')
+                                   samples['time'], samples['T_C'],
+                                   along='T_C')
             assert -2.0 < np.nanmedian(shift) < -1.1, (panel, level)
 
 

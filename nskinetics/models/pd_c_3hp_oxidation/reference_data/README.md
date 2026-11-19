@@ -1,20 +1,25 @@
 # Reference data for the Pd/C 3-HP oxidation models
 
-Data used to check and plot the models in this folder against Kim, Chavarrio,
-Install and Huber, Appl. Catal. B: Environ. Energy 386 (2026) 126403
-(https://doi.org/10.1016/j.apcatb.2026.126403). Read the files through
-`reference.py` in the parent folder, which returns tidy tables and corrects
-the quirks listed below.
+Data used to check and plot the models in this folder against S. Y. Kim,
+J. E. Chavarrio, J. Install and G. W. Huber, Appl. Catal. B: Environ. Energy
+386 (2026) 126403 (https://doi.org/10.1016/j.apcatb.2026.126403). Read the
+files through `reference.py` in the parent folder, which returns tidy tables
+and corrects the quirks listed below.
 
 ## Deposited by the authors (verbatim copies)
 
 Source: S. Y. Kim, J. Chavarrio, J. Install, G. W. Huber, "Data and code from:
 Selective oxidation of 3-hydroxypropionic acid to malonic acid over Pd/C:
 Mechanistic and kinetic study", Dryad, https://doi.org/10.5061/dryad.jsxksn0q4.
-Licence: CC0 1.0 (public domain dedication). The files are byte-for-byte
-copies (UTF-8 with byte-order mark, CRLF line ends); `.gitattributes` at the
-repository root marks the `*.csv` files of this folder `-text`, so that git
-never converts their line ends.
+Licence: CC0 1.0 (public domain dedication), under Dryad's policy for all
+deposited data; the README of the deposit states no licence of its own. The
+paper's data-availability statement does not cite the deposit, which is
+identified by its title, its authors and the manuscript number
+APCATB-D-25-08770 in its file names. The six files are byte-for-byte copies
+(UTF-8 with byte-order mark, CRLF line ends); `.gitattributes` at the
+repository root marks them (`10-*.csv` and `11-*.csv` of this folder)
+`-text`, so that git never converts their line ends, and the package tests
+check their SHA-256.
 
 | File | Content |
 |---|---|
@@ -23,7 +28,7 @@ never converts their line ends.
 | `11-1_25C_Kinetic.csv` | Fig. 10a (O2, 25 C): experimental points and the authors' model curve |
 | `11-2_75C_Kinetic.csv` | Fig. 10b (O2, 75 C): the same |
 | `11-3_100C_Kinetic.csv` | Fig. 10c (O2, 100 C): the same |
-| `11-4_Arrhenius.csv` | Fig. 10d (Arrhenius plot, O2): logarithms of three rate constants of the authors' simplified reversible model at 25, 50, 75 and 100 C, and the straight lines drawn through them |
+| `11-4_Arrhenius.csv` | Fig. 10d (Arrhenius plot, O2): logarithms of three rate constants at 25, 50, 75 and 100 C, taken to be constants of the authors' simplified reversible model (see `../NOTES.md`), and the straight lines drawn through them |
 
 In `10-1`, `10-2` and `11-1` to `11-3` all values are normalized
 concentrations (each species over the sum of 3-HP, MA, AAc, OXA and D); the
@@ -38,9 +43,10 @@ Layout and known quirks:
   `model`, hold the **experimental** points (13 rows, 0 to 1440 min); their
   t = 0 row is printed as zeros and stands for the feed (1, 0, 0, 0, 0).
   Columns 7-8 hold the H2O2 trace on a time grid of its own (24 nodes, 0 to
-  1537 min); its t = 0 cell reads 1 and stands for 15. The trace was generated
-  with a different parameter set than the model curve and Table 3 of the
-  paper (see `../NOTES.md`).
+  1537 min); its t = 0 cell reads 1 and stands for 15. The trace is not the
+  H2O2 of the model curve in the same file: it lies up to 0.38 equivalents
+  below the H2O2 of the Table 3 model and is matched only with other
+  constants (see `../NOTES.md`).
 - `11-1`, `11-2`, `11-3`: laid out like `10-2` and labelled correctly; no
   quirks. Columns 1-6 are the experiment (14, 12 and 11 rows; last sampling
   times 1890, 1440 and 1560 min) and columns 7-12 the model curve (19, 20 and
@@ -52,44 +58,20 @@ Layout and known quirks:
   to five decimals (0.00335, 0.00309, 0.00287, 0.00268, i.e. 25, 50, 75 and
   100 C), and the natural logarithms of three rate constants in 1/min,
   labelled `ln k1`, `ln k2` and `ln k3`. Columns 5-6, 7-8 and 9-10 hold the
-  lines (10, 18 and 20 rows). The three constants are `k_1` (3-HP to MA),
-  `k_2` (MA to AAc) and `k_5` (MA to D) of the simplified reversible model:
-  the column labelled `k3` is that model's `k_5`. The 50 C row supplies
-  `k_1`, `k_2` and `k_5` of the `'fig11b'` constant set of that model.
-
-## Derived in this work: accurate solution of the reversible O2 variant (not deposited data)
-
-`o2_reversible_exact_25C.csv`, `o2_reversible_exact_75C.csv` and
-`o2_reversible_exact_100C.csv` are **not** from the deposit and not from the
-paper. They hold the solution of the reversible O2 variant
-(`../pd_c_3hp_oxidation_o2_reversible_antimony.txt`), the model inferred from
-the curves of `11-1` to `11-3`, with the constants as shipped (six
-significant digits), computed accurately and outside NSKinetics: the
-equations of the reconstruction written out on their own basis of mol per
-mol of initial 3-HP and integrated with scipy `solve_ivp` (DOP853, relative
-tolerance 1e-13, absolute tolerance 1e-15). They are a regression reference
-for the Antimony implementation and are not a check against the paper.
-
-Columns: `t_min`; `X_HP3`, `X_MA`, `X_AAc`, `X_OXA`, `X_D` (normalized
-concentrations as plotted in Fig. 10, OPA not in the sum); `OPA_per_C0` and
-`W_per_C0` (OPA and the water formed by reaction, in mol per mol of initial
-3-HP). Ten significant digits. Times: 601 equally spaced values from 0 to the
-end of the deposited curve, merged with the node times of the deposited
-curve and the sampling times of the experiment (631, 630 and 634 rows).
-
-Accuracy: Radau, LSODA and BDF at the same tolerances give the same
-solution to 1e-12, and the ten printed digits round it by at most 5e-10. The
-model as shipped, solved by NSKinetics at the tolerances its loader sets
-(CVODE, relative tolerance 1e-9), is within 2.5e-8 of the files; the package
-tests accept 1e-7.
+  lines (10, 18 and 20 rows). The paper does not say of which model the
+  three constants are. They are taken to be `k_1` (3-HP to MA), `k_2` (MA
+  to AAc) and `k_5` (MA to D) of the simplified reversible model (see
+  `../NOTES.md`), so the column labelled `k3` is read as that model's
+  `k_5`. The 50 C row supplies `k_1`, `k_2` and `k_5` of the `'fig11b'`
+  constant set of that model.
 
 ## Digitized from SI Fig. S12 (not deposited data)
 
 These two curves are not in the deposit. They were read off SI Fig. S12 of
-the article (the embedded 1430 x 549 px raster) by two independent
-digitizations that were then reconciled: axes calibrated on the tick marks by
+the article (the embedded 1430 x 549 px raster), twice and independently,
+and the two readings were merged: axes calibrated on the tick marks by
 least squares, line centres taken per pixel column (per row where the line is
-steep).
+steep). The scripts that read the figures are not shipped.
 
 | File | Content | Reading uncertainty |
 |---|---|---|
@@ -105,10 +87,11 @@ Columns of `figS12b_opa_inset_digitized.csv`: `t_min`, `t_unc`, `OPA`, `HP3`,
 
 The deposit contains the script that draws the heat maps of Fig. 11 but not
 the heat-map matrices. The lines of the two main panels were therefore read
-off the published figure (the embedded 1604 x 596 px raster) by two
-independent digitizations that were then reconciled; they agree within 0.02
-to 0.5 px on the contour lines. Axes were calibrated on the tick marks by
-least squares (residuals below 0.07 px):
+off the published figure (the embedded 1604 x 596 px raster), twice and
+independently, and the two readings, which agree within 0.02 to 0.5 px on
+the contour lines, were merged. The scripts that read the figure are not
+shipped. Axes were calibrated on the tick marks by least squares (residuals
+below 0.07 px):
 
 | Panel | Time axis | Temperature axis |
 |---|---|---|
@@ -116,8 +99,10 @@ least squares (residuals below 0.07 px):
 | b | t = 3.0763 col - 2809.3 min | T = -0.14801 row + 105.227 C |
 
 (0-based pixel centres of the full image.) One pixel is 3.07 min or 0.148 C;
-the comparison of a computed map with these lines uses 3.0723 min/px and
-0.1476 C/px for both panels.
+the comparison of a computed map with these lines uses the scale of panel a,
+3.0723 min/px and 0.1476 C/px, for both panels (`FIG11_MIN_PER_PX` and
+`FIG11_C_PER_PX` in `../heat_maps.py`; a test checks them against the table
+above).
 
 | File | Content |
 |---|---|

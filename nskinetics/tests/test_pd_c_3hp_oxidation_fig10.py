@@ -14,26 +14,29 @@ structure and constants were inferred from the model curves deposited for
 the experiments at 25, 75 and 100 C (Fig. 10a-c). It is checked in three
 ways:
 
-* its rate laws against an independent evaluation of the equations of the
-  reconstruction, written out again in this module on their own basis
-  (mol per mol of initial 3-HP);
+* its rate laws against an independent evaluation of the documented
+  equations (``NOTES.md``), written out again in this module on their own
+  basis (mol per mol of initial 3-HP);
 * against the deposited model curves, at their node times. Those curves are
   MATLAB ``ode23s`` output at default tolerances, so an accurate solution
   is expected to differ from them by up to 1.8e-4 (25 C), 2.5e-3 (75 C) and
-  2.7e-3 (100 C). The limits are those of the reconstruction, 1.5 to 2
-  times that solver error. Negative controls at 25 C, where the solver
-  error is smallest, show what they exclude: water formed by reaction 1
-  only, no reverse of reaction 1, and a 10 % error in any of eight of the
-  ten constants;
-* against the accurately solved curves shipped with the package (derived
-  data: the same constants, solved with scipy outside NSKinetics), to 1e-7.
-  The model at the loader's tolerances is within 2.5e-8 of them, and a 1 %
-  error in any single constant moves it by 1.5e-7 or more.
+  2.7e-3 (100 C). The limits are 1.5 to 2 times that solver error.
+  Negative controls at 25 C, where the solver error is smallest, show what
+  they exclude: water formed by reaction 1 only, no reverse of reaction 1,
+  and a 10 % error in any of eight of the ten constants;
+* against an accurate solution of the same equations with the same
+  constants, computed in this module with scipy (``solve_ivp``, DOP853,
+  relative tolerance 1e-13), independently of the Antimony file and of
+  roadrunner, to 1e-7. The model at the loader's tolerances is within
+  2.5e-8 of it, and a 1 % error in any single constant moves it by 1.5e-7
+  or more. This guards the implementation, not the inference.
 
 The straight lines of the Arrhenius plot (Fig. 10d) are recomputed from the
 deposited points and compared with the deposited lines. The last section
 pins the numbers ``NOTES.md`` reports for the per-temperature fits and for
 the Table 3 O2 model against the experiments at 25, 75 and 100 C.
+``test_pd_c_3hp_oxidation.py`` checks that the selected constant set
+survives ``compile_events``.
 
 The models are small, so this module is not marked slow. It imports pytest
 at top level and is therefore not registered in
@@ -46,6 +49,7 @@ import os
 import numpy as np
 import pytest
 import tellurium as te
+from scipy.integrate import solve_ivp
 
 import nskinetics as nsk
 import nskinetics.models.pd_c_3hp_oxidation as pkg
@@ -91,9 +95,10 @@ NU = np.array([[-1, 0, 0, 0, -1, 0],     # 3-HP
                [1, 0, 0, 1, 0, 0]])      # W, water formed by R1 and R4
 
 
-def reconstruction_rates(p, c):
-    """Rates of the reconstruction in 1/min, for ``c`` in mol per mol of
-    initial 3-HP: (3-HP, OPA, MA, AAc, OXA, D, W)."""
+def documented_rates(p, c):
+    """Rates of the reversible variant as documented in ``NOTES.md``, in
+    1/min, for ``c`` in mol per mol of initial 3-HP: (3-HP, OPA, MA, AAc,
+    OXA, D, W)."""
     hp3, opa, ma, _, _, d, w = c
     k_1, k_1r, k_2, k_2r, k_3, k_4, k_5, k_5r, k_6, k_6r = p
     return np.array([k_1*hp3 - k_1r*opa*w,
@@ -118,11 +123,16 @@ def within_limits(sim, nodes, temperature_C):
                 and (max_per_species <= np.array(species_limits)).all())
 
 
+def label(temperature_C):
+    """Name of the constant set of the experiment at ``temperature_C``."""
+    return '%dC' % temperature_C
+
+
 @pytest.fixture(scope='module', params=TEMPERATURES_C)
 def case(request):
     """(temperature in C, model, deposited tables) of one Fig. 10 panel."""
     temperature_C = request.param
-    return (temperature_C, load_o2_reversible_model(temperature_C),
+    return (temperature_C, load_o2_reversible_model(label(temperature_C)),
             pkg.read_fig10_o2(temperature_C))
 
 
@@ -146,11 +156,12 @@ def test_loader_returns_a_configured_kinetic_model():
 
 
 def test_constant_sets_are_the_documented_ones():
-    assert list(pkg.O2_REVERSIBLE_PARAMETER_SETS) == list(TEMPERATURES_C)
+    assert list(pkg.O2_REVERSIBLE_PARAMETER_SETS) == ['25C', '75C', '100C']
     for temperature_C, values in CONSTANTS.items():
         expected = dict(zip(_NAMES, values))
-        assert pkg.O2_REVERSIBLE_PARAMETER_SETS[temperature_C] == expected
-        km = load_o2_reversible_model(temperature_C)
+        assert pkg.O2_REVERSIBLE_PARAMETER_SETS[label(temperature_C)] == (
+            expected)
+        km = load_o2_reversible_model(label(temperature_C))
         for name, value in expected.items():
             assert km.get_value(name) == value, (temperature_C, name)
 
@@ -164,24 +175,29 @@ def test_antimony_file_holds_the_75C_set():
         assert default.get_value(name) == value, name
 
 
-@pytest.mark.parametrize('temperature_C', [50, 323.15, 30, '75', None])
-def test_loader_has_no_other_parameter_set(temperature_C):
-    with pytest.raises(ValueError, match='no parameter set') as error:
-        load_o2_reversible_model(temperature_C)
+@pytest.mark.parametrize('parameter_set', ['50C', '75', '75 C', 75, 348.15,
+                                           25, None, ['75C']])
+def test_loader_has_no_other_parameter_set(parameter_set):
+    # The sets are named, not addressed by a temperature: a number is
+    # refused whatever its unit.
+    with pytest.raises(ValueError, match='unknown parameter set') as error:
+        load_o2_reversible_model(parameter_set)
+    message = str(error.value)
+    assert "'25C', '75C', '100C'" in message
     # points to the model of the 50 C curve (Fig. 9b)
-    assert 'load_o2_model' in str(error.value)
+    assert 'load_o2_model' in message
 
 
 # --- 2. rate laws and invariants ------------------------------------------------
 
 @pytest.mark.parametrize('temperature_C', TEMPERATURES_C)
-def test_rate_laws_are_those_of_the_reconstruction(temperature_C):
-    km = load_o2_reversible_model(temperature_C)
+def test_rate_laws_are_the_documented_ones(temperature_C):
+    km = load_o2_reversible_model(label(temperature_C))
     # a state with every species present, in mol per mol of initial 3-HP
     c = np.array([0.55, 0.07, 0.20, 0.03, 0.01, 0.14, 0.31])
     for species, value in zip(_STATES, c):
         km.set_value('[%s]' % species, C0*value)
-    rates = reconstruction_rates(CONSTANTS[temperature_C], c)
+    rates = documented_rates(CONSTANTS[temperature_C], c)
     # every term is active in this state (except the zero k_5r at 100 C)
     p = np.array(CONSTANTS[temperature_C])
     assert abs(p[1]*c[1]*c[6]) > 1e-9 and abs(p[3]*c[2]) > 1e-9
@@ -199,7 +215,7 @@ def test_rate_laws_are_those_of_the_reconstruction(temperature_C):
 
 
 def test_reverse_of_reaction_1_needs_the_water_of_reaction():
-    km = load_o2_reversible_model(25)
+    km = load_o2_reversible_model('25C')
     km.set_value('[HP3]', 0.05)
     km.set_value('[OPA]', 0.002)
     forward = CONSTANTS[25][0]*0.05
@@ -277,7 +293,7 @@ def _variant_25C(antimony_edit=None, **changes):
 def test_unedited_variant_is_the_25C_model():
     nodes = pkg.read_fig10_o2(25)['model']
     assert simulate_at_times(_variant_25C(), nodes['time']).equals(
-        simulate_at_times(load_o2_reversible_model(25), nodes['time']))
+        simulate_at_times(load_o2_reversible_model('25C'), nodes['time']))
 
 
 def test_water_from_reaction_1_only_misses_the_25C_curve():
@@ -307,46 +323,91 @@ def test_a_10_percent_error_in_a_constant_misses_the_25C_curve(name, factor):
     assert not within_limits(sim, nodes, 25)
 
 
-# --- 4. against the accurately solved curves (derived reference) -----------------
+# --- 4. against an accurate, independent solution of the same equations ----------
 
-# Limit for the model against the accurately solved curves. The curves are
-# accurate to 5e-10; CVODE at the loader's tolerances is within 2.5e-8.
+# Limit for the model against the accurate solution. CVODE at the loader's
+# tolerances is within 2.5e-8 of it.
 EXACT_LIMIT = 1e-7
 
 
-def test_model_matches_the_accurately_solved_curve(case):
+@pytest.fixture(scope='module')
+def exact():
+    """Accurate solutions of the documented equations, by temperature in C.
+
+    The equations of ``documented_rates`` with the constants of
+    ``CONSTANTS``, on their own basis (mol per mol of initial 3-HP),
+    integrated with scipy (DOP853, relative tolerance 1e-13): columns
+    ``time``, the five plotted fractions, and OPA and W per initial 3-HP.
+    Times: 601 equally spaced values from 0 to the end of the deposited
+    curve, with its node times and the sampling times of the experiment.
+    """
+    solutions = {}
+    for temperature_C in TEMPERATURES_C:
+        tables = pkg.read_fig10_o2(temperature_C)
+        t_end = tables['model']['time'].iloc[-1]
+        times = np.unique(np.concatenate((
+            np.linspace(0., t_end, 601), tables['model']['time'],
+            tables['experiment']['time'])))
+        p = CONSTANTS[temperature_C]
+        solution = solve_ivp(lambda t, c: NU @ documented_rates(p, c),
+                             (0., t_end), [1., 0., 0., 0., 0., 0., 0.],
+                             method='DOP853', t_eval=times, rtol=1e-13,
+                             atol=1e-15)
+        assert solution.success
+        c = solution.y
+        measured = c[[0, 2, 3, 4, 5]]
+        solutions[temperature_C] = (
+            times, (measured/measured.sum(axis=0)).T, c[1], c[6])
+    return solutions
+
+
+def test_accurate_solution_is_converged(exact):
+    # The reference does not depend on its solver: an implicit multistep
+    # method (LSODA) at a relative tolerance of 1e-12 gives the same
+    # fractions to 1e-10 (they agree to 1e-12).
+    for temperature_C in TEMPERATURES_C:
+        times, fractions, _, _ = exact[temperature_C]
+        p = CONSTANTS[temperature_C]
+        solution = solve_ivp(lambda t, c: NU @ documented_rates(p, c),
+                             (0., times[-1]), [1., 0., 0., 0., 0., 0., 0.],
+                             method='LSODA', t_eval=times, rtol=1e-12,
+                             atol=1e-15)
+        measured = solution.y[[0, 2, 3, 4, 5]]
+        assert np.abs((measured/measured.sum(axis=0)).T
+                      - fractions).max() < 1e-10
+
+
+def test_model_matches_the_accurate_solution(case, exact):
     temperature_C, km, _ = case
-    exact = pkg.read_o2_reversible_exact(temperature_C)
-    assert list(exact.columns) == ['time'] + _NORMALIZED + ['OPA_per_C0',
-                                                            'W_per_C0']
-    assert (np.diff(exact['time']) > 0.).all()
-    sim = simulate_at_times(km, exact['time'],
-                            _NORMALIZED + ['[OPA]', '[W]'])
-    assert np.abs(sim[_NORMALIZED].to_numpy()
-                  - exact[_NORMALIZED].to_numpy()).max() <= EXACT_LIMIT
-    assert np.abs(sim['[OPA]']/C0 - exact['OPA_per_C0']).max() <= EXACT_LIMIT
-    assert np.abs(sim['[W]']/C0 - exact['W_per_C0']).max() <= EXACT_LIMIT
+    times, fractions, opa, water = exact[temperature_C]
+    assert len(times) > 600 and (np.diff(times) > 0.).all()
+    sim = simulate_at_times(km, times, _NORMALIZED + ['[OPA]', '[W]'])
+    assert np.abs(sim[_NORMALIZED].to_numpy() - fractions).max() <= EXACT_LIMIT
+    assert np.abs(sim['[OPA]']/C0 - opa).max() <= EXACT_LIMIT
+    assert np.abs(sim['[W]']/C0 - water).max() <= EXACT_LIMIT
+    # NOTES.md: the model is within 2.5e-8 of the accurate solution
+    assert np.abs(sim[_NORMALIZED].to_numpy() - fractions).max() <= 4e-8
 
 
 @pytest.mark.parametrize('error, smallest_effect', [(0.1, 1.57e-6),
                                                     (0.01, 1.57e-7)])
-def test_accurate_curves_detect_an_error_in_any_constant(error,
-                                                         smallest_effect):
+def test_accurate_solution_detects_an_error_in_any_constant(
+        exact, error, smallest_effect):
     # The constant with the smallest effect is k_5r at 25 C (NOTES.md); the
     # effect of a 1 % error in it is still above the limit.
     smallest = np.inf
     for temperature_C in TEMPERATURES_C:
-        exact = pkg.read_o2_reversible_exact(temperature_C)
+        times, fractions, _, _ = exact[temperature_C]
+        km = load_o2_reversible_model(label(temperature_C))
         for name, value in zip(_NAMES, CONSTANTS[temperature_C]):
             if value == 0.:
                 continue
             for factor in (1. - error, 1. + error):
-                km = load_o2_reversible_model(temperature_C)
                 km.set_value(name, factor*value)
-                sim = simulate_at_times(km, exact['time'])
+                sim = simulate_at_times(km, times)
                 smallest = min(smallest, np.abs(
-                    sim[_NORMALIZED].to_numpy()
-                    - exact[_NORMALIZED].to_numpy()).max())
+                    sim[_NORMALIZED].to_numpy() - fractions).max())
+            km.set_value(name, value)
     assert smallest > EXACT_LIMIT
     assert smallest == pytest.approx(smallest_effect, rel=0.2)
 
@@ -358,8 +419,9 @@ def test_unmeasured_opa_pool_and_water_of_reaction():
             (100, 0.2010, 14.6, 1.000)):
         t_end = pkg.read_fig10_o2(temperature_C)['model']['time'].iloc[-1]
         times = np.concatenate((np.arange(0., 60., 0.1), [t_end]))
-        sim = simulate_at_times(load_o2_reversible_model(temperature_C),
-                                times, ['[OPA]', '[W]'])
+        sim = simulate_at_times(
+            load_o2_reversible_model(label(temperature_C)), times,
+            ['[OPA]', '[W]'])
         peak = sim['[OPA]'].idxmax()
         assert sim['[OPA]'][peak]/C0 == pytest.approx(opa_peak, abs=2e-4)
         assert sim['time'][peak] == pytest.approx(t_peak, abs=0.15)
@@ -423,18 +485,18 @@ def test_fig10_reader_returns_experiment_and_model_blocks():
     assert pkg.read_fig10_o2(100)['experiment']['X_MA'].max() == 0.56794
 
 
-@pytest.mark.parametrize('read', [pkg.read_fig10_o2,
-                                  pkg.read_o2_reversible_exact])
-def test_fig10_readers_reject_other_temperatures(read):
-    for temperature_C in (50, 20, '25'):
+def test_fig10_reader_rejects_other_temperatures():
+    # the argument is a temperature in degrees Celsius; 348.15 is 75 C in K
+    for temperature_C in (50, 20, '25', '75C', 348.15):
         with pytest.raises(ValueError, match='no Fig. 10 data'):
-            read(temperature_C)
+            pkg.read_fig10_o2(temperature_C)
 
 
 # --- 6. Arrhenius plot (Fig. 10d) ------------------------------------------------
 
-# Rate constants of the simplified reversible model in 1/min (NOTES.md): the
-# shortest decimals whose logarithms are the deposited points.
+# The plotted rate constants in 1/min, taken to be constants of the
+# simplified reversible model (NOTES.md): the shortest decimals whose
+# logarithms are the deposited points.
 FIG10D_K = {'k_1': (7.75e-5, 2.14e-3, 2.43685e-3, 1.00763e-2),
             'k_2': (6.64e-4, 5.2e-5, 4.44096e-4, 1.59645e-3),
             'k_5': (1.676e-3, 1.0625e-3, 5.4797e-3, 1.41038e-2)}
@@ -541,12 +603,13 @@ def test_no_subset_of_the_points_gives_the_activation_energies_of_the_text():
 
 # --- 7. models against the experiments at 25, 75 and 100 C (NOTES.md) -----------
 
-def test_per_temperature_fits_against_the_experiments():
+def test_per_temperature_sets_against_the_experiments():
     for temperature_C, r2, rms in ((25, 0.9996, 0.0079), (75, 0.9899, 0.0293),
                                    (100, 0.9926, 0.0257)):
         experiment = pkg.read_fig10_o2(temperature_C)['experiment']
-        sim = simulate_at_times(load_o2_reversible_model(temperature_C),
-                                experiment['time'])
+        sim = simulate_at_times(
+            load_o2_reversible_model(label(temperature_C)),
+            experiment['time'])
         assert pooled_r2(experiment, sim) == pytest.approx(r2, abs=2e-4)
         assert rms_difference(experiment, sim) == pytest.approx(rms, abs=2e-4)
 
@@ -561,31 +624,53 @@ def test_table3_o2_model_against_the_experiments():
         assert rms_difference(experiment, sim) == pytest.approx(rms, abs=2e-3)
 
 
+def time_of_half_conversion(times, X_HP3):
+    """Time at which ``X_HP3`` falls through 0.5, interpolated linearly
+    between the two grid times around the crossing (``inf`` if it never
+    does)."""
+    below = np.flatnonzero(X_HP3 < 0.5)
+    if len(below) == 0:
+        return np.inf
+    i = below[0]
+    return times[i - 1] + (times[i] - times[i - 1])*(
+        X_HP3[i - 1] - 0.5)/(X_HP3[i - 1] - X_HP3[i])
+
+
+def maximum(times, values):
+    """(value, time) of the maximum of a curve, from the parabola through
+    the largest grid value and its two neighbours."""
+    i = int(np.argmax(values))
+    a, b, c = np.polyfit(times[i - 1:i + 2] - times[i], values[i - 1:i + 2],
+                         2)
+    return c - b*b/(4.*a), times[i] - b/(2.*a)
+
+
 def test_table3_o2_model_is_too_fast_at_25_75_and_100C():
     # Time at which half of the 3-HP is converted and maximum of the MA
-    # fraction: Table 3 O2 model against the per-temperature fit.
+    # fraction: Table 3 O2 model against the per-temperature constant set.
+    # Both are interpolated on a 0.1 min grid, so the documented values
+    # (NOTES.md) are pinned to their last digit.
     half, peak = {}, {}
+    times = np.arange(0., 1890.01, 0.1)
     for temperature_C in TEMPERATURES_C:
-        times = np.arange(0., 1890.01, 0.5)
-        for label, km in (
+        for name, km in (
                 ('table3', load_o2_model(T=temperature_C + 273.15)),
-                ('fit', load_o2_reversible_model(temperature_C))):
+                ('set', load_o2_reversible_model(label(temperature_C)))):
             sim = simulate_at_times(km, times, ['X_HP3', 'X_MA'])
-            below = sim['X_HP3'] < 0.5
-            half[label, temperature_C] = (sim['time'][below.idxmax()]
-                                          if below.any() else np.inf)
-            peak[label, temperature_C] = (sim['X_MA'].max(),
-                                          sim['time'][sim['X_MA'].idxmax()])
+            half[name, temperature_C] = time_of_half_conversion(
+                times, sim['X_HP3'].to_numpy())
+            peak[name, temperature_C] = maximum(times, sim['X_MA'].to_numpy())
     assert [half['table3', T] for T in TEMPERATURES_C] == pytest.approx(
-        [458.5, 16.5, 4.5], abs=0.5)
-    assert half['fit', 25] == np.inf
-    assert [half['fit', T] for T in (75, 100)] == pytest.approx(
-        [75.5, 22.0], abs=0.5)
-    for T, table3, fit in ((25, (0.522, 1479.), (0.028, 374.)),
-                           (75, (0.584, 51.5), (0.403, 134.5)),
-                           (100, (0.587, 13.), (0.549, 42.))):
-        assert peak['table3', T] == pytest.approx(table3, abs=2e-3, rel=5e-3)
-        assert peak['fit', T] == pytest.approx(fit, abs=2e-3, rel=5e-3)
+        [458.1, 16.04, 4.16], abs=0.02)
+    assert half['set', 25] == np.inf
+    assert [half['set', T] for T in (75, 100)] == pytest.approx(
+        [75.0, 22.0], abs=0.02)
+    for T, table3, per_set in ((25, (0.5218, 1479.1), (0.0278, 374.3)),
+                               (75, (0.5842, 51.7), (0.4034, 134.6)),
+                               (100, (0.5866, 12.8), (0.5488, 42.2))):
+        for name, (value, time) in (('table3', table3), ('set', per_set)):
+            assert peak[name, T][0] == pytest.approx(value, abs=1e-4)
+            assert peak[name, T][1] == pytest.approx(time, abs=0.06)
     # 25 C, last sample (1890 min): 0.876 of the 3-HP is left; Table 3: 0.051
     experiment = pkg.read_fig10_o2(25)['experiment']
     km = load_o2_model(T=298.15)

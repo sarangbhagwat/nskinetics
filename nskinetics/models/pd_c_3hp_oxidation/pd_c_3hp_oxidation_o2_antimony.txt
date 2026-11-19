@@ -2,14 +2,16 @@
 // over 10 % Pd/C with O2 as the oxidant: six-reaction kinetic model of
 //   Kim, Chavarrio, Install, Huber, Appl. Catal. B: Environ. Energy 386
 //   (2026) 126403, https://doi.org/10.1016/j.apcatb.2026.126403
-// (Table 3, O2 column; Fig. 9b; SI Fig. S12b), with an Arrhenius temperature
-// dependence added around the published 50 C constants.
+// (Table 3, O2 column; Fig. 9b; SI Fig. S12b; rate expressions of SI
+// Fig. S2), with an Arrhenius temperature dependence added around the
+// published 50 C constants.
 //
 // At the default T = T_ref = 323.15 K this file IS the published 50 C model.
 // Away from 50 C it is an NSKinetics extrapolation that reproduces neither
 // the published heat maps (Fig. 11) nor the experiments at 25, 75 and 100 C
 // (Fig. 10); see NOTES.md.
-// Units: time in min, liquid concentrations in M (mol/L), temperature in K.
+// Units: time in min, liquid concentrations in M (mol/L), temperature in K,
+// catalyst mass in g per batch of the paper (not per litre).
 // See NOTES.md next to this file for what is printed in the paper, what is
 // inferred from the authors' data deposit, and what is an NSKinetics addition.
 model *kim2026_o2()
@@ -24,8 +26,9 @@ model *kim2026_o2()
 
   // Assignment Rules:
 
-  // Arrhenius temperature dependence, paper Eq. 6 (the second equation that
-  // carries that number, in Section 3.4):
+  // Arrhenius temperature dependence. The paper numbers two equations (6):
+  // the initial-rate ratio in Section 3.4 and, at the end of that section,
+  // the Arrhenius relation used here,
   //   k(T) = k_ref*exp(-(Ea/R)*(1/T - 1/T_ref)),  T_ref = 50 C.
   // At T = T_ref every factor is exactly 1.
   k_1 := k_1_ref*exp(-(Ea_1/R_gas)*(1/T - 1/T_ref));
@@ -49,22 +52,38 @@ model *kim2026_o2()
   x_OPA := x_per_M*OPA;
 
   // Rate Rules:
-  // Dimensionless O2 activity of the authors' run, 1 at t = 0. It is depleted
-  // by one unit of liquid mole fraction per unit of mole fraction reacted in
-  // R1, R2 and R4 (coefficient 1 for each, as in the authors' stoichiometric
-  // matrix; SI Table S4 writes 0.5, 0.5 and 1.5 O2). It falls only to 0.9995
-  // over 1848 min, so O2 is effectively constant; the state is kept because
-  // the authors' run used it. (R_i are amounts per time, hence the /env.)
+  // Dimensionless O2 state, 1 at t = 0. It is depleted by one unit of liquid
+  // mole fraction per unit of mole fraction reacted in R1, R2 and R4
+  // (coefficient 1 for each, as in the O2 row of the stoichiometric matrix
+  // of the authors' posted script; SI Table S4 writes 0.5, 0.5 and 1.5 O2).
+  // The posted script integrates this state but fixes yO2 = 1.0 inside its
+  // rate function; that the rates use the depleting state is inferred from
+  // the deposited Fig. 9b nodes (see NOTES.md). It falls only to 0.9995
+  // over 1848 min and changes the plotted values by at most 7e-5. (R_i are
+  // amounts per time, hence the /env.)
   yO2' = -x_per_M*(R1 + R2 + R4)/env;
 
   // Reactions:
-  // All six steps are first order in the liquid reactant and irreversible.
+  // The rate expressions are those of SI Fig. S2, r_j = k_jf*prod(a_i^n_ij),
+  // taken with every order n = 1 and unit activity coefficients (the paper
+  // assumes ideal phases, Section 2.6); the liquid activity a_i = x_i is the
+  // mole fraction on the authors' scale, x_per_M*conc. All six steps are
+  // irreversible (Fig. S2: Keq >> 1; Section 3.4).
   // Rate = k (1/(g_cat min)) * m_cat (g) * [oxidant factor] * conc * env.
   // R1, R2 and R4 carry the oxidant factor x_O2_ref*yO2; R3, R5 and R6 do not.
+  // THIS IS WHERE THE MODEL DEPARTS FROM FIG. S2: there the activity of a
+  // gas is a = phi*y*P/f0, which is 3/1.01325 = 2.96 for 3 bar of O2. With
+  // that activity the Table 3 constants make the model about 580 times too
+  // fast (it misses the deposited curve by up to 0.97); the deposited curve
+  // is reproduced with the constant x_O2_ref = 0.005085 in its place.
   // SI Table S4 lists fitted reaction orders (0.99, 0.95, 0.78, 0.87, 0.98,
-  // 1.01) and equilibrium constants for these steps. They are NOT used here:
-  // the published model curve is reproduced only by first-order irreversible
-  // laws (with the Table S4 orders the curves are off by up to 0.17).
+  // 1.01) and equilibrium constants for these steps. They are NOT used here.
+  // The orders are taken as exactly 1 because the deposited model curve is
+  // reproduced that way (to 0.002) and not with the Table S4 orders:
+  // applied to the liquid reactant, they move the curves off the deposited
+  // one by 0.010 to 0.17, depending on the basis on which x^n is taken
+  // (0.010 for fractions of the feed, 0.17 for the authors' mole
+  // fractions); see NOTES.md.
   R1: HP3 => OPA; k_1*m_cat*x_O2_ref*yO2*HP3*env;  // Rxn 1 (Fig. 9b): 3-HP + 0.5 O2 -> OPA + H2O
   R2: OPA => MA; k_2*m_cat*x_O2_ref*yO2*OPA*env;   // Rxn 2: OPA + 0.5 O2 -> MA
   R3: MA => AAc; k_3*m_cat*MA*env;                 // Rxn 3: MA -> AAc + CO2
@@ -84,8 +103,10 @@ model *kim2026_o2()
   D = 0;
 
   // Compartment initializations:
-  // Nominal unit liquid volume. The model is written in liquid composition
-  // only, so the volume cancels from every concentration.
+  // Nominal volume of 1, NOT the reactor volume. The model is written in
+  // liquid composition only: no rate depends on the volume and it cancels
+  // from every concentration. m_cat below is the catalyst mass of the
+  // paper's batch; it is NOT a mass per litre of this compartment.
   env = 1;
 
   // Variable initializations:
@@ -94,7 +115,7 @@ model *kim2026_o2()
   C0 = 0.06;
   C0 has mol_per_l;
 
-  // O2 activity state, 1 at t = 0 (3 bar O2; authors' script initial value).
+  // O2 state, 1 at t = 0 (3 bar O2; initial value in the authors' script).
   yO2 = 1;
   yO2 has dimensionless;
 
@@ -107,8 +128,15 @@ model *kim2026_o2()
   R_gas = 8.314;
   R_gas has j_per_mol_per_k;
 
-  // Catalyst charge: 0.2 g of 10 % Pd/C (Fig. 9 caption). Table 3 constants
-  // are per gram of catalyst, so they are multiplied by m_cat in the rates.
+  // Catalyst charge of the paper's batch: 0.2 g of 10 % Pd/C (Fig. 9
+  // caption). Table 3 constants are per gram of catalyst in that batch, so
+  // they are multiplied by m_cat in the rates. m_cat is a mass per batch,
+  // not per litre: the rates scale with m_cat/0.2, the catalyst loading
+  // relative to the paper's, whatever the liquid volume. The paper's batch
+  // is 0.2 g in 10 mL of liquid (20 g/L; Section 2.3). For time-resolved
+  // runs the same section says that substrate, NaOH and water were tripled
+  // and does not say whether the catalyst was, so the loading of the
+  // kinetic runs is 20 g/L or 6.7 g/L (see NOTES.md).
   m_cat = 0.2;
   m_cat has gram;
 
@@ -119,12 +147,12 @@ model *kim2026_o2()
   x_per_M = 0.00565;
   x_per_M has l_per_mol;
 
-  // Oxidant reference factor on R1, R2 and R4. INFERRED, not stated in the
-  // paper, the SI or the deposit README: 15*0.000339 = 0.005085, i.e. the
-  // H2O2 mole fraction of the 15-equivalent H2O2 run. It is the value that
-  // makes the printed Table 3 constants reproduce the deposited Fig. 9b model
-  // curve (the rounding of the three printed constants allows 0.00508 to
-  // 0.00509; a rounded 0.0051 is excluded).
+  // Oxidant reference factor on R1, R2 and R4, in place of the O2 activity
+  // y*P/f0 of SI Fig. S2. INFERRED, not stated in the paper, the SI or the
+  // deposit README: 15*0.000339 = 0.005085, which equals the H2O2 mole
+  // fraction of the 15-equivalent H2O2 run on the authors' scale. With it
+  // the printed Table 3 constants reproduce the deposited Fig. 9b model
+  // curve (see NOTES.md for how closely the value is determined).
   x_O2_ref = 0.005085;
   x_O2_ref has dimensionless;
 
@@ -157,7 +185,7 @@ model *kim2026_o2()
   // Ea_3: "MA conversion to AAc", 91.6 kJ/mol in the paper text.
   Ea_3 = 91594.6;
   Ea_3 has j_per_mol;
-  // Ea_4: MA -> OXA. Placeholder used in the authors' heat-map script
+  // Ea_4: MA -> OXA. The round value of the authors' heat-map script
   //   (10 kJ/mol); not reported in the paper.
   Ea_4 = 10000;
   Ea_4 has j_per_mol;
@@ -214,10 +242,10 @@ model *kim2026_o2()
   AAc is "Acetic acid (AAc)";
   OXA is "Oxalic acid (OXA)";
   D is "Other by-products (D)";
-  yO2 is "O2 activity (dimensionless)";
+  yO2 is "O2 fraction (dimensionless, 1 at t = 0)";
   T is "Temperature";
   T_ref is "Reference temperature";
-  m_cat is "Catalyst mass";
+  m_cat is "Catalyst mass of the paper's batch";
   C0 is "Initial 3-HP concentration";
   x_O2_ref is "Oxidant reference factor (inferred)";
   x_per_M is "Mole fraction per molar concentration";
@@ -238,25 +266,29 @@ model *kim2026_o2()
   model notes ```
 O2 model of the article:
 **Selective oxidation of 3-hydroxypropionic acid to malonic acid over Pd/C: Mechanistic and kinetic study.**
-Kim S.Y., Chavarrio J., Install J., Huber G.W. *Appl. Catal. B: Environ. Energy* 386 (2026) 126403.
+Kim S.Y., Chavarrio J.E., Install J., Huber G.W. *Appl. Catal. B: Environ. Energy* 386 (2026) 126403.
 DOI: [10.1016/j.apcatb.2026.126403](https://doi.org/10.1016/j.apcatb.2026.126403)
 
 Conditions: 60 mM 3-HP, 0.2 g 10 % Pd/C, NaOH/3-HP = 1:1, 3 bar O2, 50 C (Fig. 9b).
-Rate constants: Table 3 (O2 column) as printed. Six first-order irreversible steps;
+The catalyst mass m_cat is the mass of the paper's batch (0.2 g), not a mass per litre.
+Rate constants: Table 3 (O2 column) as printed. Rate expressions: SI Fig. S2 with every
+order equal to 1 and unit activity coefficients. Six first-order irreversible steps;
 the reaction orders and equilibrium constants of SI Table S4 are not used.
 
 Inferred from the authors' data deposit (Dryad, DOI 10.5061/dryad.jsxksn0q4), not
 stated in the paper: the oxidant reference factor x_O2_ref = 15*0.000339 on
-reactions 1, 2 and 4, and the use of the depleting O2 activity state yO2.
+reactions 1, 2 and 4, which takes the place of the O2 activity y*P/f0 of SI Fig. S2,
+and the use of the depleting O2 state yO2.
 
-NSKinetics addition: the Arrhenius temperature dependence k(T) of the six steps
-(paper Eq. 6 form, T_ref = 50 C), with activation energies from the paper text and
-from the authors' heat-map script. The paper's own temperature results were not
-computed with this file: the heat maps (Fig. 11) come from a simplified reversible
-five-reaction model (pd_c_3hp_oxidation_o2_simplified_reversible_antimony.txt), whose
-rate constants are also the ones plotted in the Arrhenius plot (Fig. 10d), and the
-25/75/100 C curves (Fig. 10a-c) from separate fits of a reversible six-reaction
-variant at each temperature (pd_c_3hp_oxidation_o2_reversible_antimony.txt). Away
+NSKinetics addition: the Arrhenius temperature dependence k(T) of the six steps (the
+Arrhenius relation of the paper, the second of its two equations numbered 6;
+T_ref = 50 C), with activation energies from the paper text and from the authors'
+heat-map script. The paper's own temperature results are not reproduced by this file:
+the heat maps (Fig. 11) are those of a simplified reversible five-reaction model
+(pd_c_3hp_oxidation_o2_simplified_reversible_antimony.txt), whose rate constants the
+points of the Arrhenius plot (Fig. 10d) are taken to be, and the 25/75/100 C curves
+(Fig. 10a-c) are reproduced by a reversible six-reaction variant with a separate
+constant set at each temperature (pd_c_3hp_oxidation_o2_reversible_antimony.txt). Away
 from 50 C this file is an extrapolation that the paper does not show; it does not
 reproduce the 25, 75 and 100 C experiments (see NOTES.md).
 ```

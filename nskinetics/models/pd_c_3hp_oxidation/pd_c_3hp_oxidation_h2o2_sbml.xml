@@ -4,10 +4,11 @@
   <model metaid="kim2026_h2o2" id="kim2026_h2o2" name="Kim2026_PdC_3HP_Oxidation_H2O2" substanceUnits="mole" timeUnits="time_unit" volumeUnits="litre">
     <notes>
       <body xmlns="http://www.w3.org/1999/xhtml">
-        <p>H2O2 model of the article: <strong>Selective oxidation of 3-hydroxypropionic acid to malonic acid over Pd/C: Mechanistic and kinetic study.</strong> Kim S.Y., Chavarrio J., Install J., Huber G.W. <i>Appl. Catal. B: Environ. Energy</i> 386 (2026) 126403. DOI: <a href="https://doi.org/10.1016/j.apcatb.2026.126403">10.1016/j.apcatb.2026.126403</a></p>
-        <p>Conditions: 60 mM 3-HP, 0.2 g 10 % Pd/C, NaOH/3-HP = 1:1, 15 equivalents of H2O2, 3 bar Ar, 50 C (Fig. 9a). Rate constants: Table 3 (H2O2 column) as printed. Seven first-order irreversible steps; the reaction orders and equilibrium constants of SI Table S4 are not used. </p>
-        <p>Reconstructed from the authors&apos; data deposit (Dryad, DOI 10.5061/dryad.jsxksn0q4), which holds the model curve but only the O2 version of the script: H2O2 is a liquid state that enters reactions 1, 2 and 4 through its mole fraction on the authors&apos; scale (0.000339 per 60 mM) and is consumed 1:1 by each of them. </p>
-        <p>The deposited H2O2 trace of SI Fig. S12a comes from a different parameter set than Table 3 and lies up to 0.38 equivalents below this model (see NOTES.md). </p>
+        <p>H2O2 model of the article: <strong>Selective oxidation of 3-hydroxypropionic acid to malonic acid over Pd/C: Mechanistic and kinetic study.</strong> Kim S.Y., Chavarrio J.E., Install J., Huber G.W. <i>Appl. Catal. B: Environ. Energy</i> 386 (2026) 126403. DOI: <a href="https://doi.org/10.1016/j.apcatb.2026.126403">10.1016/j.apcatb.2026.126403</a></p>
+        <p>Conditions: 60 mM 3-HP, 0.2 g 10 % Pd/C, NaOH/3-HP = 1:1, 15 equivalents of H2O2, 3 bar Ar, 50 C (Fig. 9a). The catalyst mass m_cat is the mass of the paper&apos;s batch (0.2 g), not a mass per litre. Rate constants: Table 3 (H2O2 column) as printed. Rate expressions: SI Fig. S2 with every order equal to 1 and unit activity coefficients. Seven first-order irreversible steps; the reaction orders and equilibrium constants of SI Table S4 are not used. </p>
+        <p>Inferred from the authors&apos; data deposit (Dryad, DOI 10.5061/dryad.jsxksn0q4), which holds the model curve but only the O2 version of the script: H2O2 is a liquid state that enters reactions 1, 2 and 4 through its mole fraction on the authors&apos; scale (0.000339 per 60 mM) and is consumed 1:1 by each of them. </p>
+        <p>The H2O2 curve of SI Fig. S12a (published inset and deposited trace) is not reproduced by the Table 3 constants: it lies up to 0.38 equivalents below this model (see NOTES.md). </p>
+        <p>Only this one experiment was fitted; other values of m_cat, C0 or eq_H2O2_0 are extrapolations that were never compared with data. </p>
       </body>
     </notes>
     <listOfUnitDefinitions>
@@ -63,7 +64,7 @@
       <parameter id="x_OPA" name="OPA mole fraction" units="dimensionless" constant="false"/>
       <parameter id="x_per_M" name="Mole fraction per molar concentration" value="0.00565" units="l_per_mol" constant="true"/>
       <parameter id="k_1" value="5.31" units="per_g_per_min" constant="true"/>
-      <parameter id="m_cat" name="Catalyst mass" value="0.2" units="gram" constant="true"/>
+      <parameter id="m_cat" name="Catalyst mass of the paper&apos;s batch" value="0.2" units="gram" constant="true"/>
       <parameter id="k_2" value="31.1" units="per_g_per_min" constant="true"/>
       <parameter id="k_3" value="0.000732" units="per_g_per_min" constant="true"/>
       <parameter id="k_4" value="1.15" units="per_g_per_min" constant="true"/>

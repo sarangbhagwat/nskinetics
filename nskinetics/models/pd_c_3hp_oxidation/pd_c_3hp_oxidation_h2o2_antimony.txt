@@ -2,9 +2,10 @@
 // over 10 % Pd/C with H2O2 as the oxidant: seven-reaction kinetic model of
 //   Kim, Chavarrio, Install, Huber, Appl. Catal. B: Environ. Energy 386
 //   (2026) 126403, https://doi.org/10.1016/j.apcatb.2026.126403
-// (Table 3, H2O2 column; Fig. 9a; SI Fig. S12a) at 50 C.
+// (Table 3, H2O2 column; Fig. 9a; rate expressions of SI Fig. S2) at 50 C.
 //
-// Units: time in min, liquid concentrations in M (mol/L).
+// Units: time in min, liquid concentrations in M (mol/L), catalyst mass in g
+// per batch of the paper (not per litre).
 // See NOTES.md next to this file for what is printed in the paper and what is
 // inferred from the authors' data deposit.
 model *kim2026_h2o2()
@@ -37,17 +38,28 @@ model *kim2026_h2o2()
   x_OPA := x_per_M*OPA;
 
   // Reactions:
-  // All seven steps are first order in each liquid reactant and irreversible.
+  // The rate expressions are those of SI Fig. S2, r_j = k_jf*prod(a_i^n_ij)
+  // with the liquid activity a_i = gamma_i*x_i, taken with every order
+  // n = 1, gamma = 1 (the paper assumes ideal phases, Section 2.6) and x_i
+  // the mole fraction on the authors' scale, x_per_M*conc. All seven steps
+  // are irreversible (Fig. S2: Keq >> 1; Section 3.4).
   // R1, R2 and R4 are first order in H2O2 as well, through its liquid mole
   // fraction x_per_M*H2O2, and each consumes one H2O2:
   //   rate = k (1/(g_cat min)) * m_cat (g) * (x_per_M*H2O2) * conc * env.
   // R3, R5 and R6: rate = k (1/(g_cat min)) * m_cat (g) * conc * env.
   // R7 (H2O2 decomposition) is not normalized by catalyst mass (Table 3,
   // footnote b): rate = k_7 (1/min) * H2O2 * env.
+  // That H2O2 enters R1, R2 and R4 in this way is inferred from the
+  // deposited model curve; the authors posted only the O2 version of their
+  // script.
   // SI Table S4 lists fitted reaction orders (0.99, 0.99, 1.49, 1.14, 1.02,
   // 1.01; 1 for R7) and equilibrium constants for these steps. They are NOT
-  // used here: the published model curve is reproduced only by first-order
-  // irreversible laws (with the Table S4 orders the curves are off by 0.04).
+  // used here. The orders are taken as exactly 1 because the deposited
+  // model curve is reproduced that way (to 0.001) and not with the
+  // Table S4 orders: applied to the liquid reactant, they move the curves
+  // off the deposited one by 0.037 to 0.16, depending on the basis on which
+  // x^n is taken (0.037 for fractions of the feed, 0.14 for the authors'
+  // mole fractions, 0.16 for mM); see NOTES.md.
   R1: HP3 + H2O2 => OPA; k_1*m_cat*x_per_M*H2O2*HP3*env;  // Rxn 1 (Fig. 9a): 3-HP + H2O2 -> OPA + 2 H2O
   R2: OPA + H2O2 => MA; k_2*m_cat*x_per_M*H2O2*OPA*env;   // Rxn 2: OPA + H2O2 -> MA + H2O
   R3: MA => AAc; k_3*m_cat*MA*env;                        // Rxn 3: MA -> AAc + CO2
@@ -70,8 +82,10 @@ model *kim2026_h2o2()
   H2O2 = eq_H2O2_0*C0;
 
   // Compartment initializations:
-  // Nominal unit liquid volume. The model is written in liquid composition
-  // only, so the volume cancels from every concentration.
+  // Nominal volume of 1, NOT the reactor volume. The model is written in
+  // liquid composition only: no rate depends on the volume and it cancels
+  // from every concentration. m_cat below is the catalyst mass of the
+  // paper's batch; it is NOT a mass per litre of this compartment.
   env = 1;
 
   // Variable initializations:
@@ -85,8 +99,15 @@ model *kim2026_h2o2()
   eq_H2O2_0 = 15;
   eq_H2O2_0 has dimensionless;
 
-  // Catalyst charge: 0.2 g of 10 % Pd/C (Fig. 9 caption). Table 3 constants
-  // k_1 to k_6 are per gram of catalyst, so they are multiplied by m_cat.
+  // Catalyst charge of the paper's batch: 0.2 g of 10 % Pd/C (Fig. 9
+  // caption). Table 3 constants k_1 to k_6 are per gram of catalyst in that
+  // batch, so they are multiplied by m_cat. m_cat is a mass per batch, not
+  // per litre: the rates scale with m_cat/0.2, the catalyst loading
+  // relative to the paper's, whatever the liquid volume. The paper's batch
+  // is 0.2 g in 10 mL of liquid (20 g/L; Section 2.3). For time-resolved
+  // runs the same section says that substrate, NaOH and water were tripled
+  // and does not say whether the catalyst was, so the loading of the
+  // kinetic runs is 20 g/L or 6.7 g/L (see NOTES.md).
   m_cat = 0.2;
   m_cat has gram;
 
@@ -154,7 +175,7 @@ model *kim2026_h2o2()
   OXA is "Oxalic acid (OXA)";
   D is "Other by-products (D)";
   H2O2 is "Hydrogen peroxide";
-  m_cat is "Catalyst mass";
+  m_cat is "Catalyst mass of the paper's batch";
   C0 is "Initial 3-HP concentration";
   eq_H2O2_0 is "Initial H2O2 equivalents";
   x_per_M is "Mole fraction per molar concentration";
@@ -177,21 +198,26 @@ model *kim2026_h2o2()
   model notes ```
 H2O2 model of the article:
 **Selective oxidation of 3-hydroxypropionic acid to malonic acid over Pd/C: Mechanistic and kinetic study.**
-Kim S.Y., Chavarrio J., Install J., Huber G.W. *Appl. Catal. B: Environ. Energy* 386 (2026) 126403.
+Kim S.Y., Chavarrio J.E., Install J., Huber G.W. *Appl. Catal. B: Environ. Energy* 386 (2026) 126403.
 DOI: [10.1016/j.apcatb.2026.126403](https://doi.org/10.1016/j.apcatb.2026.126403)
 
 Conditions: 60 mM 3-HP, 0.2 g 10 % Pd/C, NaOH/3-HP = 1:1, 15 equivalents of H2O2,
 3 bar Ar, 50 C (Fig. 9a).
-Rate constants: Table 3 (H2O2 column) as printed. Seven first-order irreversible
+The catalyst mass m_cat is the mass of the paper's batch (0.2 g), not a mass per litre.
+Rate constants: Table 3 (H2O2 column) as printed. Rate expressions: SI Fig. S2 with
+every order equal to 1 and unit activity coefficients. Seven first-order irreversible
 steps; the reaction orders and equilibrium constants of SI Table S4 are not used.
 
-Reconstructed from the authors' data deposit (Dryad, DOI 10.5061/dryad.jsxksn0q4),
-which holds the model curve but only the O2 version of the script: H2O2 is a
-liquid state that enters reactions 1, 2 and 4 through its mole fraction on the
-authors' scale (0.000339 per 60 mM) and is consumed 1:1 by each of them.
+Inferred from the authors' data deposit (Dryad, DOI 10.5061/dryad.jsxksn0q4), which
+holds the model curve but only the O2 version of the script: H2O2 is a liquid state
+that enters reactions 1, 2 and 4 through its mole fraction on the authors' scale
+(0.000339 per 60 mM) and is consumed 1:1 by each of them.
 
-The deposited H2O2 trace of SI Fig. S12a comes from a different parameter set than
-Table 3 and lies up to 0.38 equivalents below this model (see NOTES.md).
+The H2O2 curve of SI Fig. S12a (published inset and deposited trace) is not reproduced
+by the Table 3 constants: it lies up to 0.38 equivalents below this model (see NOTES.md).
+
+Only this one experiment was fitted; other values of m_cat, C0 or eq_H2O2_0 are
+extrapolations that were never compared with data.
 ```
 end
 

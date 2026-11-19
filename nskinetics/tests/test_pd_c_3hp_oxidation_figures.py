@@ -17,13 +17,16 @@ The models are small, so the module stays in the default, non-slow run.
 deliberately not registered in ``nskinetics/tests/__init__.py``.
 """
 import os
+import struct
 
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 import pytest
+from matplotlib.colors import to_hex
 from matplotlib.contour import ContourSet
+from matplotlib.text import Text
 
 import nskinetics.models.pd_c_3hp_oxidation as pkg
 from nskinetics.models.pd_c_3hp_oxidation import figures
@@ -31,6 +34,31 @@ from nskinetics.models.pd_c_3hp_oxidation import figures
 
 def _lines_with_data(ax):
     return [line for line in ax.get_lines() if len(line.get_xdata()) > 1]
+
+
+def _species_key(ax):
+    """The two-column species key of a profile panel."""
+    (key,) = [artist for artist in ax.artists
+              if artist.get_gid() == 'species_key']
+    return key
+
+
+def _key_labels(key):
+    """Text artists of a species key: the 'mod' column, then the 'exp'
+    column, five rows each."""
+    labels = [text for text in key.findobj(Text) if text.get_text()]
+    assert [text.get_text() for text in labels] == (
+        ['%s$^{mod}$' % name for name in ('3HP', 'MA', 'AAc', 'OXA',
+                                          'Others')]
+        + ['%s$^{exp}$' % name for name in ('3HP', 'MA', 'AAc', 'OXA',
+                                            'Others')])
+    return labels[:5], labels[5:]
+
+
+def _png_size(path):
+    with open(path, 'rb') as f:
+        header = f.read(24)
+    return struct.unpack('>II', header[16:24])
 
 
 def test_fig9_draws_model_experiment_and_deposited_curve():
@@ -48,11 +76,64 @@ def test_fig9_draws_model_experiment_and_deposited_curve():
                      if len(line.get_xdata()) == len(deposited)]
             assert len(drawn) == 5
             assert np.array_equal(drawn[0].get_ydata(), deposited['X_HP3'])
-        # one line of text per reaction (label + equation)
-        assert len(reactions_a.texts) == 2*7
-        assert len(reactions_b.texts) == 2*6
+            # inward ticks with minor ticks half-way, as published
+            assert list(panel.get_xticks()) == [0, 500, 1000]
+            assert 250. in panel.xaxis.get_minorticklocs()
+            assert panel.xaxis.get_tick_params()['direction'] == 'in'
+            assert panel.yaxis.get_tick_params(which='minor')[
+                'direction'] == 'in'
+        # five pieces of text per reaction: "Rxn n" (navy, as published),
+        # reactants, arrow, k over the arrow (red), products
+        for reactions, n in ((reactions_a, 7), (reactions_b, 6)):
+            texts = reactions.texts
+            assert len(texts) == 5*n
+            assert [text.get_text() for text in texts[::5]] == [
+                'Rxn %d' % i for i in range(1, n + 1)]
+            assert [text.get_text() for text in texts[3::5]] == [
+                'k$_%d$' % i for i in range(1, n + 1)]
+            assert {to_hex(text.get_color()) for text in texts[::5]} == {
+                '#3653a0'}
+            assert {to_hex(text.get_color()) for text in texts[3::5]} == {
+                '#ee2c32'}
+        assert reactions_a.texts[1].get_text() == '3-HP + H$_2$O$_2$'
+        assert reactions_b.texts[4].get_text() == 'OPA + H$_2$O'
     finally:
         plt.close(fig)
+
+
+@pytest.mark.parametrize('font', ['DejaVu Sans', None])
+def test_species_key_rows_are_aligned_and_inside_the_panel(font,
+                                                           monkeypatch):
+    # With the last fallback font (DejaVu Sans, the widest) as well as with
+    # the default font list: the rows of the two key columns share their
+    # baselines, and the key stays inside the axes frame.
+    if font is not None:
+        monkeypatch.setitem(figures._RC_PARAMS, 'font.sans-serif', [font])
+    for plot in (figures.plot_fig9, figures.plot_fig10):
+        fig = plot()
+        try:
+            fig.canvas.draw()
+            renderer = fig.canvas.get_renderer()
+            panels = [ax for ax in fig.axes
+                      if ax.get_xlabel() == 'Time (min)']
+            assert len(panels) == (2 if plot is figures.plot_fig9 else 3)
+            for panel in panels:
+                key = _species_key(panel)
+                frame = panel.get_window_extent(renderer)
+                box = key.get_window_extent(renderer)
+                assert frame.x0 < box.x0 and box.x1 < frame.x1 - 2.
+                assert frame.y0 < box.y0 and box.y1 < frame.y1
+                model, experiment = _key_labels(key)
+                rows = []
+                for left, right in zip(model, experiment):
+                    y_left = left.get_window_extent(renderer).y0
+                    y_right = right.get_window_extent(renderer).y0
+                    assert abs(y_left - y_right) < 0.5       # pixels
+                    rows.append(y_left)
+                # equal row pitch
+                assert np.ptp(np.diff(rows)) < 0.5
+        finally:
+            plt.close(fig)
 
 
 def test_figS12_draws_the_insets(tmp_path):
@@ -241,10 +322,11 @@ def test_fig10_draws_the_profiles_and_the_arrhenius_plot():
                      if len(line.get_xdata()) == len(deposited)]
             assert len(drawn) == 5
             assert np.array_equal(drawn[0].get_ydata(), deposited['X_HP3'])
-            # the solid lines are the reversible variant at that temperature
+            # the solid lines are the reversible variant with the constant
+            # set of that temperature
             model = panel.get_lines()[0]
             expected = pkg.simulate_at_times(
-                pkg.load_o2_reversible_model(temperature_C),
+                pkg.load_o2_reversible_model('%dC' % temperature_C),
                 model.get_xdata()[[0, 480, 2880]], ['X_HP3'])
             assert np.allclose(model.get_ydata()[[0, 480, 2880]],
                                expected['X_HP3'], rtol=0., atol=1e-7)
@@ -285,7 +367,7 @@ def test_fig10_table3_o2_draws_the_comparison(tmp_path):
     try:
         panels = fig.axes
         assert len(panels) == 4
-        # pooled R2 of the Table 3 model and of the per-temperature fit
+        # pooled R2 of the Table 3 model and of the per-temperature set
         for panel, temperature_C, r2 in zip(
                 panels, (25, 75, 100),
                 (('0.579', '1.000'), ('0.644', '0.990'), ('0.746', '0.993'))):
@@ -297,14 +379,15 @@ def test_fig10_table3_o2_draws_the_comparison(tmp_path):
                     (lines[0], lambda: pkg.load_o2_model(
                         T=temperature_C + 273.15)),
                     (lines[10], lambda: pkg.load_o2_reversible_model(
-                        temperature_C))):
+                        '%dC' % temperature_C))):
                 expected = pkg.simulate_at_times(load(), times, ['X_HP3'])
                 assert np.allclose(line.get_ydata()[[0, 480, 2880]],
                                    expected['X_HP3'], rtol=0., atol=1e-7)
             assert lines[10].get_linestyle() == '--'
             assert [text.get_text() for text in panel.texts][:2] == [
                 '%d \N{DEGREE SIGN}C' % temperature_C,
-                'R$^2$ = %s (Table 3)\nR$^2$ = %s (fit)' % r2]
+                'R$^2$ = %s (Table 3)\n'
+                'R$^2$ = %s (reversible variant)' % r2]
         # the keys of panels a to c are above the panels
         assert len(fig.legends) == 2
         # panel d: per constant, the regression line and the line of the
@@ -337,3 +420,27 @@ def test_save_figures_writes_the_figures_named(tmp_path):
     assert os.path.getsize(paths[0]) > 0
     with pytest.raises(ValueError, match='unknown figures'):
         figures.save_figures(str(tmp_path), figures=['fig10e'])
+
+
+def test_save_figures_dpi_sets_the_size_of_the_png(tmp_path):
+    # The images of the documentation page are written at dpi=100; the
+    # default is 600.
+    sizes = []
+    for dpi in (40, 80):
+        (path,) = figures.save_figures(
+            os.path.join(str(tmp_path), str(dpi)), formats=('png',),
+            figures=['figS12'], dpi=dpi)
+        assert os.path.basename(path) == 'pd_c_3hp_oxidation_figS12.png'
+        sizes.append(_png_size(path))
+    assert sizes[1] == pytest.approx([2*size for size in sizes[0]], abs=2)
+    assert figures.save_figures.__defaults__[-1] == 600
+
+
+def test_figS12_has_outward_major_ticks_as_published():
+    fig = figures.plot_figS12()
+    try:
+        for panel in fig.axes[:2]:
+            assert panel.xaxis.get_major_ticks()[0].get_tickdir() == 'out'
+            assert len(panel.xaxis.get_minorticklocs()) == 0
+    finally:
+        plt.close(fig)

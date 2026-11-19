@@ -162,18 +162,21 @@ Pd/C oxidation of 3-HP to malonic acid
 
 ``nskinetics.models.pd_c_3hp_oxidation`` holds four kinetic models of the
 selective oxidation of 3-hydroxypropionic acid (3-HP) to malonic acid (MA)
-over 10 % Pd/C, after Kim, Chavarrio, Install and Huber, *Appl. Catal. B:
-Environ. Energy* 386 (2026) 126403, together with the authors' deposited
-data, curves digitized from the published figures and the functions that
-redraw the paper's Figs. 9, 10 and 11. :doc:`/case_studies/pd_c_3hp_oxidation`
-presents the models, the reproduced figures, and what does not match the
+over 10 % Pd/C, after S. Y. Kim, J. E. Chavarrio, J. Install and G. W. Huber,
+*Appl. Catal. B: Environ. Energy* 386 (2026) 126403, together with the
+authors' deposited data, curves digitized from the published figures and the
+functions that redraw the paper's Figs. 9, 10 and 11.
+:doc:`/case_studies/pd_c_3hp_oxidation` presents the models, the reproduced
+figures, how to change the operating conditions, and what does not match the
 paper; ``NOTES.md`` in the package folder is the full record.
 
 Unlike the *S. cerevisiae* package, importing this subpackage loads no model
 and runs no simulation: each loader builds a new
 :class:`~nskinetics.KineticModel` when called (time in min, concentrations
-in M). It needs no optional dependencies. Every name documented in this
-section except the figure functions is re-exported from the subpackage, so
+in M). Temperatures are in K where an argument is named ``T`` and in
+degrees Celsius where its name ends in ``_C``. It needs no optional
+dependencies. Every name documented in this section except the figure
+functions is re-exported from the subpackage, so
 ``from nskinetics.models.pd_c_3hp_oxidation import load_o2_model`` works; the
 figure module is imported explicitly
 (``from nskinetics.models.pd_c_3hp_oxidation import figures``).
@@ -184,7 +187,10 @@ Loaders
 Each of the four models is an Antimony file with a generated SBML file next
 to it; the module attributes ``h2o2_antimony_filename``,
 ``o2_antimony_filename``, ``o2_reversible_antimony_filename`` and
-``o2_simplified_reversible_antimony_filename`` hold the file names.
+``o2_simplified_reversible_antimony_filename`` hold the file names. What a
+loader selects (temperature, constant set, initial condition) is part of the
+model it builds and survives ``reset()`` and ``compile_events()``; each
+docstring names the parameters meant to be changed with ``set_value``.
 
 .. currentmodule:: nskinetics.models.pd_c_3hp_oxidation.pd_c_3hp_oxidation
 
@@ -238,8 +244,6 @@ provenance of every file. ``reference_data_dir`` is the path of the folder.
 
 .. autofunction:: read_fig10_o2
 
-.. autofunction:: read_o2_reversible_exact
-
 .. autofunction:: read_fig10d_arrhenius
 
 .. autofunction:: read_fig11a_selectivity_digitized
@@ -271,6 +275,8 @@ figure.
 .. autodata:: FIG11_C_PER_PX
 
 .. autofunction:: simulate_heat_maps
+
+.. autofunction:: fig11_panel_heat_map
 
 .. autofunction:: fig11_heat_maps
 
@@ -320,7 +326,8 @@ Figures
 paper from the models, and draws three comparison figures. Each ``plot_*``
 function returns a new matplotlib figure; each ``draw_*``
 function draws one panel on an existing axes. Run the module as a script to
-write the figures to a folder::
+write the figures to a folder (``--figures``, ``--formats`` and ``--dpi``
+select the figures, the file formats and the resolution of the PNG files)::
 
     python -m nskinetics.models.pd_c_3hp_oxidation.figures OUTPUT_DIR
 

@@ -11,12 +11,14 @@ Kim et al., Appl. Catal. B: Environ. Energy 386 (2026) 126403): the measures
 used to compare a model with the experimental points of Fig. 10a-c, and the
 straight lines of Fig. 10d.
 
-The points of Fig. 10d are rate constants of the authors' simplified
-reversible model (``load_o2_simplified_reversible_model``), not of the model
-that generated the curves of Fig. 10a-c
-(``load_o2_reversible_model``). They cannot be recomputed and are read from
-the deposited table; the lines drawn through them are recomputed here. See
-``NOTES.md``.
+The points of Fig. 10d are taken to be rate constants of the authors'
+simplified reversible model (``load_o2_simplified_reversible_model``): the
+50 C point agrees with the constants with which that model reproduces
+Fig. 11, and refits of that model to the experiments come close to the
+other points (``NOTES.md``). They are not constants of the model that
+reproduces the curves of Fig. 10a-c (``load_o2_reversible_model``). They
+cannot be recomputed and are read from the deposited table; the lines drawn
+through them are recomputed here.
 """
 import numpy as np
 import pandas as pd
@@ -106,9 +108,9 @@ def fig10d_points():
     pandas.DataFrame
         One row per temperature: ``T_C`` (25, 50, 75, 100), ``inv_T``
         (``1/(T_C + 273.15)`` in 1/K, unrounded) and ``ln_k_1``,
-        ``ln_k_2``, ``ln_k_5`` as deposited (natural logarithms of
-        ``k_1``, ``k_2`` and ``k_5`` of the simplified reversible model in
-        1/min).
+        ``ln_k_2``, ``ln_k_5`` as deposited (natural logarithms of three
+        rate constants in 1/min, taken to be ``k_1``, ``k_2`` and ``k_5``
+        of the simplified reversible model).
 
     Notes
     -----

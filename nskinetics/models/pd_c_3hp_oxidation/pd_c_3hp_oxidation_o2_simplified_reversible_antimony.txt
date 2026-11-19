@@ -10,17 +10,20 @@
 // pd_c_3hp_oxidation_o2_antimony.txt). It has no OPA intermediate: 3-HP goes
 // to MA in one step, and every step has a reverse term with an "equilibrium
 // constant" K_6..K_10. The model is not written out in the paper. It is
-// shipped because it is the model that generated the published heat maps of
-// MA selectivity and yield over temperature and time (Fig. 11); the 50 C
-// point of the Arrhenius plot (Fig. 10d) supplies three of its constants.
-// Three properties of the authors' heat-map run are part of the published
-// figure and are kept here: (1) the Arrhenius factor of each step is applied
-// to its rate constant AND to its equilibrium constant; (2) the heat maps
-// start from unit mole fractions (x_per_M below), which removes water and
-// with it the reverse of R1; (3) the two panels of Fig. 11 need two slightly
-// different constant sets (this file holds the Fig. 11b set).
+// shipped because, run as that script runs it, it reproduces the published
+// heat maps of MA selectivity and yield over temperature and time
+// (Fig. 11), which the Table 3 model does not; the 50 C point of the
+// Arrhenius plot (Fig. 10d) supplies three of its constants.
+// Three properties of the script's heat-map run are needed to reproduce the
+// published figure and are kept here: (1) the Arrhenius factor of each step
+// is applied to its rate constant AND to its equilibrium constant; (2) the
+// heat maps start from unit mole fractions (x_per_M below), which removes
+// water and with it the reverse of R1; (3) the two panels of Fig. 11 need
+// two slightly different constant sets (this file holds the Fig. 11b set).
 //
 // Units: time in min, liquid concentrations in M (mol/L), temperature in K.
+// The rate constants are lumped for the paper's batch (0.2 g of catalyst);
+// there is no catalyst-mass parameter.
 // See NOTES.md next to this file for the provenance of every number.
 model *kim2026_o2_simplified_reversible()
 
@@ -38,7 +41,8 @@ model *kim2026_o2_simplified_reversible()
   // for all ten parameters. The script applies the activation energy of
   // step i to k_i and then again to the equilibrium constant of the same
   // step, so k_i/K_(i+5) does not depend on temperature. This is kept
-  // because the published Fig. 11 contains it. At T = T_ref every factor is 1.
+  // because the published Fig. 11 is reproduced only with it. At T = T_ref
+  // every factor is 1.
   k_1 := k_1_ref*exp(-(Ea_1/R_gas)*(1/T - 1/T_ref));
   k_2 := k_2_ref*exp(-(Ea_2/R_gas)*(1/T - 1/T_ref));
   k_3 := k_3_ref*exp(-(Ea_3/R_gas)*(1/T - 1/T_ref));
@@ -120,7 +124,8 @@ model *kim2026_o2_simplified_reversible()
   D = 0;
 
   // Compartment initializations:
-  // Nominal unit liquid volume; it cancels from every concentration.
+  // Nominal volume of 1, NOT the reactor volume; no rate depends on it and
+  // it cancels from every concentration.
   env = 1;
 
   // Variable initializations:
@@ -166,8 +171,9 @@ model *kim2026_o2_simplified_reversible()
   //     x_per_M = 0.000339/0.06 = 0.00565. Then x_H2O = 0.999661, R1 has its
   //     reverse term, and the gas fractions stay below 1e-4 (yO2 = 1).
   // The two conventions give different curves for the same constants; the
-  // published heat maps were computed with the first one. (The value below
-  // is 1/C0 to 15 digits; the loader sets the quotient itself.)
+  // published heat maps are reproduced with the first one. (The value
+  // below is 1/C0 to 15 digits. It is a number, not a formula: if C0 is
+  // changed, x_per_M has to be changed with it.)
   x_per_M = 16.6666666666667;
   x_per_M has l_per_mol;
 
@@ -221,7 +227,8 @@ model *kim2026_o2_simplified_reversible()
   // Ea_2: "MA conversion to AAc", 91.6 kJ/mol in the paper text.
   Ea_2 = 91594.6;
   Ea_2 has j_per_mol;
-  // Ea_3: MA -> OXA. A placeholder in the script; not reported in the paper.
+  // Ea_3: MA -> OXA. A round value in the script (10 kJ/mol); not reported
+  // in the paper.
   Ea_3 = 10000;
   Ea_3 has j_per_mol;
   // Ea_4: 3-HP -> D. Script only; not reported in the paper.
@@ -325,9 +332,9 @@ model *kim2026_o2_simplified_reversible()
 
   // Notes:
   model notes ```
-Simplified reversible five-reaction O2 model behind the heat maps (Fig. 11) of the article:
+Simplified reversible five-reaction O2 model of the authors' heat-map script, which reproduces Fig. 11 of the article:
 **Selective oxidation of 3-hydroxypropionic acid to malonic acid over Pd/C: Mechanistic and kinetic study.**
-Kim S.Y., Chavarrio J., Install J., Huber G.W. *Appl. Catal. B: Environ. Energy* 386 (2026) 126403.
+Kim S.Y., Chavarrio J.E., Install J., Huber G.W. *Appl. Catal. B: Environ. Energy* 386 (2026) 126403.
 DOI: [10.1016/j.apcatb.2026.126403](https://doi.org/10.1016/j.apcatb.2026.126403)
 
 Transcribed from the authors' script APCATB_D_25_08770_heatmap.m (Dryad, DOI
