@@ -6,6 +6,9 @@
 // dependence added around the published 50 C constants.
 //
 // At the default T = T_ref = 323.15 K this file IS the published 50 C model.
+// Away from 50 C it is an NSKinetics extrapolation that reproduces neither
+// the published heat maps (Fig. 11) nor the experiments at 25, 75 and 100 C
+// (Fig. 10); see NOTES.md.
 // Units: time in min, liquid concentrations in M (mol/L), temperature in K.
 // See NOTES.md next to this file for what is printed in the paper, what is
 // inferred from the authors' data deposit, and what is an NSKinetics addition.

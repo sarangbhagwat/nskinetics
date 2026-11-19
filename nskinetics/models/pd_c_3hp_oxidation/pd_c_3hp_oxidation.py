@@ -17,7 +17,9 @@ Four models are provided, each as an Antimony file next to this module:
   Fig. S12a;
 * the O2 model (Table 3, O2 column), which reproduces Fig. 9b and SI
   Fig. S12b, with an Arrhenius temperature dependence that reduces to the
-  published 50 C model at the default ``T = 323.15`` K;
+  published 50 C model at the default ``T = 323.15`` K. The temperature
+  dependence is an NSKinetics addition: away from 50 C it reproduces
+  neither the published heat maps nor the experiments at 25, 75 and 100 C;
 * the reversible six-reaction O2 variant, which reproduces the model curves
   of Fig. 10a-c (25, 75 and 100 C). It is not in the paper or the authors'
   scripts: structure and constants were inferred from the deposited curves;
@@ -180,6 +182,10 @@ def _load(antimony_filename):
 def load_h2o2_model():
     """Load the H2O2 model (Table 3, H2O2 column; Fig. 9a) at 50 C.
 
+    Reproduces Fig. 9a and SI Fig. S12a. Source: the paper (constants of
+    Table 3 as printed); the rate laws were reconstructed from the deposited
+    model curve.
+
     Returns
     -------
     nskinetics.KineticModel
@@ -203,15 +209,19 @@ def load_h2o2_model():
 def load_o2_model(T=None):
     """Load the O2 model (Table 3, O2 column; Fig. 9b).
 
+    Reproduces Fig. 9b and SI Fig. S12b at the default 50 C. Source: the
+    paper (constants of Table 3 as printed), with the factor ``x_O2_ref``
+    inferred from the deposited model curve; the temperature dependence is
+    an NSKinetics addition.
+
     Parameters
     ----------
     T : float, optional
         Reaction temperature in K. Defaults to the model's reference
         temperature, 323.15 K (50 C), at which the model is the published
         one. Other temperatures scale the six rate constants by Arrhenius
-        factors; this is an extrapolation the paper does not show for this
-        model, and it does not reproduce the experiments at 25, 75 and
-        100 C (see ``NOTES.md``).
+        factors (the form of the paper's Eq. 6 with the activation energies
+        of the authors' heat-map script); see the warning below.
 
     Returns
     -------
@@ -220,6 +230,17 @@ def load_o2_model(T=None):
         ``HP3, OPA, MA, AAc, OXA, D``; ``yO2`` is the dimensionless O2
         activity. Plotted quantities (select them by name): ``X_HP3, X_MA,
         X_AAc, X_OXA, X_D`` (Fig. 9b) and ``x_OPA`` (SI Fig. S12b inset).
+
+    Warnings
+    --------
+    Only the 50 C model is a published one. Away from 50 C the model is an
+    extrapolation that reproduces no published item: its heat maps miss the
+    contour lines of Fig. 11 (by about 7.6 px rms, against 0.17 and 0.27 px
+    for the simplified reversible model that drew them), and it is too fast
+    for the experiments at 25, 75 and 100 C (pooled R2 0.579, 0.644 and
+    0.746, against 0.9996, 0.990 and 0.993 for the per-temperature fits of
+    :func:`load_o2_reversible_model`). See ``NOTES.md`` and the
+    documentation page of this package.
 
     Notes
     -----
@@ -235,12 +256,15 @@ def load_o2_model(T=None):
 def load_o2_reversible_model(temperature_C=75):
     """Load the reversible O2 variant behind the curves of Fig. 10a-c.
 
+    Reproduces the model curves of Fig. 10a-c (25, 75 and 100 C). Source:
+    inferred from the deposited curves; it is in neither the paper nor the
+    authors' scripts.
+
     This is the six-reaction network of the Table 3 O2 model with
-    reactions 1, 2, 5 and 6 reversible. It is not described in the paper
-    (whose text treats all reactions as irreversible) and is in neither of
-    the authors' scripts: its structure and constants were inferred from
-    the model curves deposited for the experiments at 25, 75 and 100 C,
-    which it reproduces. See ``NOTES.md``.
+    reactions 1, 2, 5 and 6 reversible. The text of the paper treats all
+    reactions as irreversible; the structure and the constants of this
+    variant were inferred from the model curves deposited for the
+    experiments at 25, 75 and 100 C. See ``NOTES.md``.
 
     Parameters
     ----------
@@ -291,6 +315,12 @@ def load_o2_reversible_model(temperature_C=75):
 def load_o2_simplified_reversible_model(T=None, parameter_set='fig11b',
                                         initial_condition='heatmap'):
     """Load the authors' simplified reversible O2 model (behind Fig. 11).
+
+    Reproduces Fig. 11; three of its rate constants are the points of
+    Fig. 10d. Source: the authors' deposited heat-map script, not the paper;
+    the constants that are not in the deposit (``k_3`` and ``k_4``; for
+    Fig. 11a also ``k_5`` and ``K_10``) were inferred from the published
+    contour lines.
 
     This is the five-reaction model of the authors' heat-map script, with
     no OPA intermediate and a reverse term in every step. It is not the

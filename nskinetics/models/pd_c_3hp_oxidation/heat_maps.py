@@ -59,8 +59,8 @@ def simulate_heat_maps(te_r, T_C=None, times=None, time_offset=0.):
     te_r : nskinetics.KineticModel
         A model with a temperature parameter ``T`` (K) and the water-free
         liquid fractions ``X_HP3`` and ``X_MA``: one from
-        :func:`load_o2_simplified_reversible_model` or
-        :func:`load_o2_model`. Its ``T`` is restored on return.
+        :func:`.load_o2_simplified_reversible_model` or
+        :func:`.load_o2_model`. Its ``T`` is restored on return.
     T_C : array-like, optional
         Temperatures in C, one per row. Defaults to :data:`FIG11_T_C`.
     times : array-like, optional
@@ -127,7 +127,7 @@ def table3_o2_heat_maps(time_offset=0.):
 
     This is what the text of the paper describes for Fig. 11 (the O2 model
     of Fig. 9b extended with the Arrhenius equation), computed with
-    :func:`load_o2_model` on the grid of the figure. It is not how the
+    :func:`.load_o2_model` on the grid of the figure. It is not how the
     published maps were made, and it differs from them (see ``NOTES.md``).
 
     Parameters

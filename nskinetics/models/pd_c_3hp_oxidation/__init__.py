@@ -10,12 +10,22 @@
 # Appl. Catal. B: Environ. Energy 386 (2026) 126403). Four models, each
 # with a loader in ``pd_c_3hp_oxidation``:
 #
-# * H2O2 model (Table 3, H2O2 column): reproduces Fig. 9a and SI Fig. S12a;
-# * O2 model (Table 3, O2 column): reproduces Fig. 9b and SI Fig. S12b;
-# * reversible O2 variant, inferred from the deposited model curves:
-#   reproduces the curves of Fig. 10a-c (25, 75 and 100 C);
-# * simplified reversible O2 model of the authors' heat-map script:
-#   reproduces Fig. 11; its rate constants are the points of Fig. 10d.
+# * H2O2 model (``load_h2o2_model``; Table 3, H2O2 column): reproduces
+#   Fig. 9a and SI Fig. S12a;
+# * O2 model (``load_o2_model``; Table 3, O2 column): reproduces Fig. 9b
+#   and SI Fig. S12b at 50 C. Its Arrhenius temperature dependence is an
+#   NSKinetics addition and reproduces no published item;
+# * reversible O2 variant (``load_o2_reversible_model``), inferred from the
+#   deposited model curves: reproduces the curves of Fig. 10a-c (25, 75
+#   and 100 C);
+# * simplified reversible O2 model (``load_o2_simplified_reversible_model``)
+#   of the authors' heat-map script: reproduces Fig. 11; three of its rate
+#   constants are the points of Fig. 10d.
+#
+# ``NOTES.md`` in this folder records what is printed in the paper, what was
+# inferred from the authors' data deposit and where the two disagree; the
+# documentation page "Pd/C oxidation of 3-HP to malonic acid"
+# (docs/source/case_studies/pd_c_3hp_oxidation.rst) summarizes it.
 #
 # Importing this subpackage loads no model and runs no simulation: the
 # loaders build a model when called. The figure module (``figures``) is not

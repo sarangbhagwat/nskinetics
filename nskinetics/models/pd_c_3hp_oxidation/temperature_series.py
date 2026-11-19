@@ -62,7 +62,7 @@ def pooled_r2(observed, modeled):
     Parameters
     ----------
     observed, modeled : pandas.DataFrame
-        Tables with the columns :data:`NORMALIZED` and the same rows (for
+        Tables with the columns :data:`.NORMALIZED` and the same rows (for
         example an ``'experiment'`` table of ``reference`` and the output
         of ``simulate_at_times`` at its times).
 

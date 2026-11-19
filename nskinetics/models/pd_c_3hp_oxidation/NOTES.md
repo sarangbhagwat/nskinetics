@@ -46,6 +46,23 @@ reproduce a published item:
 The SBML files are generated from the Antimony files (the Antimony is the
 source; `//` comments exist only there).
 
+## Documentation
+
+The Sphinx page `docs/source/case_studies/pd_c_3hp_oxidation.rst` ("Pd/C
+oxidation of 3-HP to malonic acid") summarizes these notes for users, and
+`docs/source/API/models.rst` documents the API. These notes are the source:
+every number on those pages is either taken from here or printed by a code
+example on the page. `nskinetics/tests/test_pd_c_3hp_oxidation_docs.py` runs
+the Python examples of the page and compares what they print with the output
+shown there, to within one unit of the last printed digit. The two shell
+commands of the page (the figure CLI) were run by hand; no test runs them.
+
+The images of that page (`docs/source/_static/images/pd_c_3hp_oxidation/`)
+are the seven figures of `figures.py`, drawn by its `plot_*` functions and
+saved at 100 dpi as opaque PNGs (the figure CLI writes 600 dpi). They show
+the models with the deposited and digitized data overlaid; no image of the
+paper is in the repository.
+
 ## Model basis
 
 This section and the next four are about the two Table 3 models. The
