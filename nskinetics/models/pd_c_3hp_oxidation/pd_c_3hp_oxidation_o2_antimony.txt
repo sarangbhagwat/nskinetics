@@ -248,11 +248,14 @@ reactions 1, 2 and 4, and the use of the depleting O2 activity state yO2.
 
 NSKinetics addition: the Arrhenius temperature dependence k(T) of the six steps
 (paper Eq. 6 form, T_ref = 50 C), with activation energies from the paper text and
-from the authors' heat-map script. The paper's own heat maps (Fig. 11) and the
-25/75/100 C curves (Fig. 10) were computed with a different, simplified reversible
-five-reaction model (pd_c_3hp_oxidation_o2_simplified_reversible_antimony.txt), not
-with this file; away from 50 C this file is an extrapolation that the paper does
-not show.
+from the authors' heat-map script. The paper's own temperature results were not
+computed with this file: the heat maps (Fig. 11) come from a simplified reversible
+five-reaction model (pd_c_3hp_oxidation_o2_simplified_reversible_antimony.txt), whose
+rate constants are also the ones plotted in the Arrhenius plot (Fig. 10d), and the
+25/75/100 C curves (Fig. 10a-c) from separate fits of a reversible six-reaction
+variant at each temperature (pd_c_3hp_oxidation_o2_reversible_antimony.txt). Away
+from 50 C this file is an extrapolation that the paper does not show; it does not
+reproduce the 25, 75 and 100 C experiments (see NOTES.md).
 ```
 end
 

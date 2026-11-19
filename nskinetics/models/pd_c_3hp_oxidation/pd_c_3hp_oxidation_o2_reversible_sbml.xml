@@ -1,0 +1,328 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created by libAntimony version v3.3.0 with libSBML version 5.21.2. -->
+<sbml xmlns="http://www.sbml.org/sbml/level3/version2/core" level="3" version="2">
+  <model metaid="kim2026_o2_reversible" id="kim2026_o2_reversible" name="Kim2026_PdC_3HP_Oxidation_O2_reversible" substanceUnits="mole" timeUnits="time_unit" volumeUnits="litre">
+    <notes>
+      <body xmlns="http://www.w3.org/1999/xhtml">
+        <p>Reversible six-reaction O2 variant inferred from the deposited model curves of Fig. 10a-c of the article: <strong>Selective oxidation of 3-hydroxypropionic acid to malonic acid over Pd/C: Mechanistic and kinetic study.</strong> Kim S.Y., Chavarrio J., Install J., Huber G.W. <i>Appl. Catal. B: Environ. Energy</i> 386 (2026) 126403. DOI: <a href="https://doi.org/10.1016/j.apcatb.2026.126403">10.1016/j.apcatb.2026.126403</a></p>
+        <p>A reproduction aid, not a model of the paper: the text treats all reactions as irreversible and neither posted script contains this structure. It is the Table 3 O2 network with reactions 1, 2, 5 and 6 reversible; the reverse of reaction 1 is bilinear in OPA and the water formed by reactions 1 and 4. It reproduces the model curves the authors deposited for 25, 75 and 100 C (Dryad, DOI 10.5061/dryad.jsxksn0q4, files 11-1, 11-2, 11-3). </p>
+        <p>Conditions: 60 mM 3-HP, 0.2 g 10 % Pd/C, NaOH/3-HP = 1:1, 3 bar O2 (Fig. 10 caption). Default state: the constants of the 75 C curve (Fig. 10b). The constants are effective first-order constants in 1/min for the 0.2 g batch, fitted separately at each temperature (25, 75 and 100 C), with no temperature law; there is no set for 50 C. All were inferred from the deposited curves and none is printed in the paper or its deposit. </p>
+      </body>
+    </notes>
+    <listOfUnitDefinitions>
+      <unitDefinition id="mol_per_l" name="mole per liter">
+        <listOfUnits>
+          <unit kind="mole" exponent="1" scale="0" multiplier="1"/>
+          <unit kind="litre" exponent="-1" scale="0" multiplier="1"/>
+        </listOfUnits>
+      </unitDefinition>
+      <unitDefinition id="l_per_mol" name="liter per mole">
+        <listOfUnits>
+          <unit kind="litre" exponent="1" scale="0" multiplier="1"/>
+          <unit kind="mole" exponent="-1" scale="0" multiplier="1"/>
+        </listOfUnits>
+      </unitDefinition>
+      <unitDefinition id="per_min" name="per minute">
+        <listOfUnits>
+          <unit kind="second" exponent="-1" scale="1" multiplier="6"/>
+        </listOfUnits>
+      </unitDefinition>
+      <unitDefinition id="time_unit" name="minutes">
+        <listOfUnits>
+          <unit kind="second" exponent="1" scale="1" multiplier="6"/>
+        </listOfUnits>
+      </unitDefinition>
+    </listOfUnitDefinitions>
+    <listOfCompartments>
+      <compartment id="env" name="liquid phase" spatialDimensions="3" size="1" constant="false"/>
+    </listOfCompartments>
+    <listOfSpecies>
+      <species id="HP3" name="3-Hydroxypropionic acid (3-HP)" compartment="env" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="OPA" name="3-Oxopropanoic acid (OPA)" compartment="env" initialConcentration="0" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="MA" name="Malonic acid (MA)" compartment="env" initialConcentration="0" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="AAc" name="Acetic acid (AAc)" compartment="env" initialConcentration="0" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="OXA" name="Oxalic acid (OXA)" compartment="env" initialConcentration="0" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="D" name="Other by-products (D)" compartment="env" initialConcentration="0" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="W" name="Water formed by reaction" compartment="env" initialConcentration="0" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+    </listOfSpecies>
+    <listOfParameters>
+      <parameter id="X_HP3" name="3-HP, normalized (Fig. 10)" units="dimensionless" constant="false"/>
+      <parameter id="X_MA" name="MA, normalized (Fig. 10)" units="dimensionless" constant="false"/>
+      <parameter id="X_AAc" name="AAc, normalized (Fig. 10)" units="dimensionless" constant="false"/>
+      <parameter id="X_OXA" name="OXA, normalized (Fig. 10)" units="dimensionless" constant="false"/>
+      <parameter id="X_D" name="Others, normalized (Fig. 10)" units="dimensionless" constant="false"/>
+      <parameter id="x_OPA" name="OPA mole fraction" units="dimensionless" constant="false"/>
+      <parameter id="x_per_M" name="Mole fraction per molar concentration" value="0.00565" units="l_per_mol" constant="true"/>
+      <parameter id="k_1" value="0.00918893" units="per_min" constant="true"/>
+      <parameter id="k_1r" value="1.88278e-05" units="per_min" constant="true"/>
+      <parameter id="C0" name="Initial 3-HP concentration" value="0.06" units="mol_per_l" constant="true"/>
+      <parameter id="k_2" value="0.0490036" units="per_min" constant="true"/>
+      <parameter id="k_2r" value="0.00193586" units="per_min" constant="true"/>
+      <parameter id="k_3" value="0.00049301" units="per_min" constant="true"/>
+      <parameter id="k_4" value="7.97777e-06" units="per_min" constant="true"/>
+      <parameter id="k_5" value="0.00160383" units="per_min" constant="true"/>
+      <parameter id="k_5r" value="2.86632e-05" units="per_min" constant="true"/>
+      <parameter id="k_6" value="0.00613222" units="per_min" constant="true"/>
+      <parameter id="k_6r" value="2.56106e-05" units="per_min" constant="true"/>
+    </listOfParameters>
+    <listOfInitialAssignments>
+      <initialAssignment symbol="HP3">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <ci> C0 </ci>
+        </math>
+      </initialAssignment>
+    </listOfInitialAssignments>
+    <listOfRules>
+      <assignmentRule variable="X_HP3">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <divide/>
+            <ci> HP3 </ci>
+            <apply>
+              <plus/>
+              <ci> HP3 </ci>
+              <ci> MA </ci>
+              <ci> AAc </ci>
+              <ci> OXA </ci>
+              <ci> D </ci>
+            </apply>
+          </apply>
+        </math>
+      </assignmentRule>
+      <assignmentRule variable="X_MA">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <divide/>
+            <ci> MA </ci>
+            <apply>
+              <plus/>
+              <ci> HP3 </ci>
+              <ci> MA </ci>
+              <ci> AAc </ci>
+              <ci> OXA </ci>
+              <ci> D </ci>
+            </apply>
+          </apply>
+        </math>
+      </assignmentRule>
+      <assignmentRule variable="X_AAc">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <divide/>
+            <ci> AAc </ci>
+            <apply>
+              <plus/>
+              <ci> HP3 </ci>
+              <ci> MA </ci>
+              <ci> AAc </ci>
+              <ci> OXA </ci>
+              <ci> D </ci>
+            </apply>
+          </apply>
+        </math>
+      </assignmentRule>
+      <assignmentRule variable="X_OXA">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <divide/>
+            <ci> OXA </ci>
+            <apply>
+              <plus/>
+              <ci> HP3 </ci>
+              <ci> MA </ci>
+              <ci> AAc </ci>
+              <ci> OXA </ci>
+              <ci> D </ci>
+            </apply>
+          </apply>
+        </math>
+      </assignmentRule>
+      <assignmentRule variable="X_D">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <divide/>
+            <ci> D </ci>
+            <apply>
+              <plus/>
+              <ci> HP3 </ci>
+              <ci> MA </ci>
+              <ci> AAc </ci>
+              <ci> OXA </ci>
+              <ci> D </ci>
+            </apply>
+          </apply>
+        </math>
+      </assignmentRule>
+      <assignmentRule variable="x_OPA">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <times/>
+            <ci> x_per_M </ci>
+            <ci> OPA </ci>
+          </apply>
+        </math>
+      </assignmentRule>
+    </listOfRules>
+    <listOfReactions>
+      <reaction id="R1" name="3-HP oxidation to OPA (reversible)" reversible="true">
+        <listOfReactants>
+          <speciesReference species="HP3" stoichiometry="1" constant="true"/>
+        </listOfReactants>
+        <listOfProducts>
+          <speciesReference species="OPA" stoichiometry="1" constant="true"/>
+          <speciesReference species="W" stoichiometry="1" constant="true"/>
+        </listOfProducts>
+        <kineticLaw>
+          <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+              <times/>
+              <apply>
+                <minus/>
+                <apply>
+                  <times/>
+                  <ci> k_1 </ci>
+                  <ci> HP3 </ci>
+                </apply>
+                <apply>
+                  <divide/>
+                  <apply>
+                    <times/>
+                    <ci> k_1r </ci>
+                    <ci> OPA </ci>
+                    <ci> W </ci>
+                  </apply>
+                  <ci> C0 </ci>
+                </apply>
+              </apply>
+              <ci> env </ci>
+            </apply>
+          </math>
+        </kineticLaw>
+      </reaction>
+      <reaction id="R2" name="OPA oxidation to MA (reversible)" reversible="true">
+        <listOfReactants>
+          <speciesReference species="OPA" stoichiometry="1" constant="true"/>
+        </listOfReactants>
+        <listOfProducts>
+          <speciesReference species="MA" stoichiometry="1" constant="true"/>
+        </listOfProducts>
+        <kineticLaw>
+          <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+              <times/>
+              <apply>
+                <minus/>
+                <apply>
+                  <times/>
+                  <ci> k_2 </ci>
+                  <ci> OPA </ci>
+                </apply>
+                <apply>
+                  <times/>
+                  <ci> k_2r </ci>
+                  <ci> MA </ci>
+                </apply>
+              </apply>
+              <ci> env </ci>
+            </apply>
+          </math>
+        </kineticLaw>
+      </reaction>
+      <reaction id="R3" name="MA decarboxylation to AAc" reversible="false">
+        <listOfReactants>
+          <speciesReference species="MA" stoichiometry="1" constant="true"/>
+        </listOfReactants>
+        <listOfProducts>
+          <speciesReference species="AAc" stoichiometry="1" constant="true"/>
+        </listOfProducts>
+        <kineticLaw>
+          <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+              <times/>
+              <ci> k_3 </ci>
+              <ci> MA </ci>
+              <ci> env </ci>
+            </apply>
+          </math>
+        </kineticLaw>
+      </reaction>
+      <reaction id="R4" name="MA oxidation to OXA" reversible="false">
+        <listOfReactants>
+          <speciesReference species="MA" stoichiometry="1" constant="true"/>
+        </listOfReactants>
+        <listOfProducts>
+          <speciesReference species="OXA" stoichiometry="1" constant="true"/>
+          <speciesReference species="W" stoichiometry="1" constant="true"/>
+        </listOfProducts>
+        <kineticLaw>
+          <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+              <times/>
+              <ci> k_4 </ci>
+              <ci> MA </ci>
+              <ci> env </ci>
+            </apply>
+          </math>
+        </kineticLaw>
+      </reaction>
+      <reaction id="R5" name="3-HP degradation to others (reversible)" reversible="true">
+        <listOfReactants>
+          <speciesReference species="HP3" stoichiometry="1" constant="true"/>
+        </listOfReactants>
+        <listOfProducts>
+          <speciesReference species="D" stoichiometry="1" constant="true"/>
+        </listOfProducts>
+        <kineticLaw>
+          <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+              <times/>
+              <apply>
+                <minus/>
+                <apply>
+                  <times/>
+                  <ci> k_5 </ci>
+                  <ci> HP3 </ci>
+                </apply>
+                <apply>
+                  <times/>
+                  <ci> k_5r </ci>
+                  <ci> D </ci>
+                </apply>
+              </apply>
+              <ci> env </ci>
+            </apply>
+          </math>
+        </kineticLaw>
+      </reaction>
+      <reaction id="R6" name="MA degradation to others (reversible)" reversible="true">
+        <listOfReactants>
+          <speciesReference species="MA" stoichiometry="1" constant="true"/>
+        </listOfReactants>
+        <listOfProducts>
+          <speciesReference species="D" stoichiometry="1" constant="true"/>
+        </listOfProducts>
+        <kineticLaw>
+          <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+              <times/>
+              <apply>
+                <minus/>
+                <apply>
+                  <times/>
+                  <ci> k_6 </ci>
+                  <ci> MA </ci>
+                </apply>
+                <apply>
+                  <times/>
+                  <ci> k_6r </ci>
+                  <ci> D </ci>
+                </apply>
+              </apply>
+              <ci> env </ci>
+            </apply>
+          </math>
+        </kineticLaw>
+      </reaction>
+    </listOfReactions>
+  </model>
+</sbml>

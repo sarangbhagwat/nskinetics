@@ -20,11 +20,14 @@ never converts their line ends.
 |---|---|
 | `10-1_kinetic_model_H2O2.csv` | Fig. 9a (H2O2, 50 C): experimental points, the authors' model curve, and their predicted H2O2 trace of SI Fig. S12a |
 | `10-2_kinetic_model_O2.csv` | Fig. 9b (O2, 50 C): experimental points and the authors' model curve |
+| `11-1_25C_Kinetic.csv` | Fig. 10a (O2, 25 C): experimental points and the authors' model curve |
+| `11-2_75C_Kinetic.csv` | Fig. 10b (O2, 75 C): the same |
+| `11-3_100C_Kinetic.csv` | Fig. 10c (O2, 100 C): the same |
 | `11-4_Arrhenius.csv` | Fig. 10d (Arrhenius plot, O2): logarithms of three rate constants of the authors' simplified reversible model at 25, 50, 75 and 100 C, and the straight lines drawn through them |
 
-In `10-1` and `10-2` all values are normalized concentrations (each species
-over the sum of 3-HP, MA, AAc, OXA and D); the H2O2 trace is in equivalents
-of the initial 3-HP. Time is in min.
+In `10-1`, `10-2` and `11-1` to `11-3` all values are normalized
+concentrations (each species over the sum of 3-HP, MA, AAc, OXA and D); the
+H2O2 trace is in equivalents of the initial 3-HP. Time is in min.
 
 Layout and known quirks:
 
@@ -38,6 +41,13 @@ Layout and known quirks:
   1537 min); its t = 0 cell reads 1 and stands for 15. The trace was generated
   with a different parameter set than the model curve and Table 3 of the
   paper (see `../NOTES.md`).
+- `11-1`, `11-2`, `11-3`: laid out like `10-2` and labelled correctly; no
+  quirks. Columns 1-6 are the experiment (14, 12 and 11 rows; last sampling
+  times 1890, 1440 and 1560 min) and columns 7-12 the model curve (19, 20 and
+  25 solver nodes; it ends at 1.1 times the last sampling time: 2079, 1584
+  and 1716 min). The model values are printed to five decimals, or to three
+  significant digits below 1e-3. These model curves are produced by neither
+  of the scripts in the deposit as posted; see `../NOTES.md`.
 - `11-4`: two header rows. Columns 1-4 hold the points: 1/T in 1/K, printed
   to five decimals (0.00335, 0.00309, 0.00287, 0.00268, i.e. 25, 50, 75 and
   100 C), and the natural logarithms of three rate constants in 1/min,
@@ -46,6 +56,32 @@ Layout and known quirks:
   `k_2` (MA to AAc) and `k_5` (MA to D) of the simplified reversible model:
   the column labelled `k3` is that model's `k_5`. The 50 C row supplies
   `k_1`, `k_2` and `k_5` of the `'fig11b'` constant set of that model.
+
+## Derived in this work: accurate solution of the reversible O2 variant (not deposited data)
+
+`o2_reversible_exact_25C.csv`, `o2_reversible_exact_75C.csv` and
+`o2_reversible_exact_100C.csv` are **not** from the deposit and not from the
+paper. They hold the solution of the reversible O2 variant
+(`../pd_c_3hp_oxidation_o2_reversible_antimony.txt`), the model inferred from
+the curves of `11-1` to `11-3`, with the constants as shipped (six
+significant digits), computed accurately and outside NSKinetics: the
+equations of the reconstruction written out on their own basis of mol per
+mol of initial 3-HP and integrated with scipy `solve_ivp` (DOP853, relative
+tolerance 1e-13, absolute tolerance 1e-15). They are a regression reference
+for the Antimony implementation and are not a check against the paper.
+
+Columns: `t_min`; `X_HP3`, `X_MA`, `X_AAc`, `X_OXA`, `X_D` (normalized
+concentrations as plotted in Fig. 10, OPA not in the sum); `OPA_per_C0` and
+`W_per_C0` (OPA and the water formed by reaction, in mol per mol of initial
+3-HP). Ten significant digits. Times: 601 equally spaced values from 0 to the
+end of the deposited curve, merged with the node times of the deposited
+curve and the sampling times of the experiment (631, 630 and 634 rows).
+
+Accuracy: Radau, LSODA and BDF at the same tolerances give the same
+solution to 1e-12, and the ten printed digits round it by at most 5e-10. The
+model as shipped, solved by NSKinetics at the tolerances its loader sets
+(CVODE, relative tolerance 1e-9), is within 2.5e-8 of the files; the package
+tests accept 1e-7.
 
 ## Digitized from SI Fig. S12 (not deposited data)
 

@@ -17,6 +17,20 @@ Figures
     points and solid lines are the NSKinetics model; the black dotted line
     is the model curve the authors deposited (a polyline through their
     solver's steps), drawn for comparison.
+``fig10``
+    Fig. 10: (a-c) normalized concentration profiles with O2 at 25, 75 and
+    100 C: experimental points, the reversible O2 variant that was inferred
+    from the deposited model curves (solid lines) and those deposited curves
+    (black dotted lines); (d) the Arrhenius plot: the deposited points
+    (rate constants of the simplified reversible model) and the three
+    dashed lines, recomputed by least squares through the points each line
+    was fitted to.
+``fig10_table3_o2``
+    The experiments of Fig. 10a-c against the Table 3 O2 model with its
+    Arrhenius temperature dependence, which is what the text of the paper
+    describes, with the per-temperature fits as dashed lines; and the
+    Arrhenius plot with the lines that the activation energies quoted in
+    the text imply next to the regression lines.
 ``figS12``
     SI Fig. S12: the same profiles with the predicted (a) H2O2 and (b) OPA
     as dashed lines and in the insets. The insets also show the published
@@ -44,6 +58,8 @@ Colors and layout follow the published panels. Run as a script to write
 every figure (PNG and PDF) to a folder::
 
     python -m nskinetics.models.pd_c_3hp_oxidation.figures OUTPUT_DIR
+
+Add ``--figures fig10 fig10_table3_o2`` to write only the figures named.
 """
 import argparse
 import os
@@ -58,17 +74,20 @@ from .heat_maps import (
     FIG11_LEVELS, FIG11_TIME_OFFSET, contour_offsets, heat_map_maximum,
     heat_map_ridge, simulate_heat_maps, table3_o2_heat_maps)
 from .pd_c_3hp_oxidation import (
-    NORMALIZED, load_h2o2_model, load_o2_model,
+    NORMALIZED, load_h2o2_model, load_o2_model, load_o2_reversible_model,
     load_o2_simplified_reversible_model, simulate_at_times)
 from .reference import (
-    read_fig9a_h2o2, read_fig9b_o2, read_fig11a_selectivity_digitized,
-    read_fig11b_yield_digitized, read_figS12a_h2o2_inset_digitized,
-    read_figS12b_opa_inset_digitized)
+    read_fig9a_h2o2, read_fig9b_o2, read_fig10_o2,
+    read_fig11a_selectivity_digitized, read_fig11b_yield_digitized,
+    read_figS12a_h2o2_inset_digitized, read_figS12b_opa_inset_digitized)
+from .temperature_series import (
+    FIG10_TEMPERATURES_C, FIG10D_LINE_ENDS_C, fig10d_points,
+    fig10d_regression_lines, fig10d_text_lines, pooled_r2)
 
-__all__ = ('draw_fig9a', 'draw_fig9b', 'draw_figS12a', 'draw_figS12b',
-           'draw_fig11a', 'draw_fig11b',
-           'plot_fig9', 'plot_figS12', 'plot_fig11',
-           'plot_fig11_verification', 'plot_fig11_table3_o2',
+__all__ = ('draw_fig9a', 'draw_fig9b', 'draw_fig10abc', 'draw_fig10d',
+           'draw_figS12a', 'draw_figS12b', 'draw_fig11a', 'draw_fig11b',
+           'plot_fig9', 'plot_fig10', 'plot_fig10_table3_o2', 'plot_figS12',
+           'plot_fig11', 'plot_fig11_verification', 'plot_fig11_table3_o2',
            'save_figures',)
 
 #%% Style
@@ -98,6 +117,16 @@ C_MUTED = '#5f5f5f'
 # Oxidant tag in the corner of each panel: text, face color, edge color.
 _TAGS = {'H2O2': ('H$_2$O$_2$', '#fbb4b4', '#e98686'),
          'O2': ('O$_2$', '#c3c3dc', '#8f8fb8')}
+
+# Temperature tag in the corner of each panel of Fig. 10a-c: face color and
+# edge color.
+_TEMPERATURE_TAGS = {25: ('#b9d3e6', '#2f8fd0'), 75: ('#ffc9bb', '#ff7a3d'),
+                     100: ('#ff8585', '#e5262b')}
+# Fig. 10d: the three constants of the simplified reversible model, with
+# the label and the color of the published series.
+_FIG10D_SERIES = {'k_1': ('3-HP $\\rightarrow$ MA', '#a66bd6'),
+                  'k_2': ('MA $\\rightarrow$ AAc', '#1f6fdb'),
+                  'k_5': ('MA $\\rightarrow$ Others', '#6f9bc4')}
 
 T_END = 1440.                       # right edge of the published time axis
 _T_DENSE = np.linspace(0., T_END, 2881)
@@ -195,8 +224,21 @@ def _line_handle(color, label, **kwargs):
     return Line2D([], [], color=color, label=label, **kwargs)
 
 
-def _draw_fig9_panel(ax, km, reference, oxidant, legend_anchor,
-                     deposited_anchor):
+def _species_legend(ax, anchor):
+    """Two legend columns as published (model | experiment)."""
+    handles = [_line_handle(COLORS[n], LABELS[n] + '$^{mod}$', lw=1.8)
+               for n in NORMALIZED]
+    handles += [_line_handle(COLORS[n], LABELS[n] + '$^{exp}$', ls='none',
+                             marker='o', ms=5, mfc='none', mew=1.3)
+                for n in NORMALIZED]
+    ax.add_artist(ax.legend(
+        handles=handles, ncol=2, loc='upper left', bbox_to_anchor=anchor,
+        frameon=False, fontsize=8.5, handlelength=2.4, handletextpad=0.5,
+        columnspacing=1.2, labelspacing=0.1, borderaxespad=0.))
+
+
+def _draw_profiles(ax, km, reference, legend_anchor, deposited_anchor):
+    """Experiment, model and deposited model curve of one profile panel."""
     sim = simulate_at_times(km, _T_DENSE)
     _species(ax, sim, reference['experiment'])
     deposited = reference['model']
@@ -204,25 +246,34 @@ def _draw_fig9_panel(ax, km, reference, oxidant, legend_anchor,
         ax.plot(deposited['time'], deposited[name], color='black', lw=0.9,
                 ls=(0, (1, 2)), zorder=4)
     _frame(ax)
-    _tag(ax, oxidant)
-    # Two legend columns as published (model | experiment), and a separate
-    # key for the deposited curve, placed where the panel is empty.
-    handles = [_line_handle(COLORS[n], LABELS[n] + '$^{mod}$', lw=1.8)
-               for n in NORMALIZED]
-    handles += [_line_handle(COLORS[n], LABELS[n] + '$^{exp}$', ls='none',
-                             marker='o', ms=5, mfc='none', mew=1.3)
-                for n in NORMALIZED]
-    species_legend = ax.legend(
-        handles=handles, ncol=2, loc='upper left',
-        bbox_to_anchor=legend_anchor, frameon=False, fontsize=8.5,
-        handlelength=2.4, handletextpad=0.5, columnspacing=1.2,
-        labelspacing=0.1, borderaxespad=0.)
-    ax.add_artist(species_legend)
+    # A separate key for the deposited curve, placed where the panel is
+    # empty.
+    _species_legend(ax, legend_anchor)
     ax.legend(handles=[_line_handle('black', 'Deposited model curve',
                                     lw=0.9, ls=(0, (1, 2)))],
               loc='upper right', bbox_to_anchor=deposited_anchor,
               frameon=False, fontsize=8.5, handlelength=2.4,
               handletextpad=0.5, borderaxespad=0.)
+
+
+def _draw_fig9_panel(ax, km, reference, oxidant, legend_anchor,
+                     deposited_anchor):
+    _draw_profiles(ax, km, reference, legend_anchor, deposited_anchor)
+    _tag(ax, oxidant)
+
+
+def _temperature_tag(ax, temperature_C, r2_text, y=0.775):
+    """Temperature box and, below it, a box with ``r2_text`` (the pooled R2
+    against the experiment)."""
+    face, edge = _TEMPERATURE_TAGS[temperature_C]
+    ax.text(0.945, y, '%d \N{DEGREE SIGN}C' % temperature_C,
+            transform=ax.transAxes, ha='right', va='center', fontsize=17,
+            color=C_INK, zorder=6,
+            bbox=dict(boxstyle='square,pad=0.22', fc=face, ec=edge, lw=1.5))
+    ax.text(0.945, y - 0.08, r2_text, transform=ax.transAxes,
+            ha='right', va='top', fontsize=11, color=C_INK, zorder=6,
+            linespacing=1.25,
+            bbox=dict(boxstyle='round,pad=0.3', fc='#e6e6e6', ec='none'))
 
 
 def _inset(ax, bounds):
@@ -246,6 +297,79 @@ def draw_fig9b(ax):
     """Draw Fig. 9b (O2) on ``ax``: experiment, model, deposited curve."""
     _draw_fig9_panel(ax, load_o2_model(), read_fig9b_o2(), 'O2',
                      legend_anchor=(0.07, 0.97), deposited_anchor=(0.97, 0.50))
+
+
+# Where the species legend (as published) and the key of the deposited
+# curve sit in the panels of Fig. 10a-c.
+_FIG10_LEGEND_ANCHOR = (0.50, 0.555)
+_FIG10_KEY_ANCHOR = (0.975, 0.215)
+
+
+def draw_fig10abc(ax, temperature_C):
+    """Draw Fig. 10a, b or c on ``ax``: O2 at 25, 75 or 100 C.
+
+    Circles are the experimental points, solid lines the reversible O2
+    variant with the constant set of that temperature, and the black dotted
+    line the model curve the authors deposited (a polyline through their
+    solver's steps), from which that variant was inferred. The box below
+    the temperature gives the pooled R2 of the solid lines against all
+    experimental points of the panel (the published panels print 0.99).
+    """
+    reference = read_fig10_o2(temperature_C)
+    km = load_o2_reversible_model(temperature_C)
+    _draw_profiles(ax, km, reference, _FIG10_LEGEND_ANCHOR,
+                   _FIG10_KEY_ANCHOR)
+    experiment = reference['experiment']
+    _temperature_tag(ax, temperature_C, 'R$^2$ = %.3f' % pooled_r2(
+        experiment, simulate_at_times(km, experiment['time'])))
+
+
+def _arrhenius_line(ax, line, ends_C, color, **kwargs):
+    inv_T = 1./(np.asarray(ends_C) + 273.15)
+    ax.plot(1000.*inv_T, line['slope']*inv_T + line['intercept'],
+            color=color, **kwargs)
+
+
+def _draw_arrhenius_points(ax):
+    points = fig10d_points()
+    for name, (_, color) in _FIG10D_SERIES.items():
+        ax.plot(1000.*points['inv_T'], points['ln_' + name], ls='none',
+                marker='o', ms=8, mfc='none', mec=color, mew=1.8, zorder=3)
+
+
+def _arrhenius_frame(ax, labelsize=15):
+    ax.set_xlim(2.6, 3.45)
+    ax.set_ylim(-13., -3.)
+    ax.set_xticks(np.arange(2.6, 3.41, 0.2))
+    ax.set_yticks(np.arange(-12, -3, 2))
+    ax.tick_params(length=5)
+    ax.set_xlabel('1000/T (K$^{-1}$)', fontsize=labelsize)
+    ax.set_ylabel('ln k', fontsize=labelsize)
+
+
+def draw_fig10d(ax):
+    """Draw Fig. 10d on ``ax``: the Arrhenius plot.
+
+    The circles are the deposited points: ``ln k`` (k in 1/min) of three
+    rate constants of the simplified reversible model, 3-HP to MA
+    (``k_1``), MA to AAc (``k_2``) and MA to others (``k_5``), at 25, 50,
+    75 and 100 C. Each dashed line is the least-squares line through three
+    of the four points, recomputed here and drawn over the range of the
+    published line: ``k_1`` through 25, 75 and 100 C, ``k_2`` and ``k_5``
+    through 50, 75 and 100 C.
+    """
+    lines = fig10d_regression_lines()
+    for name, (label, color) in _FIG10D_SERIES.items():
+        _arrhenius_line(ax, lines[name], FIG10D_LINE_ENDS_C[name], color,
+                        lw=1.4, ls=(0, (3, 2.5)), alpha=0.55, zorder=2)
+    _draw_arrhenius_points(ax)
+    _arrhenius_frame(ax)
+    ax.legend(handles=[
+        _line_handle(color, label, lw=1.4, ls=(0, (3, 2.5)), marker='o',
+                     ms=8, mfc='none', mew=1.8)
+        for label, color in _FIG10D_SERIES.values()],
+        loc='upper right', frameon=False, fontsize=12, handlelength=3.2,
+        handletextpad=0.5, labelspacing=0.25, borderaxespad=0.6)
 
 
 def draw_figS12a(ax):
@@ -557,6 +681,121 @@ def plot_fig9():
     return fig
 
 
+def _panel_letters(axes, x=-0.25):
+    for ax, letter in zip(axes, 'abcd'):
+        ax.text(x, 1.0, letter, transform=ax.transAxes, fontsize=24,
+                va='top', color=C_INK)
+
+
+def plot_fig10():
+    """Regenerate Fig. 10 (a-c: O2 at 25, 75 and 100 C; d: Arrhenius plot).
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+    """
+    with plt.rc_context(_RC_PARAMS):
+        fig, axes = plt.subplots(2, 2, figsize=(11.6, 9.0),
+                                 gridspec_kw=dict(wspace=0.36, hspace=0.30))
+        axes = axes.ravel()
+        for ax, temperature_C in zip(axes, FIG10_TEMPERATURES_C):
+            draw_fig10abc(ax, temperature_C)
+        draw_fig10d(axes[3])
+        _panel_letters(axes)
+    return fig
+
+
+# Height of the temperature tag in panels a to c of the comparison figure,
+# chosen so that the tag and the R2 box below it lie clear of the curves.
+_FIG10_TABLE3_TAG_Y = {25: 0.80, 75: 0.80, 100: 0.735}
+
+
+def plot_fig10_table3_o2():
+    """Draw Fig. 10 as the Table 3 O2 model and the text of the paper give it.
+
+    Panels a to c: the experimental points of Fig. 10a-c with the Table 3
+    O2 model at 25, 75 and 100 C (solid lines; the model of Fig. 9b with
+    its Arrhenius temperature dependence, which is what the text of the
+    paper describes) and the per-temperature fits the authors plotted
+    (dashed lines; the reversible O2 variant). The box gives the pooled R2
+    of each against all experimental points of the panel: first the
+    Table 3 model, then the per-temperature fit.
+
+    Panel d: the points of Fig. 10d with the published regression lines
+    (dashed) and the lines that the activation energies quoted in the text
+    imply (solid; 59.8, 91.6 and 59.5 kJ/mol through the 50 C points, as in
+    the authors' heat-map script), over 25 to 100 C.
+
+    The curves of the Table 3 model cross the whole of panels a to c, so
+    the keys are placed above the panels and not inside them.
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+    """
+    with plt.rc_context(_RC_PARAMS):
+        fig, axes = plt.subplots(2, 2, figsize=(11.6, 9.0),
+                                 gridspec_kw=dict(wspace=0.36, hspace=0.30))
+        axes = axes.ravel()
+        for ax, temperature_C in zip(axes, FIG10_TEMPERATURES_C):
+            experiment = read_fig10_o2(temperature_C)['experiment']
+            table3 = load_o2_model(T=temperature_C + 273.15)
+            _species(ax, simulate_at_times(table3, _T_DENSE), experiment)
+            reversible = load_o2_reversible_model(temperature_C)
+            fit = simulate_at_times(reversible, _T_DENSE)
+            for name in NORMALIZED:
+                ax.plot(fit['time'], fit[name], color=COLORS[name], lw=1.0,
+                        ls=(0, (4, 2)), zorder=2)
+            _frame(ax)
+            r2 = [pooled_r2(experiment,
+                            simulate_at_times(km, experiment['time']))
+                  for km in (table3, reversible)]
+            _temperature_tag(
+                ax, temperature_C,
+                'R$^2$ = %.3f (Table 3)\nR$^2$ = %.3f (fit)' % tuple(r2),
+                y=_FIG10_TABLE3_TAG_Y[temperature_C])
+        for y, handles in (
+                (0.930, [_line_handle(COLORS[n], LABELS[n], lw=1.8,
+                                      marker='o', ms=5, mfc='none', mew=1.3)
+                         for n in NORMALIZED]),
+                (0.900, [_line_handle(C_MUTED, 'Experiment', ls='none',
+                                      marker='o', ms=5, mfc='none', mew=1.3),
+                         _line_handle(C_MUTED, 'Table 3 O$_2$ model with '
+                                      'Arrhenius temperature dependence',
+                                      lw=1.8),
+                         _line_handle(C_MUTED, 'Per-temperature fit '
+                                      '(reversible variant)', lw=1.0,
+                                      ls=(0, (4, 2)))])):
+            fig.legend(handles=handles, ncol=len(handles),
+                       loc='lower center', bbox_to_anchor=(0.5, y),
+                       bbox_transform=fig.transFigure, frameon=False,
+                       fontsize=10, handlelength=2.6, handletextpad=0.5,
+                       columnspacing=1.6, borderaxespad=0.)
+
+        ax = axes[3]
+        regression, text = fig10d_regression_lines(), fig10d_text_lines()
+        for name, (_, color) in _FIG10D_SERIES.items():
+            _arrhenius_line(ax, regression[name], FIG10D_LINE_ENDS_C[name],
+                            color, lw=1.4, ls=(0, (3, 2.5)), alpha=0.55,
+                            zorder=2)
+            _arrhenius_line(ax, text[name], (100., 25.), color, lw=1.6,
+                            zorder=2)
+        _draw_arrhenius_points(ax)
+        _arrhenius_frame(ax)
+        handles = [_line_handle(color, label, ls='none', marker='o', ms=8,
+                                mfc='none', mew=1.8)
+                   for label, color in _FIG10D_SERIES.values()]
+        handles += [_line_handle(C_MUTED, 'Regression line (published)',
+                                 lw=1.4, ls=(0, (3, 2.5)), alpha=0.55),
+                    _line_handle(C_MUTED, 'E$_a$ of the text, from 50 '
+                                 '\N{DEGREE SIGN}C', lw=1.6)]
+        ax.legend(handles=handles, loc='lower left', frameon=False,
+                  fontsize=10, handlelength=3.0, handletextpad=0.5,
+                  labelspacing=0.25, borderaxespad=0.5)
+        _panel_letters(axes)
+    return fig
+
+
 def plot_figS12():
     """Regenerate SI Fig. S12 (a: predicted H2O2, b: predicted OPA).
 
@@ -661,8 +900,17 @@ def plot_fig11_table3_o2():
     return fig
 
 
-def save_figures(output_dir, formats=('png', 'pdf')):
-    """Write every figure of this module to ``output_dir``.
+def _figures():
+    """Name and plot function of every figure of this module."""
+    return {'fig9': plot_fig9, 'fig10': plot_fig10,
+            'fig10_table3_o2': plot_fig10_table3_o2, 'figS12': plot_figS12,
+            'fig11': plot_fig11,
+            'fig11_verification': plot_fig11_verification,
+            'fig11_table3_o2': plot_fig11_table3_o2}
+
+
+def save_figures(output_dir, formats=('png', 'pdf'), figures=None):
+    """Write the figures of this module to ``output_dir``.
 
     Parameters
     ----------
@@ -670,18 +918,26 @@ def save_figures(output_dir, formats=('png', 'pdf')):
         Folder to write to; created if missing.
     formats : tuple of str, optional
         File formats, by default PNG (600 dpi) and vector PDF.
+    figures : sequence of str, optional
+        Names of the figures to write (see the module docstring), by
+        default all of them.
 
     Returns
     -------
     list of str
         Paths of the files written.
     """
+    plots = _figures()
+    if figures is None:
+        figures = list(plots)
+    unknown = [name for name in figures if name not in plots]
+    if unknown:
+        raise ValueError(f'unknown figures {unknown}; '
+                         f'choose from {list(plots)}')
     os.makedirs(output_dir, exist_ok=True)
     paths = []
-    for name, plot in (('fig9', plot_fig9), ('figS12', plot_figS12),
-                       ('fig11', plot_fig11),
-                       ('fig11_verification', plot_fig11_verification),
-                       ('fig11_table3_o2', plot_fig11_table3_o2)):
+    for name in figures:
+        plot = plots[name]
         with plt.rc_context(_RC_PARAMS):
             fig = plot()
             for fmt in formats:
@@ -695,15 +951,20 @@ def save_figures(output_dir, formats=('png', 'pdf')):
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Regenerate Fig. 9, SI Fig. S12 and Fig. 11 of Kim et '
-                    'al. (2026) from the NSKinetics models.')
+        description='Regenerate Fig. 9, Fig. 10, SI Fig. S12 and Fig. 11 '
+                    'of Kim et al. (2026) from the NSKinetics models.')
     parser.add_argument('output_dir', help='folder to write the figures to')
     parser.add_argument('--formats', nargs='+', default=['png', 'pdf'],
                         help='file formats (default: png pdf)')
+    parser.add_argument('--figures', nargs='+', default=None,
+                        choices=list(_figures()), metavar='NAME',
+                        help='figures to write (default: all): '
+                             + ', '.join(_figures()))
     args = parser.parse_args()
     if os.environ.get('MPLBACKEND') is None:
         plt.switch_backend('Agg')    # no display needed to write files
-    for path in save_figures(args.output_dir, tuple(args.formats)):
+    for path in save_figures(args.output_dir, tuple(args.formats),
+                             args.figures):
         print(f'Saved {path}')
 
 

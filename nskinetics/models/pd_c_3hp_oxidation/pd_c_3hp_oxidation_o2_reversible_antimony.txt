@@ -1,0 +1,211 @@
+// Selective oxidation of 3-hydroxypropionic acid (3-HP) to malonic acid (MA)
+// over 10 % Pd/C with O2 as the oxidant: REVERSIBLE six-reaction variant,
+// INFERRED from the model curves the authors deposited for the experiments
+// at 25, 75 and 100 C (Fig. 10a-c; files 11-1, 11-2 and 11-3 of the Dryad
+// deposit, https://doi.org/10.5061/dryad.jsxksn0q4) of
+//   Kim, Chavarrio, Install, Huber, Appl. Catal. B: Environ. Energy 386
+//   (2026) 126403, https://doi.org/10.1016/j.apcatb.2026.126403
+//
+// This file is a reproduction aid. The model is NOT described in the paper,
+// whose text treats all reactions as irreversible, and it is in neither of
+// the two scripts the authors posted. It is the reaction network of the
+// Table 3 O2 model (pd_c_3hp_oxidation_o2_antimony.txt) with reactions 1, 2,
+// 5 and 6 made reversible, and it is the only structure found that
+// reproduces the deposited Fig. 10a-c curves. Its ten constants were fitted
+// by the authors separately at each temperature; there is NO temperature
+// law, and there is no constant set for 50 C (Fig. 9b is the irreversible
+// Table 3 model). None of the constants is printed anywhere: all were
+// inferred from the deposited curves. This file holds the 75 C set; the
+// loader sets the 25 C and 100 C sets (see the end of the constants below).
+//
+// Units: time in min, liquid concentrations in M (mol/L).
+// See NOTES.md next to this file for how each feature was established.
+model *kim2026_o2_reversible()
+
+  // Compartments and Species:
+  // env is the liquid phase. HP3, OPA, MA, AAc, OXA and D are the species of
+  // the Table 3 models (OPA, 3-oxopropanoic acid, is the aldehyde
+  // intermediate and was not measured; D lumps the other by-products).
+  // W is the water formed by the reactions, counted from zero. It is not
+  // the solvent: only the water made by R1 and R4 enters the reverse of R1.
+  var compartment env;
+  species HP3 in env, OPA in env, MA in env, AAc in env, OXA in env, D in env;
+  species W in env;
+
+  // Assignment Rules:
+
+  // Plotted quantities, with the names of the Table 3 O2 model.
+  // Fig. 10a-c "Normalized Concentration": each measured species divided by
+  // the sum of the five measured species. OPA is left out of the sum, as in
+  // the deposited curves, although this model holds up to 3 % (25 C), 12 %
+  // (75 C) and 20 % (100 C) of the feed as OPA.
+  X_HP3 := HP3/(HP3 + MA + AAc + OXA + D);
+  X_MA := MA/(HP3 + MA + AAc + OXA + D);
+  X_AAc := AAc/(HP3 + MA + AAc + OXA + D);
+  X_OXA := OXA/(HP3 + MA + AAc + OXA + D);
+  X_D := D/(HP3 + MA + AAc + OXA + D);
+  // Liquid mole fraction of OPA on the authors' scale (see x_per_M).
+  x_OPA := x_per_M*OPA;
+
+  // Reactions:
+  // All terms are first order in each species they contain; there is no
+  // oxidant factor and no catalyst mass (the constants are lumped, for the
+  // 0.2 g batch), and the reaction orders of SI Table S4 are not used.
+  // R1, R2, R5 and R6 have a reverse term. That of R1 is bilinear: OPA times
+  // the water formed by reaction, W, which starts at zero. k_1r is given per
+  // unit of W/C0 (see below), hence the division by C0.
+  // W is formed by R1 and by R4 (one each), which is the water of the O2
+  // stoichiometry of SI Table S4 (3-HP + 0.5 O2 -> OPA + H2O and
+  // MA + 1.5 O2 -> OXA + H2O + CO2).
+  R1: HP3 -> OPA + W; (k_1*HP3 - k_1r*OPA*W/C0)*env;   // 3-HP + 0.5 O2 <-> OPA + H2O
+  R2: OPA -> MA; (k_2*OPA - k_2r*MA)*env;              // OPA + 0.5 O2 <-> MA
+  R3: MA => AAc; k_3*MA*env;                           // MA -> AAc + CO2
+  R4: MA => OXA + W; k_4*MA*env;                       // MA + 1.5 O2 -> OXA + H2O + CO2
+  R5: HP3 -> D; (k_5*HP3 - k_5r*D)*env;                // 3-HP <-> Others (D)
+  R6: MA -> D; (k_6*MA - k_6r*D)*env;                  // MA <-> Others (D)
+
+  // Events:
+
+  // Species initializations:
+  // 60 mM 3-HP feed (with equimolar NaOH), no products (Fig. 10 caption),
+  // and no water of reaction. W = 0 at t = 0 is essential: it makes R1
+  // irreversible at the start.
+  HP3 = C0;
+  OPA = 0;
+  MA = 0;
+  AAc = 0;
+  OXA = 0;
+  D = 0;
+  W = 0;
+
+  // Compartment initializations:
+  // Nominal unit liquid volume; it cancels from every concentration.
+  env = 1;
+
+  // Variable initializations:
+
+  // Initial 3-HP concentration: 60 mM (Fig. 10 caption).
+  C0 = 0.06;
+  C0 has mol_per_l;
+
+  // Liquid mole fraction per molar concentration on the authors' scale:
+  // their scripts map the 60 mM feed to a mole fraction of 0.000339, so
+  // x_per_M = 0.000339/0.06. Used only for x_OPA.
+  x_per_M = 0.00565;
+  x_per_M has l_per_mol;
+
+  // Constants of the 75 C curve (Fig. 10b), in 1/min for the 0.2 g batch.
+  // ALL ARE INFERRED: they are the values with which an emulation of the
+  // authors' solver run (MATLAB ode23s, default tolerances) returns the
+  // deposited model curve of 11-2_75C_Kinetic.csv, steps and values, to its
+  // printed digits. They are given to six significant digits.
+  // They are effective constants: any oxidant, pressure or catalyst-mass
+  // factor of the authors' code is lumped into them, and they are not in
+  // the units of Table 3.
+  k_1 = 0.00918893;    // R1 forward, 3-HP -> OPA + W
+  k_1 has per_min;
+  // R1 reverse, OPA + W -> 3-HP: 1/min per unit of W/C0, i.e. with OPA and
+  // W both counted in mol per mol of initial 3-HP. At 75 C it is weakly
+  // determined (5 to 10 %); its effect on the curve is below 1e-5.
+  k_1r = 1.88278e-5;
+  k_1r has per_min;
+  k_2 = 0.0490036;     // R2 forward, OPA -> MA
+  k_2 has per_min;
+  k_2r = 0.00193586;   // R2 reverse, MA -> OPA
+  k_2r has per_min;
+  k_3 = 4.9301e-4;     // R3, MA -> AAc
+  k_3 has per_min;
+  k_4 = 7.97777e-6;    // R4, MA -> OXA + W
+  k_4 has per_min;
+  k_5 = 0.00160383;    // R5 forward, 3-HP -> D
+  k_5 has per_min;
+  k_5r = 2.86632e-5;   // R5 reverse, D -> 3-HP
+  k_5r has per_min;
+  k_6 = 0.00613222;    // R6 forward, MA -> D
+  k_6 has per_min;
+  k_6r = 2.56106e-5;   // R6 reverse, D -> MA
+  k_6r has per_min;
+  // The other two sets, inferred in the same way from 11-1_25C_Kinetic.csv
+  // and 11-3_100C_Kinetic.csv, in the order k_1, k_1r, k_2, k_2r, k_3, k_4,
+  // k_5, k_5r, k_6, k_6r:
+  //   25 C (Fig. 10a): 0.0465036, 51.0644, 0.0088933, 0.00136441,
+  //     2.43424e-4, 6.17632e-5, 1.01563e-6, 1.47217e-7, 0.00284329,
+  //     3.12354e-4
+  //   100 C (Fig. 10c): 0.0414885, 0.00474984, 0.122878, 0.0103261,
+  //     0.00169028, 7.86978e-6, 9.32644e-7, 0, 0.0157177, 1.05066e-4
+  // The loader sets them with temperature_C=25 or 100. The three sets are
+  // independent fits and follow no Arrhenius law (k_1/k_1r is 9.1e-4 at
+  // 25 C, 488 at 75 C and 8.7 at 100 C).
+
+  X_HP3 has dimensionless;
+  X_MA has dimensionless;
+  X_AAc has dimensionless;
+  X_OXA has dimensionless;
+  X_D has dimensionless;
+  x_OPA has dimensionless;
+
+  // Other declarations:
+  var X_HP3, X_MA, X_AAc, X_OXA, X_D, x_OPA;
+  const C0, x_per_M;
+  const k_1, k_1r, k_2, k_2r, k_3, k_4, k_5, k_5r, k_6, k_6r;
+
+  // Unit definitions:
+  unit substance = mole;
+  unit time_unit = 60 second;
+  unit volume = litre;
+  unit per_min = 1 / 60 second;
+  unit mol_per_l = mole / litre;
+  unit l_per_mol = litre / mole;
+
+  // Display Names:
+  substance is "mole";
+  time_unit is "minutes";
+  volume is "liter";
+  per_min is "per minute";
+  mol_per_l is "mole per liter";
+  l_per_mol is "liter per mole";
+  env is "liquid phase";
+  HP3 is "3-Hydroxypropionic acid (3-HP)";
+  OPA is "3-Oxopropanoic acid (OPA)";
+  MA is "Malonic acid (MA)";
+  AAc is "Acetic acid (AAc)";
+  OXA is "Oxalic acid (OXA)";
+  D is "Other by-products (D)";
+  W is "Water formed by reaction";
+  C0 is "Initial 3-HP concentration";
+  x_per_M is "Mole fraction per molar concentration";
+  X_HP3 is "3-HP, normalized (Fig. 10)";
+  X_MA is "MA, normalized (Fig. 10)";
+  X_AAc is "AAc, normalized (Fig. 10)";
+  X_OXA is "OXA, normalized (Fig. 10)";
+  X_D is "Others, normalized (Fig. 10)";
+  x_OPA is "OPA mole fraction";
+  R1 is "3-HP oxidation to OPA (reversible)";
+  R2 is "OPA oxidation to MA (reversible)";
+  R3 is "MA decarboxylation to AAc";
+  R4 is "MA oxidation to OXA";
+  R5 is "3-HP degradation to others (reversible)";
+  R6 is "MA degradation to others (reversible)";
+
+  // Notes:
+  model notes ```
+Reversible six-reaction O2 variant inferred from the deposited model curves of Fig. 10a-c of the article:
+**Selective oxidation of 3-hydroxypropionic acid to malonic acid over Pd/C: Mechanistic and kinetic study.**
+Kim S.Y., Chavarrio J., Install J., Huber G.W. *Appl. Catal. B: Environ. Energy* 386 (2026) 126403.
+DOI: [10.1016/j.apcatb.2026.126403](https://doi.org/10.1016/j.apcatb.2026.126403)
+
+A reproduction aid, not a model of the paper: the text treats all reactions as irreversible
+and neither posted script contains this structure. It is the Table 3 O2 network with
+reactions 1, 2, 5 and 6 reversible; the reverse of reaction 1 is bilinear in OPA and the
+water formed by reactions 1 and 4. It reproduces the model curves the authors deposited
+for 25, 75 and 100 C (Dryad, DOI 10.5061/dryad.jsxksn0q4, files 11-1, 11-2, 11-3).
+
+Conditions: 60 mM 3-HP, 0.2 g 10 % Pd/C, NaOH/3-HP = 1:1, 3 bar O2 (Fig. 10 caption).
+Default state: the constants of the 75 C curve (Fig. 10b). The constants are effective
+first-order constants in 1/min for the 0.2 g batch, fitted separately at each temperature
+(25, 75 and 100 C), with no temperature law; there is no set for 50 C. All were inferred
+from the deposited curves and none is printed in the paper or its deposit.
+```
+end
+
+kim2026_o2_reversible is "Kim2026_PdC_3HP_Oxidation_O2_reversible"

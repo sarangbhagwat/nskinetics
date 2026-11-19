@@ -11,17 +11,23 @@ to malonic acid (MA) over 10 % Pd/C, from Kim, Chavarrio, Install and Huber,
 Appl. Catal. B: Environ. Energy 386 (2026) 126403
 (https://doi.org/10.1016/j.apcatb.2026.126403).
 
-Three models are provided, each as an Antimony file next to this module:
+Four models are provided, each as an Antimony file next to this module:
 
-* the H2O2 model (Table 3, H2O2 column; Fig. 9a; SI Fig. S12a),
-* the O2 model (Table 3, O2 column; Fig. 9b; SI Fig. S12b), with an Arrhenius
-  temperature dependence that reduces to the published 50 C model at the
-  default ``T = 323.15`` K, and
+* the H2O2 model (Table 3, H2O2 column), which reproduces Fig. 9a and SI
+  Fig. S12a;
+* the O2 model (Table 3, O2 column), which reproduces Fig. 9b and SI
+  Fig. S12b, with an Arrhenius temperature dependence that reduces to the
+  published 50 C model at the default ``T = 323.15`` K;
+* the reversible six-reaction O2 variant, which reproduces the model curves
+  of Fig. 10a-c (25, 75 and 100 C). It is not in the paper or the authors'
+  scripts: structure and constants were inferred from the deposited curves;
 * the authors' simplified reversible five-reaction O2 model (no OPA), which
-  is not in the paper but generated its heat maps (Fig. 11).
+  is not in the paper but generated its heat maps (Fig. 11); three of its
+  rate constants are the ones plotted in the Arrhenius plot (Fig. 10d).
 
 Time is in min and liquid concentrations are in M. Nothing is loaded or
-simulated on import: call :func:`load_h2o2_model`, :func:`load_o2_model` or
+simulated on import: call :func:`load_h2o2_model`, :func:`load_o2_model`,
+:func:`load_o2_reversible_model` or
 :func:`load_o2_simplified_reversible_model`.
 ``NOTES.md`` in this folder records what is printed in the paper, what was
 inferred from the authors' data deposit, and where the two disagree.
@@ -34,23 +40,29 @@ import tellurium as te
 
 import nskinetics as nsk
 
-__all__ = ('load_h2o2_model', 'load_o2_model',
+__all__ = ('load_h2o2_model', 'load_o2_model', 'load_o2_reversible_model',
            'load_o2_simplified_reversible_model', 'simulate_at_times',
            'h2o2_antimony_filename', 'o2_antimony_filename',
+           'o2_reversible_antimony_filename',
            'o2_simplified_reversible_antimony_filename',
            'SPECIES', 'NORMALIZED', 'TABLE_S4',
+           'O2_REVERSIBLE_PARAMETER_SETS',
            'SIMPLIFIED_REVERSIBLE_PARAMETER_SETS',
            'SIMPLIFIED_REVERSIBLE_INITIAL_CONDITIONS',)
 
 #%% Model files
 h2o2_antimony_filename = 'pd_c_3hp_oxidation_h2o2_antimony.txt'
 o2_antimony_filename = 'pd_c_3hp_oxidation_o2_antimony.txt'
+o2_reversible_antimony_filename = (
+    'pd_c_3hp_oxidation_o2_reversible_antimony.txt')
 o2_simplified_reversible_antimony_filename = (
     'pd_c_3hp_oxidation_o2_simplified_reversible_antimony.txt')
 
 #: Liquid species of the two Table 3 models, in M: 3-HP, 3-oxopropanoic
 #: acid, malonic acid, acetic acid, oxalic acid and the lumped other
-#: by-products. The simplified reversible model has the same without OPA.
+#: by-products. The reversible O2 variant has the same plus ``W`` (the
+#: water formed by reaction); the simplified reversible model has the same
+#: without OPA.
 SPECIES = ('HP3', 'OPA', 'MA', 'AAc', 'OXA', 'D')
 
 #: Assignment rules holding the "Normalized Concentration" plotted in Fig. 9:
@@ -87,6 +99,27 @@ TABLE_S4 = {
         'Keq': (1.37e30, 6.09e41, 5.75e4, 2.44e92, None, None),
         },
     }
+
+_O2_REVERSIBLE_NAMES = ('k_1', 'k_1r', 'k_2', 'k_2r', 'k_3', 'k_4',
+                        'k_5', 'k_5r', 'k_6', 'k_6r')
+
+#: Constant sets of the reversible O2 variant, keyed by the temperature in C
+#: of the experiment whose deposited model curve they reproduce (Fig. 10a,
+#: b and c). Forward constants ``k_i`` and reverse constants ``k_ir`` in
+#: 1/min for the 0.2 g batch; ``k_1r`` is per unit of ``[W]/C0``. All values
+#: were inferred from the deposited curves (see ``NOTES.md``); the three
+#: sets are separate fits and follow no temperature law. There is no set
+#: for 50 C.
+O2_REVERSIBLE_PARAMETER_SETS = {
+    temperature_C: dict(zip(_O2_REVERSIBLE_NAMES, values))
+    for temperature_C, values in (
+        (25, (0.0465036, 51.0644, 0.0088933, 0.00136441, 2.43424e-4,
+              6.17632e-5, 1.01563e-6, 1.47217e-7, 0.00284329, 3.12354e-4)),
+        (75, (0.00918893, 1.88278e-5, 0.0490036, 0.00193586, 4.9301e-4,
+              7.97777e-6, 0.00160383, 2.86632e-5, 0.00613222, 2.56106e-5)),
+        (100, (0.0414885, 0.00474984, 0.122878, 0.0103261, 0.00169028,
+               7.86978e-6, 9.32644e-7, 0., 0.0157177, 1.05066e-4)),
+        )}
 
 _SIMPLIFIED_REVERSIBLE_NAMES = (
     'k_1_ref', 'k_2_ref', 'k_3_ref', 'k_4_ref', 'k_5_ref',
@@ -126,6 +159,10 @@ SIMPLIFIED_REVERSIBLE_PARAMETER_SETS = {
 #: constants to the 50 C data). The model parameter ``x_per_M`` is this value
 #: divided by the 60 mM feed concentration.
 SIMPLIFIED_REVERSIBLE_INITIAL_CONDITIONS = {'heatmap': 1., 'fitting': 0.000339}
+
+# Names that say what the two initial conditions are, not what the authors'
+# script uses them for; accepted by the loader as aliases.
+_INITIAL_CONDITION_ALIASES = {'unscaled': 'heatmap', 'dilute': 'fitting'}
 
 
 #%% Loaders
@@ -173,7 +210,8 @@ def load_o2_model(T=None):
         temperature, 323.15 K (50 C), at which the model is the published
         one. Other temperatures scale the six rate constants by Arrhenius
         factors; this is an extrapolation the paper does not show for this
-        model (see ``NOTES.md``).
+        model, and it does not reproduce the experiments at 25, 75 and
+        100 C (see ``NOTES.md``).
 
     Returns
     -------
@@ -191,6 +229,62 @@ def load_o2_model(T=None):
     te_r = _load(o2_antimony_filename)
     if T is not None:
         te_r.set_value('T', T)
+    return te_r
+
+
+def load_o2_reversible_model(temperature_C=75):
+    """Load the reversible O2 variant behind the curves of Fig. 10a-c.
+
+    This is the six-reaction network of the Table 3 O2 model with
+    reactions 1, 2, 5 and 6 reversible. It is not described in the paper
+    (whose text treats all reactions as irreversible) and is in neither of
+    the authors' scripts: its structure and constants were inferred from
+    the model curves deposited for the experiments at 25, 75 and 100 C,
+    which it reproduces. See ``NOTES.md``.
+
+    Parameters
+    ----------
+    temperature_C : {25, 75, 100}, optional
+        Temperature in C of the experiment; selects one of the three
+        constant sets of :data:`O2_REVERSIBLE_PARAMETER_SETS`. Default 75
+        (Fig. 10b), the set held by the Antimony file. The sets were fitted
+        separately and there is no temperature law, so no other value is
+        accepted.
+
+    Returns
+    -------
+    nskinetics.KineticModel
+        A new model with 60 mM 3-HP. Species: ``HP3, OPA, MA, AAc, OXA,
+        D`` and ``W``, the water formed by reactions 1 and 4, which starts
+        at zero and enters the reverse of reaction 1. Plotted quantities
+        (select them by name): ``X_HP3, X_MA, X_AAc, X_OXA, X_D``
+        (Fig. 10a-c) and ``x_OPA``.
+
+    Raises
+    ------
+    ValueError
+        If no constant set exists for ``temperature_C``. In particular
+        there is none for 50 C: the 50 C curve (Fig. 9b) is the
+        irreversible Table 3 model, :func:`load_o2_model`.
+
+    Notes
+    -----
+    The constants are effective first-order constants in 1/min for the
+    0.2 g batch and are not in the units of Table 3. The deposited curves
+    are MATLAB ``ode23s`` output at default tolerances; this model, solved
+    accurately, differs from them by up to 1.8e-4 (25 C), 2.5e-3 (75 C)
+    and 2.7e-3 (100 C). See :func:`load_h2o2_model` on item access.
+    """
+    if temperature_C not in O2_REVERSIBLE_PARAMETER_SETS:
+        raise ValueError(
+            'no parameter set of the reversible O2 variant exists for '
+            f'{temperature_C!r} C: the sets are separate fits at '
+            f'{", ".join(str(T) for T in O2_REVERSIBLE_PARAMETER_SETS)} C '
+            'with no temperature law. For 50 C (Fig. 9b) use load_o2_model, '
+            'the irreversible Table 3 model.')
+    te_r = _load(o2_reversible_antimony_filename)
+    for name, value in O2_REVERSIBLE_PARAMETER_SETS[temperature_C].items():
+        te_r.set_value(name, value)
     return te_r
 
 
@@ -219,7 +313,8 @@ def load_o2_simplified_reversible_model(T=None, parameter_set='fig11b',
         irreversible and the O2 fraction falls as by-products form.
         ``'fitting'`` starts from a 3-HP mole fraction of 0.000339, as the
         script does when it fits the 50 C data. The two give different
-        curves for the same constants.
+        curves for the same constants. ``'unscaled'`` and ``'dilute'`` are
+        accepted as other names of ``'heatmap'`` and ``'fitting'``.
 
     Returns
     -------
@@ -242,6 +337,8 @@ def load_o2_simplified_reversible_model(T=None, parameter_set='fig11b',
     for name, value in SIMPLIFIED_REVERSIBLE_PARAMETER_SETS[
             parameter_set].items():
         te_r.set_value(name, value)
+    initial_condition = _INITIAL_CONDITION_ALIASES.get(initial_condition,
+                                                       initial_condition)
     te_r.set_value(
         'x_per_M',
         SIMPLIFIED_REVERSIBLE_INITIAL_CONDITIONS[initial_condition]

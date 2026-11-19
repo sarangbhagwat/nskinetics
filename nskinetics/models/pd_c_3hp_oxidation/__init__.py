@@ -7,10 +7,20 @@
 # for license details.
 
 # Kinetic models of 3-HP oxidation to malonic acid over Pd/C (Kim et al.,
-# Appl. Catal. B: Environ. Energy 386 (2026) 126403). Importing this
-# subpackage loads no model and runs no simulation: the loaders build a model
-# when called. The figure module (``figures``) is not imported here; import
-# it explicitly, or run it with ``python -m`` to write the figures.
+# Appl. Catal. B: Environ. Energy 386 (2026) 126403). Four models, each
+# with a loader in ``pd_c_3hp_oxidation``:
+#
+# * H2O2 model (Table 3, H2O2 column): reproduces Fig. 9a and SI Fig. S12a;
+# * O2 model (Table 3, O2 column): reproduces Fig. 9b and SI Fig. S12b;
+# * reversible O2 variant, inferred from the deposited model curves:
+#   reproduces the curves of Fig. 10a-c (25, 75 and 100 C);
+# * simplified reversible O2 model of the authors' heat-map script:
+#   reproduces Fig. 11; its rate constants are the points of Fig. 10d.
+#
+# Importing this subpackage loads no model and runs no simulation: the
+# loaders build a model when called. The figure module (``figures``) is not
+# imported here; import it explicitly, or run it with ``python -m`` to
+# write the figures.
 
 from . import pd_c_3hp_oxidation
 from .pd_c_3hp_oxidation import *
@@ -21,8 +31,12 @@ from .reference import *
 from . import heat_maps
 from .heat_maps import *
 
+from . import temperature_series
+from .temperature_series import *
+
 __all__ = (
      *pd_c_3hp_oxidation.__all__,
      *reference.__all__,
      *heat_maps.__all__,
+     *temperature_series.__all__,
      )

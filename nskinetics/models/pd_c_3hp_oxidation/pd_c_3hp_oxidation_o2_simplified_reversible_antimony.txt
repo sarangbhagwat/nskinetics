@@ -78,7 +78,7 @@ model *kim2026_o2_simplified_reversible()
 
   // Plotted quantities.
   // Water-free liquid fractions: each species over the sum of the five
-  // liquid species (same meaning as X_i in the other two models).
+  // liquid species (same meaning as X_i in the other models).
   X_HP3 := HP3/(HP3 + MA + AAc + OXA + D);
   X_MA := MA/(HP3 + MA + AAc + OXA + D);
   X_AAc := AAc/(HP3 + MA + AAc + OXA + D);

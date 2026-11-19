@@ -201,6 +201,16 @@ def test_initial_condition_selects_the_mole_fraction_scale():
         assert km.get_value('X_HP3') == pytest.approx(1.)
 
 
+def test_initial_condition_aliases():
+    # 'unscaled' and 'dilute' are other names of 'heatmap' and 'fitting'
+    for alias, name in (('unscaled', 'heatmap'), ('dilute', 'fitting')):
+        aliased = load_o2_simplified_reversible_model(initial_condition=alias)
+        named = load_o2_simplified_reversible_model(initial_condition=name)
+        assert aliased.get_value('x_per_M') == named.get_value('x_per_M')
+    with pytest.raises(KeyError):
+        load_o2_simplified_reversible_model(initial_condition='concentrated')
+
+
 # --- 2. rate laws against the equations of the authors' script ----------------
 
 @pytest.mark.parametrize('initial_condition, parameter_set, T', [

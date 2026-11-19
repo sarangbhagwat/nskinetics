@@ -23,8 +23,9 @@ enough to fail a 2 % error in most rate constants, a missing catalyst-mass
 or oxidant factor, the SI Table S4 reaction orders, or a missing reaction.
 
 The simplified reversible O2 model and the heat maps (Fig. 11) are tested in
-``test_pd_c_3hp_oxidation_heat_maps.py``; only the checks of the deposited
-files and of the shipped SBML cover all three models here.
+``test_pd_c_3hp_oxidation_heat_maps.py`` and the reversible O2 variant and
+the Fig. 10 data in ``test_pd_c_3hp_oxidation_fig10.py``; only the checks of
+the shipped SBML cover all four models here.
 
 The models are small and load in milliseconds, so this module is not
 marked slow. It imports pytest at top level and is therefore not registered
@@ -40,7 +41,8 @@ import nskinetics as nsk
 import nskinetics.models.pd_c_3hp_oxidation as pkg
 from nskinetics.models.pd_c_3hp_oxidation import (
     NORMALIZED, SPECIES, load_h2o2_model, load_o2_model,
-    load_o2_simplified_reversible_model, simulate_at_times)
+    load_o2_reversible_model, load_o2_simplified_reversible_model,
+    simulate_at_times)
 
 _PKG_DIR = os.path.dirname(os.path.abspath(pkg.__file__))
 _NORMALIZED = list(NORMALIZED)
@@ -364,6 +366,8 @@ def test_digitized_inset_readers():
 
 _MODEL_FILES = [(pkg.h2o2_antimony_filename, load_h2o2_model),
                 (pkg.o2_antimony_filename, load_o2_model),
+                (pkg.o2_reversible_antimony_filename,
+                 load_o2_reversible_model),
                 (pkg.o2_simplified_reversible_antimony_filename,
                  load_o2_simplified_reversible_model)]
 

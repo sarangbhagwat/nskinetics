@@ -6,8 +6,8 @@
 # https://github.com/sarangbhagwat/nskinetics/blob/main/LICENSE
 # for license details.
 """Rendering tests for ``nskinetics.models.pd_c_3hp_oxidation.figures``
-(Fig. 9, SI Fig. S12 and Fig. 11 of Kim et al., Appl. Catal. B: Environ.
-Energy 386 (2026) 126403, regenerated from the NSKinetics models).
+(Fig. 9, Fig. 10, SI Fig. S12 and Fig. 11 of Kim et al., Appl. Catal. B:
+Environ. Energy 386 (2026) 126403, regenerated from the NSKinetics models).
 
 The figures are built in memory and their artists inspected, so a panel that
 silently drew nothing would fail; one small PNG is written to ``tmp_path``.
@@ -210,3 +210,130 @@ def test_fig11_table3_o2_draws_the_table3_maps(tmp_path):
         assert os.path.getsize(path) > 0
     finally:
         plt.close(fig)
+
+
+# --- Fig. 10 (O2 at 25, 75 and 100 C; Arrhenius plot) ------------------------
+
+def _two_point_lines(ax):
+    return [line for line in ax.get_lines() if len(line.get_xdata()) == 2]
+
+
+def _slope_and_value_at_100C(line):
+    """Slope in K and value at 1/373.15 K of a line drawn against 1000/T."""
+    x, y = line.get_xdata()/1000., line.get_ydata()
+    slope = (y[1] - y[0])/(x[1] - x[0])
+    return slope, y[0] + slope*(1./373.15 - x[0])
+
+
+def test_fig10_draws_the_profiles_and_the_arrhenius_plot():
+    fig = figures.plot_fig10()
+    try:
+        panels = fig.axes
+        assert len(panels) == 4
+        for panel, temperature_C, r2 in zip(panels, (25, 75, 100),
+                                            ('1.000', '0.990', '0.993')):
+            # 5 model lines + 5 experimental series + 5 deposited polylines
+            assert len(_lines_with_data(panel)) == 15
+            assert panel.get_xlim() == (-30., 1440.)
+            assert panel.get_ylim() == (-0.05, 1.0)
+            deposited = pkg.read_fig10_o2(temperature_C)['model']
+            drawn = [line for line in panel.get_lines()
+                     if len(line.get_xdata()) == len(deposited)]
+            assert len(drawn) == 5
+            assert np.array_equal(drawn[0].get_ydata(), deposited['X_HP3'])
+            # the solid lines are the reversible variant at that temperature
+            model = panel.get_lines()[0]
+            expected = pkg.simulate_at_times(
+                pkg.load_o2_reversible_model(temperature_C),
+                model.get_xdata()[[0, 480, 2880]], ['X_HP3'])
+            assert np.allclose(model.get_ydata()[[0, 480, 2880]],
+                               expected['X_HP3'], rtol=0., atol=1e-7)
+            assert [text.get_text() for text in panel.texts][:2] == [
+                '%d \N{DEGREE SIGN}C' % temperature_C, 'R$^2$ = ' + r2]
+        arrhenius = panels[3]
+        assert arrhenius.get_xlim() == (2.6, 3.45)
+        assert arrhenius.get_ylim() == (-13., -3.)
+        assert arrhenius.get_xlabel() == '1000/T (K$^{-1}$)'
+        # three series of four points, as deposited
+        points = pkg.fig10d_points()
+        series = [line for line in arrhenius.get_lines()
+                  if len(line.get_xdata()) == 4]
+        assert len(series) == 3
+        for line, name in zip(series, ('k_1', 'k_2', 'k_5')):
+            assert np.allclose(line.get_xdata(), 1000.*points['inv_T'])
+            assert np.array_equal(line.get_ydata(), points['ln_' + name])
+        # three regression lines, from 100 C to the end of the published line
+        lines = _two_point_lines(arrhenius)
+        assert len(lines) == 3
+        for line, (slope, at_100C, T_end) in zip(lines, (
+                (-7208.69, -4.61102, 25.), (-8293.97, -6.32951, 25.13),
+                (-6265.49, -4.17048, 23.50))):
+            assert _slope_and_value_at_100C(line) == pytest.approx(
+                (slope, at_100C), rel=1e-4, abs=2e-5)
+            assert list(1000./line.get_xdata() - 273.15) == pytest.approx(
+                [100., T_end], abs=1e-9)
+        assert [text.get_text()
+                for text in arrhenius.get_legend().get_texts()] == [
+            '3-HP $\\rightarrow$ MA', 'MA $\\rightarrow$ AAc',
+            'MA $\\rightarrow$ Others']
+    finally:
+        plt.close(fig)
+
+
+def test_fig10_table3_o2_draws_the_comparison(tmp_path):
+    fig = figures.plot_fig10_table3_o2()
+    try:
+        panels = fig.axes
+        assert len(panels) == 4
+        # pooled R2 of the Table 3 model and of the per-temperature fit
+        for panel, temperature_C, r2 in zip(
+                panels, (25, 75, 100),
+                (('0.579', '1.000'), ('0.644', '0.990'), ('0.746', '0.993'))):
+            # 5 Table 3 lines + 5 experimental series + 5 dashed fits
+            lines = _lines_with_data(panel)
+            assert len(lines) == 15
+            times = lines[0].get_xdata()[[0, 480, 2880]]
+            for line, load in (
+                    (lines[0], lambda: pkg.load_o2_model(
+                        T=temperature_C + 273.15)),
+                    (lines[10], lambda: pkg.load_o2_reversible_model(
+                        temperature_C))):
+                expected = pkg.simulate_at_times(load(), times, ['X_HP3'])
+                assert np.allclose(line.get_ydata()[[0, 480, 2880]],
+                                   expected['X_HP3'], rtol=0., atol=1e-7)
+            assert lines[10].get_linestyle() == '--'
+            assert [text.get_text() for text in panel.texts][:2] == [
+                '%d \N{DEGREE SIGN}C' % temperature_C,
+                'R$^2$ = %s (Table 3)\nR$^2$ = %s (fit)' % r2]
+        # the keys of panels a to c are above the panels
+        assert len(fig.legends) == 2
+        # panel d: per constant, the regression line and the line of the
+        # activation energy quoted in the text through the 50 C point
+        arrhenius = panels[3]
+        lines = _two_point_lines(arrhenius)
+        assert len(lines) == 6
+        points = pkg.fig10d_points()
+        for (regression, text), name, Ea in zip(
+                zip(lines[::2], lines[1::2]), ('k_1', 'k_2', 'k_5'),
+                (59781.2, 91594.6, 59549.8)):
+            assert regression.get_linestyle() == '--'
+            slope, at_100C = _slope_and_value_at_100C(text)
+            assert -8.314*slope == pytest.approx(Ea, rel=1e-9)
+            assert at_100C + slope*(1./323.15 - 1./373.15) == pytest.approx(
+                points['ln_' + name][1], abs=1e-9)
+        assert arrhenius.get_legend() is not None
+        path = os.path.join(str(tmp_path), 'fig10_table3_o2.png')
+        fig.savefig(path, dpi=50)
+        assert os.path.getsize(path) > 0
+    finally:
+        plt.close(fig)
+
+
+def test_save_figures_writes_the_figures_named(tmp_path):
+    paths = figures.save_figures(str(tmp_path), formats=('pdf',),
+                                 figures=['fig10'])
+    assert [os.path.basename(path) for path in paths] == [
+        'pd_c_3hp_oxidation_fig10.pdf']
+    assert os.path.getsize(paths[0]) > 0
+    with pytest.raises(ValueError, match='unknown figures'):
+        figures.save_figures(str(tmp_path), figures=['fig10e'])
