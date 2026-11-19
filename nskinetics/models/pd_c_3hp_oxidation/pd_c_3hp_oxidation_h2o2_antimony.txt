@@ -1,0 +1,198 @@
+// Selective oxidation of 3-hydroxypropionic acid (3-HP) to malonic acid (MA)
+// over 10 % Pd/C with H2O2 as the oxidant: seven-reaction kinetic model of
+//   Kim, Chavarrio, Install, Huber, Appl. Catal. B: Environ. Energy 386
+//   (2026) 126403, https://doi.org/10.1016/j.apcatb.2026.126403
+// (Table 3, H2O2 column; Fig. 9a; SI Fig. S12a) at 50 C.
+//
+// Units: time in min, liquid concentrations in M (mol/L).
+// See NOTES.md next to this file for what is printed in the paper and what is
+// inferred from the authors' data deposit.
+model *kim2026_h2o2()
+
+  // Compartments and Species:
+  // env is the liquid phase. Only the liquid species of the authors' model
+  // are tracked; the co-products (H2O, H2, O2, CO2) are named in the reaction
+  // comments. OPA (3-oxopropanoic acid) is the aldehyde intermediate; it was
+  // not measured. D lumps the unidentified by-products ("Others" in Fig. 9).
+  var compartment env;
+  species HP3 in env, OPA in env, MA in env, AAc in env, OXA in env, D in env;
+  species H2O2 in env;
+
+  // Assignment Rules:
+
+  // Plotted quantities.
+  // Fig. 9a "Normalized Concentration": each measured species divided by the
+  // sum of the five measured species. OPA is left out of the sum, as in the
+  // authors' post-processing (it was not quantified experimentally).
+  X_HP3 := HP3/(HP3 + MA + AAc + OXA + D);
+  X_MA := MA/(HP3 + MA + AAc + OXA + D);
+  X_AAc := AAc/(HP3 + MA + AAc + OXA + D);
+  X_OXA := OXA/(HP3 + MA + AAc + OXA + D);
+  X_D := D/(HP3 + MA + AAc + OXA + D);
+  // SI Fig. S12a inset "H2O2 predicted": H2O2 in equivalents of the initial
+  // 3-HP (15 at t = 0).
+  eq_H2O2 := H2O2/C0;
+  // Liquid mole fraction of OPA on the authors' scale (see x_per_M); the
+  // same quantity the O2 model plots in SI Fig. S12b.
+  x_OPA := x_per_M*OPA;
+
+  // Reactions:
+  // All seven steps are first order in each liquid reactant and irreversible.
+  // R1, R2 and R4 are first order in H2O2 as well, through its liquid mole
+  // fraction x_per_M*H2O2, and each consumes one H2O2:
+  //   rate = k (1/(g_cat min)) * m_cat (g) * (x_per_M*H2O2) * conc * env.
+  // R3, R5 and R6: rate = k (1/(g_cat min)) * m_cat (g) * conc * env.
+  // R7 (H2O2 decomposition) is not normalized by catalyst mass (Table 3,
+  // footnote b): rate = k_7 (1/min) * H2O2 * env.
+  // SI Table S4 lists fitted reaction orders (0.99, 0.99, 1.49, 1.14, 1.02,
+  // 1.01; 1 for R7) and equilibrium constants for these steps. They are NOT
+  // used here: the published model curve is reproduced only by first-order
+  // irreversible laws (with the Table S4 orders the curves are off by 0.04).
+  R1: HP3 + H2O2 => OPA; k_1*m_cat*x_per_M*H2O2*HP3*env;  // Rxn 1 (Fig. 9a): 3-HP + H2O2 -> OPA + 2 H2O
+  R2: OPA + H2O2 => MA; k_2*m_cat*x_per_M*H2O2*OPA*env;   // Rxn 2: OPA + H2O2 -> MA + H2O
+  R3: MA => AAc; k_3*m_cat*MA*env;                        // Rxn 3: MA -> AAc + CO2
+  R4: MA + H2O2 => OXA; k_4*m_cat*x_per_M*H2O2*MA*env;    // Rxn 4: MA + H2O2 -> OXA + 2 H2 + CO2
+  R5: HP3 => D; k_5*m_cat*HP3*env;                        // Rxn 5: 3-HP -> Others (D)
+  R6: MA => D; k_6*m_cat*MA*env;                          // Rxn 6: MA -> Others (D)
+  R7: H2O2 => ; k_7*H2O2*env;                             // Rxn 7: H2O2 -> H2O + 0.5 O2
+
+  // Events:
+
+  // Species initializations:
+  // 60 mM 3-HP feed (with equimolar NaOH) and 15 equivalents of H2O2,
+  // no products (Fig. 9 caption).
+  HP3 = C0;
+  OPA = 0;
+  MA = 0;
+  AAc = 0;
+  OXA = 0;
+  D = 0;
+  H2O2 = eq_H2O2_0*C0;
+
+  // Compartment initializations:
+  // Nominal unit liquid volume. The model is written in liquid composition
+  // only, so the volume cancels from every concentration.
+  env = 1;
+
+  // Variable initializations:
+
+  // Initial 3-HP concentration: 60 mM (Fig. 9 caption).
+  C0 = 0.06;
+  C0 has mol_per_l;
+
+  // Initial H2O2 charge in equivalents of the initial 3-HP: 3-HP:H2O2 = 1:15
+  // (Fig. 9 caption), i.e. 0.9 M.
+  eq_H2O2_0 = 15;
+  eq_H2O2_0 has dimensionless;
+
+  // Catalyst charge: 0.2 g of 10 % Pd/C (Fig. 9 caption). Table 3 constants
+  // k_1 to k_6 are per gram of catalyst, so they are multiplied by m_cat.
+  m_cat = 0.2;
+  m_cat has gram;
+
+  // Liquid mole fraction per molar concentration on the authors' scale:
+  // their scripts map the 60 mM feed to a mole fraction of 0.000339, so
+  // x_per_M = 0.000339/0.06. (0.000339 is taken as used by the authors; it is
+  // not the mole fraction of 60 mM in water, which is about 1.08e-3.)
+  x_per_M = 0.00565;
+  x_per_M has l_per_mol;
+
+  // Rate constants at 50 C: paper Table 3, H2O2 column, as printed.
+  // k_1 to k_6 in 1/(g_cat min); for R1, R2 and R4 per unit H2O2 mole fraction.
+  k_1 = 5.31;      // Table 3, Rxn 1: 5.31 (+-3.0) x 10^0
+  k_1 has per_g_per_min;
+  k_2 = 31.1;      // Table 3, Rxn 2: 3.11 (+-8.5) x 10^1
+  k_2 has per_g_per_min;
+  k_3 = 7.32e-4;   // Table 3, Rxn 3: 7.32 (+-9.2) x 10^-4
+  k_3 has per_g_per_min;
+  k_4 = 1.15;      // Table 3, Rxn 4: 1.15 (+-2.9) x 10^0
+  k_4 has per_g_per_min;
+  k_5 = 3.03e-3;   // Table 3, Rxn 5: 3.03 (+-0.8) x 10^-3
+  k_5 has per_g_per_min;
+  k_6 = 4.10e-9;   // Table 3, Rxn 6: 4.10 x 10^-9 (no interval; not identifiable)
+  k_6 has per_g_per_min;
+  // k_7 in 1/min: "not normalized with g_cat" (Table 3, footnote b), so it is
+  // used as printed, without m_cat.
+  k_7 = 6.48e-3;   // Table 3, Rxn 7: 6.48 (+-3.4) x 10^-3
+  k_7 has per_min;
+
+  X_HP3 has dimensionless;
+  X_MA has dimensionless;
+  X_AAc has dimensionless;
+  X_OXA has dimensionless;
+  X_D has dimensionless;
+  eq_H2O2 has dimensionless;
+  x_OPA has dimensionless;
+
+  // Other declarations:
+  var X_HP3, X_MA, X_AAc, X_OXA, X_D, eq_H2O2, x_OPA;
+  const C0, eq_H2O2_0, m_cat, x_per_M;
+  const k_1, k_2, k_3, k_4, k_5, k_6, k_7;
+
+  // Unit definitions:
+  unit substance = mole;
+  unit time_unit = 60 second;
+  unit volume = litre;
+  unit per_min = 1 / 60 second;
+  unit per_g_per_min = 1 / (gram * 60 second);
+  unit mol_per_l = mole / litre;
+  unit l_per_mol = litre / mole;
+
+  // Display Names:
+  substance is "mole";
+  time_unit is "minutes";
+  volume is "liter";
+  per_min is "per minute";
+  per_g_per_min is "per gram catalyst per minute";
+  mol_per_l is "mole per liter";
+  l_per_mol is "liter per mole";
+  env is "liquid phase";
+  HP3 is "3-Hydroxypropionic acid (3-HP)";
+  OPA is "3-Oxopropanoic acid (OPA)";
+  MA is "Malonic acid (MA)";
+  AAc is "Acetic acid (AAc)";
+  OXA is "Oxalic acid (OXA)";
+  D is "Other by-products (D)";
+  H2O2 is "Hydrogen peroxide";
+  m_cat is "Catalyst mass";
+  C0 is "Initial 3-HP concentration";
+  eq_H2O2_0 is "Initial H2O2 equivalents";
+  x_per_M is "Mole fraction per molar concentration";
+  X_HP3 is "3-HP, normalized (Fig. 9a)";
+  X_MA is "MA, normalized (Fig. 9a)";
+  X_AAc is "AAc, normalized (Fig. 9a)";
+  X_OXA is "OXA, normalized (Fig. 9a)";
+  X_D is "Others, normalized (Fig. 9a)";
+  eq_H2O2 is "H2O2 equivalents (Fig. S12a inset)";
+  x_OPA is "OPA mole fraction";
+  R1 is "3-HP oxidation to OPA";
+  R2 is "OPA oxidation to MA";
+  R3 is "MA decarboxylation to AAc";
+  R4 is "MA oxidation to OXA";
+  R5 is "3-HP degradation to others";
+  R6 is "MA degradation to others";
+  R7 is "H2O2 decomposition";
+
+  // Notes:
+  model notes ```
+H2O2 model of the article:
+**Selective oxidation of 3-hydroxypropionic acid to malonic acid over Pd/C: Mechanistic and kinetic study.**
+Kim S.Y., Chavarrio J., Install J., Huber G.W. *Appl. Catal. B: Environ. Energy* 386 (2026) 126403.
+DOI: [10.1016/j.apcatb.2026.126403](https://doi.org/10.1016/j.apcatb.2026.126403)
+
+Conditions: 60 mM 3-HP, 0.2 g 10 % Pd/C, NaOH/3-HP = 1:1, 15 equivalents of H2O2,
+3 bar Ar, 50 C (Fig. 9a).
+Rate constants: Table 3 (H2O2 column) as printed. Seven first-order irreversible
+steps; the reaction orders and equilibrium constants of SI Table S4 are not used.
+
+Reconstructed from the authors' data deposit (Dryad, DOI 10.5061/dryad.jsxksn0q4),
+which holds the model curve but only the O2 version of the script: H2O2 is a
+liquid state that enters reactions 1, 2 and 4 through its mole fraction on the
+authors' scale (0.000339 per 60 mM) and is consumed 1:1 by each of them.
+
+The deposited H2O2 trace of SI Fig. S12a comes from a different parameter set than
+Table 3 and lies up to 0.38 equivalents below this model (see NOTES.md).
+```
+end
+
+kim2026_h2o2 is "Kim2026_PdC_3HP_Oxidation_H2O2"
