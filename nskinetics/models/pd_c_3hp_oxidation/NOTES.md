@@ -256,10 +256,10 @@ Two rows of the deposited Fig. 3a table differ from, or repeat, the SI:
   20 bar rows show it as well.
 - The 3 bar row agrees with SI Tables S1 and S2 in conversion and MA
   selectivity (72.8 and 56.4 %). Its C balance and "Others" are 77.43 and
-  35.1 %, where SI Tables S1 and S2 and the 50 C row of the deposited
-  Fig. 3c table give 75.5 and 38.0 %, and its "Oxalic acid" is 3.93 %,
-  which is the GLA value of SI Table S2 (OXA is 1.0 % there). None of these
-  enters the numbers quoted here.
+  35.1 %, where SI Table S1 ("Others"), SI Table S2 ("Unknown") and the
+  50 C row of the deposited Fig. 3c table ("Others") give 75.5 and 38.0 %,
+  and its "Oxalic acid" is 3.93 %, which is the GLA value of SI Table S2
+  (OXA is 1.0 % there). None of these enters the numbers quoted here.
 
 What the comparison shows:
 
@@ -284,8 +284,11 @@ What the comparison shows:
   and MA yield are highest at 15 equivalents and fall beyond. The paper
   explains the lower yield by a decreased conversion, "likely due to active
   site occupation of surface peroxide", and by overoxidation to AAc and
-  OXA. In the H2O2 model both rise with every equivalent added (tested).
-  Below 15 equivalents the model is too fast (41.8 against 14.0 % at
+  OXA. In the H2O2 model the conversion rises with every equivalent added,
+  and the MA yield after 8 h rises up to 42 equivalents (59.0 %) and falls
+  beyond (58.2 % at 50), so the model's optimum is far beyond the measured
+  one at 15 (tested on the whole numbers from 1 to 100 equivalents). Below
+  15 equivalents the model is too fast (41.8 against 14.0 % at
   5 equivalents), and at 15 it gives 64.7 against 78.4 %.
 - **Temperature.** At 25 C the models convert 53 % in 8 h where 8.5 % was
   measured, as in the comparison with the 25 C time course. At 75 C they
@@ -309,10 +312,10 @@ What the comparison shows:
   states about the two procedures: the screening batch is 10 mL of liquid
   with the products collected at the end; for time-resolved runs substrate,
   NaOH and water were tripled (whether the catalyst was is not stated, see
-  above) and 1.5 mL was withdrawn through a dip tube at every sample. A
-  model fitted to a time course therefore does not give the screening value
-  even at its own condition (O2 model 99.0 against 72.8 %; H2O2 model 64.7
-  against 78.4 %).
+  above), samples were taken through a dip tube, and at every sample 1 mL
+  was discarded and 0.5 mL sampled (1.5 mL in all). A model fitted to a
+  time course therefore does not give the screening value even at its own
+  condition (O2 model 99.0 against 72.8 %; H2O2 model 64.7 against 78.4 %).
 - **Malonic acid alone (Fig. 4).** The two deposited files do not give the
   same MA conversion at the end:
 
@@ -337,6 +340,26 @@ What the comparison shows:
   and R6 are fitted to the 3-HP run of Fig. 9b, in which the MA fraction
   falls from 0.548 at 240 min to 0.095 at 1680 min; the model has MA react
   as fast alone. It should not be used for the stability of MA on its own.
+- **Catalyst reuse (Fig. 6b).** Three cycles of a "catalyst reusability
+  test" at NaOH 1 eq., 3 bar of O2, 50 C and 8 h (caption); the panel shows
+  the normalized 3-HP and MA concentrations of each cycle up to 120 min. In
+  the deposit (`7_reusability.csv`, not shipped; columns `3HP`, `MA`, `OXA`
+  and `AAc` for each cycle, starting at 1, 0, 0 and 0, with no statement of
+  the normalization) the row of 120 min reads, as `3HP` / `MA`, 0.25526 /
+  0.47639 (`1st`), 0.65162 / 0.09222 (`2nd`) and 0.76891 / 0.00162 (`3rd`).
+  The O2 model has `X_HP3` / `X_MA` = 0.325 / 0.471 at 120 min (tested). The
+  `3HP` and `MA` columns of the first cycle are the experimental points of
+  Fig. 9b, the experiment the O2 model was fitted to (same values at 20 to
+  120 min); the first-cycle `OXA` and `AAc` columns are not those of
+  Fig. 9b (0.00254 and 0.0117 against 0.00229 and 0.00566 at 20 min). In
+  the second and third cycle far more 3-HP is left than in the first cycle
+  or in the model, and little MA is formed; the paper speaks of "the
+  activity loss observed upon catalyst reuse" and relates it to surface
+  oxidation of Pd and slight Pd leaching. The models have no term for this
+  loss and do not describe a reused catalyst. The last labelled row of the
+  file, `480`, is not in the published panel; in the first-cycle `3HP` and
+  `MA` columns it holds the Fig. 9b values of 180 min, followed by those of
+  240 to 1470 min in rows without a time, and it is not used here.
 
 In short: the models describe the time courses they were fitted to. `P`,
 `eq_H2O2_0` and `T` are in the models because the rate laws contain them,
@@ -1095,8 +1118,11 @@ the tests (not shipped).
    does not give the 56.9 %. The paper's use of "yield" is not uniform
    either. In its Fig. 10 passage the "MA yield" of an experiment is `X_MA`
    itself (2.3 % at 25 C and 56.8 % at 100 C are the deposited `X_MA` of
-   0.023 and 0.568), and in the screening figures it is Eq. 3 (in the
-   deposited tables it equals conversion times MA selectivity).
+   0.023 and 0.568; the 52.6 % given for 75 C is not in the deposited
+   75 C data, whose largest experimental `X_MA` is 0.436, see item 5 of
+   "Paper versus deposit for Fig. 10a-c"), and in the screening figures it
+   is Eq. 3 (in the deposited tables it equals conversion times MA
+   selectivity).
 7. **Stars.** The red star of panel a sits on the largest cell (27.5 min,
    94.7 C). The red star of panel b is drawn at 55.9 min, 7 min right of the
    cell named in the text. The purple stars are at 254 min (a) and 336 min

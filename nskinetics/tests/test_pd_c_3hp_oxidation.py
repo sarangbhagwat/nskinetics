@@ -527,8 +527,10 @@ def test_table_3_models_at_the_conditions_of_the_screening_experiments():
     # H2O2 charge (Fig. 2a, 2-1_H2O2_experiments.csv). Measured conversion:
     # 14.0, 38.1 and 78.4 at 5, 10 and 15 equivalents, then 56.4 and 20.7
     # (20 and 30 equivalents on the axis of the figure, 1:30 and 1:50 in the
-    # deposit); MA yield 4.7, 20.3, 58.5, 28.4 and 6.6. In the model both
-    # rise with every equivalent.
+    # deposit); MA yield 4.7, 20.3, 58.5, 28.4 and 6.6. In the model the
+    # conversion rises with every equivalent; the MA yield rises up to 42
+    # equivalents (59.0 %) and falls beyond, far from the measured optimum
+    # of 15.
     modelled = []
     for equivalents in (5., 10., 15., 20., 30., 50.):
         km = load_h2o2_model()
@@ -537,7 +539,17 @@ def test_table_3_models_at_the_conditions_of_the_screening_experiments():
     assert np.array(modelled) == pytest.approx(np.array(
         [(0.4180, 0.0974), (0.5464, 0.2429), (0.6471, 0.3651),
          (0.7260, 0.4552), (0.8357, 0.5571), (0.9418, 0.5820)]), abs=2e-4)
-    assert np.all(np.diff(modelled, axis=0) > 0.)
+    km = load_h2o2_model()
+    modelled = []
+    for equivalents in range(1, 101):
+        km.set_value('eq_H2O2_0', float(equivalents))
+        modelled.append(at_8_h(km))
+    conversion, MA_yield = np.array(modelled).T
+    assert np.all(np.diff(conversion) > 0.)
+    assert np.argmax(MA_yield) + 1 == 42
+    assert MA_yield[41] == pytest.approx(0.5904, abs=2e-4)
+    assert np.all(np.diff(MA_yield[:42]) > 0.)
+    assert np.all(np.diff(MA_yield[41:]) < 0.)
 
     # Temperature with O2 (Fig. 3c, 3-3_O2_experiments.csv). Measured
     # conversion 8.5, 72.8, 95.5 and 84.6; MA yield 1.4, 41.1, 35.7 and 2.1.
@@ -556,6 +568,18 @@ def test_table_3_models_at_the_conditions_of_the_screening_experiments():
             (pkg.read_fig9a_h2o2()['experiment'], 420., 0.6061)):
         row = experiment[experiment['time'] == time]
         assert 1. - row['X_HP3'].iloc[0] == pytest.approx(converted, abs=5e-5)
+
+    # Catalyst reuse (Fig. 6b, 7_reusability.csv). After 120 min the 3HP and
+    # MA columns read 0.25526 and 0.47639 in the first cycle (the values of
+    # Fig. 9b at that time), 0.65162 and 0.09222 in the second and 0.76891
+    # and 0.00162 in the third. The O2 model has no loss of activity:
+    sim = simulate_at_times(load_o2_model(), [120.], ['X_HP3', 'X_MA'])
+    assert (sim['X_HP3'][0], sim['X_MA'][0]) == pytest.approx(
+        (0.3248, 0.4710), abs=2e-4)
+    first_cycle = pkg.read_fig9b_o2()['experiment']
+    row = first_cycle[first_cycle['time'] == 120.]
+    assert (row['X_HP3'].iloc[0], row['X_MA'].iloc[0]) == pytest.approx(
+        (0.25526, 0.47639), abs=1e-9)
 
 
 def test_o2_model_started_from_malonic_acid_alone():

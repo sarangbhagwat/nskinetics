@@ -362,7 +362,9 @@ Read this before changing them:
   experiments with malonic acid alone (its Fig. 4). The deposit holds the
   values of Figs. 2 to 4. The models were not built on these experiments
   and do not describe them (``NOTES.md`` has the table; the model values
-  are pinned by the package tests):
+  are pinned by the package tests). The 3-HP conversions and MA yields of
+  the models below are ``1 - [HP3]/C0`` and ``[MA]/C0``, the quantities of
+  the paper's Eqs. 1 and 3:
 
   - *O2 pressure* (Fig. 3a: 1, 3, 5, 10 and 20 bar at 50 °C). The measured
     conversion is 21.7, 72.8, 63.2, 25.0 and 25.9 %, and the MA yield 2.7,
@@ -381,26 +383,37 @@ Read this before changing them:
   - *H2O2 charge* (Fig. 2a). The measured conversion and MA yield are
     highest at 15 equivalents (78.4 and 58.5 %) and fall beyond (56.4 and
     28.4 % in the next experiment, at 20 equivalents by the axis of the
-    figure and 30 by the deposit). In the H2O2 model both rise with every
-    equivalent added, as with 30 equivalents in the example above.
+    figure and 30 by the deposit). In the H2O2 model the conversion rises
+    with every equivalent added, and the MA yield after 8 h rises up to
+    42 equivalents (59.0 %) and falls beyond (58.2 % at 50): the model's
+    optimum is far beyond the measured one.
   - *Temperature with O2* (Fig. 3c). After 8 h at 25 °C the O2 model has
-    converted 53 % where 8.5 % was measured; at 75 °C it has an MA yield of
-    4.7 % where 35.7 % was measured (the simplified reversible model: 53.5
-    and 6.0 %).
+    converted 53 % where 8.5 % was measured (from the plotted fraction,
+    ``1 - X_HP3``, it would be 51.7 %, because the OPA of the model is not
+    in the plotted sum); at 75 °C it has an MA yield of 4.7 % where 35.7 %
+    was measured (the simplified reversible model: 53.5 and 6.0 %).
   - *Malonic acid alone* (Fig. 4). Without 3-HP, 3.8 % (Fig. 4a) or 1.2 %
     (the time course of Fig. 4b) of the MA was converted after 1300 min at
     50 °C; the O2 model started from 60 mM MA converts 80 %. At 100 °C,
     30.1 % was converted after 120 min, where the model converts 96 %; after
     1300 min the measured 89.8 % (Fig. 4a) or 99.0 % (Fig. 4b) is close to
     the model's 100 %.
+  - *Catalyst reuse* (Fig. 6b: three cycles at 50 °C and 3 bar O2). This
+    is not a screening experiment: up to 120 min the deposited 3-HP and MA
+    values of its first cycle are those of Fig. 9b. At 120 min the
+    deposited 3-HP and MA values (normalized concentrations in the figure)
+    are 0.255 and 0.476 in the first cycle, 0.652 and 0.092 in the second
+    and 0.769 and 0.002 in the third, where the O2 model has ``X_HP3`` =
+    0.325 and ``X_MA`` = 0.471: the models have no term for this loss of
+    activity and do not describe a reused catalyst.
 
   The screening experiments are not on the same footing as the time
   courses either. At the same nominal conditions they give 72.8 % (O2) and
   78.4 % (H2O2) conversion after 480 min, where the time courses of Fig. 9
   are at 96.1 % after 450 min and 60.6 % after 420 min. No explanation was
   found in the paper; it states that for time-resolved runs substrate,
-  NaOH and water were tripled and that 1.5 mL was withdrawn at every
-  sample.
+  NaOH and water were tripled and that at every sample 1 mL was discarded
+  and 0.5 mL sampled (1.5 mL in all).
 - **The catalyst mass is per batch of the paper, not per litre.** The
   compartment of the model files is a nominal 1 L that cancels from every
   concentration, and no rate has a volume term. The rates scale with
