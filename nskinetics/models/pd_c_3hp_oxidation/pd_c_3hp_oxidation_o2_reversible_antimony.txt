@@ -103,9 +103,10 @@ model *kim2026_o2_reversible()
   // ALL ARE INFERRED from the deposited model curve of
   // 11-2_75C_Kinetic.csv: they are the values with which a Python port of
   // MATLAB ode23s at default tolerances, started from the feed, returns
-  // that curve, steps and values, to its printed digits (an analysis that
-  // is not part of this package; see NOTES.md). They are given to six
-  // significant digits.
+  // that curve, steps and values, to its printed digits. That run is
+  // repeated by solver_emulation.py and checked by the package tests; the
+  // fit that gave the values is not part of this package (see NOTES.md).
+  // They are given to six significant digits.
   // They are effective constants: any oxidant, pressure or catalyst-mass
   // factor of the authors' code is lumped into them, and they are not in
   // the units of Table 3.

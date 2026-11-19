@@ -7,7 +7,8 @@
 # for license details.
 """Rendering tests for ``nskinetics.models.pd_c_3hp_oxidation.figures``
 (Fig. 9, Fig. 10, SI Fig. S12 and Fig. 11 of Kim et al., Appl. Catal. B:
-Environ. Energy 386 (2026) 126403, regenerated from the NSKinetics models).
+Environ. Energy 386 (2026) 126403, regenerated from the NSKinetics models,
+and the verification figures drawn next to them).
 
 The figures are built in memory and their artists inspected, so a panel that
 silently drew nothing would fail; one small PNG is written to ``tmp_path``.
@@ -408,6 +409,47 @@ def test_fig10_table3_o2_draws_the_comparison(tmp_path):
         path = os.path.join(str(tmp_path), 'fig10_table3_o2.png')
         fig.savefig(path, dpi=50)
         assert os.path.getsize(path) > 0
+    finally:
+        plt.close(fig)
+
+
+def test_solver_emulation_figure_marks_the_emulated_steps_on_the_nodes():
+    fig = figures.plot_solver_emulation()
+    try:
+        tops = [ax for ax in fig.axes if ax.get_title()]
+        bottoms = [ax for ax in fig.axes if ax.get_yscale() == 'log']
+        assert len(tops) == len(bottoms) == 6 and len(fig.axes) == 12
+        assert [ax.get_title().split('\n')[1].split(';')[0]
+                for ax in tops] == ['23 steps', '19 steps', '24 steps',
+                                    '18 steps', '19 steps', '24 steps']
+        for top, bottom, nodes in zip(
+                tops, bottoms,
+                (pkg.read_fig9a_h2o2()['model'], pkg.read_fig9b_o2()['model'],
+                 pkg.read_fig9a_h2o2()['h2o2_trace'],
+                 *(pkg.read_fig10_o2(T_C)['model'] for T_C in (25, 75, 100)))):
+            circles = [line for line in top.get_lines()
+                       if line.get_marker() == 'o']
+            crosses = [line for line in top.get_lines()
+                       if line.get_marker() == '+']
+            assert len(circles) == len(crosses) == nodes.shape[1] - 1
+            # every deposited node carries a cross
+            n = len(nodes)
+            for circle, cross in zip(circles, crosses):
+                assert np.array_equal(circle.get_xdata(), nodes['time'])
+                assert np.abs(cross.get_xdata()[:n]
+                              - nodes['time']).max() <= 0.01
+                assert np.abs(cross.get_ydata()[:n]
+                              - circle.get_ydata()).max() <= 1e-5
+            # below: the emulated steps lie under the line of the last
+            # printed decimal, the accurate solution rises above it
+            accurate, emulated = [line for line in bottom.get_lines()
+                                  if line.get_marker() in ('o', '+')]
+            assert emulated.get_ydata().max() <= 1e-5
+            assert accurate.get_ydata().max() > 1e-4
+            low, high = bottom.get_ylim()
+            assert low < emulated.get_ydata().min()
+            assert accurate.get_ydata().max() < high
+        assert len(fig.legends) == 1
     finally:
         plt.close(fig)
 

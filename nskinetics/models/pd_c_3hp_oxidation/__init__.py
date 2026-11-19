@@ -32,6 +32,10 @@
 # documentation page "Pd/C oxidation of 3-HP to malonic acid"
 # (docs/source/case_studies/pd_c_3hp_oxidation.rst) summarizes it.
 #
+# ``solver_emulation`` repeats the solver run behind the model curves the
+# authors deposited for Fig. 9 and Fig. 10a-c (a port of MATLAB ``ode23s``
+# driven by the rates of the shipped models); it is used for verification.
+#
 # Importing this subpackage loads no model and runs no simulation: the
 # loaders build a model when called. The figure module (``figures``) is not
 # imported here; import it explicitly, or run it with ``python -m`` to
@@ -49,9 +53,13 @@ from .heat_maps import *
 from . import temperature_series
 from .temperature_series import *
 
+from . import solver_emulation
+from .solver_emulation import *
+
 __all__ = (
      *pd_c_3hp_oxidation.__all__,
      *reference.__all__,
      *heat_maps.__all__,
      *temperature_series.__all__,
+     *solver_emulation.__all__,
      )

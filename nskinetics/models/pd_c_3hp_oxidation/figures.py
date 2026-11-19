@@ -57,6 +57,15 @@ Figures
     Arrhenius relation, which is what the text of the paper describes for
     Fig. 11, with the published (digitized) contour lines drawn on top.
 
+``solver_emulation``
+    Verification figure, not a figure of the paper: the six model curves
+    the authors deposited (Fig. 9a, Fig. 9b, the H2O2 trace of SI
+    Fig. S12a, Fig. 10a-c) as open circles at their nodes, the steps of
+    the repeated solver run (``solver_emulation``) as crosses on top, and
+    the accurate solution of the same model as lines. Below each panel,
+    on a logarithmic axis, how far the emulated steps and the accurate
+    solution are from the deposited nodes.
+
 The layout, the series colors, the colors of the reaction lists and the
 ticks (inward with minor ticks in Figs. 9 and 10, outward in SI Fig. S12)
 follow the published panels; the fonts are Arial where it is installed.
@@ -93,6 +102,7 @@ from .reference import (
     read_fig9a_h2o2, read_fig9b_o2, read_fig10_o2,
     read_fig11a_selectivity_digitized, read_fig11b_yield_digitized,
     read_figS12a_h2o2_inset_digitized, read_figS12b_opa_inset_digitized)
+from .solver_emulation import emulate_authors_run, node_deviations
 from .temperature_series import (
     FIG10_TEMPERATURES_C, FIG10D_LINE_ENDS_C, fig10d_points,
     fig10d_regression_lines, fig10d_text_lines, pooled_r2)
@@ -101,7 +111,7 @@ __all__ = ('draw_fig9a', 'draw_fig9b', 'draw_fig10abc', 'draw_fig10d',
            'draw_figS12a', 'draw_figS12b', 'draw_fig11a', 'draw_fig11b',
            'plot_fig9', 'plot_fig10', 'plot_fig10_table3_o2', 'plot_figS12',
            'plot_fig11', 'plot_fig11_verification', 'plot_fig11_table3_o2',
-           'save_figures',)
+           'plot_solver_emulation', 'save_figures',)
 
 #%% Style
 # Arial is the font of the published figure; the others are fallbacks for
@@ -1030,12 +1040,137 @@ def plot_fig11_table3_o2():
     return fig
 
 
+def _emulation_cases():
+    """Title, model, deposited tables, name of the deposited nodes, compared
+    columns and colors of the six panels of the solver-emulation figure."""
+    fig9a = read_fig9a_h2o2()
+    cases = [
+        ('Fig. 9a (H$_2$O$_2$, 50 \N{DEGREE SIGN}C)',
+         load_h2o2_model('fig9a_nodes'), fig9a, 'model', NORMALIZED, _COLORS),
+        ('Fig. 9b (O$_2$, 50 \N{DEGREE SIGN}C)',
+         load_o2_model(parameter_set='fig9b_nodes'), read_fig9b_o2(),
+         'model', NORMALIZED, _COLORS),
+        ('SI Fig. S12a, H$_2$O$_2$ (equivalents)',
+         load_h2o2_model('figS12a_h2o2_nodes'), fig9a, 'h2o2_trace',
+         ('eq_H2O2',), {'eq_H2O2': _C_H2O2})]
+    for letter, temperature_C in zip('abc', FIG10_TEMPERATURES_C):
+        cases.append((
+            'Fig. 10%s (O$_2$, %d \N{DEGREE SIGN}C)' % (letter,
+                                                        temperature_C),
+            load_o2_reversible_model('%dC' % temperature_C),
+            read_fig10_o2(temperature_C), 'model', NORMALIZED, _FIG10_COLORS))
+    return cases
+
+
+_NODE_MARKER = dict(ls='none', marker='o', ms=6, mfc='none', mew=1.2)
+_STEP_MARKER = dict(ls='none', marker='+', ms=6, mew=1.0)
+
+
+def plot_solver_emulation():
+    """Draw the deposited model nodes with the emulated solver steps on top.
+
+    A verification figure, not a figure of the paper. One pair of panels
+    for each deposited model curve (Fig. 9a, Fig. 9b, the H2O2 trace of SI
+    Fig. S12a, Fig. 10a-c). Upper panel: the deposited nodes (open
+    circles), the steps of the authors' solver run repeated with the
+    shipped model (:func:`~.solver_emulation.emulate_authors_run`; black
+    crosses) and the accurate solution of the same model (lines). Lower
+    panel, logarithmic: at each deposited node, the largest absolute
+    difference over the plotted quantities between the node and the
+    emulated step (crosses) and between the node and the accurate solution
+    (circles), with a dotted line at 1e-5, one unit of the last decimal the
+    deposited files print. Differences below 1e-8 (the initial state) are
+    not drawn. The
+    models carry the constant sets with which the emulation returns the
+    nodes (for Fig. 9 the sets inferred from the nodes, not Table 3 as
+    printed). The title of each pair gives the number of steps and the
+    largest difference of the emulated steps.
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+    """
+    with plt.rc_context(_RC_PARAMS):
+        fig = plt.figure(figsize=(13.2, 10.2))
+        grid = fig.add_gridspec(5, 3, height_ratios=[2.2, 1.3, 1.05, 2.2, 1.3],
+                                hspace=0.10, wspace=0.30)
+        for index, (title, km, tables, nodes_name, columns,
+                    colors) in enumerate(_emulation_cases()):
+            row, column = 3*(index//3), index % 3
+            top = fig.add_subplot(grid[row, column])
+            bottom = fig.add_subplot(grid[row + 1, column], sharex=top)
+            columns = list(columns)
+            nodes = tables[nodes_name]
+            t_end = 1.1*tables['experiment']['time'].iloc[-1]
+            emulated = emulate_authors_run(km, t_end)
+            dense = simulate_at_times(km, np.linspace(0., t_end, 1201),
+                                      columns)
+            accurate = simulate_at_times(km, nodes['time'], columns)
+            n = len(nodes)
+            for name in columns:
+                color = colors[name]
+                top.plot(dense['time'], dense[name], color=color, lw=1.2,
+                         zorder=2)
+                top.plot(nodes['time'], nodes[name], color=color, zorder=3,
+                         **_NODE_MARKER)
+                top.plot(emulated['time'], emulated[name], color=_C_INK,
+                         zorder=4, **_STEP_MARKER)
+            for values, marker in ((accurate, _NODE_MARKER),
+                                   (emulated.iloc[:n], _STEP_MARKER)):
+                difference = np.abs(
+                    values[columns].to_numpy()
+                    - nodes[columns].to_numpy()).max(axis=1)
+                shown = difference >= 1e-8      # the floor of the axis
+                bottom.plot(nodes['time'][shown], difference[shown],
+                            color=_C_INK, zorder=3, **marker)
+            bottom.axhline(1e-5, color=_C_MUTED, lw=1.0, ls=(0, (1, 2)),
+                           zorder=1)
+            deviations = node_deviations(emulated, nodes, columns)
+            top.set_title('%s\n%d steps; emulated within %.1e of the nodes'
+                          % (title, deviations['steps'], deviations['max']),
+                          fontsize=11.5, color=_C_INK, linespacing=1.3)
+            top.set_xlim(-0.02*t_end, 1.02*t_end)
+            top.tick_params(labelbottom=False, length=4)
+            if nodes_name == 'h2o2_trace':
+                top.set_ylim(-0.75, 15.75)
+                top.set_yticks([0, 5, 10, 15])
+            else:
+                top.set_ylim(-0.05, 1.05)
+            bottom.set_yscale('log')
+            bottom.set_ylim(1e-8, 1e-1)
+            bottom.set_yticks([1e-7, 1e-5, 1e-3, 1e-1])
+            bottom.tick_params(length=4)
+            bottom.tick_params(which='minor', left=False)
+            bottom.set_xlabel('Time (min)', fontsize=12)
+            if column == 0:
+                top.set_ylabel('Normalized\nConcentration', fontsize=12,
+                               linespacing=0.9)
+                bottom.set_ylabel('Largest |difference|\nfrom the node',
+                                  fontsize=12, linespacing=0.9)
+        handles = [_line_handle(_COLORS[name], _LABELS[name], lw=2.2)
+                   for name in NORMALIZED]
+        handles += [
+            _line_handle(_C_H2O2, 'H$_2$O$_2$', lw=2.2),
+            _line_handle(_C_INK, 'Shipped model, accurate solution', lw=1.2),
+            _line_handle(_C_INK, 'Deposited node (below: accurate solution '
+                         'against the node)', **_NODE_MARKER),
+            _line_handle(_C_INK, 'Emulated solver step (below: step against '
+                         'the node)', **_STEP_MARKER),
+            _line_handle(_C_MUTED, 'Last printed decimal (1e-5)', lw=1.0,
+                         ls=(0, (1, 2)))]
+        fig.legend(handles=handles, loc='lower center', ncol=5,
+                   frameon=False, fontsize=10.5, handlelength=2.0,
+                   columnspacing=1.6, bbox_to_anchor=(0.5, -0.005))
+    return fig
+
+
 # Name and plot function of every figure of this module.
 _FIGURES = {'fig9': plot_fig9, 'fig10': plot_fig10,
             'fig10_table3_o2': plot_fig10_table3_o2, 'figS12': plot_figS12,
             'fig11': plot_fig11,
             'fig11_verification': plot_fig11_verification,
-            'fig11_table3_o2': plot_fig11_table3_o2}
+            'fig11_table3_o2': plot_fig11_table3_o2,
+            'solver_emulation': plot_solver_emulation}
 
 
 def save_figures(output_dir, formats=('png', 'pdf'), figures=None, dpi=600):

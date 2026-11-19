@@ -204,7 +204,8 @@ def read_fig10_o2(temperature_C):
     and need no correction. The model curves are coarse polylines of 19
     to 25 nodes. The reversible O2 variant
     (``load_o2_reversible_model``), solved accurately, lies within 2.7e-3
-    of the nodes (see ``NOTES.md``).
+    of the nodes; with the authors' solver run repeated
+    (``solver_emulation``) it returns them within 1e-5 (see ``NOTES.md``).
     """
     if temperature_C not in _FIG10_FILES:
         raise ValueError(

@@ -22,11 +22,14 @@ Two conventions are used throughout:
   deposit says so. Elsewhere these notes say what the numbers show ("is
   reproduced by", "agrees with") and not what the authors did.
 - Several results quoted here come from analyses that are **not in the
-  repository**: emulations of the authors' ODE solver, fits of constants to
-  the deposited curves and to digitized contour lines, and readings of the
-  colour field of a published figure. Each such result is marked "(not
-  shipped)". The last section lists them. Everything else can be recomputed
-  with the package; the main results are pinned by its tests.
+  repository**: fits of constants to the deposited curves and to digitized
+  contour lines, refits of alternative models, and readings of the colour
+  field of a published figure. Each such result is marked "(not shipped)".
+  The last section lists them. Everything else can be recomputed with the
+  package; the main results are pinned by its tests. In particular the
+  repeat of the authors' solver run is shipped (`solver_emulation.py`): that
+  the shipped models return the deposited model nodes to their printed
+  digits is tested, and so is what each inferred choice contributes to that.
 
 ## The four models
 
@@ -54,11 +57,12 @@ not that they are right.
 | `pd_c_3hp_oxidation_o2_antimony.txt` (+ `_sbml.xml`) | O2 model: Table 3 O2 column, Fig. 9b, SI Fig. S12b, plus Arrhenius temperature dependence |
 | `pd_c_3hp_oxidation_o2_reversible_antimony.txt` (+ `_sbml.xml`) | reversible six-reaction O2 variant inferred from the deposited model curves of Fig. 10a-c; not in the paper or the authors' scripts |
 | `pd_c_3hp_oxidation_o2_simplified_reversible_antimony.txt` (+ `_sbml.xml`) | the authors' simplified reversible O2 model (no OPA) of their heat-map script, which reproduces Fig. 11; not in the paper |
-| `pd_c_3hp_oxidation.py` | loaders (`load_h2o2_model`, `load_o2_model`, `load_o2_reversible_model`, `load_o2_simplified_reversible_model`), `simulate_at_times`, `TABLE_S4`, the constant sets of the reversible variant and of the simplified model |
+| `pd_c_3hp_oxidation.py` | loaders (`load_h2o2_model`, `load_o2_model`, `load_o2_reversible_model`, `load_o2_simplified_reversible_model`), `simulate_at_times`, `TABLE_S4`, the constant sets of the reversible variant and of the simplified model, and the constant sets inferred from the deposited Fig. 9 nodes (`H2O2_NODE_PARAMETER_SETS`, `O2_NODE_PARAMETER_SETS`) |
+| `solver_emulation.py` | a port of MATLAB `ode23s` and the repeat of the authors' solver run with the rates of a shipped model, for the comparison with the deposited model nodes (verification only) |
 | `heat_maps.py` | the temperature-time maps of Fig. 11 and their comparison with digitized contour lines |
 | `temperature_series.py` | the lines of the Arrhenius plot (Fig. 10d) and the measures used to compare a model with the experiments of Fig. 10a-c |
 | `reference.py`, `reference_data/` | deposited Fig. 9 and Fig. 10 tables, digitized Fig. S12 inset curves and Fig. 11 lines, and their readers |
-| `figures.py` | regenerates Fig. 9, Fig. 10, SI Fig. S12 and Fig. 11 |
+| `figures.py` | regenerates Fig. 9, Fig. 10, SI Fig. S12 and Fig. 11, and draws the comparison and verification figures |
 
 The SBML files are generated from the Antimony files (the Antimony is the
 source; `//` comments exist only there).
@@ -75,14 +79,17 @@ shown there, to within one unit of the last printed digit. The shell
 commands of the page (the figure CLI) were run by hand; no test runs them.
 
 The images of that page (`docs/source/_static/images/pd_c_3hp_oxidation/`)
-are the seven figures of `figures.py`, written by
+are seven of the eight figures of `figures.py`, written by
 
     python -m nskinetics.models.pd_c_3hp_oxidation.figures \
-        docs/source/_static/images/pd_c_3hp_oxidation --formats png --dpi 100
+        docs/source/_static/images/pd_c_3hp_oxidation --formats png --dpi 100 \
+        --figures fig9 fig10 fig10_table3_o2 figS12 fig11 \
+        fig11_verification fig11_table3_o2
 
 (the default resolution of the figure CLI is 600 dpi). They show the models
 with the deposited and digitized data overlaid; no image of the paper is in
-the repository.
+the repository. The eighth figure, `solver_emulation`, is not on the page;
+the same command with `--figures solver_emulation` draws it.
 
 ## Model basis
 
@@ -295,13 +302,22 @@ What fixes the value, and how firmly:
   factor (the posted script as posted: yO2 = 1.0 and its printed starting
   constants) misses the curve by an rms of 0.42, 0.44, 0.76 and 0.46 for
   3-HP, MA, OXA and D, and `P/f0` by as much.
-- From a fit that emulates the authors' solver (not shipped): the effective
-  constants with which a port of MATLAB `ode23s` at default tolerances
-  returns the deposited nodes to their printed digits, divided by Table 3
-  times 0.2 g, are 0.0050854 (R1), 0.0050857 (R4) and 0.0050733 (R2). With
-  the rounding of the printed constants this allows 0.00508 to 0.00509 and
-  not 0.0051. The choice of 0.005085 over a rounded 0.0051 rests on that
-  analysis alone.
+- With the authors' solver run repeated (`solver_emulation.py`; section
+  "Emulation of the authors' solver run"): the constants with which the
+  repeated run returns the deposited nodes to their printed digits
+  (`O2_NODE_PARAMETER_SETS`; a fit that is not shipped), divided by Table 3
+  as printed, give a factor of 0.0050854 (R1), 0.0050857 (R4) and 0.0050733
+  (R2). A printed three-digit constant stands for half a unit of its last
+  digit either way, so the three together allow 0.0050818 to 0.0050889: that
+  contains 0.005085 and not 0.0051. With 0.0051 the repeated run misses the
+  nodes by up to 9.4e-4 (node times by 1.8 min) with the constants of the
+  node set, and still by 7.0e-4 (1.4 min) when the constants of R1, R2 and
+  R4 are set to the lowest values Table 3 can stand for (7.135, 138.5 and
+  0.05855); the limit is 1e-5. The package tests compute the window and
+  both misses. The choice of 0.005085 over a rounded 0.0051 rests on this.
+  It shows that 0.0051 is excluded if Table 3 is the rounded set of the
+  constants behind the deposited curve; any value in the window would do,
+  and 0.005085 is taken because it is 15*0.000339.
 
 ### Table S4 is not used
 
@@ -316,7 +332,9 @@ paper's reason for it and have no other role.
 **Orders.** That the orders are exactly 1 is inferred, from two things: the
 posted script has first-order rates and no orders, and the deposited curves
 are reproduced with first-order rates (to 2.0e-3 for O2 and 9.6e-4 for
-H2O2, their solver error) and not with the Table S4 orders. How far the
+H2O2 when solved accurately, which is their solver error, and to their
+printed digits when the solver run is repeated) and not with the Table S4
+orders. How far the
 Table S4 orders move a curve depends on the scale of the activity, because
 `x^n` with `n != 1` is not scale-free. The table gives, for the Table S4
 orders applied to the organic reactant of each step (oxidant factor
@@ -370,16 +388,171 @@ the pattern of an adaptive solver's own steps, and the paper names `ode23s`
 solution, and the straight segments drawn between them in the published
 figure up to 0.010. The residual differences in the table have two sources:
 
-- the solver error of the deposited curves. A Python port of MATLAB
-  `ode23s` at its default tolerances, run with constants fitted to the
-  nodes instead of the three-digit ones of Table 3, returns the deposited
-  values to their five printed decimals (max 5e-6 for O2, 7e-6 for H2O2;
-  not shipped);
-- for H2O2, small differences between the constants of that fit and those
-  printed in Table 3 (up to 0.6 %, more than rounding allows for four of
-  them; item 3 below). Their effect on the curve is below 5e-4. For O2 the
-  fitted constants agree with Table 3 times `m_cat` (and `x_O2_ref` for R1,
-  R2 and R4) within the rounding of Table 3.
+- the solver error of the deposited curves. The repeat of the solver run
+  (next section), with constants fitted to the nodes instead of the
+  three-digit ones of Table 3, returns the deposited values to their five
+  printed decimals (max 5.0e-6 for O2, 6.8e-6 for H2O2);
+- the rounding of Table 3. With Table 3 as printed the repeated run comes
+  within 4.0e-4 (O2) and 4.4e-4 (H2O2) of the nodes. For O2 the fitted
+  constants agree with Table 3 within its rounding: each prints as Table 3
+  prints it. For H2O2 they differ from Table 3 by up to 0.6 %, more than
+  rounding allows for five of them (item 3 below).
+
+## Emulation of the authors' solver run
+
+The deposited model curves are the steps of an adaptive solver, not
+converged solutions, so an accurate solution can agree with them only to
+their solver error (previous section; up to 2.7e-3 for Fig. 10). To compare
+more closely, `solver_emulation.py` repeats the run:
+
+- `ode23s` is a port of MATLAB's `ode23s`, the modified Rosenbrock (2,3)
+  pair of Shampine and Reichelt (SIAM J. Sci. Comput. 18 (1997) 1-22), with
+  the default options the posted script uses (`RelTol` 1e-3, `AbsTol` 1e-6,
+  largest step a tenth of the time span, one output per step) and a
+  finite-difference Jacobian. It was written from the paper and the
+  documented behaviour of the MATLAB function. MATLAB itself was not run.
+- `emulate_authors_run(model, t_end)` integrates the state vector of the
+  posted script: the liquid mole fractions on the authors' scale (0.000339
+  for the feed), then H2O, H2, O2 and CO2, from the feed to 1.1 times the
+  last sampling time. Every rate of change is evaluated by the loaded model
+  at the state the solver asks for, so the rate laws, constants and
+  stoichiometry (and the rate rule of `yO2`) are those of the shipped
+  Antimony file, and the plotted fractions are read from the model's
+  assignment rules. States the model does not have follow the
+  stoichiometric matrix of the posted script. They enter no rate and do not
+  change a step (tested: the same steps to 1e-12 without them). For the
+  H2O2 run, whose script was not posted, the states are the six liquid
+  species and H2O2.
+- `emulate_fig9a`, `emulate_fig9b` and `emulate_fig10abc` run it for the
+  deposited curves.
+
+Result, as measured by the package tests
+(`test_pd_c_3hp_oxidation_solver_emulation.py`). "Values identical" counts
+the values that equal the deposited ones after rounding as the file prints
+them; it was counted with the package and is not pinned by a test, because
+a value on a rounding boundary can fall either way on another machine.
+
+| Deposited curve | Constant set | Steps (deposited) | Node times, max. difference | Values, rms / max. difference | Values identical |
+|---|---|---|---|---|---|
+| Fig. 9a, five species | `'fig9a_nodes'` | 23 (23) | 8.1e-6 min | 3.0e-6 / 6.8e-6 | 109 of 120 |
+| Fig. 9b | `'fig9b_nodes'` | 19 (19) | 6.2e-6 min | 2.4e-6 / 5.0e-6 | 100 of 100 |
+| H2O2 trace of SI Fig. S12a | `'figS12a_h2o2_nodes'` | 24 (23: the file ends one step early, at 1537 min) | 5.8e-6 min | 2.6e-6 / 4.4e-6 equivalents | 24 of 24 |
+| Fig. 10a (25 C) | `'25C'` | 18 (18) | 0.0047 min | 2.1e-6 / 7.2e-6 | 91 of 95 |
+| Fig. 10b (75 C) | `'75C'` | 19 (19) | 0.0054 min | 2.5e-6 / 6.3e-6 | 98 of 100 |
+| Fig. 10c (100 C) | `'100C'` | 24 (24) | 0.0052 min | 2.3e-6 / 5.7e-6 | 113 of 125 |
+
+The Fig. 9 file prints its node times to five decimals and the Fig. 10
+files to two; all files print values to five decimals (small values to
+three significant digits or six decimals). The differences are therefore at
+the print rounding of the files (5e-6, or 0.005 min for Fig. 10). The tests
+require the deposited number of steps, node times within 2e-5 min (Fig. 9)
+or 0.01 min (Fig. 10) and values within 1e-5. For comparison, the same
+models solved accurately differ from these emulated steps by 8.5e-4
+(Fig. 9a), 2.0e-3 (Fig. 9b), 0.012 equivalents (H2O2 trace), 1.8e-4, 2.5e-3
+and 2.7e-3 (Fig. 10a-c). That is the solver error of the deposited
+curves, which the accurate-solver tests have to allow for; the limit of
+1e-5 is 18 to 270 times smaller.
+
+The constant sets of the Fig. 9 nodes, in the units of Table 3 (`k_1` to
+`k_6` in 1/(g_cat min), `k_7` in 1/min), with their ratio to Table 3 as
+printed. All are **inferred** from the deposited nodes (fits that are not
+shipped) and are selected with `parameter_set` in `load_o2_model` and
+`load_h2o2_model`; the default of both loaders and of the Antimony files is
+Table 3 as printed.
+
+| | `'fig9b_nodes'` (O2) | `'fig9a_nodes'` (H2O2) | `'figS12a_h2o2_nodes'` (H2O2) |
+|---|---|---|---|
+| `k_1` | 7.1405267 (1.00007) | 5.3228596 (1.00242) | 5.5412148 (1.04354) |
+| `k_2` | 138.68010 (0.99770) | 30.913113 (0.99399) | 32.725866 (1.05228) |
+| `k_3` | 3.1608819e-4 (1.00028) | 7.3582251e-4 (1.00522) | 6.7028262e-4 (0.91569) |
+| `k_4` | 0.058607778 (1.00013) | 1.1471899 (0.99756) | 1.1053986 (0.96122) |
+| `k_5` | 0.011270915 (0.99743) | 0.0030247652 (0.99827) | 0.0023665310 (0.78103) |
+| `k_6` | 0.0055212537 (1.00023) | 4.10e-9 (as printed) | 4.10e-9 (as printed) |
+| `k_7` | - | 0.0064883315 (1.00129) | 0.0069365260 (1.07045) |
+
+The O2 set is for `m_cat` = 0.2 g and `x_O2_ref` = 0.005085 (only the
+products are determined). Each of its constants prints, to three digits, as
+Table 3 prints it. Of the `'fig9a_nodes'` set only `k_4` does (item 3 of
+the next section).
+
+With **Table 3 as printed** the repeated run takes the deposited number of
+steps and comes within 4.0e-4 of the Fig. 9b nodes (rms 1.4e-4; node times
+within 0.041 min) and within 4.4e-4 of the Fig. 9a nodes (rms 2.0e-4; node
+times within 0.47 min). This is what the rounding of Table 3 to three
+digits (and, for H2O2, the deviations of item 3 below) costs.
+
+Details of the solver that the deposited time grids fix (all tested):
+
+- the tolerances: with a relative tolerance of 5e-4 or 2e-3 the node times
+  of Fig. 9b are more than 20 min off, and with an absolute tolerance of
+  5e-7 or 2e-6 the run takes 21 or 17 steps instead of 19;
+- the first step, `1/h = 1.25*sqrt(0.5*max(|J f|/w))/RelTol^(1/3)`: it is
+  the first deposited node of every curve but one (5.87666 min for Fig. 9b,
+  12.547 min for Fig. 9a);
+- the rule for a rejected step: at 25 C the first step (3.83 min) is
+  rejected and retried with a tenth of it, and the first deposited node is
+  at 0.38 min. It is the only rejected step of the six runs. No step of any
+  run is accepted or rejected narrowly (the error estimate of every
+  accepted step is below 0.6 of the tolerance, that of the rejected one
+  1.4e4 times it), so rounding differences between machines cannot change
+  the sequence of steps;
+- the last step, stretched to end at 1.1 times the last sampling time.
+
+The 13 vertices of the OPA curve in the SI Fig. S12b inset (digitized) are
+the first 13 steps of the emulated Fig. 9b run (`x_OPA` within 1.9e-7 on a
+peak of 1.4e-5; tested), so the inset shows the same solver run.
+
+What this establishes, and what it does not:
+
+- It shows that the shipped rate laws, with the constant sets named in the
+  table, return the deposited nodes to their printed digits. It does not
+  show that these are the only constants or the only rate laws that do.
+  The fits that produced the constant sets are not shipped.
+- The tests measure how tightly the nodes pin each constant on its own:
+  the relative change that makes the run miss a limit at least twofold
+  (the smallest power of ten).
+
+  | | `k_1` | `k_2` | `k_3` | `k_4` | `k_5` | `k_6` | `k_7` |
+  |---|---|---|---|---|---|---|---|
+  | `'fig9b_nodes'` | 1e-6 | 1e-6 | 1e-3 | 1e-3 | 1e-6 | 1e-4 | - |
+  | `'fig9a_nodes'` | 1e-6 | 1e-6 | 1e-3 | 1e-4 | 1e-5 | not detected | 1e-6 |
+  | `'figS12a_h2o2_nodes'` | 1e-6 | 1e-6 | 1e-3 | 1e-4 | 1e-4 | not detected | 1e-6 |
+
+  ("Not detected": a change of 10 % leaves the run within the limits;
+  `k_6` of the H2O2 model is not identifiable.) The sets are therefore
+  given to eight significant digits. The table for the reversible variant
+  is in its section. These are changes of one constant at a time; several
+  constants changed together can compensate each other in part.
+- Each negative control of the tests changes one inferred choice and keeps
+  the constants: `x_O2_ref` (section "`x_O2_ref`"), the O2 state, `k_7`
+  and the catalyst mass, the normalization, and for the reversible variant
+  the water stoichiometry and the reverse of reaction 1 (its section). A
+  control of this kind shows that the shipped constants need the shipped
+  choice. Whether another choice could do as well with other constants
+  takes a refit; where one was made, it is not shipped, and the text says
+  so.
+
+The controls for the two Table 3 models (limit 1e-5; node times 2e-5 min):
+
+| Change | Effect on the repeated run |
+|---|---|
+| `x_O2_ref` = 0.0051 (Fig. 9b) | misses the nodes by 9.4e-4, node times by 1.8 min; see "`x_O2_ref`" |
+| O2 fraction held at 1 in the rates, as in the posted script (Fig. 9b) | 7.7e-5, node times 0.15 min |
+| `k_7` multiplied by `m_cat` (Fig. 9a) | 16 steps instead of 23; 0.39 |
+| OPA included in the sum of the normalization | same steps; 0.038 (Fig. 9b), 0.094 (Fig. 9a), 0.029, 0.098 and 0.157 (Fig. 10a-c) |
+| H2O2 trace run with the `'fig9a_nodes'` set or with Table 3 | 23 steps instead of 24, node times more than 50 min off |
+
+On the O2 fraction: the posted script integrates an O2 state and uses
+`yO2 = 1.0` in its rates. The control shows that the constants of the node
+set need the depleting state. In a refit of the six constants with the
+fraction held at 1, on the deposited time grid (not shipped), the largest
+difference from the nodes stayed at 1.5e-5, three times that of the model
+with the depleting state (5e-6). The evidence for the coupling is therefore
+this factor of three in a fit, not the control alone.
+
+`figures.plot_solver_emulation` draws the six deposited curves with the
+emulated steps on their nodes and, below each, the differences of the
+emulated steps and of the accurate solution from the nodes.
 
 ## Paper versus deposit: discrepancies that affect these models
 
@@ -390,20 +563,28 @@ figure up to 0.010. The residual differences in the table have two sources:
    readers in `reference.py` correct all three; the shipped CSV is verbatim.
 2. **H2O2 trace of SI Fig. S12a.** The deposited trace and the published
    inset agree with each other and not with the H2O2 of the Table 3 model,
-   which lies up to 0.38 equivalents (rms 0.22) above them. A fit of the
-   model to the trace (not shipped) matches it with `k_7` = 6.94e-3 1/min
-   instead of 6.48e-3 and a `k_5` 22 % lower, so the trace is consistent
-   with another parameter set than the one behind the Fig. 9a curve and
-   Table 3. The species curves in the same figure are the Table 3 ones.
+   which lies up to 0.38 equivalents (rms 0.22) above them. The trace is
+   the H2O2 of another run of the same model: with the constant set
+   `'figS12a_h2o2_nodes'` (from a fit to the trace that is not shipped) the
+   repeated solver run returns its 24 nodes to their printed digits
+   (previous section). That set has `k_7` = 6.94e-3 1/min instead of
+   6.48e-3, a `k_5` 22 % lower and `k_1` to `k_4` 4 to 8 % off Table 3; the
+   species curves it gives differ from the deposited Fig. 9a curve by up to
+   0.05. So the trace comes from another parameter set than the one behind
+   the Fig. 9a curve and Table 3. The species curves in the same figure
+   are the Fig. 9a curve, which comes from constants within 0.6 % of
+   Table 3 (the `'fig9a_nodes'` set; item 3).
 3. **Table 3, H2O2 column, versus the Fig. 9a curve.** The constants with
-   which the solver emulation returns the deposited curve (not shipped)
+   which the repeated solver run returns the deposited curve
+   (`'fig9a_nodes'`; previous section; the fit itself is not shipped)
    differ from the printed ones by 0.1 to 0.6 %: +0.24 % (`k_1`), -0.60 %
    (`k_2`), +0.52 % (`k_3`), -0.24 % (`k_4`), -0.17 % (`k_5`) and +0.13 %
    (`k_7`). That is more than rounding to three digits allows for `k_1`,
    `k_2`, `k_3` and `k_7` (at most 0.09, 0.16, 0.07 and 0.08 %), marginally
    more for `k_5` (0.173 against 0.165 %), and within it only for `k_4`
-   (0.43 %). The effect on the curve is below 5e-4. `k_6` (4.10e-9) is not
-   identifiable: any value below about 1e-6 1/min gives the same curves.
+   (0.43 %). Of the six, only `k_4` prints as Table 3 prints it (tested).
+   The effect on the curve is 4.4e-4 (previous section). `k_6` (4.10e-9) is
+   not identifiable: any value below about 1e-6 1/min gives the same curves.
 4. **"H2O2 is fully consumed after 1000 min"** (Section 3.4). In the Table 3
    model H2O2 falls below 1 % of its charge at 671 min, and 0.016 equivalents
    remain at 1000 min.
@@ -446,8 +627,7 @@ figure up to 0.010. The residual differences in the table have two sources:
    fractions of the models over 3 bar or over `P/f0` give 0.001. How 0.204
    was obtained is not known.
 9. **Solver.** Section 2.6 names `ode23s` and `ode15s`; the deposited curves
-   have the step pattern of `ode23s` at default tolerances (see the previous
-   section).
+   are the steps of `ode23s` at default tolerances (previous section).
 
 ## Temperature dependence of the O2 model (NSKinetics addition)
 
@@ -652,9 +832,10 @@ with the colour field to an rms of 0.004 (panel a) and 0.005 (panel b) where
 the value is above 0.3, and the 50 C rows peak at 0.567 and 0.532 (+-0.01).
 
 The script integrates each of the 299 grid intervals with `ode23s` at
-default tolerances. A port of that solver (not shipped) differed from the
-converged solution by at most 1.2e-4, so the solver does not matter at the
-level of the figure.
+default tolerances. A repeat of those solver runs (not shipped;
+`solver_emulation.py` covers the deposited curves of Fig. 9 and Fig. 10a-c
+only) differed from the converged solution by at most 1.2e-4, so the solver
+does not matter at the level of the figure.
 
 ### Paper versus deposit for Fig. 11
 
@@ -802,7 +983,8 @@ How well the deposited curve determines each constant, in per cent of the
 value. Each entry is the larger of two estimates from the fits of the next
 subsection (not shipped; the package does not recompute them): the
 linearized standard deviation of the least-squares fit, and the spread
-between independent refits from different starting points.
+between independent refits from different starting points. The next
+subsection has the corresponding table measured by the package tests.
 
 | Constant | `'25C'` | `'75C'` | `'100C'` |
 |---|---|---|---|
@@ -849,37 +1031,85 @@ reverse terms here.
 
 ### How the model was inferred and how firmly each feature is established
 
-Everything in this subsection is from analyses that are not shipped.
-
 The deposited curves have 18, 19 and 24 unevenly spaced steps, like the
-Fig. 9 curves. The constants above are those with which a Python port of
-MATLAB `ode23s` at its default tolerances, left to choose its own steps from
-the feed onwards, returns the deposited curves: the same number of steps,
-step times within 0.006 min, values within 8e-6 (rms 2.5e-6 or less), and
-91 of 95, 98 of 100 and 113 of 125 values identical after rounding as in the
-file. The residuals are the print rounding of the files. Two separately
-written ports of the solver gave the same result. MATLAB itself was not run.
+Fig. 9 curves. The constants above were obtained by fitting them through a
+repeat of the authors' solver run to the deposited nodes, values and node
+times (fits that are not shipped). What the package tests establish with
+the shipped repeat of that run (`solver_emulation.py`; section "Emulation of
+the authors' solver run"): with these constants the run, left to choose its
+own steps from the feed onwards, takes the deposited number of steps and
+returns the node times within 0.0054 min and the values within 7.2e-6 (rms
+2.5e-6 or less); 91 of 95, 98 of 100 and 113 of 125 values are identical
+after rounding as in the file. The residuals are the print rounding of the
+files. MATLAB itself was not run.
 
-What the fits establish, and how firmly (rms of the best fit of each
-alternative to the deposited curves, with an accurate solver, at 25 / 75 /
-100 C; this structure refitted the same way reaches 1.6e-5 / 2.5e-4 /
-1.2e-4, the level of the deposited curves' solver error):
+How tightly the nodes pin each constant on its own, measured by the tests:
+the relative change of one constant that makes the repeated run miss a
+limit (0.01 min, 1e-5) at least twofold, as the smallest power of ten.
+
+| Constant | `'25C'` | `'75C'` | `'100C'` |
+|---|---|---|---|
+| `k_1` | 1e-4 | 1e-4 | 1e-4 |
+| `k_1r` | 1e-3 | 1 (a doubling) | 1e-2 |
+| `k_2` | 1e-4 | 1e-3 | 1e-3 |
+| `k_2r` | 1e-3 | 1e-2 | 1e-3 |
+| `k_3` | 1e-2 | 1e-3 | 1e-3 |
+| `k_4` | 1e-2 | 0.1 | 0.1 |
+| `k_5` | 0.1 | 1e-3 | not detected |
+| `k_5r` | not detected | 1e-2 | zero in the set |
+| `k_6` | 1e-3 | 1e-4 | 1e-4 |
+| `k_6r` | 1e-2 | 1e-2 | 1e-2 |
+
+"Not detected": a change of 10 % leaves the run within the limits. One unit
+of the last (sixth) printed digit, up or down, is not detectable for any of
+the thirty constants, and neither is a change of 1e-5 of the value, the
+most that such a unit can be (both tested). With the limits taken as they
+are, not twofold, the smallest single change that is detected is about
+1.5e-5 (`k_1` at 75 and 100 C; then 2e-5 for `k_6` at 100 C and 3e-5 for
+`k_2` at 25 C and `k_6` at 75 C; measured on a grid of changes, not
+asserted by a test). So six digits are what the comparison needs, and the
+last digit of each constant is not significant on its own.
+For comparison, the accurate-solver tests detect a 10 % error in most
+constants only.
+
+What the negative controls of the tests show. Each keeps the constants of
+the set and changes one feature; the numbers are the largest difference
+from the deposited nodes at 25 / 75 / 100 C (limit 1e-5):
+
+- **Reverse of R1.** Without it (`k_1r` = 0): 0.94 / 7.6e-5 / 0.011. All
+  three curves need the term.
+- **The reverse of R1 is bilinear in OPA and W.** With `k_1r*[OPA]` in its
+  place: 0.10 / 8.3e-5 / 0.0095.
+- **W is formed by R1 and R4.** With water from R1 only: 9.1e-4 (node times
+  1.6 min off) at 25 C; at 75 C the run is unchanged to the print rounding,
+  and at 100 C the values stay within 8.2e-6 while the node times move by
+  0.012 min, just beyond their limit of 0.01 min. So the 25 C curve, where
+  the reverse of R1 matters most, shows where the water comes from; the
+  100 C curve does so only marginally, and the 75 C curve not at all.
+- **OPA is left out of the plotted sum.** With OPA in the sum: 0.029 /
+  0.098 / 0.157 (the steps are the same; only the plotted quantity
+  changes).
+
+These controls do not refit the constants of the alternative. The
+following comes from such refits, which are not shipped (rms of the best
+fit of each alternative to the deposited curves, with an accurate solver,
+at 25 / 75 / 100 C; this structure refitted the same way reaches 1.6e-5 /
+2.5e-4 / 1.2e-4, the level of the deposited curves' solver error):
 
 - **Not the Table 3 model with other constants.** The irreversible
   six-reaction model reaches 7.3e-3 / 2.7e-3 / 3.2e-3.
 - **Not the simplified reversible model.** A model without OPA and with
   linear reverse terms reaches 1.1e-3 / 1.8e-2 / 2.2e-2.
-- **The reverse of R1 is bilinear in OPA and W.** With a linear reverse
-  (`k_1r*[OPA]`) the fit is 1.6e-3 / 2.5e-4 / 1.2e-4: the 25 C curve
-  excludes it, the 75 and 100 C curves do not when solved accurately (the
-  solver emulation excludes it at 100 C as well).
-- **W is formed by R1 and R4, one each, and starts at zero.** In the
-  emulation fit of the 25 C curve the misfit (chi-square) is 81 with water
+- **Linear reverse of R1, refitted.** The fit is 1.6e-3 / 2.5e-4 / 1.2e-4:
+  the 25 C curve excludes it, the 75 and 100 C curves do not when solved
+  accurately (a fit through the repeated solver run excluded it at 100 C as
+  well).
+- **Water from other reactions, refitted.** In the fit of the 25 C curve
+  through the repeated solver run the misfit (chi-square) was 81 with water
   from R1 and R4, 15164 with water from R1 only and above 1e5 for the other
-  combinations tried; the coefficient of R4 is 1.0 +- 0.05. At 75 and 100 C
-  the choice makes no visible difference. R1 and R4 are the steps that form
-  water in the O2 stoichiometry of SI Table S4 (the reaction list of Fig. 9b
-  writes R4 without water).
+  combinations tried; the coefficient of R4 was 1.0 +- 0.05. R1 and R4 are
+  the steps that form water in the O2 stoichiometry of SI Table S4 (the
+  reaction list of Fig. 9b writes R4 without water).
 - **Not identifiable:** how the authors' code factors the constants (oxidant
   fraction, pressure, equilibrium constants); only the effective constants
   are determined. Reverse terms of R3 and R4, or an additional linear reverse
@@ -898,15 +1128,18 @@ of the deposited curves; values are normalized concentrations.
 | Model vs deposited curve, rms / max over all values | 3.8e-5 / 1.8e-4 | 7.1e-4 / 2.5e-3 | 6.9e-4 / 2.7e-3 |
 | the same, max per species (3-HP, MA, AAc, OXA, D) | 7.7e-5, 1.8e-4, 7.9e-6, 4.9e-6, 9.4e-5 | 1.7e-3, 2.5e-3, 1.4e-4, 4.0e-6, 1.7e-3 | 1.7e-3, 2.7e-3, 1.9e-4, 1.0e-6, 1.7e-3 |
 | Model vs the straight segments between the nodes, max | 7e-4 | 0.010 | 0.009 |
+| Repeated solver run vs deposited curve, rms / max over all values | 2.1e-6 / 7.2e-6 | 2.5e-6 / 6.3e-6 | 2.3e-6 / 5.7e-6 |
 | Model vs an accurate solution of the same equations, max over the plotted fractions | 1.5e-8 | 2.5e-8 | 2.4e-8 |
 | Model vs experiment, pooled R2 / rms (all rows) | 0.9996 / 0.008 | 0.990 / 0.029 | 0.993 / 0.026 |
 
-The differences from the deposited curves are the solver error of those
+The differences of the first rows are the solver error of the deposited
 curves, not a difference in the model: the published lines are not converged
-solutions. They are drawn as straight segments between the nodes, which at
-75 and 100 C lie up to 0.010 from the solution (third row).
+solutions, and with the solver run repeated the differences are at the print
+rounding of the files (fourth row). The published lines are drawn as
+straight segments between the nodes, which at 75 and 100 C lie up to 0.010
+from the solution (third row).
 
-The accurate solution of the fourth row is computed in the tests
+The accurate solution of the fifth row is computed in the tests
 (`test_pd_c_3hp_oxidation_fig10.py`): the equations of the table above,
 written out again in the test module on their own basis (mol per mol of
 initial 3-HP) with the same six-digit constants, are integrated with scipy
@@ -927,7 +1160,9 @@ with the accurate solution (limit 1e-7) is the check that covers those: a
 solution by at least 1.6e-7 (the smallest effects are `k_5r` at 25 C, `k_5`
 at 100 C, 1.8e-7, and `k_1r` at 75 C, 6.6e-7; a 10 % error moves it by ten
 times as much). That comparison guards the implementation, not the
-inference.
+inference. The comparison with the repeated solver run
+(`test_pd_c_3hp_oxidation_solver_emulation.py`, previous subsection) is the
+sharper check against the deposit.
 
 ### What the model implies
 
@@ -1123,19 +1358,30 @@ The following results are quoted above from work done outside the package.
 Its scripts are not shipped and the package tests do not repeat it, so
 these numbers cannot be re-derived from the repository:
 
-- **Emulation of the authors' solver.** Python ports of MATLAB `ode23s`
-  (default tolerances) and fits of the constants through them to the
-  deposited nodes: the statement that the deposited curves are raw solver
-  steps reproduced to their printed digits; the window 0.00508 to 0.00509
-  for `x_O2_ref`; the deviations of the H2O2 constants from Table 3; all
-  thirty constants of the reversible O2 variant, their uncertainties, and
-  the alternatives that were excluded. MATLAB itself was never run.
+- **Fits through the repeated solver run.** The repeat of the authors'
+  solver run is shipped and tested (`solver_emulation.py`). The
+  least-squares fits made through such a repeat are not: they produced the
+  constant sets of the Fig. 9 nodes (`'fig9a_nodes'`, `'figS12a_h2o2_nodes'`,
+  `'fig9b_nodes'`), all thirty constants of the reversible O2 variant and
+  their uncertainties, and the refits of the alternatives that were
+  excluded (other water stoichiometries, a refitted linear reverse of R1,
+  the O2 fraction held constant). The tests show that the shipped constants
+  return the deposited nodes and how far each constant can be moved on its
+  own; they do not show that no other constants or rate laws would return
+  them.
 - **Fits to the experiments:** the refit of the O2 constants with and
   without the 120 min row; the refits of the simplified model behind the
-  assignment of the Fig. 10d points; the fit of the H2O2 trace.
+  assignment of the Fig. 10d points.
 - **Fits to the digitized contour lines of Fig. 11:** `k_3` and `k_4` of the
   `'fig11b'` set and `k_3`, `k_4`, `k_5` and `K_10` of the `'fig11a'` set,
   their spreads, and the offsets "after refitting".
+- **Other solver runs.** The repeat of the heat-map script's 299 solver
+  intervals per row (Fig. 11) and the independent scipy implementations
+  quoted for the simplified model and for the Table S4 orders.
+  `solver_emulation.py` covers the deposited curves of Fig. 9 and
+  Fig. 10a-c only. Its Jacobian is a plain forward difference; MATLAB's
+  adapts its increments. Other increments, tried outside the package, moved
+  the values by less than 1e-6. MATLAB itself was never run.
 - **Digitization.** The digitized curves that are shipped
   (`reference_data/`) were read from the published figures as described in
   `reference_data/README.md`; the colour field of Fig. 11 was read too and
@@ -1143,5 +1389,12 @@ these numbers cannot be re-derived from the repository:
 
 What the package and its tests do establish: that the shipped models, with
 the constants as documented, agree with the deposited curves, the digitized
-lines and the experiments to the numbers given in the "Agreement" tables,
-and that each model implements the rate laws written in these notes.
+lines and the experiments to the numbers given in the "Agreement" tables;
+that, with the authors' solver run repeated, they return the deposited
+model nodes of Fig. 9a, Fig. 9b, the H2O2 trace of SI Fig. S12a and
+Fig. 10a-c to the digits the files print; what each inferred choice
+(`x_O2_ref`, the O2 state, `k_7` without the catalyst mass, the
+normalization without OPA, the water stoichiometry and the bilinear reverse
+of R1 of the reversible variant) contributes to that with the shipped
+constants; and that each model implements the rate laws written in these
+notes.

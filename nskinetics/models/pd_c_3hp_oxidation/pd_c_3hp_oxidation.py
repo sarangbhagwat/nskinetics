@@ -46,6 +46,13 @@ Time is in min, liquid concentrations are in M and temperatures are in K
 :func:`load_o2_simplified_reversible_model`.
 ``NOTES.md`` in this folder records what is printed in the paper, what was
 inferred from the authors' data deposit, and where the two disagree.
+
+The model curves the authors deposited are steps of their solver and lie
+up to 2.7e-3 from the solutions of these models. ``solver_emulation``
+repeats that solver run with a model loaded here; the constant sets
+:data:`H2O2_NODE_PARAMETER_SETS` and :data:`O2_NODE_PARAMETER_SETS`, which
+the loaders of the two Table 3 models accept by name, exist for that
+comparison only.
 """
 import os
 
@@ -61,6 +68,7 @@ __all__ = ('load_h2o2_model', 'load_o2_model', 'load_o2_reversible_model',
            'o2_reversible_antimony_filename',
            'o2_simplified_reversible_antimony_filename',
            'SPECIES', 'NORMALIZED', 'TABLE_S4',
+           'H2O2_NODE_PARAMETER_SETS', 'O2_NODE_PARAMETER_SETS',
            'O2_REVERSIBLE_PARAMETER_SETS',
            'SIMPLIFIED_REVERSIBLE_PARAMETER_SETS',
            'SIMPLIFIED_REVERSIBLE_INITIAL_CONDITIONS',)
@@ -116,6 +124,53 @@ TABLE_S4 = {
         'n': (0.99, 0.95, 0.78, 0.87, 0.98, 1.01),
         'Keq': (1.37e30, 6.09e41, 5.75e4, 2.44e92, None, None),
         },
+    }
+
+#: Constant sets of the H2O2 model that return the deposited model nodes
+#: when the authors' solver run is repeated (``solver_emulation``). They are
+#: **not** the published constants: those are Table 3 as printed, the default
+#: of the Antimony file and of :func:`load_h2o2_model`. The sets were
+#: inferred from the deposited nodes by fits that are not in the repository
+#: and are given to eight significant digits, which the deposited time
+#: grids (printed to five decimals) need. ``k_1`` to ``k_6`` in
+#: 1/(g_cat min), ``k_7`` in 1/min; ``k_6`` is not identifiable and is kept
+#: as printed.
+#:
+#: ``'fig9a_nodes'``
+#:     Reproduces the 24 nodes of the deposited Fig. 9a model curve. Over
+#:     Table 3 as printed: 1.00242, 0.99399, 1.00522, 0.99756, 0.99827, 1
+#:     and 1.00129 for ``k_1`` to ``k_7``, more than rounding to three
+#:     digits allows for ``k_1``, ``k_2``, ``k_3``, ``k_5`` and ``k_7``.
+#: ``'figS12a_h2o2_nodes'``
+#:     Reproduces the 24 nodes of the deposited H2O2 trace of SI Fig. S12a,
+#:     which is not the H2O2 of the Fig. 9a curve. Over Table 3 as printed:
+#:     1.04354, 1.05228, 0.91569, 0.96122, 0.78103, 1 and 1.07045.
+H2O2_NODE_PARAMETER_SETS = {
+    name: dict(zip(('k_1', 'k_2', 'k_3', 'k_4', 'k_5', 'k_6', 'k_7'), values))
+    for name, values in (
+        ('fig9a_nodes', (5.3228596, 30.913113, 7.3582251e-4, 1.1471899,
+                         0.0030247652, 4.10e-9, 0.0064883315)),
+        ('figS12a_h2o2_nodes', (5.5412148, 32.725866, 6.7028262e-4,
+                                1.1053986, 0.0023665310, 4.10e-9,
+                                0.0069365260)),
+        )}
+
+#: Constant set of the O2 model that returns the 20 nodes of the deposited
+#: Fig. 9b model curve when the authors' solver run is repeated
+#: (``solver_emulation``): ``k_1_ref`` to ``k_6_ref`` in 1/(g_cat min), for
+#: ``m_cat`` = 0.2 g and ``x_O2_ref`` = 0.005085 (only the products
+#: ``k_i*m_cat*x_O2_ref`` of reactions 1, 2 and 4 and ``k_i*m_cat`` of the
+#: others are determined). It is **not** the published set: that is Table 3
+#: as printed, the default of the Antimony file and of
+#: :func:`load_o2_model`. The set was inferred from the deposited nodes by a
+#: fit that is not in the repository and is given to eight significant
+#: digits. Over Table 3 as printed: 1.00007, 0.99770, 1.00028, 1.00013,
+#: 0.99743 and 1.00023, all within the rounding of Table 3 to three digits.
+O2_NODE_PARAMETER_SETS = {
+    'fig9b_nodes': dict(zip(
+        ('k_1_ref', 'k_2_ref', 'k_3_ref', 'k_4_ref', 'k_5_ref', 'k_6_ref'),
+        (7.1405267, 138.68010, 3.1608819e-4, 0.058607778, 0.011270915,
+         0.0055212537))),
     }
 
 _O2_REVERSIBLE_NAMES = ('k_1', 'k_1r', 'k_2', 'k_2r', 'k_3', 'k_4',
@@ -231,7 +286,21 @@ def _check_T(T):
             'T is in kelvin: for 75 C pass T=348.15 (75 + 273.15).')
 
 
-def load_h2o2_model():
+def _table3_or_node_set(parameter_set, node_sets, model):
+    """Values of a constant set of a Table 3 model: none for ``'table3'``
+    (the Antimony file as it is), else the named set of ``node_sets``."""
+    if parameter_set == 'table3':
+        return {}
+    try:
+        return dict(node_sets[parameter_set])
+    except (KeyError, TypeError):
+        names = ', '.join(repr(name) for name in ('table3', *node_sets))
+        raise ValueError(
+            f'unknown parameter set {parameter_set!r} of the {model} model: '
+            f'choose from {names}') from None
+
+
+def load_h2o2_model(parameter_set='table3'):
     """Load the H2O2 model (Table 3, H2O2 column; Fig. 9a) at 50 C.
 
     Reproduces Fig. 9a. Its predicted H2O2 (``eq_H2O2``) is compared with
@@ -241,6 +310,17 @@ def load_h2o2_model():
     Fig. S2 with all orders equal to 1). How H2O2 enters the rates was
     inferred from the deposited model curve.
 
+    Parameters
+    ----------
+    parameter_set : str, optional
+        ``'table3'`` (default): the constants of Table 3 as printed, the
+        published model. ``'fig9a_nodes'`` or ``'figS12a_h2o2_nodes'``: a
+        key of :data:`H2O2_NODE_PARAMETER_SETS`, constants inferred from
+        the deposited nodes with which the repeated solver run of the
+        authors (``solver_emulation``) returns the deposited Fig. 9a curve
+        or the deposited H2O2 trace to their printed digits. They are for
+        that verification only.
+
     Returns
     -------
     nskinetics.KineticModel
@@ -249,6 +329,12 @@ def load_h2o2_model():
         Plotted quantities (select them by name): ``X_HP3, X_MA, X_AAc,
         X_OXA, X_D`` (Fig. 9a), ``eq_H2O2`` (SI Fig. S12a inset) and
         ``x_OPA``.
+
+    Raises
+    ------
+    ValueError
+        If ``parameter_set`` is not one of the three names; the message
+        lists them.
 
     Notes
     -----
@@ -294,12 +380,14 @@ def load_h2o2_model():
     parameter values set with ``set_value``.
     :meth:`~nskinetics.KineticModel.compile_events` regenerates the model
     and discards every value set with ``set_value`` before it: set values
-    after compiling events.
+    after compiling events. A constant set selected with ``parameter_set``
+    is part of the model that is built and is kept by both.
     """
-    return _load(h2o2_antimony_filename)
+    return _load(h2o2_antimony_filename, _table3_or_node_set(
+        parameter_set, H2O2_NODE_PARAMETER_SETS, 'H2O2'))
 
 
-def load_o2_model(T=None):
+def load_o2_model(T=None, parameter_set='table3'):
     """Load the O2 model (Table 3, O2 column; Fig. 9b).
 
     Reproduces Fig. 9b and SI Fig. S12b at the default 50 C. Source: the
@@ -318,6 +406,13 @@ def load_o2_model(T=None):
         paper, the second of its two equations numbered 6, with the
         activation energies of the authors' heat-map script); see the
         warning below.
+    parameter_set : str, optional
+        ``'table3'`` (default): the constants of Table 3 as printed, the
+        published model. ``'fig9b_nodes'``, the key of
+        :data:`O2_NODE_PARAMETER_SETS`: the 50 C constants inferred from
+        the deposited nodes, with which the repeated solver run of the
+        authors (``solver_emulation``) returns the deposited Fig. 9b curve
+        to its printed digits. It is for that verification only.
 
     Returns
     -------
@@ -332,7 +427,9 @@ def load_o2_model(T=None):
     ValueError
         If ``T`` is outside 250 to 450 K, which is what a temperature
         given in degrees Celsius looks like. The range is a guard against
-        that mistake only, not a range of validity.
+        that mistake only, not a range of validity. Also if
+        ``parameter_set`` is not one of the two names; the message lists
+        them.
 
     Warnings
     --------
@@ -379,17 +476,19 @@ def load_o2_model(T=None):
     negative values of ``m_cat`` or ``C0`` give meaningless results
     without an error.
 
-    The temperature given here is part of the model that is built, so
-    ``reset()`` and :meth:`~nskinetics.KineticModel.compile_events` keep
-    it. A value set later with ``set_value`` is kept by ``reset()``, which
-    restores only the species and ``yO2``, and is discarded by
-    ``compile_events()``, which regenerates the model: set values after
-    compiling events. See :func:`load_h2o2_model` on item access.
+    The temperature and the constant set given here are part of the model
+    that is built, so ``reset()`` and
+    :meth:`~nskinetics.KineticModel.compile_events` keep them. A value set
+    later with ``set_value`` is kept by ``reset()``, which restores only
+    the species and ``yO2``, and is discarded by ``compile_events()``,
+    which regenerates the model: set values after compiling events. See
+    :func:`load_h2o2_model` on item access.
     """
-    if T is None:
-        return _load(o2_antimony_filename)
-    _check_T(T)
-    return _load(o2_antimony_filename, {'T': T})
+    values = _table3_or_node_set(parameter_set, O2_NODE_PARAMETER_SETS, 'O2')
+    if T is not None:
+        _check_T(T)
+        values['T'] = T
+    return _load(o2_antimony_filename, values)
 
 
 def load_o2_reversible_model(parameter_set='75C'):
@@ -444,7 +543,9 @@ def load_o2_reversible_model(parameter_set='75C'):
 
     The deposited curves are MATLAB ``ode23s`` output at default
     tolerances; this model, solved accurately, differs from them by up to
-    1.8e-4 (25 C), 2.5e-3 (75 C) and 2.7e-3 (100 C).
+    1.8e-4 (25 C), 2.5e-3 (75 C) and 2.7e-3 (100 C). With that solver run
+    repeated (``solver_emulation.emulate_fig10abc``) it returns the
+    deposited nodes within 1e-5, the last decimal the files print.
 
     The selected constant set is part of the model that is built, so
     ``reset()`` and :meth:`~nskinetics.KineticModel.compile_events` keep

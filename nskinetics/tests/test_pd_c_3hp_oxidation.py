@@ -29,6 +29,8 @@ The simplified reversible O2 model and the heat maps (Fig. 11) are tested in
 ``test_pd_c_3hp_oxidation_heat_maps.py`` and the reversible O2 variant and
 the Fig. 10 data in ``test_pd_c_3hp_oxidation_fig10.py``; the checks of the
 shipped SBML and of ``compile_events`` cover all four models here.
+``test_pd_c_3hp_oxidation_solver_emulation.py`` repeats the authors' solver
+run and holds the models to the deposited nodes within their print rounding.
 
 The models are small and load in milliseconds, so this module is not
 marked slow. It imports pytest at top level and is therefore not registered
@@ -149,12 +151,12 @@ def test_importing_the_package_is_lightweight():
     before, after = json.loads(line[len('MODULES '):])
     # ``import nskinetics`` does not import the package ...
     assert before == []
-    # ... and the package imports its four modules but not the figures
+    # ... and the package imports its five modules but not the figures
     prefix = 'nskinetics.models.pd_c_3hp_oxidation'
     assert after == sorted([prefix] + [
         prefix + '.' + name for name in (
             'pd_c_3hp_oxidation', 'reference', 'heat_maps',
-            'temperature_series')])
+            'temperature_series', 'solver_emulation')])
 
 
 # --- 2. constants and rate laws ---------------------------------------------
