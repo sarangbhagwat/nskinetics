@@ -499,9 +499,8 @@ reverse term in every step, and it is not written out in the paper or the
 SI. It is shipped as
 `pd_c_3hp_oxidation_o2_simplified_reversible_antimony.txt`
 (`load_o2_simplified_reversible_model`) because, run as the script runs it,
-it reproduces the published heat maps, and the Table 3 model does not.
-The 50 C point of the Arrhenius plot (Fig. 10d) supplies three of its
-constants.
+it reproduces the published heat maps, and the Table 3 model does not. The
+50 C point of the Arrhenius plot (Fig. 10d) supplies three of its constants.
 
 ### Structure (transcribed from the script)
 
@@ -1046,10 +1045,9 @@ lines.
    nearest to 59.8. The text values are those of the heat-map script
    (59781.2, 91594.6 and 59549.8 J/mol), where they scale the 50 C constants
    (Fig. 11). Where they come from is not known; they are used as printed in
-   the two models with a temperature dependence.
-   The script's value for 3-HP -> D, 51788.73 J/mol, is not in the paper;
-   it is close to what the 50 and 100 C points of the MA -> D constant give
-   (51.85 kJ/mol).
+   the two models with a temperature dependence. The script's value for
+   3-HP -> D, 51788.73 J/mol, is not in the paper; it is close to what the
+   50 and 100 C points of the MA -> D constant give (51.85 kJ/mol).
 4. **The heat-map extrapolation against the plotted points.** Lines with the
    text's activation energies through the 50 C points
    (`fig10d_text_lines`, drawn in `plot_fig10_table3_o2`) miss the other
