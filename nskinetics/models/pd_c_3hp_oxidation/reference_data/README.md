@@ -12,7 +12,9 @@ Source: S. Y. Kim, J. Chavarrio, J. Install, G. W. Huber, "Data and code from:
 Selective oxidation of 3-hydroxypropionic acid to malonic acid over Pd/C:
 Mechanistic and kinetic study", Dryad, https://doi.org/10.5061/dryad.jsxksn0q4.
 Licence: CC0 1.0 (public domain dedication). The files are byte-for-byte
-copies (UTF-8 with byte-order mark, CRLF line ends).
+copies (UTF-8 with byte-order mark, CRLF line ends); `.gitattributes` at the
+repository root marks the `*.csv` files of this folder `-text`, so that git
+never converts their line ends.
 
 | File | Content |
 |---|---|

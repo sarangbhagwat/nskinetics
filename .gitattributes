@@ -1,0 +1,4 @@
+# Reference data of the Pd/C 3-HP oxidation models: verbatim copies of the
+# deposited files (CRLF line ends), checked by SHA-256 in the tests. Never
+# convert their line endings.
+nskinetics/models/pd_c_3hp_oxidation/reference_data/*.csv -text

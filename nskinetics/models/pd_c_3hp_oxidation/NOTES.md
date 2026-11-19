@@ -150,10 +150,14 @@ O2, 7e-6 for H2O2); the package tests do not repeat that emulation.
    figure are the Table 3 ones. The Table 3 model therefore predicts up to
    0.38 equivalents more H2O2 than the published trace.
 3. **Table 3, H2O2 column, versus the Fig. 9a curve.** The constants that
-   generated the deposited curve differ from the printed ones by 0.1 to 0.6 %
-   (more than three-digit rounding for `k_2` and `k_3`); the effect on the
-   curve is below 5e-4. `k_6` (4.10e-9) is not identifiable: any value below
-   about 1e-6 1/min gives the same curves.
+   generated the deposited curve differ from the printed ones by 0.1 to 0.6 %:
+   +0.24 % (`k_1`), -0.60 % (`k_2`), +0.52 % (`k_3`), -0.24 % (`k_4`),
+   -0.17 % (`k_5`) and +0.13 % (`k_7`). That is more than rounding to three
+   digits allows for `k_1`, `k_2`, `k_3` and `k_7` (at most 0.09, 0.16, 0.07
+   and 0.08 %), marginally more for `k_5` (0.173 against 0.165 %), and within
+   it only for `k_4` (0.43 %). The effect on the curve is below 5e-4. `k_6`
+   (4.10e-9) is not identifiable: any value below about 1e-6 1/min gives the
+   same curves.
 4. **"H2O2 is fully consumed after 1000 min"** (Section 3.4). In the Table 3
    model H2O2 falls below 1 % of its charge at 671 min, and 0.016 equivalents
    remain at 1000 min.

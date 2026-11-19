@@ -196,6 +196,16 @@ def test_liquid_species_are_conserved(load, t_end):
     assert (sim[_CONCENTRATIONS].to_numpy() > -1e-9).all()
 
 
+def test_o2_oxidant_depletion(o2_model):
+    # yO2 loses x_per_M per M of oxidant used by R1, R2 and R4 (1:1 each).
+    # The loss is small (5.3e-4 over the 1848 min of the deposited curve) and
+    # hardly moves the liquid species, so it is pinned here on yO2 itself.
+    sim = simulate_at_times(o2_model, [0., 240., 1440., 1848.], ['yO2'])
+    assert sim['yO2'][0] == 1.
+    assert (np.diff(sim['yO2']) < 0.).all()
+    assert sim['yO2'][3] == pytest.approx(0.999472, abs=5e-6)
+
+
 # --- 3. O2 model against the deposit (Fig. 9b, SI Fig. S12b) ----------------
 
 def test_o2_model_matches_the_deposited_fig9b_curve(o2_model, fig9b):
