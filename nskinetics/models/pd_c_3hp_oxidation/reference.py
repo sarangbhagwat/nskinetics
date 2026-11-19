@@ -174,6 +174,21 @@ _FIG10_FILES = {25: '11-1_25C_Kinetic.csv', 75: '11-2_75C_Kinetic.csv',
 _FIG10_LABELS = {'%dC' % T_C: T_C for T_C in _FIG10_FILES}
 
 
+def _fig10_temperature(temperature_C):
+    """Return 25, 75 or 100 for the temperature or label of a Fig. 10 panel."""
+    try:
+        T_C = _FIG10_LABELS.get(temperature_C, temperature_C)
+        known = T_C in _FIG10_FILES
+    except TypeError:               # not hashable, e.g. a list
+        known = False
+    if not known:
+        raise ValueError(
+            f'no Fig. 10 data for {temperature_C!r}: the panels are at 25, '
+            "75 and 100 C (pass the number or the label '25C', '75C' or "
+            "'100C'; for 50 C, Fig. 9b, use read_fig9b_o2)")
+    return int(T_C)
+
+
 def read_fig10_o2(temperature_C):
     """Read the deposited table of one panel of Fig. 10a-c (O2).
 
@@ -214,13 +229,7 @@ def read_fig10_o2(temperature_C):
     of the nodes; with the authors' solver run repeated
     (``solver_emulation``) it returns them within 1e-5 (see ``NOTES.md``).
     """
-    temperature_C = _FIG10_LABELS.get(temperature_C, temperature_C)
-    if temperature_C not in _FIG10_FILES:
-        raise ValueError(
-            f'no Fig. 10 data for {temperature_C!r}: the panels are at 25, '
-            "75 and 100 C (pass the number or the label '25C', '75C' or "
-            "'100C'; for 50 C, Fig. 9b, use read_fig9b_o2)")
-    rows = _rows(_FIG10_FILES[temperature_C])
+    rows = _rows(_FIG10_FILES[_fig10_temperature(temperature_C)])
     return {'experiment': _block(rows, 0, _COLUMNS),
             'model': _block(rows, 6, _COLUMNS)}
 

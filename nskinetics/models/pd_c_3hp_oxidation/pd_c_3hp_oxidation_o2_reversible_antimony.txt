@@ -28,7 +28,7 @@ model *kim2026_o2_reversible()
   // Compartments and Species:
   // env is the liquid phase. HP3, OPA, MA, AAc, OXA and D are the species of
   // the Table 3 models (OPA, 3-oxopropanoic acid, is the aldehyde
-  // intermediate and was not measured; D lumps the other by-products).
+  // intermediate and was not detected; D lumps the other by-products).
   // W is the water formed by the reactions, counted from zero. It is not
   // the solvent: only the water made by R1 and R4 enters the reverse of R1.
   var compartment env;

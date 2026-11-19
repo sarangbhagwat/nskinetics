@@ -130,12 +130,12 @@ Each is an Antimony file with the SBML file generated from it next to it
 The two Table 3 models describe the batch of the Fig. 9 caption: 60 mM 3-HP,
 NaOH/3-HP = 1:1, 0.2 g Pd/C, 50 °C, and 3 bar O2 or 15 equivalents of H2O2
 under 3 bar Ar. Their species are ``HP3``, ``OPA`` (3-oxopropanoic acid, the
-aldehyde intermediate, never measured), ``MA``, ``AAc`` (acetic acid),
-``OXA`` (oxalic acid) and ``D`` (lumped other by-products). The quantities
-plotted in the paper are assignment rules of the models and are selected by
-name: ``X_HP3``, ``X_MA``, ``X_AAc``, ``X_OXA`` and ``X_D`` are each species
-over the sum of the five measured species (OPA is left out of the sum, as in
-the authors' post-processing).
+aldehyde intermediate, which the paper reports as not detected), ``MA``,
+``AAc`` (acetic acid), ``OXA`` (oxalic acid) and ``D`` (lumped other
+by-products). The quantities plotted in the paper are assignment rules of
+the models and are selected by name: ``X_HP3``, ``X_MA``, ``X_AAc``,
+``X_OXA`` and ``X_D`` are each species over the sum of the five measured
+species (OPA is left out of the sum, as in the authors' post-processing).
 
 **Units.** Time is in min and concentrations are in M. Temperatures are in
 K wherever an argument or a model parameter is named ``T``, and in °C
@@ -311,7 +311,9 @@ paper and should be left alone unless you know why you are changing it.
      - bar
      - 3.5
      - Pressure of the authors' heat-map script (the captions of the paper
-       give 3 bar of O2). No experiment was made at another pressure.
+       give 3 bar of O2). Do not use it to explore pressure: the model was
+       fitted at no other pressure, and the paper's Fig. 3a contradicts its
+       trend above 3 bar (see below).
 
 .. code-block:: python
 
@@ -345,14 +347,60 @@ Read this before changing them:
   were fitted by the authors to one experiment each: 60 mM 3-HP, 0.2 g of
   catalyst, 50 °C, with 15 equivalents of H2O2 (samples up to 1440 min) or
   3 bar O2 (samples up to 1680 min). Any other value of ``m_cat``, ``C0``,
-  ``eq_H2O2_0`` or ``T`` is an extrapolation of first-order kinetics that
-  was never compared with data, except for ``T``, where the comparison is
-  poor (`Limits of the temperature-extended O2 model`_). The same holds for
-  times beyond the last sample, and for ``P`` of the simplified reversible
-  model: all O2 experiments of the paper are at 3 bar, so its pressure
-  dependence is that of the script's rate form alone. That dependence is
-  strong (at 50 °C, ``X_MA`` at 240 min is 0.27, 0.57 and 0.70 for 1, 3.5
-  and 10 bar) and was never compared with data.
+  ``eq_H2O2_0``, ``T`` or ``P``, and any time beyond the last sample, is an
+  extrapolation of the fitted rate laws. The example above shows what the
+  models compute, not what was measured. For ``T`` with O2 the comparison
+  with the time courses of Fig. 10 is poor (`Limits of the
+  temperature-extended O2 model`_). For ``m_cat`` and ``C0`` no experiment
+  was found in the paper or the deposit to compare with.
+- **The paper's screening experiments contradict some of these
+  extrapolations.** The time courses behind the models are those of Figs. 9
+  and 10; all O2 ones are at 3 bar of O2. The paper also has experiments
+  analysed once, after 8 h, in which the H2O2 charge, the temperature or
+  the O2 pressure was varied (its Figs. 2 and 3; SI Table S2 has the
+  temperature series with O2, and SI Table S1 other catalysts), and
+  experiments with malonic acid alone (its Fig. 4). The deposit holds the
+  values of Figs. 2 to 4. The models were not built on these experiments
+  and do not describe them (``NOTES.md`` has the table; the model values
+  are pinned by the package tests):
+
+  - *O2 pressure* (Fig. 3a: 1, 3, 5, 10 and 20 bar at 50 °C). The measured
+    conversion is 21.7, 72.8, 63.2, 25.0 and 25.9 %, and the MA yield 2.7,
+    41.1, 20.5, 1.3 and 0.6 %: both are highest at 3 bar, and the paper
+    calls the decline "likely due to catalyst poisoning by excess O2". (The
+    deposited 5 bar values equal an entry of SI Table S1 for another
+    catalyst under 3 bar, see ``NOTES.md``; the 10 and 20 bar values show
+    the decline as well.) The simplified reversible model was fitted at no
+    other pressure, and its rate form only speeds up with ``P``: after
+    480 min it gives 87.7, 98.2, 99.7, 99.9 and 100.0 % conversion with an
+    MA fraction of 0.30, 0.48, 0.51, 0.53 and 0.51 (and at 240 min ``X_MA``
+    is 0.27, 0.57 and 0.70 for 1, 3.5 and 10 bar). Its pressure dependence
+    is therefore contradicted by the paper, not merely untested: **do not
+    use** ``P`` **to explore pressure.** The O2 model has no pressure
+    parameter, and ``x_O2_ref`` is not one.
+  - *H2O2 charge* (Fig. 2a). The measured conversion and MA yield are
+    highest at 15 equivalents (78.4 and 58.5 %) and fall beyond (56.4 and
+    28.4 % in the next experiment, at 20 equivalents by the axis of the
+    figure and 30 by the deposit). In the H2O2 model both rise with every
+    equivalent added, as with 30 equivalents in the example above.
+  - *Temperature with O2* (Fig. 3c). After 8 h at 25 °C the O2 model has
+    converted 53 % where 8.5 % was measured; at 75 °C it has an MA yield of
+    4.7 % where 35.7 % was measured (the simplified reversible model: 53.5
+    and 6.0 %).
+  - *Malonic acid alone* (Fig. 4). Without 3-HP, 3.8 % (Fig. 4a) or 1.2 %
+    (the time course of Fig. 4b) of the MA was converted after 1300 min at
+    50 °C; the O2 model started from 60 mM MA converts 80 %. At 100 °C,
+    30.1 % was converted after 120 min, where the model converts 96 %; after
+    1300 min the measured 89.8 % (Fig. 4a) or 99.0 % (Fig. 4b) is close to
+    the model's 100 %.
+
+  The screening experiments are not on the same footing as the time
+  courses either. At the same nominal conditions they give 72.8 % (O2) and
+  78.4 % (H2O2) conversion after 480 min, where the time courses of Fig. 9
+  are at 96.1 % after 450 min and 60.6 % after 420 min. No explanation was
+  found in the paper; it states that for time-resolved runs substrate,
+  NaOH and water were tripled and that 1.5 mL was withdrawn at every
+  sample.
 - **The catalyst mass is per batch of the paper, not per litre.** The
   compartment of the model files is a nominal 1 L that cancels from every
   concentration, and no rate has a volume term. The rates scale with
@@ -376,8 +424,7 @@ Read this before changing them:
   parameter; their constants are effective ones for the paper's batch. The
   reversible variant has no temperature or pressure either, and each of its
   constant sets belongs to one experiment (samples up to 1890, 1440 and
-  1560 min at 25, 75 and 100 °C). The O2 model has no O2 pressure
-  parameter.
+  1560 min at 25, 75 and 100 °C).
 - **Inputs are not validated.** ``set_value`` is the generic NSKinetics
   call and checks nothing: zero or negative ``m_cat``, ``C0`` or
   ``eq_H2O2_0`` run without an error and give meaningless results.
@@ -583,7 +630,7 @@ of the text. The largest cell of the yield map is the one the text names
    :target: ../_static/images/pd_c_3hp_oxidation/pd_c_3hp_oxidation_fig11_verification.png
    :alt: Top row: the two reproduced heat maps with the digitized published
          contour lines, ridge line and stars drawn on top as fine black
-         dots; the dots lie inside the wide reproduced lines everywhere.
+         dots; the dots lie on the wide reproduced lines everywhere.
          Bottom row: the offset of every digitized contour sample from the
          reproduced contour against the temperature of the sample. All
          offsets lie within about 1 px, with an rms of 0.17 px in panel a
@@ -730,19 +777,20 @@ of the MA maximum is about right, but it comes at 13 min instead of 40 min.
 regression through the other temperatures. The measured 3-HP conversion at
 75 °C is no faster than at 50 °C (half converted between 60 and 90 min at
 both), whereas the Arrhenius factor of the model from 50 to 75 °C is 4.9 for
-R1 and R2. The same shows in Fig. 10d, where the 50 °C point of the
-3-HP → MA constant lies a factor of 4.3 above the regression line through
-the other three points. An extrapolation anchored at 50 °C with the
-activation energies of the text therefore overshoots at 25, 75 and 100 °C.
-This accounts for part of the misfit only: with the constants of R1 and R2
-lowered by that factor, the pooled R2 rises to 0.82, 0.85 and 0.75. Most of
-the rest is the 3-HP → D step, which is extrapolated from 50 °C with an
-activation energy that appears only in the script; with its constant lowered
-tenfold as well, the pooled R2 is 0.96, 0.98 and 0.93 (both are
-illustrations, not fits, and are pinned by the package tests). Part of the
-difference from the published heat maps is also structural: the Table 3
-model has the OPA intermediate and no reverse terms, and its O2 factor stays
-above 0.999 where that of the simplified model falls to 0.83.
+R1 and R2. The same shows in Fig. 10d, where the 50 °C point of the 3-HP →
+MA constant lies a factor of 4.3 above the regression line through the other
+three points. An extrapolation anchored at 50 °C with the activation
+energies of the text therefore overshoots at 25, 75 and 100 °C. This
+accounts for part of the misfit only: with the constants of R1 and R2
+lowered by that factor, the pooled R2 rises from 0.58 and 0.64 to 0.82 and
+0.85 at 25 and 75 °C and stays at 0.75 at 100 °C. Most of the rest is the
+3-HP → D step, which is extrapolated from 50 °C with an activation energy
+that appears only in the script; with its constant lowered tenfold as well,
+the pooled R2 is 0.96, 0.98 and 0.93 (both are illustrations, not fits, and
+are pinned by the package tests). Part of the difference from the published
+heat maps is also structural: the Table 3 model has the OPA intermediate and
+no reverse terms, and its O2 factor stays above 0.999 where that of the
+simplified model falls to 0.83.
 
 **What to use instead.** For the curves of Fig. 10a–c use
 ``load_o2_reversible_model``; its three constant sets are separate fits
@@ -751,7 +799,8 @@ and 100 °C. For Fig. 11 use ``load_o2_simplified_reversible_model``. The
 authors' heat-map script extrapolates that model from 50 °C in the same way
 (its 3-HP → MA constant at 75 and 100 °C is 4.3 and 4.2 times the value of
 the Fig. 10d points at those temperatures); how far the maps of Fig. 11 are
-from the experiments at 75 and 100 °C has not been measured here.
+from the time courses at 75 and 100 °C has not been measured here (for the
+8 h screening experiments see `Changing the operating conditions`_).
 
 What does not match the paper, and what is inferred
 ---------------------------------------------------
@@ -1021,18 +1070,19 @@ image can be read, and because a refit of the six constants to the
 experiment returns the Table 3 values within 0.05 % only when it is left
 out (not shipped). The origin of 0.997 is not identified.
 
-The unmeasured OPA pool
+The undetected OPA pool
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-OPA was never measured and is left out of the sum that normalizes the
-plotted fractions, so those add up to 1 whatever the model holds as OPA. The
-text gives the predicted OPA peak with O2 as 8.4e-4 mM near 25 min and calls
-it negligible. The quantity plotted in SI Fig. S12b is a mole fraction that
-peaks at 1.4e-5, and 1.4e-5 times 60 mM is 8.4e-4 mM, which suggests that
-the printed value is that mole fraction multiplied by the feed
-concentration. As a concentration, the OPA peak of the model is 2.5 mM,
-4.2 % of the initial 3-HP, at 20.5 min. The other models hold more: 11.5 %
-of the initial 3-HP at 84 min in the H2O2 model (7.8 % is still there at
+OPA was not detected in the experiments ("not detected with our analytical
+methods", Section 3.3 of the paper) and is left out of the sum that
+normalizes the plotted fractions, so those add up to 1 whatever the model
+holds as OPA. The text gives the predicted OPA peak with O2 as 8.4e-4 mM
+near 25 min and calls it negligible. The quantity plotted in SI Fig. S12b is
+a mole fraction that peaks at 1.4e-5, and 1.4e-5 times 60 mM is 8.4e-4 mM,
+which suggests that the printed value is that mole fraction multiplied by
+the feed concentration. As a concentration, the OPA peak of the model is 2.5
+mM, 4.2 % of the initial 3-HP, at 20.5 min. The other models hold more: 11.5
+% of the initial 3-HP at 84 min in the H2O2 model (7.8 % is still there at
 1440 min), and peaks of 2.9, 12.6 and 20.1 % in the reversible O2 variant
 with the sets of 25, 75 and 100 °C.
 
@@ -1128,8 +1178,9 @@ panel a panel b by 1.45 px. Two rate constants (and, for panel a, two more
 constants) were inferred by fitting the digitized contour lines (not
 shipped). The other constants are in the deposit: three (panel b) or two
 (panel a) rate constants are the 50 °C row of the deposited Arrhenius
-table, and the equilibrium constants and activation energies are printed in
-the script.
+table, and the other equilibrium constants (all five for panel b, four for
+panel a, whose ``K_10`` is fitted) and the five activation energies are
+printed in the script.
 
 The script also uses a pressure of 3.5 bar (the captions give 3 bar of O2).
 What Fig. 11 calls "MA selectivity" and "MA yield" are ``X_MA`` and
@@ -1145,10 +1196,20 @@ be read into which cell is the largest. None of the constant sets found
 that match the contour lines gives 0.552, and the colour of the published
 map along its crest reads 0.549 ± 0.006 (both not shipped). The maximum
 selectivity of the text, 59.1 % (95 °C, 27 min), is reproduced (0.5906).
-The "experimentally observed maximum" of 50.5 % that the text sets against
-the 55.2 % equals the same quantity, ``(1 - X_HP3)*X_MA``, of the 50 °C
-experiment at 360 min (0.505). The paper does not say how the 50.5 % was
-computed, so this is an inference from the match.
+
+The text sets two "observed" maxima against these: 56.9 % for the
+selectivity ("the observed maximum of 56.9 % at 50 °C (purple star on
+plot)") and 50.5 % for the yield. The abstract places both at 3 bar of O2
+and 50 °C, the condition of the Fig. 9b experiment, and the paper does not
+say how either was computed. The 50.5 % equals the quantity of panel b,
+``(1 - X_HP3)*X_MA``, of that experiment at 360 min (0.505), which is an
+inference from the match. The 56.9 % is not identified: the quantity of
+panel a, ``X_MA``, is at most 0.548 in that experiment (240 min), and MA
+per 3-HP converted, ``X_MA/(1 - X_HP3)``, is 0.621, 0.577 and 0.513 at 240,
+360 and 450 min and 0.569 at no sampling time. The 50 °C row of the
+reproduced selectivity map peaks at 0.5705 at 255.8 min, next to the purple
+star, but that is a model value. The match of the 50.5 % therefore stands
+alone and does not settle how the paper defines the two quantities.
 
 The initial-rate ratio of 0.204 is not reproduced
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -289,8 +289,8 @@ the heat maps (Fig. 11) are those of a simplified reversible five-reaction model
 points of the Arrhenius plot (Fig. 10d) are taken to be, and the 25/75/100 C curves
 (Fig. 10a-c) are reproduced by a reversible six-reaction variant with a separate
 constant set at each temperature (pd_c_3hp_oxidation_o2_reversible_antimony.txt). Away
-from 50 C this file is an extrapolation that the paper does not show; it does not
-reproduce the 25, 75 and 100 C experiments (see NOTES.md).
+from 50 C this file is an extrapolation: the model curves of Fig. 10a-c are not this
+extension, and it does not reproduce the 25, 75 and 100 C experiments (see NOTES.md).
 ```
 end
 

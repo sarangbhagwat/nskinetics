@@ -39,7 +39,8 @@ import pandas as pd
 from .pd_c_3hp_oxidation import (
     NORMALIZED, SPECIES, load_h2o2_model, load_o2_model,
     load_o2_reversible_model)
-from .reference import read_fig9a_h2o2, read_fig9b_o2, read_fig10_o2
+from .reference import (
+    _fig10_temperature, read_fig9a_h2o2, read_fig9b_o2, read_fig10_o2)
 
 __all__ = ('ode23s', 'emulate_authors_run', 'emulate_fig9a', 'emulate_fig9b',
            'emulate_fig10abc', 'node_deviations',)
@@ -424,11 +425,10 @@ def emulate_fig10abc(temperature_C):
     ValueError
         For any other temperature or label.
     """
-    reference = read_fig10_o2(temperature_C)    # refuses any other value
-    if not isinstance(temperature_C, str):
-        temperature_C = '%dC' % temperature_C
-    return emulate_authors_run(load_o2_reversible_model(temperature_C),
-                               _t_end(reference))
+    temperature_C = _fig10_temperature(temperature_C)   # refuses any other
+    return emulate_authors_run(
+        load_o2_reversible_model('%dC' % temperature_C),
+        _t_end(read_fig10_o2(temperature_C)))
 
 
 def node_deviations(emulated, deposited, columns=NORMALIZED):

@@ -99,7 +99,7 @@ from .pd_c_3hp_oxidation import (
     NORMALIZED, load_h2o2_model, load_o2_model, load_o2_reversible_model,
     simulate_at_times)
 from .reference import (
-    read_fig9a_h2o2, read_fig9b_o2, read_fig10_o2,
+    _fig10_temperature, read_fig9a_h2o2, read_fig9b_o2, read_fig10_o2,
     read_fig11a_selectivity_digitized, read_fig11b_yield_digitized,
     read_figS12a_h2o2_inset_digitized, read_figS12b_opa_inset_digitized)
 from .solver_emulation import emulate_authors_run, node_deviations
@@ -400,9 +400,8 @@ def draw_fig10abc(ax, temperature_C):
         Temperature of the experiment in degrees Celsius, or the label of
         its constant set.
     """
-    reference = read_fig10_o2(temperature_C)    # refuses any other value
-    if isinstance(temperature_C, str):
-        temperature_C = int(temperature_C[:-1])
+    temperature_C = _fig10_temperature(temperature_C)   # refuses any other
+    reference = read_fig10_o2(temperature_C)
     km = load_o2_reversible_model('%dC' % temperature_C)
     _draw_profiles(ax, km, reference, _FIG10_LEGEND_ANCHOR,
                    _FIG10_KEY_ANCHOR, legend_loc='upper right',
@@ -857,11 +856,12 @@ def plot_fig10_table3_o2():
     Panels a to c: the experimental points of Fig. 10a-c with the Table 3
     O2 model at 25, 75 and 100 C (solid lines; the model of Fig. 9b
     extended with the Arrhenius relation, as the text of the paper
-    describes for Fig. 11; the paper does not show this comparison) and
-    the curves of the per-temperature constant sets (dashed lines; the
-    reversible O2 variant, which reproduces the published curves). The box
-    gives the pooled R2 of each against all experimental points of the
-    panel: first the Table 3 model, then the per-temperature set.
+    describes for Fig. 11; the model curves of the published panels are
+    not this extension) and the curves of the per-temperature constant
+    sets (dashed lines; the reversible O2 variant, which reproduces the
+    published curves). The box gives the pooled R2 of each against all
+    experimental points of the panel: first the Table 3 model, then the
+    per-temperature set.
 
     Panel d: the points of Fig. 10d with the published regression lines
     (dashed) and the lines that the activation energies quoted in the text

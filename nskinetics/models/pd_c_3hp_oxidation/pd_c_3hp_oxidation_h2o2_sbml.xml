@@ -8,7 +8,7 @@
         <p>Conditions: 60 mM 3-HP, 0.2 g 10 % Pd/C, NaOH/3-HP = 1:1, 15 equivalents of H2O2, 3 bar Ar, 50 C (Fig. 9a). The catalyst mass m_cat is the mass of the paper&apos;s batch (0.2 g), not a mass per litre. Rate constants: Table 3 (H2O2 column) as printed. Rate expressions: SI Fig. S2 with every order equal to 1 and unit activity coefficients. Seven first-order irreversible steps; the reaction orders and equilibrium constants of SI Table S4 are not used. </p>
         <p>Inferred from the authors&apos; data deposit (Dryad, DOI 10.5061/dryad.jsxksn0q4), which holds the model curve but only the O2 version of the script: H2O2 is a liquid state that enters reactions 1, 2 and 4 through its mole fraction on the authors&apos; scale (0.000339 per 60 mM) and is consumed 1:1 by each of them. </p>
         <p>The H2O2 curve of SI Fig. S12a (published inset and deposited trace) is not reproduced by the Table 3 constants: it lies up to 0.38 equivalents below this model (see NOTES.md). </p>
-        <p>Only this one experiment was fitted; other values of m_cat, C0 or eq_H2O2_0 are extrapolations that were never compared with data. </p>
+        <p>Only this one experiment was fitted; other values of m_cat, C0 or eq_H2O2_0 are extrapolations. For the H2O2 charge, the screening experiments of the paper (Fig. 2a) contradict the model above 15 equivalents (see NOTES.md). </p>
       </body>
     </notes>
     <listOfUnitDefinitions>

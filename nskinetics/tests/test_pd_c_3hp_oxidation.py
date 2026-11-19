@@ -514,6 +514,70 @@ def test_initial_conditions_follow_C0_and_the_h2o2_charge():
                        rtol=0., atol=1e-7)
 
 
+def test_table_3_models_at_the_conditions_of_the_screening_experiments():
+    # The paper has 8 h experiments at other conditions (Figs. 2 and 3) that
+    # the models were not built on. NOTES.md sets them against the models;
+    # this pins the model side: 1 - [HP3]/C0 and [MA]/C0 at 480 min, the
+    # conversion and the MA yield of the paper's Eqs. 1 and 3. The measured
+    # values in the comments are those of the deposit, in %.
+    def at_8_h(km):
+        sim = simulate_at_times(km, [480.], ['[HP3]', '[MA]'])
+        return 1. - sim['[HP3]'][0]/C0, sim['[MA]'][0]/C0
+
+    # H2O2 charge (Fig. 2a, 2-1_H2O2_experiments.csv). Measured conversion:
+    # 14.0, 38.1 and 78.4 at 5, 10 and 15 equivalents, then 56.4 and 20.7
+    # (20 and 30 equivalents on the axis of the figure, 1:30 and 1:50 in the
+    # deposit); MA yield 4.7, 20.3, 58.5, 28.4 and 6.6. In the model both
+    # rise with every equivalent.
+    modelled = []
+    for equivalents in (5., 10., 15., 20., 30., 50.):
+        km = load_h2o2_model()
+        km.set_value('eq_H2O2_0', equivalents)
+        modelled.append(at_8_h(km))
+    assert np.array(modelled) == pytest.approx(np.array(
+        [(0.4180, 0.0974), (0.5464, 0.2429), (0.6471, 0.3651),
+         (0.7260, 0.4552), (0.8357, 0.5571), (0.9418, 0.5820)]), abs=2e-4)
+    assert np.all(np.diff(modelled, axis=0) > 0.)
+
+    # Temperature with O2 (Fig. 3c, 3-3_O2_experiments.csv). Measured
+    # conversion 8.5, 72.8, 95.5 and 84.6; MA yield 1.4, 41.1, 35.7 and 2.1.
+    modelled = [at_8_h(load_o2_model(T=T_C + 273.15))
+                for T_C in (25., 50., 75., 100.)]
+    assert np.array(modelled) == pytest.approx(np.array(
+        [(0.5299, 0.3344), (0.9896, 0.4803), (1.0000, 0.0470),
+         (1.0000, 0.0000)]), abs=2e-4)
+
+    # The screening experiments are not the time courses the models were
+    # fitted to either: at the same nominal conditions they give 72.8 % (O2)
+    # and 78.4 % (H2O2) conversion after 480 min, the time courses 96.1 %
+    # at 450 min and 60.6 % at 420 min.
+    for experiment, time, converted in (
+            (pkg.read_fig9b_o2()['experiment'], 450., 0.9607),
+            (pkg.read_fig9a_h2o2()['experiment'], 420., 0.6061)):
+        row = experiment[experiment['time'] == time]
+        assert 1. - row['X_HP3'].iloc[0] == pytest.approx(converted, abs=5e-5)
+
+
+def test_o2_model_started_from_malonic_acid_alone():
+    # Fig. 4 of the paper: 60 mM MA without 3-HP under 3 bar O2. The two
+    # deposited files differ at 1300 min. 4-1_MA_degradation.csv (Fig. 4a):
+    # 3.8 % of the MA converted at 50 C and 89.8 % at 100 C. 4-2 (Fig. 4b,
+    # time courses): 0.8 % after 120 min and 1.2 % after 1300 min at 50 C,
+    # 30.1 % and 99.0 % at 100 C. The models were not built on these
+    # experiments. The O2 model, in which MA reacts as fast alone as in the
+    # 3-HP run it was fitted to, loses far more at 50 C and in the first
+    # 120 min at 100 C; at 100 C after 1300 min it is close to the measured
+    # values.
+    for T_C, converted in ((50., (0.1369, 0.7971)), (100., (0.9640, 1.0000))):
+        km = load_o2_model(T=T_C + 273.15)
+        for t_end, expected in zip((120., 1300.), converted):
+            km.reset()
+            km.set_value('[HP3]', 0.)
+            km.set_value('[MA]', C0)
+            result = km.simulate(0., t_end, 2, ['time', '[MA]'])
+            assert 1. - result[-1, 1]/C0 == pytest.approx(expected, abs=2e-4)
+
+
 # --- 7. reference data ------------------------------------------------------
 
 def test_deposited_files_are_verbatim_copies():

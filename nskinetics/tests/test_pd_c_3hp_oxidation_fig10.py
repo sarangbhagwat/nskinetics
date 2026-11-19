@@ -413,7 +413,7 @@ def test_accurate_solution_detects_an_error_in_any_constant(
     assert smallest == pytest.approx(smallest_effect, rel=0.2)
 
 
-def test_unmeasured_opa_pool_and_water_of_reaction():
+def test_undetected_opa_pool_and_water_of_reaction():
     # peak of OPA, OPA left at the end of the curve and final W, in mol per
     # mol of initial 3-HP (NOTES.md)
     for temperature_C, opa_peak, t_peak, opa_end, w_end in (
@@ -501,8 +501,11 @@ def test_fig10_reader_also_takes_the_label_of_the_constant_set():
 
 
 def test_fig10_reader_rejects_other_temperatures():
-    # the argument is a temperature in degrees Celsius; 348.15 is 75 C in K
-    for temperature_C in (50, 20, '25', '50C', '75 C', 348.15, None):
+    # the argument is a temperature in degrees Celsius; 348.15 is 75 C in K.
+    # An argument that cannot be looked up, such as a list, is refused with
+    # the same error.
+    for temperature_C in (50, 20, '25', '50C', '75 C', 348.15, None, True,
+                          [25], np.array([75])):
         with pytest.raises(ValueError, match='no Fig. 10 data') as error:
             pkg.read_fig10_o2(temperature_C)
         assert "'25C', '75C' or '100C'" in str(error.value)

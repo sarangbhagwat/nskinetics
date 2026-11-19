@@ -488,11 +488,12 @@ def test_solver_emulation_titles_do_not_run_into_each_other(font,
             plt.close(fig)
 
 
-def test_fig10_panel_also_takes_the_label_of_the_constant_set():
+@pytest.mark.parametrize('temperature_C', [25, 75, 100])
+def test_fig10_panel_also_takes_the_label_of_the_constant_set(temperature_C):
     fig, (by_number, by_label) = plt.subplots(1, 2)
     try:
-        figures.draw_fig10abc(by_number, 75)
-        figures.draw_fig10abc(by_label, '75C')
+        figures.draw_fig10abc(by_number, temperature_C)
+        figures.draw_fig10abc(by_label, '%dC' % temperature_C)
         assert len(by_label.get_lines()) == len(by_number.get_lines())
         for line, expected in zip(by_label.get_lines(),
                                   by_number.get_lines()):

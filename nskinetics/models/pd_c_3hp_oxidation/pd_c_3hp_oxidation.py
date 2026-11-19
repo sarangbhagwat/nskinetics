@@ -366,10 +366,13 @@ def load_h2o2_model(parameter_set='table3'):
     the next ``reset()`` (:func:`simulate_at_times` resets). The constants
     of Table 3 were fitted to one experiment (60 mM 3-HP, 0.2 g of
     catalyst, 15 equivalents of H2O2, 50 C, samples up to 1440 min); any
-    other value of these parameters is an extrapolation that was never
-    compared with data. ``set_value`` does not check its input: zero or
-    negative values of ``m_cat``, ``C0`` or ``eq_H2O2_0`` give meaningless
-    results without an error.
+    other value of these parameters is an extrapolation. For ``eq_H2O2_0``
+    the paper's own data speak against it: in its 8 h screening experiments
+    (Fig. 2a) the conversion falls above 15 equivalents, whereas in this
+    model it rises with every equivalent added (see ``NOTES.md``).
+    ``set_value`` does not check its input: zero or negative values of
+    ``m_cat``, ``C0`` or ``eq_H2O2_0`` give meaningless results without an
+    error.
 
     Each call loads a new, independent model. Read and set model values
     through :meth:`~nskinetics.KineticModel.get_value` and
@@ -466,15 +469,19 @@ def load_o2_model(T=None, parameter_set='table3'):
         set.
     ``x_O2_ref``
         The inferred oxidant factor (default 0.005085, for 3 bar of O2).
-        The model has no O2 pressure parameter.
+        The model has no O2 pressure parameter, and this factor is not
+        one: scaling it makes reactions 1, 2 and 4 proportionally faster,
+        whereas in the paper's screening experiments conversion and MA
+        selectivity fall above 3 bar (Fig. 3a; see ``NOTES.md``).
 
     The constants of Table 3 were fitted to one experiment (60 mM 3-HP,
     0.2 g of catalyst, 3 bar O2, 50 C, samples up to 1680 min); any other
-    value of these parameters is an extrapolation that was never compared
-    with data, except for ``T``, for which the comparison is poor (see the
-    warning above). ``set_value`` does not check its input: zero or
-    negative values of ``m_cat`` or ``C0`` give meaningless results
-    without an error.
+    value of these parameters is an extrapolation. For ``T`` the
+    comparison with the experiments of the paper is poor (see the warning
+    above; ``NOTES.md`` also has the paper's 8 h screening experiments,
+    which the models were not built on). ``set_value`` does not check its
+    input: zero or negative values of ``m_cat`` or ``C0`` give meaningless
+    results without an error.
 
     The temperature and the constant set given here are part of the model
     that is built, so ``reset()`` and
@@ -631,13 +638,19 @@ def load_o2_simplified_reversible_model(T=None, parameter_set='fig11b',
     the paper's batch (0.2 g of catalyst); ``K_6_ref`` to ``K_10_ref`` are
     dimensionless. There is no catalyst-mass parameter. ``T`` (K) and the
     pressure of the script, ``P`` (bar, default 3.5), can be changed with
-    ``set_value``, which does not check them. ``x_per_M`` holds the
-    initial condition as the script's initial 3-HP mole fraction divided
-    by the 60 mM feed; if ``C0`` is changed, set ``x_per_M`` to that mole
-    fraction over the new ``C0`` as well, or the model no longer is the
-    script's. The script fits its constants to the 50 C experiment only,
-    and the Fig. 11 grid runs to 1680 min; at other temperatures the model
-    is the script's extrapolation.
+    ``set_value``, which does not check them. Do not use ``P`` to explore
+    the effect of pressure: the forward rates of steps 1 and 3 are
+    proportional to it, so the conversion only rises with it, whereas in
+    the paper's 8 h screening experiments (Fig. 3a; 1 to 20 bar of O2)
+    conversion and MA selectivity are highest at 3 bar and fall above it
+    (see ``NOTES.md``).
+
+    ``x_per_M`` holds the initial condition as the script's initial 3-HP
+    mole fraction divided by the 60 mM feed; if ``C0`` is changed, set
+    ``x_per_M`` to that mole fraction over the new ``C0`` as well, or the
+    model no longer is the script's. The script fits its constants to the
+    50 C experiment only, and the Fig. 11 grid runs to 1680 min; at other
+    temperatures the model is the script's extrapolation.
 
     The temperature, constant set and initial condition given here are
     part of the model that is built, so ``reset()`` and

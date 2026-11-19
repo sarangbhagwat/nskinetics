@@ -342,10 +342,11 @@ def test_the_two_conventions_give_different_curves_at_50C():
 
 
 def test_pressure_dependence_is_that_of_the_rate_form():
-    # No experiment was made at another O2 pressure than 3 bar, so the
-    # dependence on P is an untested extrapolation of the script's rate
-    # form. It is strong (NOTES.md): X_HP3 at 60 min and X_MA at 240 min,
-    # 50 C, for 1, 3.5 (the default of the script) and 10 bar.
+    # The time courses behind the models (Figs. 9 and 10) are all at 3 bar
+    # of O2 and the script uses 3.5 bar, so the dependence on P is that of
+    # the script's rate form, which was fitted to no other pressure. It is
+    # strong (NOTES.md): X_HP3 at 60 min and X_MA at 240 min, 50 C, for 1,
+    # 3.5 (the default of the script) and 10 bar.
     for P, X_HP3, X_MA in ((1., 0.767, 0.268), (3.5, 0.559, 0.571),
                            (10., 0.246, 0.703)):
         km = load_o2_simplified_reversible_model()
@@ -354,6 +355,59 @@ def test_pressure_dependence_is_that_of_the_rate_form():
         sim = simulate_at_times(km, [60., 240.], ['X_HP3', 'X_MA'])
         assert (sim['X_HP3'][0], sim['X_MA'][1]) == pytest.approx(
             (X_HP3, X_MA), abs=1e-3)
+
+
+# The paper's 8 h screening experiments at 50 C under 1, 3, 5, 10 and 20 bar
+# of O2 (Fig. 3a), as deposited in 3-1_O2_experiments.csv: 3-HP conversion
+# and MA yield in %. The text gives 72.8 % for 3 bar.
+FIG3A_PRESSURES = (1., 3., 5., 10., 20.)                    # bar
+FIG3A_CONVERSION = (21.66, 72.77, 63.16, 25.01, 25.87)
+FIG3A_MA_YIELD = (2.654, 41.055, 20.531, 1.259, 0.589)
+
+
+@pytest.mark.parametrize('initial_condition, conversion, X_MA', [
+    ('heatmap', (0.8770, 0.9822, 0.9967, 0.9995, 0.9997),
+     (0.2998, 0.4758, 0.5140, 0.5271, 0.5116)),
+    ('fitting', (0.8551, 0.9588, 0.9786, 0.9892, 0.9946),
+     (0.2726, 0.4451, 0.4893, 0.5110, 0.4973))])
+def test_pressure_dependence_is_contradicted_by_the_screening_experiments(
+        initial_condition, conversion, X_MA):
+    # The measured conversion is highest at 3 bar and falls to a third of
+    # that at 10 and 20 bar (the paper: "likely due to catalyst poisoning by
+    # excess O2").
+    # The model, default constant set, 50 C, 480 min: the conversion only
+    # rises with P, and the MA fraction stays near 0.5 where the measured
+    # yield is about 1 %. P must not be used to explore pressure.
+    assert np.argmax(FIG3A_CONVERSION) == 1
+    assert max(FIG3A_CONVERSION[3:]) < FIG3A_CONVERSION[1]/2.8
+    modelled = []
+    for P in FIG3A_PRESSURES:
+        km = load_o2_simplified_reversible_model(
+            initial_condition=initial_condition)
+        km.set_value('P', P)
+        sim = simulate_at_times(km, [480.], ['X_HP3', 'X_MA'])
+        modelled.append((1. - sim['X_HP3'][0], sim['X_MA'][0]))
+    modelled = np.array(modelled)
+    assert modelled[:, 0] == pytest.approx(conversion, abs=2e-4)
+    assert modelled[:, 1] == pytest.approx(X_MA, abs=2e-4)
+    assert np.all(np.diff(modelled[:, 0]) > 0.)
+    assert modelled[3:, 0].min() > 0.98 and modelled[3:, 1].min() > 0.49
+    assert max(FIG3A_MA_YIELD[3:]) < 1.3
+
+
+def test_model_at_the_temperatures_of_the_screening_experiments():
+    # Fig. 3c (3-3_O2_experiments.csv of the deposit): 8 h under 3 bar O2 at
+    # 25, 50, 75 and 100 C gave conversions of 8.5, 72.8, 95.5 and 84.6 %
+    # and MA yields of 1.4, 41.1, 35.7 and 2.1 %. The model of the heat
+    # maps, as loaded by default, at 480 min of reaction (NOTES.md):
+    modelled = []
+    for T_C in (25., 50., 75., 100.):
+        sim = simulate_at_times(load_o2_simplified_reversible_model(
+            T=T_C + 273.15), [480.], ['X_HP3', 'X_MA'])
+        modelled.append((1. - sim['X_HP3'][0], sim['X_MA'][0]))
+    assert np.array(modelled) == pytest.approx(np.array(
+        [(0.5348, 0.3630), (0.9887, 0.4907), (0.9994, 0.0598),
+         (0.9998, 0.0017)]), abs=2e-4)
 
 
 def test_equilibrium_constants_of_steps_1_and_3_do_not_shape_the_maps():
@@ -556,31 +610,47 @@ def test_maxima_quoted_in_the_text(maps):
     assert MA_yield.max() < 0.552
 
 
-def test_observed_maximum_quoted_in_the_text():
+def test_observed_maxima_quoted_in_the_text(maps):
     # "experimentally observed maximum was 50.5 %": the quantity of panel b,
     # (1 - X_HP3)*X_MA, of the deposited 50 C experiment is largest at
     # 360 min and equals that number. The paper does not say how it was
     # computed; X_MA alone is largest at 240 min and never 0.505.
     experiment = pkg.read_fig9b_o2()['experiment']
     time = experiment['time'].to_numpy()
+    X_HP3 = experiment['X_HP3'].to_numpy()
     X_MA = experiment['X_MA'].to_numpy()
-    product = (1. - experiment['X_HP3'].to_numpy())*X_MA
+    product = (1. - X_HP3)*X_MA
     assert time[product.argmax()] == 360.
     assert product.max() == pytest.approx(0.5051, abs=5e-5)
     assert np.sort(product)[-2] < 0.49
     assert time[X_MA.argmax()] == 240.
     assert X_MA.max() == pytest.approx(0.5483, abs=5e-5)
     assert np.abs(X_MA - 0.505).min() > 0.01
+    # The companion number, an "observed maximum of 56.9 % at 50 C (purple
+    # star on plot)" for the selectivity of panel a, is not identified: it
+    # is not X_MA of that experiment (at most 0.548), and MA per 3-HP
+    # converted, X_MA/(1 - X_HP3), is 0.621, 0.577 and 0.513 at 240, 360 and
+    # 450 min. The 50 C row of the reproduced map peaks at 0.5705.
+    assert X_MA.max() < 0.569 - 0.02
+    late = time >= 240.
+    per_converted = X_MA[late]/(1. - X_HP3[late])
+    assert per_converted[:3] == pytest.approx((0.6207, 0.5774, 0.5128),
+                                              abs=5e-5)
+    assert np.all(np.diff(per_converted) < 0.)
+    assert np.abs(per_converted - 0.569).min() > 0.008
+    T_C, _, selectivity, _ = maps['fig11a']
+    assert selectivity[list(T_C).index(50.)].max() == pytest.approx(
+        0.5705, abs=2e-4)
 
 
 def test_50C_row_maxima(maps):
     T_C, times, selectivity, _ = maps['fig11a']
     row = list(T_C).index(50.)
-    assert selectivity[row].max() == pytest.approx(0.5705, abs=0.005)
+    assert selectivity[row].max() == pytest.approx(0.5705, abs=2e-4)
     assert heat_map_ridge(times, selectivity)[row] == pytest.approx(
         255.8, abs=6.)
     _, _, _, MA_yield = maps['fig11b']
-    assert MA_yield[row].max() == pytest.approx(0.5331, abs=0.005)
+    assert MA_yield[row].max() == pytest.approx(0.5331, abs=2e-4)
     assert heat_map_ridge(times, MA_yield)[row] == pytest.approx(322.8,
                                                                  abs=6.)
 

@@ -14,7 +14,7 @@ model *kim2026_h2o2()
   // env is the liquid phase. Only the liquid species of the authors' model
   // are tracked; the co-products (H2O, H2, O2, CO2) are named in the reaction
   // comments. OPA (3-oxopropanoic acid) is the aldehyde intermediate; it was
-  // not measured. D lumps the unidentified by-products ("Others" in Fig. 9).
+  // not detected. D lumps the unidentified by-products ("Others" in Fig. 9).
   var compartment env;
   species HP3 in env, OPA in env, MA in env, AAc in env, OXA in env, D in env;
   species H2O2 in env;
@@ -217,7 +217,8 @@ The H2O2 curve of SI Fig. S12a (published inset and deposited trace) is not repr
 by the Table 3 constants: it lies up to 0.38 equivalents below this model (see NOTES.md).
 
 Only this one experiment was fitted; other values of m_cat, C0 or eq_H2O2_0 are
-extrapolations that were never compared with data.
+extrapolations. For the H2O2 charge, the screening experiments of the paper (Fig. 2a)
+contradict the model above 15 equivalents (see NOTES.md).
 ```
 end
 

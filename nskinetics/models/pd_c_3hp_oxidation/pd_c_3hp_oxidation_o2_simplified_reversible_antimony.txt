@@ -150,7 +150,10 @@ model *kim2026_o2_simplified_reversible()
   R_gas has j_per_mol_per_k;
 
   // Pressure and reference fugacity of the script, in bar. (The script uses
-  // 3.5 bar; the figure captions give 3 bar of O2.)
+  // 3.5 bar; the figure captions give 3 bar of O2.) Do not change P to
+  // explore pressure: the rates only rise with P, while the screening
+  // experiments of the paper (Fig. 3a) show a decline above 3 bar (see
+  // NOTES.md).
   P = 3.5;
   P has bar;
   f0 = 1.01325;
