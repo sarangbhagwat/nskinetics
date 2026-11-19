@@ -328,13 +328,15 @@ Emulation of the authors' solver run
 
 .. currentmodule:: nskinetics.models.pd_c_3hp_oxidation.solver_emulation
 
-The model curves the authors deposited for Fig. 9 and Fig. 10a–c are the
-steps of MATLAB ``ode23s`` at default tolerances and lie up to 2.7e-3 from
-the converged solutions. ``solver_emulation`` repeats that solver run with
-the rates of a shipped model, so that the models can be compared with the
-deposited nodes to the digits the files print. It is used for verification
-only (the package tests and :doc:`/case_studies/pd_c_3hp_oxidation`); it is
-not a general-purpose solver.
+The model curves the authors deposited for Fig. 9 and Fig. 10a–c are solver
+steps that lie up to 2.7e-3 from the converged solutions; they are
+reproduced step for step by the method of MATLAB ``ode23s`` at default
+tolerances (emulated; MATLAB was not run). ``solver_emulation`` repeats
+that solver run with the rates of a shipped model, so that the models can
+be compared with the deposited nodes to the digits the files print. It is
+used for verification only (the package tests and
+:doc:`/case_studies/pd_c_3hp_oxidation`); it is not a general-purpose
+solver.
 
 .. autofunction:: ode23s
 
@@ -355,11 +357,11 @@ Figures
 
 ``figures`` regenerates Fig. 9, Fig. 10, SI Fig. S12 and Fig. 11 of the
 paper from the models, and draws three comparison figures and a
-verification figure. Each ``plot_*``
-function returns a new matplotlib figure; each ``draw_*``
-function draws one panel on an existing axes. Run the module as a script to
-write the figures to a folder (``--figures``, ``--formats`` and ``--dpi``
-select the figures, the file formats and the resolution of the PNG files)::
+verification figure. Each ``plot_*`` function returns a new matplotlib
+figure; each ``draw_*`` function draws one panel on an existing axes. Run
+the module as a script to write the figures to a folder (``--figures``,
+``--formats`` and ``--dpi`` select the figures, the file formats and the
+resolution of the PNG files)::
 
     python -m nskinetics.models.pd_c_3hp_oxidation.figures OUTPUT_DIR
 

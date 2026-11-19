@@ -18,8 +18,9 @@ ways:
   equations (``NOTES.md``), written out again in this module on their own
   basis (mol per mol of initial 3-HP);
 * against the deposited model curves, at their node times. Those curves are
-  MATLAB ``ode23s`` output at default tolerances, so an accurate solution
-  is expected to differ from them by up to 1.8e-4 (25 C), 2.5e-3 (75 C) and
+  solver steps (reproduced by the method of MATLAB ``ode23s`` at default
+  tolerances), not converged solutions, so an accurate solution is
+  expected to differ from them by up to 1.8e-4 (25 C), 2.5e-3 (75 C) and
   2.7e-3 (100 C). The limits are 1.5 to 2 times that solver error.
   Negative controls at 25 C, where the solver error is smallest, show what
   they exclude: water formed by reaction 1 only, no reverse of reaction 1,
@@ -413,18 +414,21 @@ def test_accurate_solution_detects_an_error_in_any_constant(
 
 
 def test_unmeasured_opa_pool_and_water_of_reaction():
-    # peak of OPA and final W, in mol per mol of initial 3-HP (NOTES.md)
-    for temperature_C, opa_peak, t_peak, w_end in (
-            (25, 0.0294, 2.3, 0.133), (75, 0.1255, 42.2, 0.881),
-            (100, 0.2010, 14.6, 1.000)):
+    # peak of OPA, OPA left at the end of the curve and final W, in mol per
+    # mol of initial 3-HP (NOTES.md)
+    for temperature_C, opa_peak, t_peak, opa_end, w_end in (
+            (25, 0.0294, 2.34, 0.0059, 0.133),
+            (75, 0.1255, 42.18, 0.00074, 0.881),
+            (100, 0.2010, 14.55, 0.00045, 1.000)):
         t_end = pkg.read_fig10_o2(temperature_C)['model']['time'].iloc[-1]
-        times = np.concatenate((np.arange(0., 60., 0.1), [t_end]))
+        times = np.concatenate((np.arange(0., 60., 0.01), [t_end]))
         sim = simulate_at_times(
             load_o2_reversible_model(label(temperature_C)), times,
             ['[OPA]', '[W]'])
         peak = sim['[OPA]'].idxmax()
         assert sim['[OPA]'][peak]/C0 == pytest.approx(opa_peak, abs=2e-4)
-        assert sim['time'][peak] == pytest.approx(t_peak, abs=0.15)
+        assert sim['time'][peak] == pytest.approx(t_peak, abs=0.02)
+        assert sim['[OPA]'].iloc[-1]/C0 == pytest.approx(opa_end, rel=0.02)
         assert sim['[W]'].iloc[-1]/C0 == pytest.approx(w_end, abs=1e-3)
 
 
@@ -485,11 +489,23 @@ def test_fig10_reader_returns_experiment_and_model_blocks():
     assert pkg.read_fig10_o2(100)['experiment']['X_MA'].max() == 0.56794
 
 
+def test_fig10_reader_also_takes_the_label_of_the_constant_set():
+    # '25C', '75C' and '100C', the names load_o2_reversible_model takes
+    assert set(pkg.O2_REVERSIBLE_PARAMETER_SETS) == {
+        label(temperature_C) for temperature_C in TEMPERATURES_C}
+    for temperature_C in TEMPERATURES_C:
+        by_number = pkg.read_fig10_o2(temperature_C)
+        by_label = pkg.read_fig10_o2(label(temperature_C))
+        for name in ('experiment', 'model'):
+            assert by_label[name].equals(by_number[name])
+
+
 def test_fig10_reader_rejects_other_temperatures():
     # the argument is a temperature in degrees Celsius; 348.15 is 75 C in K
-    for temperature_C in (50, 20, '25', '75C', 348.15):
-        with pytest.raises(ValueError, match='no Fig. 10 data'):
+    for temperature_C in (50, 20, '25', '50C', '75 C', 348.15, None):
+        with pytest.raises(ValueError, match='no Fig. 10 data') as error:
             pkg.read_fig10_o2(temperature_C)
+        assert "'25C', '75C' or '100C'" in str(error.value)
 
 
 # --- 6. Arrhenius plot (Fig. 10d) ------------------------------------------------
@@ -622,6 +638,35 @@ def test_table3_o2_model_against_the_experiments():
                                 experiment['time'])
         assert pooled_r2(experiment, sim) == pytest.approx(r2, abs=2e-3)
         assert rms_difference(experiment, sim) == pytest.approx(rms, abs=2e-3)
+
+
+def test_what_makes_the_table3_o2_model_too_fast():
+    # NOTES.md: the 50 C constants of reactions 1 and 2 lie a factor 4.3
+    # above the regression of Fig. 10d through the other temperatures.
+    # Lowering them by that factor recovers part of the misfit only (and
+    # nothing at 100 C); lowering the constant of 3-HP -> D tenfold as well
+    # recovers most of the rest. Pooled R2 at 25, 75 and 100 C:
+    for factors, expected in (
+            ({'k_1_ref': 1./4.3, 'k_2_ref': 1./4.3}, (0.818, 0.851, 0.749)),
+            ({'k_1_ref': 1./4.3, 'k_2_ref': 1./4.3, 'k_5_ref': 0.1},
+             (0.957, 0.982, 0.928))):
+        for temperature_C, r2 in zip(TEMPERATURES_C, expected):
+            km = load_o2_model(T=temperature_C + 273.15)
+            for name, factor in factors.items():
+                km.set_value(name, factor*km.get_value(name))
+            experiment = pkg.read_fig10_o2(temperature_C)['experiment']
+            sim = simulate_at_times(km, experiment['time'])
+            assert pooled_r2(experiment, sim) == pytest.approx(r2, abs=2e-3)
+    # 3-HP -> D of the Table 3 model: 2.3e-3 1/min at 50 C and, with the
+    # activation energy of the script, 4.5e-4 1/min at 25 C; the constant
+    # sets of the curves at 25 and 100 C have about 1e-6 1/min for it.
+    km = load_o2_model(T=298.15)
+    assert km.get_value('k_5_ref')*km.get_value('m_cat') == pytest.approx(
+        2.26e-3, rel=1e-3)
+    assert km.get_value('k_5')*km.get_value('m_cat') == pytest.approx(
+        4.5e-4, rel=0.01)
+    assert [CONSTANTS[T][_NAMES.index('k_5')] for T in (25, 100)] == (
+        pytest.approx([1.0e-6, 9.3e-7], rel=0.02))
 
 
 def time_of_half_conversion(times, X_HP3):

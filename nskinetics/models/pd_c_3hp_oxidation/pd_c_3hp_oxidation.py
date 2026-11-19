@@ -47,8 +47,8 @@ Time is in min, liquid concentrations are in M and temperatures are in K
 ``NOTES.md`` in this folder records what is printed in the paper, what was
 inferred from the authors' data deposit, and where the two disagree.
 
-The model curves the authors deposited are steps of their solver and lie
-up to 2.7e-3 from the solutions of these models. ``solver_emulation``
+The model curves the authors deposited are solver steps and lie up to
+2.7e-3 from the solutions of these models. ``solver_emulation``
 repeats that solver run with a model loaded here; the constant sets
 :data:`H2O2_NODE_PARAMETER_SETS` and :data:`O2_NODE_PARAMETER_SETS`, which
 the loaders of the two Table 3 models accept by name, exist for that
@@ -541,8 +541,9 @@ def load_o2_reversible_model(parameter_set='75C'):
     belongs to one experiment only (samples up to 1890, 1440 and 1560 min
     at 25, 75 and 100 C).
 
-    The deposited curves are MATLAB ``ode23s`` output at default
-    tolerances; this model, solved accurately, differs from them by up to
+    The deposited curves are solver steps, not converged solutions (they
+    are reproduced by the method of MATLAB ``ode23s`` at default
+    tolerances); this model, solved accurately, differs from them by up to
     1.8e-4 (25 C), 2.5e-3 (75 C) and 2.7e-3 (100 C). With that solver run
     repeated (``solver_emulation.emulate_fig10abc``) it returns the
     deposited nodes within 1e-5, the last decimal the files print.

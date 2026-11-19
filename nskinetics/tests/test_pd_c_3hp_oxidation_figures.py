@@ -107,34 +107,37 @@ def test_species_key_rows_are_aligned_and_inside_the_panel(font,
                                                            monkeypatch):
     # With the last fallback font (DejaVu Sans, the widest) as well as with
     # the default font list: the rows of the two key columns share their
-    # baselines, and the key stays inside the axes frame.
+    # baselines, and the key stays inside the axes frame. The figures are
+    # drawn inside the rc context of the module, as save_figures draws
+    # them: the font list is looked up when a text is drawn.
     if font is not None:
         monkeypatch.setitem(figures._RC_PARAMS, 'font.sans-serif', [font])
     for plot in (figures.plot_fig9, figures.plot_fig10):
-        fig = plot()
-        try:
-            fig.canvas.draw()
-            renderer = fig.canvas.get_renderer()
-            panels = [ax for ax in fig.axes
-                      if ax.get_xlabel() == 'Time (min)']
-            assert len(panels) == (2 if plot is figures.plot_fig9 else 3)
-            for panel in panels:
-                key = _species_key(panel)
-                frame = panel.get_window_extent(renderer)
-                box = key.get_window_extent(renderer)
-                assert frame.x0 < box.x0 and box.x1 < frame.x1 - 2.
-                assert frame.y0 < box.y0 and box.y1 < frame.y1
-                model, experiment = _key_labels(key)
-                rows = []
-                for left, right in zip(model, experiment):
-                    y_left = left.get_window_extent(renderer).y0
-                    y_right = right.get_window_extent(renderer).y0
-                    assert abs(y_left - y_right) < 0.5       # pixels
-                    rows.append(y_left)
-                # equal row pitch
-                assert np.ptp(np.diff(rows)) < 0.5
-        finally:
-            plt.close(fig)
+        with plt.rc_context(figures._RC_PARAMS):
+            fig = plot()
+            try:
+                fig.canvas.draw()
+                renderer = fig.canvas.get_renderer()
+                panels = [ax for ax in fig.axes
+                          if ax.get_xlabel() == 'Time (min)']
+                assert len(panels) == (2 if plot is figures.plot_fig9 else 3)
+                for panel in panels:
+                    key = _species_key(panel)
+                    frame = panel.get_window_extent(renderer)
+                    box = key.get_window_extent(renderer)
+                    assert frame.x0 < box.x0 and box.x1 < frame.x1 - 2.
+                    assert frame.y0 < box.y0 and box.y1 < frame.y1
+                    model, experiment = _key_labels(key)
+                    rows = []
+                    for left, right in zip(model, experiment):
+                        y_left = left.get_window_extent(renderer).y0
+                        y_right = right.get_window_extent(renderer).y0
+                        assert abs(y_left - y_right) < 0.5       # pixels
+                        rows.append(y_left)
+                    # equal row pitch
+                    assert np.ptp(np.diff(rows)) < 0.5
+            finally:
+                plt.close(fig)
 
 
 def test_figS12_draws_the_insets(tmp_path):
@@ -203,6 +206,11 @@ def test_fig11_draws_both_heat_maps_with_their_own_constant_sets():
             assert np.array_equal(_mesh(panel), matrix)
             assert panel.get_xlim() == (7.2, 1682.8)
             assert panel.get_ylim() == (29.5, 100.5)
+            # inward ticks on all four sides, as published
+            for axis, far_side in ((panel.xaxis, 'top'),
+                                   (panel.yaxis, 'right')):
+                ticks = axis.get_tick_params()
+                assert ticks['direction'] == 'in' and ticks[far_side]
             # red star on the largest cell, purple star on the 50 C row maximum
             red, purple = _star_positions(panel)
             maximum = pkg.heat_map_maximum(T_C, times, matrix)
@@ -450,6 +458,49 @@ def test_solver_emulation_figure_marks_the_emulated_steps_on_the_nodes():
             assert low < emulated.get_ydata().min()
             assert accurate.get_ydata().max() < high
         assert len(fig.legends) == 1
+    finally:
+        plt.close(fig)
+
+
+@pytest.mark.parametrize('font', ['DejaVu Sans', None])
+def test_solver_emulation_titles_do_not_run_into_each_other(font,
+                                                            monkeypatch):
+    # With the last fallback font (DejaVu Sans, the widest) as well as with
+    # the default font list, the two-line titles of neighbouring panels
+    # stay apart and inside the figure (drawn inside the rc context of the
+    # module, as save_figures draws them).
+    if font is not None:
+        monkeypatch.setitem(figures._RC_PARAMS, 'font.sans-serif', [font])
+    with plt.rc_context(figures._RC_PARAMS):
+        fig = figures.plot_solver_emulation()
+        try:
+            fig.canvas.draw()
+            renderer = fig.canvas.get_renderer()
+            boxes = [ax.title.get_window_extent(renderer)
+                     for ax in fig.axes if ax.get_title()]
+            assert len(boxes) == 6
+            em = 11.5*fig.dpi/72.       # font size of the titles in pixels
+            for row in (boxes[:3], boxes[3:]):
+                for left, right in zip(row, row[1:]):
+                    assert right.x0 - left.x1 > 2.*em
+                assert row[0].x0 > 0. and row[-1].x1 < fig.bbox.width
+        finally:
+            plt.close(fig)
+
+
+def test_fig10_panel_also_takes_the_label_of_the_constant_set():
+    fig, (by_number, by_label) = plt.subplots(1, 2)
+    try:
+        figures.draw_fig10abc(by_number, 75)
+        figures.draw_fig10abc(by_label, '75C')
+        assert len(by_label.get_lines()) == len(by_number.get_lines())
+        for line, expected in zip(by_label.get_lines(),
+                                  by_number.get_lines()):
+            assert np.array_equal(line.get_ydata(), expected.get_ydata())
+        assert [text.get_text() for text in by_label.texts] == [
+            text.get_text() for text in by_number.texts]
+        with pytest.raises(ValueError, match='no Fig. 10 data'):
+            figures.draw_fig10abc(by_label, '50C')
     finally:
         plt.close(fig)
 

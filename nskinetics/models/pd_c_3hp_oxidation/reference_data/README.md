@@ -34,19 +34,21 @@ In `10-1`, `10-2` and `11-1` to `11-3` all values are normalized
 concentrations (each species over the sum of 3-HP, MA, AAc, OXA and D); the
 H2O2 trace is in equivalents of the initial 3-HP. Time is in min.
 
-The model curves of these five files are the steps of the authors' solver
-(MATLAB `ode23s` at default tolerances), not converged solutions.
-`solver_emulation.py` in the parent folder repeats those runs with the
-shipped models, and the package tests check that it returns every deposited
-node: the same number of steps, node times within 2e-5 min (`10-1`, `10-2`,
-printed to five decimals) or 0.01 min (`11-1` to `11-3`, printed to two),
-and values within 1e-5, one unit of the last printed decimal (see
+The model curves of these five files are solver steps, not converged
+solutions: they are reproduced step for step by the method of the solver the
+paper names (MATLAB `ode23s`) at default tolerances, in a Python port; MATLAB
+itself was not run. `solver_emulation.py` in the parent folder repeats those
+runs with the shipped models, and the package tests check that it returns
+every deposited node: the same number of steps (one fewer than the node
+counts below, which include t = 0), node times within 2e-5 min (`10-1`,
+`10-2`, printed to five decimals) or 0.01 min (`11-1` to `11-3`, printed to
+two), and values within 1e-5, one unit of the last printed decimal (see
 `../NOTES.md`, "Emulation of the authors' solver run"). The constants used
-for the species curves of `10-1` and `10-2` are sets inferred from the
-nodes, 0.01 to 0.6 % off Table 3 as printed; with Table 3 as printed those
-values agree within 4.4e-4. The H2O2 trace of `10-1` needs a separate
-inferred set, 4 to 22 % off Table 3 (`k_6` unchanged); with Table 3 as
-printed that run takes 23 steps instead of 24.
+for the species curves of `10-1` and `10-2` are sets inferred from the nodes,
+0.01 to 0.6 % off Table 3 as printed; with Table 3 as printed those values
+agree within 4.4e-4. The H2O2 trace of `10-1` needs a separate inferred set,
+4 to 22 % off Table 3 (`k_6` unchanged); with Table 3 as printed that run
+takes 23 steps instead of 24.
 
 Layout and known quirks:
 
@@ -60,8 +62,9 @@ Layout and known quirks:
   1537 min); its t = 0 cell reads 1 and stands for 15. The trace is not the
   H2O2 of the model curve in the same file: it lies up to 0.38 equivalents
   below the H2O2 of the Table 3 model and is matched only with other
-  constants (see `../NOTES.md`). It is a solver run of its own, of 24 steps
-  to 1584 min, of which the file holds all nodes but the last.
+  constants (see `../NOTES.md`). It is reproduced as a solver run of its
+  own, of 24 steps to 1584 min, of which the file holds all nodes but the
+  last.
 - `11-1`, `11-2`, `11-3`: laid out like `10-2` and labelled correctly; no
   quirks. Columns 1-6 are the experiment (14, 12 and 11 rows; last sampling
   times 1890, 1440 and 1560 min) and columns 7-12 the model curve (19, 20 and

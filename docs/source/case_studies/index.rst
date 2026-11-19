@@ -59,7 +59,7 @@ what agrees with the publication and what does not.
 
       +++
       ``nskinetics.models.pd_c_3hp_oxidation`` · 4 models, deposited and
-      digitized reference data, 7 figures
+      digitized reference data, 8 figures
 
 .. toctree::
    :maxdepth: 2

@@ -65,12 +65,13 @@ def read_fig9a_h2o2():
             13 sampling times (0 to 1440 min) with the measured normalized
             concentrations ``X_HP3, X_MA, X_AAc, X_OXA, X_D``.
         ``'model'``
-            The authors' model curve of Fig. 9a: 24 solver nodes
-            (0 to 1584 min), same columns.
+            The authors' model curve of Fig. 9a: 24 solver nodes (23
+            steps, 0 to 1584 min; here and below the node at t = 0 is
+            counted), same columns.
         ``'h2o2_trace'``
             The authors' predicted H2O2 of SI Fig. S12a in equivalents of
-            the initial 3-HP (``time``, ``eq_H2O2``): 24 nodes
-            (0 to 1537 min) on a time grid of its own.
+            the initial 3-HP (``time``, ``eq_H2O2``): 24 nodes (23 steps,
+            0 to 1537 min) on a time grid of its own.
 
     Notes
     -----
@@ -107,8 +108,8 @@ def read_fig9b_o2():
             16 sampling times (0 to 1680 min) with the measured normalized
             concentrations ``X_HP3, X_MA, X_AAc, X_OXA, X_D``.
         ``'model'``
-            The authors' model curve of Fig. 9b: 20 solver nodes
-            (0 to 1848 min), same columns.
+            The authors' model curve of Fig. 9b: 20 solver nodes (19
+            steps, 0 to 1848 min), same columns.
 
     Notes
     -----
@@ -168,6 +169,9 @@ def read_figS12b_opa_inset_digitized():
 
 _FIG10_FILES = {25: '11-1_25C_Kinetic.csv', 75: '11-2_75C_Kinetic.csv',
                 100: '11-3_100C_Kinetic.csv'}
+# The labels of the constant sets of the reversible O2 variant ('25C', ...)
+# name the same three experiments.
+_FIG10_LABELS = {'%dC' % T_C: T_C for T_C in _FIG10_FILES}
 
 
 def read_fig10_o2(temperature_C):
@@ -175,10 +179,12 @@ def read_fig10_o2(temperature_C):
 
     Parameters
     ----------
-    temperature_C : {25, 75, 100}
+    temperature_C : {25, 75, 100} or {'25C', '75C', '100C'}
         Temperature of the experiment in degrees Celsius: Fig. 10a
         (``11-1_25C_Kinetic.csv``), Fig. 10b (``11-2_75C_Kinetic.csv``) or
-        Fig. 10c (``11-3_100C_Kinetic.csv``).
+        Fig. 10c (``11-3_100C_Kinetic.csv``). The label of the constant set
+        of that experiment, as ``load_o2_reversible_model`` takes it, is
+        accepted as well.
 
     Returns
     -------
@@ -188,30 +194,32 @@ def read_fig10_o2(temperature_C):
             ``X_HP3, X_MA, X_AAc, X_OXA, X_D``: 14 rows (0 to 1890 min) at
             25 C, 12 (0 to 1440 min) at 75 C, 11 (0 to 1560 min) at 100 C.
         ``'model'``
-            The authors' model curve, same columns: the steps of their
-            solver, 19 nodes (0 to 2079 min) at 25 C, 20 (0 to 1584 min)
-            at 75 C, 25 (0 to 1716 min) at 100 C. The last time is 1.1
-            times the last sampling time.
+            The authors' model curve, same columns: the steps of a
+            solver run, 19 nodes (18 steps, 0 to 2079 min) at 25 C, 20
+            nodes (19 steps, 0 to 1584 min) at 75 C and 25 nodes (24
+            steps, 0 to 1716 min) at 100 C, the node at t = 0 included.
+            The last time is 1.1 times the last sampling time.
 
     Raises
     ------
     ValueError
-        For any other temperature.
+        For any other temperature or label.
 
     Notes
     -----
     The files are labelled correctly (columns 1-6 experiment, 7-12 model)
     and need no correction. The model curves are coarse polylines of 19
-    to 25 nodes. The reversible O2 variant
+    to 25 nodes (18 to 24 solver steps). The reversible O2 variant
     (``load_o2_reversible_model``), solved accurately, lies within 2.7e-3
     of the nodes; with the authors' solver run repeated
     (``solver_emulation``) it returns them within 1e-5 (see ``NOTES.md``).
     """
+    temperature_C = _FIG10_LABELS.get(temperature_C, temperature_C)
     if temperature_C not in _FIG10_FILES:
         raise ValueError(
-            f'no Fig. 10 data for {temperature_C!r} C: the panels are '
-            f'{", ".join(str(T_C) for T_C in _FIG10_FILES)} C '
-            '(for 50 C, Fig. 9b, use read_fig9b_o2)')
+            f'no Fig. 10 data for {temperature_C!r}: the panels are at 25, '
+            "75 and 100 C (pass the number or the label '25C', '75C' or "
+            "'100C'; for 50 C, Fig. 9b, use read_fig9b_o2)")
     rows = _rows(_FIG10_FILES[temperature_C])
     return {'experiment': _block(rows, 0, _COLUMNS),
             'model': _block(rows, 6, _COLUMNS)}

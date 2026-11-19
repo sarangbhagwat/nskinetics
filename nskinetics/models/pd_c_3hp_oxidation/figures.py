@@ -67,11 +67,11 @@ Figures
     solution are from the deposited nodes.
 
 The layout, the series colors, the colors of the reaction lists and the
-ticks (inward with minor ticks in Figs. 9 and 10, outward in SI Fig. S12)
-follow the published panels; the fonts are Arial where it is installed.
-Black dotted deposited curves, digitized overlays and the measured R2
-values are additions, named in the entries above. Run as a script to write
-every figure (PNG and PDF) to a folder::
+ticks (inward with minor ticks in Figs. 9 and 10, outward in SI Fig. S12,
+inward on all four sides in Fig. 11) follow the published panels; the fonts
+are Arial where it is installed. Black dotted deposited curves, digitized
+overlays and the measured R2 values are additions, named in the entries
+above. Run as a script to write every figure (PNG and PDF) to a folder::
 
     python -m nskinetics.models.pd_c_3hp_oxidation.figures OUTPUT_DIR
 
@@ -396,10 +396,13 @@ def draw_fig10abc(ax, temperature_C):
     ----------
     ax : matplotlib.axes.Axes
         Axes to draw on.
-    temperature_C : {25, 75, 100}
-        Temperature of the experiment in degrees Celsius.
+    temperature_C : {25, 75, 100} or {'25C', '75C', '100C'}
+        Temperature of the experiment in degrees Celsius, or the label of
+        its constant set.
     """
-    reference = read_fig10_o2(temperature_C)
+    reference = read_fig10_o2(temperature_C)    # refuses any other value
+    if isinstance(temperature_C, str):
+        temperature_C = int(temperature_C[:-1])
     km = load_o2_reversible_model('%dC' % temperature_C)
     _draw_profiles(ax, km, reference, _FIG10_LEGEND_ANCHOR,
                    _FIG10_KEY_ANCHOR, legend_loc='upper right',
@@ -622,7 +625,8 @@ def _heat_map_frame(ax, labelsize=15):
     ax.set_ylim(29.5, 100.5)
     ax.set_xticks(np.arange(200, 1601, 200))
     ax.set_yticks(np.arange(30, 101, 10))
-    ax.tick_params(length=4, direction='in')
+    # Inward ticks on all four sides, as published.
+    ax.tick_params(length=4, direction='in', top=True, right=True)
     ax.set_xlabel('Time (min)', fontsize=labelsize)
     ax.set_ylabel('Temperature (\N{DEGREE SIGN}C)', fontsize=labelsize)
 
@@ -1080,11 +1084,13 @@ def plot_solver_emulation():
     emulated step (crosses) and between the node and the accurate solution
     (circles), with a dotted line at 1e-5, one unit of the last decimal the
     deposited files print. Differences below 1e-8 (the initial state) are
-    not drawn. The
-    models carry the constant sets with which the emulation returns the
-    nodes (for Fig. 9 the sets inferred from the nodes, not Table 3 as
-    printed). The title of each pair gives the number of steps and the
-    largest difference of the emulated steps.
+    not drawn. The models carry the constant sets with which the emulation
+    returns the nodes (for Fig. 9 the sets inferred from the nodes, not
+    Table 3 as printed). The title of each pair gives the number of steps
+    and the largest difference of the emulated steps from the nodes; it is
+    kept short enough for the widest fallback font (DejaVu Sans). The key
+    below the panels shows the colors of Fig. 9; "Others" is a grayer blue
+    in the Fig. 10 panels, as in the published figures.
 
     Returns
     -------
@@ -1126,7 +1132,7 @@ def plot_solver_emulation():
             bottom.axhline(1e-5, color=_C_MUTED, lw=1.0, ls=(0, (1, 2)),
                            zorder=1)
             deviations = node_deviations(emulated, nodes, columns)
-            top.set_title('%s\n%d steps; emulated within %.1e of the nodes'
+            top.set_title('%s\n%d steps; within %.1e of the nodes'
                           % (title, deviations['steps'], deviations['max']),
                           fontsize=11.5, color=_C_INK, linespacing=1.3)
             top.set_xlim(-0.02*t_end, 1.02*t_end)
@@ -1221,7 +1227,8 @@ def main():
     parser = argparse.ArgumentParser(
         prog='python -m nskinetics.models.pd_c_3hp_oxidation.figures',
         description='Regenerate Fig. 9, Fig. 10, SI Fig. S12 and Fig. 11 '
-                    'of Kim et al. (2026) from the NSKinetics models.')
+                    'of Kim et al. (2026) from the NSKinetics models, and '
+                    'draw the comparison and verification figures.')
     parser.add_argument('output_dir', help='folder to write the figures to')
     parser.add_argument('--formats', nargs='+', default=['png', 'pdf'],
                         help='file formats (default: png pdf)')

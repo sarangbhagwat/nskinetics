@@ -101,10 +101,17 @@ def simulate_heat_maps(te_r, T_C=None, times=None, time_offset=0.):
     Raises
     ------
     ValueError
-        If a temperature is outside -50 to 200 C, which is what
-        temperatures given in kelvin look like. The range is a guard
-        against that mistake only, not a range of validity.
+        If the model has no temperature parameter ``T`` (the H2O2 model and
+        the reversible O2 variant have none). Also if a temperature is
+        outside -50 to 200 C, which is what temperatures given in kelvin
+        look like; that range is a guard against that mistake only, not a
+        range of validity.
     """
+    if 'T' not in te_r._te.model.getGlobalParameterIds():
+        raise ValueError(
+            'simulate_heat_maps needs a model with a temperature parameter '
+            'T: one from load_o2_model or load_o2_simplified_reversible_model '
+            '(the H2O2 model and the reversible O2 variant have none)')
     T_C = FIG11_T_C if T_C is None else np.asarray(T_C, dtype=float)
     if not ((T_C >= _T_C_RANGE[0]) & (T_C <= _T_C_RANGE[1])).all():
         raise ValueError(

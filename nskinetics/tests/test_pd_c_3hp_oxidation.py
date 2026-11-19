@@ -14,16 +14,17 @@ for Fig. 9, and the inset curves digitized from SI Fig. S12. Simulations are
 evaluated at exactly the reference times; the deposited curves are coarse
 solver polylines and must not be interpolated.
 
-The deposited curves carry the authors' solver error (MATLAB ode23s at
-default tolerances) and Table 3 is rounded to three digits, so a converged
-solution with the printed constants is expected to differ from them by up
-to 2e-3 (O2) and 1e-3 (H2O2), not to match them exactly. The limits are
-about 1.5 times those differences. They are still tight enough to fail a 2 %
-error in 11 of the 13 rate constants (not in ``k_2`` of the O2 model and
-``k_6`` of the H2O2 model, which hardly affect the deposited curves and are
-pinned only by the comparison with Table 3 as printed), a missing
-catalyst-mass or oxidant factor, the SI Table S4 reaction orders on any
-concentration basis, or a missing reaction.
+The deposited curves carry a solver error (they are reproduced by the method
+of MATLAB ode23s at default tolerances; see
+``test_pd_c_3hp_oxidation_solver_emulation.py``) and Table 3 is rounded to
+three digits, so a converged solution with the printed constants is expected
+to differ from them by up to 2e-3 (O2) and 1e-3 (H2O2), not to match them
+exactly. The limits are about 1.5 times those differences. They are still
+tight enough to fail a 2 % error in 11 of the 13 rate constants (not in
+``k_2`` of the O2 model and ``k_6`` of the H2O2 model, which hardly affect
+the deposited curves and are pinned only by the comparison with Table 3 as
+printed), a missing catalyst-mass or oxidant factor, the SI Table S4
+reaction orders on any concentration basis, or a missing reaction.
 
 The simplified reversible O2 model and the heat maps (Fig. 11) are tested in
 ``test_pd_c_3hp_oxidation_heat_maps.py`` and the reversible O2 variant and
@@ -310,6 +311,14 @@ def test_initial_rate_ratio_of_reaction_1(h2o2_model, o2_model):
     assert (r0_h2o2, r0_o2) == pytest.approx((3.24e-4, 4.36e-4), rel=2e-3)
     assert r0_h2o2/r0_o2 == pytest.approx(5.31/7.14, rel=1e-12)
     assert r0_h2o2/r0_o2 == pytest.approx(0.744, abs=5e-4)
+    # The paper also states that under the hypothetical condition
+    # x_H2O2 = x_O2 the O2 rate would be ~1300 times the H2O2 rate. In
+    # these models the two oxidant factors ARE equal at t = 0 (0.005085),
+    # and the O2 rate is 1.34 times the H2O2 rate: not reproduced either.
+    assert o2_model.get_value('x_O2_ref') == pytest.approx(
+        h2o2_model.get_value('x_per_M')*h2o2_model.get_value('[H2O2]'),
+        rel=1e-12)
+    assert r0_o2/r0_h2o2 == pytest.approx(1.34, abs=5e-3)
 
 
 def test_o2_model_parity_with_experiment(o2_model, fig9b):
@@ -340,9 +349,10 @@ def test_h2o2_trace(h2o2_model, fig9a):
     trace = fig9a['h2o2_trace']
     sim = simulate_at_times(h2o2_model, trace['time'], ['eq_H2O2'])
     assert sim['eq_H2O2'][0] == pytest.approx(15.)
-    # Known deposit inconsistency: the deposited trace comes from another
-    # parameter set and lies up to 0.38 equivalents below the Table 3 model,
-    # so only a loose bound holds. The t = 0 cell of the deposit is skipped.
+    # Known deposit inconsistency: the deposited trace is reproduced only
+    # with another parameter set and lies up to 0.38 equivalents below the
+    # Table 3 model, so only a loose bound holds. The t = 0 cell of the
+    # deposit is skipped.
     diff = (sim['eq_H2O2'] - trace['eq_H2O2'])[1:]
     assert np.abs(diff).max() <= 0.45
     assert diff.min() > 0.
@@ -545,8 +555,16 @@ def test_digitized_inset_readers():
     assert set(h2o2['source_axes']) == {'inset', 'main'}
     assert h2o2['eq_H2O2'].between(0., 15.1).all()
     opa = pkg.read_figS12b_opa_inset_digitized()
+    assert list(opa.columns) == ['time', 'time_unc', 'x_OPA', 'X_HP3',
+                                 'ratio_OPA_over_3HP']
     assert len(opa) == 13
     assert opa['x_OPA'].max() == pytest.approx(1.42e-5, abs=2e-7)
+    # the 3-HP line read at the same times falls from the feed, and the
+    # last column is the ratio of the two
+    assert opa['X_HP3'].iloc[0] == pytest.approx(1., abs=0.01)
+    assert (np.diff(opa['X_HP3']) < 0.).all()
+    assert np.allclose(opa['ratio_OPA_over_3HP'], opa['x_OPA']/opa['X_HP3'],
+                       rtol=0.01)
 
 
 # --- 8. shipped SBML in sync with the Antimony ------------------------------

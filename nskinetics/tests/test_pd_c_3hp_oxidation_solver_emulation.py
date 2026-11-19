@@ -10,8 +10,9 @@ shipped Pd/C 3-HP oxidation models against the model nodes the authors
 deposited for Fig. 9a, Fig. 9b, SI Fig. S12a (H2O2) and Fig. 10a-c of Kim
 et al., Appl. Catal. B: Environ. Energy 386 (2026) 126403.
 
-The deposited curves are the steps of MATLAB ``ode23s`` at default
-tolerances and lie up to 2.7e-3 from the converged solution, so the tests
+The deposited curves are solver steps, reproduced step for step by the
+method of MATLAB ``ode23s`` at default tolerances (emulated; MATLAB was not
+run), and lie up to 2.7e-3 from the converged solution, so the tests
 that solve the models accurately (``test_pd_c_3hp_oxidation.py``,
 ``test_pd_c_3hp_oxidation_fig10.py``) can hold them only to that error.
 Here the authors' solver run is repeated with the rates of the shipped
@@ -25,6 +26,13 @@ models, and the result is compared with the deposited nodes one by one:
 * every value must agree within ``VALUE_LIMIT`` = 1e-5, one unit of the
   last of the five decimals the files print. (Rounding alone accounts for
   5e-6; the measured largest differences are 4.4e-6 to 7.2e-6.)
+
+The Fig. 9 limit on the node times has the smallest margin over rounding:
+the measured differences are 6e-6 to 8e-6 min, and random relative errors
+of 1e-15 in the rates leave them within the limit, whereas errors of 1e-14
+can exceed it (measured outside the tests; the Fig. 10 runs tolerate
+1e-13). A failure on another platform that shows only in the Fig. 9 node
+times therefore points to rounding, not to the model.
 
 The limit on the values is 18 to 270 times smaller than the solver error
 that the accurate-solver tests have to allow for (1.8e-4 to 2.7e-3). The
@@ -305,7 +313,8 @@ def test_emulated_run_starts_from_the_authors_initial_state():
 
 def test_opa_inset_of_fig_s12b_is_the_same_solver_run():
     # The 13 vertices of the OPA curve in the SI Fig. S12b inset (digitized)
-    # are the first 13 steps of the emulated Fig. 9b run.
+    # are the first 13 nodes of the emulated Fig. 9b run (t = 0 and its
+    # first 12 steps).
     inset = pkg.read_figS12b_opa_inset_digitized()
     steps = emulate_fig9b().iloc[:len(inset)]
     assert len(inset) == 13
@@ -329,8 +338,15 @@ def test_emulation_leaves_the_model_reset_and_keeps_set_values():
 def test_emulation_refuses_a_model_without_a_deposited_curve():
     with pytest.raises(ValueError, match='no deposited curve'):
         emulate_authors_run(load_o2_simplified_reversible_model(), 100.)
-    with pytest.raises(ValueError):
-        emulate_fig10abc(50)
+    for temperature_C in (50, '50C', 348.15):
+        with pytest.raises(ValueError, match='no Fig. 10 data'):
+            emulate_fig10abc(temperature_C)
+
+
+def test_fig10_emulation_also_takes_the_label_of_the_constant_set():
+    for temperature_C in (25, 75, 100):
+        assert emulate_fig10abc('%dC' % temperature_C).equals(
+            emulate_fig10abc(temperature_C))
 
 
 # --- 3. Table 3 as printed, and the constant sets of the nodes ----------------
@@ -441,6 +457,14 @@ def test_o2_factor_of_0p0051_misses_the_fig9b_nodes():
     assert not _reproduces(deviations, 'fig9b')
     assert (deviations['time'], deviations['max']) == pytest.approx(
         (1.36, 7.0e-4), rel=0.03)
+    assert deviations['max'] > 50.*VALUE_LIMIT
+    # The other three constants were those of the node set; with Table 3
+    # as printed for them it is 5.8e-4.
+    for name in ('k_3_ref', 'k_5_ref', 'k_6_ref'):
+        km.set_value(name, TABLE_3_O2[name])
+    deviations = _compare(km, 'fig9b')
+    assert (deviations['time'], deviations['max']) == pytest.approx(
+        (1.54, 5.8e-4), rel=0.03)
     assert deviations['max'] > 50.*VALUE_LIMIT
 
 

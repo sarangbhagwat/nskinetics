@@ -10,16 +10,18 @@ Emulation of the solver run behind the model curves that the authors of
 Kim et al., Appl. Catal. B: Environ. Energy 386 (2026) 126403, deposited
 for Fig. 9a, Fig. 9b, SI Fig. S12a (H2O2) and Fig. 10a-c.
 
-The deposited model curves are not converged solutions: they are the
-steps of MATLAB ``ode23s`` at its default tolerances, 18 to 24 unevenly
-spaced nodes that lie up to 2.7e-3 from the solution. An accurate solver
-can therefore reproduce them only to that error. This module repeats the
-authors' run instead: it integrates the state vector of their posted
-script with the same method and step-size control, taking every reaction
-rate from a shipped model. With the constant sets named in the functions
-below it returns the deposited nodes (times and values) to the digits
-printed in the deposited files. It is used for verification only (the
-package tests and ``NOTES.md``); to simulate a model, use the model.
+The deposited model curves are not converged solutions: they have 18 to
+24 unevenly spaced solver steps (19 to 25 nodes with the one at t = 0) that
+lie up to 2.7e-3 from the solution, and they are reproduced step for step
+by the method of MATLAB ``ode23s`` at its default tolerances, the solver
+the paper names. An accurate solver can therefore reproduce them only to
+that error. This module repeats the authors' run instead: it integrates
+the state vector of their posted script with the same method and step-size
+control, taking every reaction rate from a shipped model. With the constant
+sets named in the functions below it returns the deposited nodes (times and
+values) to the digits printed in the deposited files. It is used for
+verification only (the package tests and ``NOTES.md``); to simulate a
+model, use the model.
 
 :func:`ode23s` is a port of the modified Rosenbrock (2,3) pair of
 L. F. Shampine and M. W. Reichelt, "The MATLAB ODE Suite", SIAM J. Sci.
@@ -364,10 +366,11 @@ def emulate_fig9a(parameter_set='fig9a_nodes'):
         Constant set of :func:`~.pd_c_3hp_oxidation.load_h2o2_model`.
         ``'fig9a_nodes'`` (default) returns the deposited nodes of the
         five species to their printed digits. ``'figS12a_h2o2_nodes'``
-        returns the deposited H2O2 trace of SI Fig. S12a, which comes from
-        another run: its column ``eq_H2O2`` is then the trace, and the
-        deposited file holds all of its steps but the last. ``'table3'``
-        shows how close the constants of Table 3 as printed come.
+        returns the deposited H2O2 trace of SI Fig. S12a, which is
+        reproduced only as a run of its own: its column ``eq_H2O2`` is
+        then the trace, and the deposited file holds all of its steps but
+        the last. ``'table3'`` shows how close the constants of Table 3 as
+        printed come.
 
     Returns
     -------
@@ -405,9 +408,10 @@ def emulate_fig10abc(temperature_C):
 
     Parameters
     ----------
-    temperature_C : {25, 75, 100}
-        Temperature of the experiment in degrees Celsius. The model is the
-        reversible O2 variant with the constant set of that experiment.
+    temperature_C : {25, 75, 100} or {'25C', '75C', '100C'}
+        Temperature of the experiment in degrees Celsius, or the label of
+        its constant set. The model is the reversible O2 variant with the
+        constant set of that experiment.
 
     Returns
     -------
@@ -418,11 +422,13 @@ def emulate_fig10abc(temperature_C):
     Raises
     ------
     ValueError
-        For any other temperature.
+        For any other temperature or label.
     """
-    reference = read_fig10_o2(temperature_C)
-    return emulate_authors_run(
-        load_o2_reversible_model('%dC' % temperature_C), _t_end(reference))
+    reference = read_fig10_o2(temperature_C)    # refuses any other value
+    if not isinstance(temperature_C, str):
+        temperature_C = '%dC' % temperature_C
+    return emulate_authors_run(load_o2_reversible_model(temperature_C),
+                               _t_end(reference))
 
 
 def node_deviations(emulated, deposited, columns=NORMALIZED):

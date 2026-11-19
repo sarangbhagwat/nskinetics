@@ -23,7 +23,9 @@ two steps:
   3.07 min or 0.148 C and the digitization is good to about 0.3 px (the
   measured offsets are 0.17 and 0.27 px). Negative controls show what this
   limit excludes: the constant set of the other panel, the starting vector
-  printed in the script, and the Table 3 O2 model.
+  printed in the script, and the Table 3 O2 model. The red dashed line of
+  the figure (the row maxima) is compared with the digitized one as well:
+  it has to sit in the published grid column on average.
 
 The last section pins the numbers ``NOTES.md`` reports for the Table 3 O2
 model against the published maps.
@@ -42,9 +44,9 @@ import nskinetics as nsk
 import nskinetics.models.pd_c_3hp_oxidation as pkg
 from nskinetics.models.pd_c_3hp_oxidation import (
     FIG11_T_C, FIG11_TIMES, contour_offsets, contour_shifts,
-    heat_map_maximum, heat_map_ridge, load_o2_model,
-    load_o2_simplified_reversible_model, simulate_at_times,
-    simulate_heat_maps)
+    heat_map_maximum, heat_map_ridge, load_h2o2_model, load_o2_model,
+    load_o2_reversible_model, load_o2_simplified_reversible_model, ode23s,
+    simulate_at_times, simulate_heat_maps)
 
 _SPECIES = ['HP3', 'MA', 'AAc', 'OXA', 'D']
 _CONCENTRATIONS = ['[%s]' % s for s in _SPECIES]
@@ -339,6 +341,21 @@ def test_the_two_conventions_give_different_curves_at_50C():
     assert np.abs(X_MA[0] - X_MA[1]).max() == pytest.approx(0.029, abs=0.003)
 
 
+def test_pressure_dependence_is_that_of_the_rate_form():
+    # No experiment was made at another O2 pressure than 3 bar, so the
+    # dependence on P is an untested extrapolation of the script's rate
+    # form. It is strong (NOTES.md): X_HP3 at 60 min and X_MA at 240 min,
+    # 50 C, for 1, 3.5 (the default of the script) and 10 bar.
+    for P, X_HP3, X_MA in ((1., 0.767, 0.268), (3.5, 0.559, 0.571),
+                           (10., 0.246, 0.703)):
+        km = load_o2_simplified_reversible_model()
+        assert km.get_value('P') == 3.5
+        km.set_value('P', P)
+        sim = simulate_at_times(km, [60., 240.], ['X_HP3', 'X_MA'])
+        assert (sim['X_HP3'][0], sim['X_MA'][1]) == pytest.approx(
+            (X_HP3, X_MA), abs=1e-3)
+
+
 def test_equilibrium_constants_of_steps_1_and_3_do_not_shape_the_maps():
     # K_6 only enters with x_H2O, which is 0; the reverse of R3 is of third
     # order in the by-products.
@@ -397,6 +414,17 @@ def test_simulate_heat_maps_rejects_temperatures_that_are_not_in_celsius(T_C):
         simulate_heat_maps(km, T_C=T_C, times=[30.])
     assert 'for 348.15 K pass 75' in str(error.value)
     assert km.get_value('T') == T_REF       # the model is left untouched
+
+
+@pytest.mark.parametrize('load', [load_h2o2_model,
+                                  load_o2_reversible_model])
+def test_simulate_heat_maps_refuses_a_model_without_a_temperature(load):
+    # these two models have no parameter T; without the check roadrunner
+    # raises a RuntimeError that names neither the function nor the models
+    with pytest.raises(ValueError, match='temperature parameter T') as error:
+        simulate_heat_maps(load(), T_C=[50.], times=[30.])
+    assert 'load_o2_model or load_o2_simplified_reversible_model' in str(
+        error.value)
 
 
 def test_simulate_heat_maps_accepts_minus_50_to_200_C():
@@ -528,6 +556,23 @@ def test_maxima_quoted_in_the_text(maps):
     assert MA_yield.max() < 0.552
 
 
+def test_observed_maximum_quoted_in_the_text():
+    # "experimentally observed maximum was 50.5 %": the quantity of panel b,
+    # (1 - X_HP3)*X_MA, of the deposited 50 C experiment is largest at
+    # 360 min and equals that number. The paper does not say how it was
+    # computed; X_MA alone is largest at 240 min and never 0.505.
+    experiment = pkg.read_fig9b_o2()['experiment']
+    time = experiment['time'].to_numpy()
+    X_MA = experiment['X_MA'].to_numpy()
+    product = (1. - experiment['X_HP3'].to_numpy())*X_MA
+    assert time[product.argmax()] == 360.
+    assert product.max() == pytest.approx(0.5051, abs=5e-5)
+    assert np.sort(product)[-2] < 0.49
+    assert time[X_MA.argmax()] == 240.
+    assert X_MA.max() == pytest.approx(0.5483, abs=5e-5)
+    assert np.abs(X_MA - 0.505).min() > 0.01
+
+
 def test_50C_row_maxima(maps):
     T_C, times, selectivity, _ = maps['fig11a']
     row = list(T_C).index(50.)
@@ -549,6 +594,72 @@ def test_heat_map_maximum_and_ridge(maps):
     ridge = heat_map_ridge(times, selectivity)
     assert ridge.shape == (71,)
     assert (np.diff(ridge) <= 0.).all()         # hotter rows peak earlier
+
+
+def ridge_offsets(T_C, ridge, digitized):
+    """Model ridge minus the digitized red dashed line, along the time axis
+    at the temperature of each digitized sample, in px of the raster."""
+    samples = digitized['ridge']
+    return (np.interp(samples['T_C'], T_C, ridge)
+            - samples['time'])/pkg.FIG11_MIN_PER_PX
+
+
+@pytest.mark.parametrize('panel, parameter_set, mean, rms', [
+    ('a', 'fig11a', 0.60, 0.93), ('b', 'fig11b', 0.15, 1.48)])
+def test_ridge_is_the_published_red_dashed_line(maps, digitized, panel,
+                                                parameter_set, mean, rms):
+    # The red dashed line joins the row maxima, so it is defined to one
+    # grid column: 5.585 min, 1.82 px of the published raster. It is
+    # therefore held to the digitized line to half a column in the mean
+    # (a line that sits one column off is 1.82 px off in the mean) and to
+    # one column in the rms. The largest single offsets (2.1 and 6.5 px)
+    # are at 31 to 32 C, where the row maxima are flat and the line
+    # advances several columns per row.
+    T_C, times = maps[parameter_set][:2]
+    matrix = maps[parameter_set][2 if panel == 'a' else 3]
+    column = (times[1] - times[0])/pkg.FIG11_MIN_PER_PX
+    assert column == pytest.approx(1.818, abs=1e-3)
+    assert len(digitized[panel]['ridge']) == {'a': 118, 'b': 226}[panel]
+    offsets = ridge_offsets(T_C, heat_map_ridge(times, matrix),
+                            digitized[panel])
+    assert offsets.mean() == pytest.approx(mean, abs=0.1)
+    assert abs(offsets.mean()) <= 0.5*column
+    assert np.sqrt(np.mean(offsets**2)) == pytest.approx(rms, abs=0.1)
+    assert np.sqrt(np.mean(offsets**2)) <= column
+    # negative control: the same line one column later or earlier fails
+    # the limit on the mean (2.42 and -1.22 px in panel a, 1.97 and
+    # -1.67 px in panel b)
+    for shift in (1, -1):
+        shifted = times[np.argmax(matrix, axis=1) + shift]
+        assert abs(ridge_offsets(T_C, shifted, digitized[panel]).mean()
+                   ) > 0.5*column + 0.2
+
+
+@pytest.mark.parametrize('panel, parameter_set, largest', [
+    ('a', FIG11A, 1.12e-4), ('b', FIG11B, 1.36e-4)])
+def test_solver_of_the_script_does_not_matter_for_the_maps(maps, panel,
+                                                           parameter_set,
+                                                           largest):
+    # The script integrates each of the 299 intervals of the time grid with
+    # ode23s at default tolerances; the maps here are converged solutions.
+    # The 100 C row, repeated as the script computes it, differs by
+    # 1.1e-4 (a) and 1.4e-4 (b); in the other rows the difference is
+    # smaller (measured for all rows outside the tests, NOTES.md).
+    T_C, times, selectivity, MA_yield = maps['fig11' + panel]
+    k = script_k_adj(parameter_set, 373.15)
+    y = np.array([1., 0., 0., 0., 0., 0., 0., 1., 0.])     # unit 3-HP, O2
+    rows = [y]
+    for interval in np.diff(times):
+        y = ode23s(lambda y: NU @ script_rates(k, y), interval, y)[1][-1]
+        rows.append(y)
+    liquid = np.array(rows)[:, :5]
+    liquid = liquid/liquid.sum(axis=1, keepdims=True)
+    script, converged = (
+        (liquid[:, 1], selectivity[-1]) if panel == 'a'
+        else ((1. - liquid[:, 0])*liquid[:, 1], MA_yield[-1]))
+    assert T_C[-1] == 100.
+    assert np.abs(script - converged).max() == pytest.approx(largest,
+                                                             rel=0.05)
 
 
 # --- 6. Table 3 O2 model against the published maps (numbers of NOTES.md) -----
