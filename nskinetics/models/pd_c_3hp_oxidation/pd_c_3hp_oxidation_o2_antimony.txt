@@ -1,0 +1,221 @@
+// Selective oxidation of 3-hydroxypropionic acid (3-HP) to malonic acid (MA)
+// over 10 % Pd/C with O2 as the oxidant: six-reaction kinetic model of
+//   Kim, Chavarrio, Install, Huber, Appl. Catal. B: Environ. Energy 386
+//   (2026) 126403, https://doi.org/10.1016/j.apcatb.2026.126403
+// (Table 3, O2 column; Fig. 9b; SI Fig. S12b; rate expressions of SI
+// Fig. S2), at 50 C, the temperature of the experiment the constants were
+// fitted to. The model has no temperature parameter.
+// Units: time in min, liquid concentrations in M (mol/L), catalyst mass in g
+// per batch of the paper (not per litre).
+// See NOTES.md next to this file for what is printed in the paper and what
+// is inferred from the authors' data deposit.
+model *kim2026_o2()
+
+  // Compartments and Species:
+  // env is the liquid phase. Only the liquid species the authors fitted are
+  // tracked; the co-products (H2O, H2, CO2) are named in the reaction comments.
+  // OPA (3-oxopropanoic acid) is the aldehyde intermediate; it was not
+  // measured. D lumps the unidentified by-products ("Others" in Fig. 9).
+  var compartment env;
+  species HP3 in env, OPA in env, MA in env, AAc in env, OXA in env, D in env;
+
+  // Assignment Rules:
+
+  // Plotted quantities.
+  // Fig. 9b "Normalized Concentration": each measured species divided by the
+  // sum of the five measured species. OPA is left out of the sum, as in the
+  // authors' post-processing (it was not quantified experimentally).
+  X_HP3 := HP3/(HP3 + MA + AAc + OXA + D);
+  X_MA := MA/(HP3 + MA + AAc + OXA + D);
+  X_AAc := AAc/(HP3 + MA + AAc + OXA + D);
+  X_OXA := OXA/(HP3 + MA + AAc + OXA + D);
+  X_D := D/(HP3 + MA + AAc + OXA + D);
+  // SI Fig. S12b inset "OPA predicted" (axis in units of 1e-5): the liquid
+  // mole fraction of OPA on the authors' scale (see x_per_M).
+  x_OPA := x_per_M*OPA;
+
+  // Rate Rules:
+  // Dimensionless O2 state, 1 at t = 0. It is depleted by one unit of liquid
+  // mole fraction per unit of mole fraction reacted in R1, R2 and R4
+  // (coefficient 1 for each, as in the O2 row of the stoichiometric matrix
+  // of the authors' posted script; SI Table S4 writes 0.5, 0.5 and 1.5 O2).
+  // The posted script integrates this state but fixes yO2 = 1.0 inside its
+  // rate function; that the rates use the depleting state is inferred from
+  // the deposited Fig. 9b nodes (see NOTES.md). It falls only to 0.9995
+  // over 1848 min and changes the plotted values by at most 7e-5. (R_i are
+  // amounts per time, hence the /env.)
+  yO2' = -x_per_M*(R1 + R2 + R4)/env;
+
+  // Reactions:
+  // The rate expressions are those of SI Fig. S2, r_j = k_jf*prod(a_i^n_ij),
+  // taken with every order n = 1 and unit activity coefficients (the paper
+  // assumes ideal phases, Section 2.6); the liquid activity a_i = x_i is the
+  // mole fraction on the authors' scale, x_per_M*conc. All six steps are
+  // irreversible (Fig. S2: Keq >> 1; Section 3.4).
+  // Rate = k (1/(g_cat min)) * m_cat (g) * [oxidant factor] * conc * env.
+  // R1, R2 and R4 carry the oxidant factor x_O2_ref*yO2; R3, R5 and R6 do not.
+  // THIS IS WHERE THE MODEL DEPARTS FROM FIG. S2: there the activity of a
+  // gas is a = phi*y*P/f0, which is 3/1.01325 = 2.96 for 3 bar of O2. With
+  // that activity the Table 3 constants make the model about 580 times too
+  // fast (it misses the deposited curve by up to 0.97); the deposited curve
+  // is reproduced with the constant x_O2_ref = 0.005085 in its place.
+  // SI Table S4 lists fitted reaction orders (0.99, 0.95, 0.78, 0.87, 0.98,
+  // 1.01) and equilibrium constants for these steps. They are NOT used here.
+  // The orders are taken as exactly 1 because the deposited model curve is
+  // reproduced that way (to 0.002) and not with the Table S4 orders:
+  // applied to the liquid reactant, they move the curves off the deposited
+  // one by 0.010 to 0.17, depending on the basis on which x^n is taken
+  // (0.010 for fractions of the feed, 0.17 for the authors' mole
+  // fractions); see NOTES.md.
+  R1: HP3 => OPA; k_1*m_cat*x_O2_ref*yO2*HP3*env;  // Rxn 1 (Fig. 9b): 3-HP + 0.5 O2 -> OPA + H2O
+  R2: OPA => MA; k_2*m_cat*x_O2_ref*yO2*OPA*env;   // Rxn 2: OPA + 0.5 O2 -> MA
+  R3: MA => AAc; k_3*m_cat*MA*env;                 // Rxn 3: MA -> AAc + CO2
+  R4: MA => OXA; k_4*m_cat*x_O2_ref*yO2*MA*env;    // Rxn 4: MA + O2 -> OXA + H2 + CO2
+  R5: HP3 => D; k_5*m_cat*HP3*env;                 // Rxn 5: 3-HP -> Others (D)
+  R6: MA => D; k_6*m_cat*MA*env;                   // Rxn 6: MA -> Others (D)
+
+  // Events:
+
+  // Species initializations:
+  // 60 mM 3-HP feed (with equimolar NaOH), no products (Fig. 9 caption).
+  HP3 = C0;
+  OPA = 0;
+  MA = 0;
+  AAc = 0;
+  OXA = 0;
+  D = 0;
+
+  // Compartment initializations:
+  // Nominal volume of 1, NOT the reactor volume. The model is written in
+  // liquid composition only: no rate depends on the volume and it cancels
+  // from every concentration. m_cat below is the catalyst mass of the
+  // paper's batch; it is NOT a mass per litre of this compartment.
+  env = 1;
+
+  // Variable initializations:
+
+  // Initial 3-HP concentration: 60 mM (Fig. 9 caption).
+  C0 = 0.06;
+  C0 has mol_per_l;
+
+  // O2 state, 1 at t = 0 (3 bar O2; initial value in the authors' script).
+  yO2 = 1;
+  yO2 has dimensionless;
+
+  // Catalyst charge of the paper's batch: 0.2 g of 10 % Pd/C (Fig. 9
+  // caption). Table 3 constants are per gram of catalyst in that batch, so
+  // they are multiplied by m_cat in the rates. m_cat is a mass per batch,
+  // not per litre: the rates scale with m_cat/0.2, the catalyst loading
+  // relative to the paper's, whatever the liquid volume. The paper's batch
+  // is 0.2 g in 10 mL of liquid (20 g/L; Section 2.3). For time-resolved
+  // runs the same section says that substrate, NaOH and water were tripled
+  // and does not say whether the catalyst was, so the loading of the
+  // kinetic runs is 20 g/L or 6.7 g/L (see NOTES.md).
+  m_cat = 0.2;
+  m_cat has gram;
+
+  // Liquid mole fraction per molar concentration on the authors' scale:
+  // their scripts map the 60 mM feed to a mole fraction of 0.000339, so
+  // x_per_M = 0.000339/0.06. (0.000339 is taken as used by the authors; it is
+  // not the mole fraction of 60 mM in water, which is about 1.08e-3.)
+  x_per_M = 0.00565;
+  x_per_M has l_per_mol;
+
+  // Oxidant reference factor on R1, R2 and R4, in place of the O2 activity
+  // y*P/f0 of SI Fig. S2. INFERRED, not stated in the paper, the SI or the
+  // deposit README: 15*0.000339 = 0.005085, which equals the H2O2 mole
+  // fraction of the 15-equivalent H2O2 run on the authors' scale. With it
+  // the printed Table 3 constants reproduce the deposited Fig. 9b model
+  // curve (see NOTES.md for how closely the value is determined).
+  x_O2_ref = 0.005085;
+  x_O2_ref has dimensionless;
+
+  // Rate constants at 50 C: paper Table 3, O2 column, as printed, in
+  // 1/(g_cat min). For R1, R2 and R4 they are referenced to x_O2_ref.
+  k_1 = 7.14;      // Table 3, Rxn 1: 7.14 (+-0.4) x 10^0
+  k_1 has per_g_per_min;
+  k_2 = 139;       // Table 3, Rxn 2: 1.39 (+-1.2) x 10^2
+  k_2 has per_g_per_min;
+  k_3 = 3.16e-4;   // Table 3, Rxn 3: 3.16 (+-1.4) x 10^-4
+  k_3 has per_g_per_min;
+  k_4 = 5.86e-2;   // Table 3, Rxn 4: 5.86 (+-2.8) x 10^-2
+  k_4 has per_g_per_min;
+  k_5 = 1.13e-2;   // Table 3, Rxn 5: 1.13 (+-0.1) x 10^-2
+  k_5 has per_g_per_min;
+  k_6 = 5.52e-3;   // Table 3, Rxn 6: 5.52 (+-0.3) x 10^-3
+  k_6 has per_g_per_min;
+
+  X_HP3 has dimensionless;
+  X_MA has dimensionless;
+  X_AAc has dimensionless;
+  X_OXA has dimensionless;
+  X_D has dimensionless;
+  x_OPA has dimensionless;
+
+  // Other declarations:
+  var yO2;
+  var X_HP3, X_MA, X_AAc, X_OXA, X_D, x_OPA;
+  const C0, m_cat, x_per_M, x_O2_ref;
+  const k_1, k_2, k_3, k_4, k_5, k_6;
+
+  // Unit definitions:
+  unit substance = mole;
+  unit time_unit = 60 second;
+  unit volume = litre;
+  unit per_g_per_min = 1 / (gram * 60 second);
+  unit mol_per_l = mole / litre;
+  unit l_per_mol = litre / mole;
+
+  // Display Names:
+  substance is "mole";
+  time_unit is "minutes";
+  volume is "liter";
+  per_g_per_min is "per gram catalyst per minute";
+  mol_per_l is "mole per liter";
+  l_per_mol is "liter per mole";
+  env is "liquid phase";
+  HP3 is "3-Hydroxypropionic acid (3-HP)";
+  OPA is "3-Oxopropanoic acid (OPA)";
+  MA is "Malonic acid (MA)";
+  AAc is "Acetic acid (AAc)";
+  OXA is "Oxalic acid (OXA)";
+  D is "Other by-products (D)";
+  yO2 is "O2 fraction (dimensionless, 1 at t = 0)";
+  m_cat is "Catalyst mass of the paper's batch";
+  C0 is "Initial 3-HP concentration";
+  x_O2_ref is "Oxidant reference factor (inferred)";
+  x_per_M is "Mole fraction per molar concentration";
+  X_HP3 is "3-HP, normalized (Fig. 9b)";
+  X_MA is "MA, normalized (Fig. 9b)";
+  X_AAc is "AAc, normalized (Fig. 9b)";
+  X_OXA is "OXA, normalized (Fig. 9b)";
+  X_D is "Others, normalized (Fig. 9b)";
+  x_OPA is "OPA mole fraction (Fig. S12b inset)";
+  R1 is "3-HP oxidation to OPA";
+  R2 is "OPA oxidation to MA";
+  R3 is "MA decarboxylation to AAc";
+  R4 is "MA oxidation to OXA";
+  R5 is "3-HP degradation to others";
+  R6 is "MA degradation to others";
+
+  // Notes:
+  model notes ```
+O2 model of the article:
+**Selective oxidation of 3-hydroxypropionic acid to malonic acid over Pd/C: Mechanistic and kinetic study.**
+Kim S.Y., Chavarrio J.E., Install J., Huber G.W. *Appl. Catal. B: Environ. Energy* 386 (2026) 126403.
+DOI: [10.1016/j.apcatb.2026.126403](https://doi.org/10.1016/j.apcatb.2026.126403)
+
+Conditions: 60 mM 3-HP, 0.2 g 10 % Pd/C, NaOH/3-HP = 1:1, 3 bar O2, 50 C (Fig. 9b).
+The catalyst mass m_cat is the mass of the paper's batch (0.2 g), not a mass per litre.
+Rate constants: Table 3 (O2 column) as printed. Rate expressions: SI Fig. S2 with every
+order equal to 1 and unit activity coefficients. Six first-order irreversible steps;
+the reaction orders and equilibrium constants of SI Table S4 are not used.
+
+Inferred from the authors' data deposit (Dryad, DOI 10.5061/dryad.jsxksn0q4), not
+stated in the paper: the oxidant reference factor x_O2_ref = 15*0.000339 on
+reactions 1, 2 and 4, which takes the place of the O2 activity y*P/f0 of SI Fig. S2,
+and the use of the depleting O2 state yO2.
+```
+end
+
+kim2026_o2 is "Kim2026_PdC_3HP_Oxidation_O2"

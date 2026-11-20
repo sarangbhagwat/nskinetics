@@ -1,0 +1,896 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created by libAntimony version v3.3.0 with libSBML version 5.21.2. -->
+<sbml xmlns="http://www.sbml.org/sbml/level3/version2/core" level="3" version="2">
+  <model metaid="kim2026_o2_simplified_reversible" id="kim2026_o2_simplified_reversible" name="Kim2026_PdC_3HP_Oxidation_O2_simplified_reversible" substanceUnits="mole" timeUnits="time_unit" volumeUnits="litre">
+    <notes>
+      <body xmlns="http://www.w3.org/1999/xhtml">
+        <p>Simplified reversible five-reaction O2 model of the authors&apos; heat-map script (Fig. 11) for the article: <strong>Selective oxidation of 3-hydroxypropionic acid to malonic acid over Pd/C: Mechanistic and kinetic study.</strong> Kim S.Y., Chavarrio J.E., Install J., Huber G.W. <i>Appl. Catal. B: Environ. Energy</i> 386 (2026) 126403. DOI: <a href="https://doi.org/10.1016/j.apcatb.2026.126403">10.1016/j.apcatb.2026.126403</a></p>
+        <p>Transcribed from the authors&apos; script APCATB_D_25_08770_heatmap.m (Dryad, DOI 10.5061/dryad.jsxksn0q4). This is not the Table 3 / Fig. 9b model: there is no OPA intermediate and every step has a reverse term. The model is not written out in the paper. </p>
+        <p>Default state: 50 C, with the heat-map initial condition (unit mole fractions; x_per_M = 1/C0). The values the script&apos;s run fitted were not deposited. Every constant the deposit gives is used as given; where it gives one twice, the full-precision value is used. The rate constants k_1, k_2 and k_5 come from the deposited Arrhenius table (11-4_Arrhenius.csv, not the four-decimal values of k0), k_4 and the equilibrium constants from the vector k0 written in the script, and k_3 (0.0000 in k0) is a least-squares fit to the 50 C data table of the script with the other nine constants held. The Arrhenius factors are applied to the rate constants and to the equilibrium constants, as in the script. The constants were fitted at 50 C only: at 25, 75 and 100 C the model does not describe the paper&apos;s experiments (Fig. 10a-c; pooled R2 0.56 to 0.76). Do not use P to explore pressure: the model disagrees with the paper&apos;s screening experiments (Fig. 3a) in trend above 3 bar (they fall, the model rises) and in level (87.7 against 21.7 % conversion at 1 bar); NOTES.md says why the screening runs and the time courses are not on the same footing. </p>
+      </body>
+    </notes>
+    <listOfUnitDefinitions>
+      <unitDefinition id="mol_per_l" name="mole per liter">
+        <listOfUnits>
+          <unit kind="mole" exponent="1" scale="0" multiplier="1"/>
+          <unit kind="litre" exponent="-1" scale="0" multiplier="1"/>
+        </listOfUnits>
+      </unitDefinition>
+      <unitDefinition id="j_per_mol_per_k" name="joule per mole per kelvin">
+        <listOfUnits>
+          <unit kind="joule" exponent="1" scale="0" multiplier="1"/>
+          <unit kind="mole" exponent="-1" scale="0" multiplier="1"/>
+          <unit kind="kelvin" exponent="-1" scale="0" multiplier="1"/>
+        </listOfUnits>
+      </unitDefinition>
+      <unitDefinition id="bar">
+        <listOfUnits>
+          <unit kind="pascal" exponent="1" scale="5" multiplier="1"/>
+        </listOfUnits>
+      </unitDefinition>
+      <unitDefinition id="l_per_mol" name="liter per mole">
+        <listOfUnits>
+          <unit kind="litre" exponent="1" scale="0" multiplier="1"/>
+          <unit kind="mole" exponent="-1" scale="0" multiplier="1"/>
+        </listOfUnits>
+      </unitDefinition>
+      <unitDefinition id="per_min" name="per minute">
+        <listOfUnits>
+          <unit kind="second" exponent="-1" scale="1" multiplier="6"/>
+        </listOfUnits>
+      </unitDefinition>
+      <unitDefinition id="j_per_mol" name="joule per mole">
+        <listOfUnits>
+          <unit kind="joule" exponent="1" scale="0" multiplier="1"/>
+          <unit kind="mole" exponent="-1" scale="0" multiplier="1"/>
+        </listOfUnits>
+      </unitDefinition>
+      <unitDefinition id="time_unit" name="minutes">
+        <listOfUnits>
+          <unit kind="second" exponent="1" scale="1" multiplier="6"/>
+        </listOfUnits>
+      </unitDefinition>
+    </listOfUnitDefinitions>
+    <listOfCompartments>
+      <compartment id="env" name="liquid phase" spatialDimensions="3" size="1" constant="false"/>
+    </listOfCompartments>
+    <listOfSpecies>
+      <species id="HP3" name="3-Hydroxypropionic acid (3-HP)" compartment="env" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="MA" name="Malonic acid (MA)" compartment="env" initialConcentration="0" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="AAc" name="Acetic acid (AAc)" compartment="env" initialConcentration="0" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="OXA" name="Oxalic acid (OXA)" compartment="env" initialConcentration="0" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="D" name="Other by-products (D)" compartment="env" initialConcentration="0" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+    </listOfSpecies>
+    <listOfParameters>
+      <parameter id="k_1" units="per_min" constant="false"/>
+      <parameter id="k_1_ref" value="0.002139999" units="per_min" constant="true"/>
+      <parameter id="Ea_1" value="59781.2" units="j_per_mol" constant="true"/>
+      <parameter id="R_gas" value="8.314" units="j_per_mol_per_k" constant="true"/>
+      <parameter id="T" name="Temperature" value="323.15" units="kelvin" constant="true"/>
+      <parameter id="T_ref" name="Reference temperature" value="323.15" units="kelvin" constant="true"/>
+      <parameter id="k_2" units="per_min" constant="false"/>
+      <parameter id="k_2_ref" value="5.199984e-05" units="per_min" constant="true"/>
+      <parameter id="Ea_2" value="91594.6" units="j_per_mol" constant="true"/>
+      <parameter id="k_3" units="per_min" constant="false"/>
+      <parameter id="k_3_ref" value="1.4215e-05" units="per_min" constant="true"/>
+      <parameter id="Ea_3" value="10000" units="j_per_mol" constant="true"/>
+      <parameter id="k_4" units="per_min" constant="false"/>
+      <parameter id="k_4_ref" value="0.0023" units="per_min" constant="true"/>
+      <parameter id="Ea_4" value="51788.73" units="j_per_mol" constant="true"/>
+      <parameter id="k_5" units="per_min" constant="false"/>
+      <parameter id="k_5_ref" value="0.001062501" units="per_min" constant="true"/>
+      <parameter id="Ea_5" value="59549.8" units="j_per_mol" constant="true"/>
+      <parameter id="K_6" units="dimensionless" constant="false"/>
+      <parameter id="K_6_ref" value="4.784" units="dimensionless" constant="true"/>
+      <parameter id="K_7" units="dimensionless" constant="false"/>
+      <parameter id="K_7_ref" value="0.5918" units="dimensionless" constant="true"/>
+      <parameter id="K_8" units="dimensionless" constant="false"/>
+      <parameter id="K_8_ref" value="3.5116" units="dimensionless" constant="true"/>
+      <parameter id="K_9" units="dimensionless" constant="false"/>
+      <parameter id="K_9_ref" value="81.687" units="dimensionless" constant="true"/>
+      <parameter id="K_10" units="dimensionless" constant="false"/>
+      <parameter id="K_10_ref" value="52.0472" units="dimensionless" constant="true"/>
+      <parameter id="PF" name="Pressure factor P/f0" units="dimensionless" constant="false"/>
+      <parameter id="P" name="Pressure (script)" value="3.5" units="bar" constant="true"/>
+      <parameter id="f0" name="Reference fugacity (script)" value="1.01325" units="bar" constant="true"/>
+      <parameter id="x_HP3" units="dimensionless" constant="false"/>
+      <parameter id="x_per_M" name="Mole fraction per molar concentration" value="16.6666666666667" units="l_per_mol" constant="true"/>
+      <parameter id="x_MA" units="dimensionless" constant="false"/>
+      <parameter id="x_AAc" units="dimensionless" constant="false"/>
+      <parameter id="x_OXA" units="dimensionless" constant="false"/>
+      <parameter id="x_D" units="dimensionless" constant="false"/>
+      <parameter id="x_H2O" name="Water mole fraction (by difference)" units="dimensionless" constant="false"/>
+      <parameter id="yO2" name="O2 gas fraction (script units)" units="dimensionless" constant="false"/>
+      <parameter id="yH2" name="H2 gas fraction (script units)" value="0" units="dimensionless" constant="false"/>
+      <parameter id="yCO2" name="CO2 gas fraction (script units)" value="0" units="dimensionless" constant="false"/>
+      <parameter id="r_1" units="per_min" constant="false"/>
+      <parameter id="r_2" units="per_min" constant="false"/>
+      <parameter id="r_3" units="per_min" constant="false"/>
+      <parameter id="r_4" units="per_min" constant="false"/>
+      <parameter id="r_5" units="per_min" constant="false"/>
+      <parameter id="X_HP3" name="3-HP, water-free liquid fraction" units="dimensionless" constant="false"/>
+      <parameter id="X_MA" name="MA, water-free liquid fraction" units="dimensionless" constant="false"/>
+      <parameter id="X_AAc" name="AAc, water-free liquid fraction" units="dimensionless" constant="false"/>
+      <parameter id="X_OXA" name="OXA, water-free liquid fraction" units="dimensionless" constant="false"/>
+      <parameter id="X_D" name="Others, water-free liquid fraction" units="dimensionless" constant="false"/>
+      <parameter id="fig11a_selectivity" name="MA Selectivity as mapped in Fig. 11a" units="dimensionless" constant="false"/>
+      <parameter id="fig11b_yield" name="MA Yield as mapped in Fig. 11b" units="dimensionless" constant="false"/>
+      <parameter id="C0" name="Initial 3-HP concentration" value="0.06" units="mol_per_l" constant="true"/>
+    </listOfParameters>
+    <listOfInitialAssignments>
+      <initialAssignment symbol="HP3">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <ci> C0 </ci>
+        </math>
+      </initialAssignment>
+    </listOfInitialAssignments>
+    <listOfRules>
+      <assignmentRule variable="k_1">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <times/>
+            <ci> k_1_ref </ci>
+            <apply>
+              <exp/>
+              <apply>
+                <times/>
+                <apply>
+                  <minus/>
+                  <apply>
+                    <divide/>
+                    <ci> Ea_1 </ci>
+                    <ci> R_gas </ci>
+                  </apply>
+                </apply>
+                <apply>
+                  <minus/>
+                  <apply>
+                    <divide/>
+                    <cn type="integer"> 1 </cn>
+                    <ci> T </ci>
+                  </apply>
+                  <apply>
+                    <divide/>
+                    <cn type="integer"> 1 </cn>
+                    <ci> T_ref </ci>
+                  </apply>
+                </apply>
+              </apply>
+            </apply>
+          </apply>
+        </math>
+      </assignmentRule>
+      <assignmentRule variable="k_2">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <times/>
+            <ci> k_2_ref </ci>
+            <apply>
+              <exp/>
+              <apply>
+                <times/>
+                <apply>
+                  <minus/>
+                  <apply>
+                    <divide/>
+                    <ci> Ea_2 </ci>
+                    <ci> R_gas </ci>
+                  </apply>
+                </apply>
+                <apply>
+                  <minus/>
+                  <apply>
+                    <divide/>
+                    <cn type="integer"> 1 </cn>
+                    <ci> T </ci>
+                  </apply>
+                  <apply>
+                    <divide/>
+                    <cn type="integer"> 1 </cn>
+                    <ci> T_ref </ci>
+                  </apply>
+                </apply>
+              </apply>
+            </apply>
+          </apply>
+        </math>
+      </assignmentRule>
+      <assignmentRule variable="k_3">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <times/>
+            <ci> k_3_ref </ci>
+            <apply>
+              <exp/>
+              <apply>
+                <times/>
+                <apply>
+                  <minus/>
+                  <apply>
+                    <divide/>
+                    <ci> Ea_3 </ci>
+                    <ci> R_gas </ci>
+                  </apply>
+                </apply>
+                <apply>
+                  <minus/>
+                  <apply>
+                    <divide/>
+                    <cn type="integer"> 1 </cn>
+                    <ci> T </ci>
+                  </apply>
+                  <apply>
+                    <divide/>
+                    <cn type="integer"> 1 </cn>
+                    <ci> T_ref </ci>
+                  </apply>
+                </apply>
+              </apply>
+            </apply>
+          </apply>
+        </math>
+      </assignmentRule>
+      <assignmentRule variable="k_4">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <times/>
+            <ci> k_4_ref </ci>
+            <apply>
+              <exp/>
+              <apply>
+                <times/>
+                <apply>
+                  <minus/>
+                  <apply>
+                    <divide/>
+                    <ci> Ea_4 </ci>
+                    <ci> R_gas </ci>
+                  </apply>
+                </apply>
+                <apply>
+                  <minus/>
+                  <apply>
+                    <divide/>
+                    <cn type="integer"> 1 </cn>
+                    <ci> T </ci>
+                  </apply>
+                  <apply>
+                    <divide/>
+                    <cn type="integer"> 1 </cn>
+                    <ci> T_ref </ci>
+                  </apply>
+                </apply>
+              </apply>
+            </apply>
+          </apply>
+        </math>
+      </assignmentRule>
+      <assignmentRule variable="k_5">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <times/>
+            <ci> k_5_ref </ci>
+            <apply>
+              <exp/>
+              <apply>
+                <times/>
+                <apply>
+                  <minus/>
+                  <apply>
+                    <divide/>
+                    <ci> Ea_5 </ci>
+                    <ci> R_gas </ci>
+                  </apply>
+                </apply>
+                <apply>
+                  <minus/>
+                  <apply>
+                    <divide/>
+                    <cn type="integer"> 1 </cn>
+                    <ci> T </ci>
+                  </apply>
+                  <apply>
+                    <divide/>
+                    <cn type="integer"> 1 </cn>
+                    <ci> T_ref </ci>
+                  </apply>
+                </apply>
+              </apply>
+            </apply>
+          </apply>
+        </math>
+      </assignmentRule>
+      <assignmentRule variable="K_6">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <times/>
+            <ci> K_6_ref </ci>
+            <apply>
+              <exp/>
+              <apply>
+                <times/>
+                <apply>
+                  <minus/>
+                  <apply>
+                    <divide/>
+                    <ci> Ea_1 </ci>
+                    <ci> R_gas </ci>
+                  </apply>
+                </apply>
+                <apply>
+                  <minus/>
+                  <apply>
+                    <divide/>
+                    <cn type="integer"> 1 </cn>
+                    <ci> T </ci>
+                  </apply>
+                  <apply>
+                    <divide/>
+                    <cn type="integer"> 1 </cn>
+                    <ci> T_ref </ci>
+                  </apply>
+                </apply>
+              </apply>
+            </apply>
+          </apply>
+        </math>
+      </assignmentRule>
+      <assignmentRule variable="K_7">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <times/>
+            <ci> K_7_ref </ci>
+            <apply>
+              <exp/>
+              <apply>
+                <times/>
+                <apply>
+                  <minus/>
+                  <apply>
+                    <divide/>
+                    <ci> Ea_2 </ci>
+                    <ci> R_gas </ci>
+                  </apply>
+                </apply>
+                <apply>
+                  <minus/>
+                  <apply>
+                    <divide/>
+                    <cn type="integer"> 1 </cn>
+                    <ci> T </ci>
+                  </apply>
+                  <apply>
+                    <divide/>
+                    <cn type="integer"> 1 </cn>
+                    <ci> T_ref </ci>
+                  </apply>
+                </apply>
+              </apply>
+            </apply>
+          </apply>
+        </math>
+      </assignmentRule>
+      <assignmentRule variable="K_8">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <times/>
+            <ci> K_8_ref </ci>
+            <apply>
+              <exp/>
+              <apply>
+                <times/>
+                <apply>
+                  <minus/>
+                  <apply>
+                    <divide/>
+                    <ci> Ea_3 </ci>
+                    <ci> R_gas </ci>
+                  </apply>
+                </apply>
+                <apply>
+                  <minus/>
+                  <apply>
+                    <divide/>
+                    <cn type="integer"> 1 </cn>
+                    <ci> T </ci>
+                  </apply>
+                  <apply>
+                    <divide/>
+                    <cn type="integer"> 1 </cn>
+                    <ci> T_ref </ci>
+                  </apply>
+                </apply>
+              </apply>
+            </apply>
+          </apply>
+        </math>
+      </assignmentRule>
+      <assignmentRule variable="K_9">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <times/>
+            <ci> K_9_ref </ci>
+            <apply>
+              <exp/>
+              <apply>
+                <times/>
+                <apply>
+                  <minus/>
+                  <apply>
+                    <divide/>
+                    <ci> Ea_4 </ci>
+                    <ci> R_gas </ci>
+                  </apply>
+                </apply>
+                <apply>
+                  <minus/>
+                  <apply>
+                    <divide/>
+                    <cn type="integer"> 1 </cn>
+                    <ci> T </ci>
+                  </apply>
+                  <apply>
+                    <divide/>
+                    <cn type="integer"> 1 </cn>
+                    <ci> T_ref </ci>
+                  </apply>
+                </apply>
+              </apply>
+            </apply>
+          </apply>
+        </math>
+      </assignmentRule>
+      <assignmentRule variable="K_10">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <times/>
+            <ci> K_10_ref </ci>
+            <apply>
+              <exp/>
+              <apply>
+                <times/>
+                <apply>
+                  <minus/>
+                  <apply>
+                    <divide/>
+                    <ci> Ea_5 </ci>
+                    <ci> R_gas </ci>
+                  </apply>
+                </apply>
+                <apply>
+                  <minus/>
+                  <apply>
+                    <divide/>
+                    <cn type="integer"> 1 </cn>
+                    <ci> T </ci>
+                  </apply>
+                  <apply>
+                    <divide/>
+                    <cn type="integer"> 1 </cn>
+                    <ci> T_ref </ci>
+                  </apply>
+                </apply>
+              </apply>
+            </apply>
+          </apply>
+        </math>
+      </assignmentRule>
+      <assignmentRule variable="PF">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <divide/>
+            <ci> P </ci>
+            <ci> f0 </ci>
+          </apply>
+        </math>
+      </assignmentRule>
+      <assignmentRule variable="x_HP3">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <times/>
+            <ci> x_per_M </ci>
+            <ci> HP3 </ci>
+          </apply>
+        </math>
+      </assignmentRule>
+      <assignmentRule variable="x_MA">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <times/>
+            <ci> x_per_M </ci>
+            <ci> MA </ci>
+          </apply>
+        </math>
+      </assignmentRule>
+      <assignmentRule variable="x_AAc">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <times/>
+            <ci> x_per_M </ci>
+            <ci> AAc </ci>
+          </apply>
+        </math>
+      </assignmentRule>
+      <assignmentRule variable="x_OXA">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <times/>
+            <ci> x_per_M </ci>
+            <ci> OXA </ci>
+          </apply>
+        </math>
+      </assignmentRule>
+      <assignmentRule variable="x_D">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <times/>
+            <ci> x_per_M </ci>
+            <ci> D </ci>
+          </apply>
+        </math>
+      </assignmentRule>
+      <assignmentRule variable="x_H2O">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <minus/>
+            <cn type="integer"> 1 </cn>
+            <apply>
+              <plus/>
+              <ci> x_HP3 </ci>
+              <ci> x_MA </ci>
+              <ci> x_AAc </ci>
+              <ci> x_OXA </ci>
+              <ci> x_D </ci>
+            </apply>
+          </apply>
+        </math>
+      </assignmentRule>
+      <assignmentRule variable="yO2">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <minus/>
+            <apply>
+              <minus/>
+              <cn type="integer"> 1 </cn>
+              <ci> yH2 </ci>
+            </apply>
+            <ci> yCO2 </ci>
+          </apply>
+        </math>
+      </assignmentRule>
+      <rateRule variable="yH2">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <ci> r_3 </ci>
+        </math>
+      </rateRule>
+      <rateRule variable="yCO2">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <plus/>
+            <ci> r_2 </ci>
+            <ci> r_3 </ci>
+          </apply>
+        </math>
+      </rateRule>
+      <assignmentRule variable="r_1">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <times/>
+            <ci> k_1 </ci>
+            <apply>
+              <minus/>
+              <apply>
+                <times/>
+                <ci> x_HP3 </ci>
+                <ci> yO2 </ci>
+                <ci> PF </ci>
+              </apply>
+              <apply>
+                <divide/>
+                <apply>
+                  <times/>
+                  <ci> x_MA </ci>
+                  <ci> x_H2O </ci>
+                </apply>
+                <ci> K_6 </ci>
+              </apply>
+            </apply>
+          </apply>
+        </math>
+      </assignmentRule>
+      <assignmentRule variable="r_2">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <times/>
+            <ci> k_2 </ci>
+            <apply>
+              <minus/>
+              <ci> x_MA </ci>
+              <apply>
+                <divide/>
+                <apply>
+                  <times/>
+                  <ci> x_AAc </ci>
+                  <ci> yCO2 </ci>
+                  <ci> PF </ci>
+                </apply>
+                <ci> K_7 </ci>
+              </apply>
+            </apply>
+          </apply>
+        </math>
+      </assignmentRule>
+      <assignmentRule variable="r_3">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <times/>
+            <ci> k_3 </ci>
+            <apply>
+              <minus/>
+              <apply>
+                <times/>
+                <ci> x_MA </ci>
+                <ci> yO2 </ci>
+                <ci> PF </ci>
+              </apply>
+              <apply>
+                <divide/>
+                <apply>
+                  <times/>
+                  <ci> x_OXA </ci>
+                  <ci> yH2 </ci>
+                  <ci> yCO2 </ci>
+                  <apply>
+                    <power/>
+                    <ci> PF </ci>
+                    <cn type="integer"> 2 </cn>
+                  </apply>
+                </apply>
+                <ci> K_8 </ci>
+              </apply>
+            </apply>
+          </apply>
+        </math>
+      </assignmentRule>
+      <assignmentRule variable="r_4">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <times/>
+            <ci> k_4 </ci>
+            <apply>
+              <minus/>
+              <ci> x_HP3 </ci>
+              <apply>
+                <divide/>
+                <ci> x_D </ci>
+                <ci> K_9 </ci>
+              </apply>
+            </apply>
+          </apply>
+        </math>
+      </assignmentRule>
+      <assignmentRule variable="r_5">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <times/>
+            <ci> k_5 </ci>
+            <apply>
+              <minus/>
+              <ci> x_MA </ci>
+              <apply>
+                <divide/>
+                <ci> x_D </ci>
+                <ci> K_10 </ci>
+              </apply>
+            </apply>
+          </apply>
+        </math>
+      </assignmentRule>
+      <assignmentRule variable="X_HP3">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <divide/>
+            <ci> HP3 </ci>
+            <apply>
+              <plus/>
+              <ci> HP3 </ci>
+              <ci> MA </ci>
+              <ci> AAc </ci>
+              <ci> OXA </ci>
+              <ci> D </ci>
+            </apply>
+          </apply>
+        </math>
+      </assignmentRule>
+      <assignmentRule variable="X_MA">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <divide/>
+            <ci> MA </ci>
+            <apply>
+              <plus/>
+              <ci> HP3 </ci>
+              <ci> MA </ci>
+              <ci> AAc </ci>
+              <ci> OXA </ci>
+              <ci> D </ci>
+            </apply>
+          </apply>
+        </math>
+      </assignmentRule>
+      <assignmentRule variable="X_AAc">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <divide/>
+            <ci> AAc </ci>
+            <apply>
+              <plus/>
+              <ci> HP3 </ci>
+              <ci> MA </ci>
+              <ci> AAc </ci>
+              <ci> OXA </ci>
+              <ci> D </ci>
+            </apply>
+          </apply>
+        </math>
+      </assignmentRule>
+      <assignmentRule variable="X_OXA">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <divide/>
+            <ci> OXA </ci>
+            <apply>
+              <plus/>
+              <ci> HP3 </ci>
+              <ci> MA </ci>
+              <ci> AAc </ci>
+              <ci> OXA </ci>
+              <ci> D </ci>
+            </apply>
+          </apply>
+        </math>
+      </assignmentRule>
+      <assignmentRule variable="X_D">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <divide/>
+            <ci> D </ci>
+            <apply>
+              <plus/>
+              <ci> HP3 </ci>
+              <ci> MA </ci>
+              <ci> AAc </ci>
+              <ci> OXA </ci>
+              <ci> D </ci>
+            </apply>
+          </apply>
+        </math>
+      </assignmentRule>
+      <assignmentRule variable="fig11a_selectivity">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <ci> X_MA </ci>
+        </math>
+      </assignmentRule>
+      <assignmentRule variable="fig11b_yield">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <times/>
+            <apply>
+              <minus/>
+              <cn type="integer"> 1 </cn>
+              <ci> X_HP3 </ci>
+            </apply>
+            <ci> X_MA </ci>
+          </apply>
+        </math>
+      </assignmentRule>
+    </listOfRules>
+    <listOfReactions>
+      <reaction id="R1" name="3-HP oxidation to MA" reversible="true">
+        <listOfReactants>
+          <speciesReference species="HP3" stoichiometry="1" constant="true"/>
+        </listOfReactants>
+        <listOfProducts>
+          <speciesReference species="MA" stoichiometry="1" constant="true"/>
+        </listOfProducts>
+        <kineticLaw>
+          <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+              <times/>
+              <apply>
+                <divide/>
+                <ci> r_1 </ci>
+                <ci> x_per_M </ci>
+              </apply>
+              <ci> env </ci>
+            </apply>
+          </math>
+        </kineticLaw>
+      </reaction>
+      <reaction id="R2" name="MA decarboxylation to AAc" reversible="true">
+        <listOfReactants>
+          <speciesReference species="MA" stoichiometry="1" constant="true"/>
+        </listOfReactants>
+        <listOfProducts>
+          <speciesReference species="AAc" stoichiometry="1" constant="true"/>
+        </listOfProducts>
+        <kineticLaw>
+          <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+              <times/>
+              <apply>
+                <divide/>
+                <ci> r_2 </ci>
+                <ci> x_per_M </ci>
+              </apply>
+              <ci> env </ci>
+            </apply>
+          </math>
+        </kineticLaw>
+      </reaction>
+      <reaction id="R3" name="MA oxidation to OXA" reversible="true">
+        <listOfReactants>
+          <speciesReference species="MA" stoichiometry="1" constant="true"/>
+        </listOfReactants>
+        <listOfProducts>
+          <speciesReference species="OXA" stoichiometry="1" constant="true"/>
+        </listOfProducts>
+        <kineticLaw>
+          <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+              <times/>
+              <apply>
+                <divide/>
+                <ci> r_3 </ci>
+                <ci> x_per_M </ci>
+              </apply>
+              <ci> env </ci>
+            </apply>
+          </math>
+        </kineticLaw>
+      </reaction>
+      <reaction id="R4" name="3-HP degradation to others" reversible="true">
+        <listOfReactants>
+          <speciesReference species="HP3" stoichiometry="1" constant="true"/>
+        </listOfReactants>
+        <listOfProducts>
+          <speciesReference species="D" stoichiometry="1" constant="true"/>
+        </listOfProducts>
+        <kineticLaw>
+          <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+              <times/>
+              <apply>
+                <divide/>
+                <ci> r_4 </ci>
+                <ci> x_per_M </ci>
+              </apply>
+              <ci> env </ci>
+            </apply>
+          </math>
+        </kineticLaw>
+      </reaction>
+      <reaction id="R5" name="MA degradation to others" reversible="true">
+        <listOfReactants>
+          <speciesReference species="MA" stoichiometry="1" constant="true"/>
+        </listOfReactants>
+        <listOfProducts>
+          <speciesReference species="D" stoichiometry="1" constant="true"/>
+        </listOfProducts>
+        <kineticLaw>
+          <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+              <times/>
+              <apply>
+                <divide/>
+                <ci> r_5 </ci>
+                <ci> x_per_M </ci>
+              </apply>
+              <ci> env </ci>
+            </apply>
+          </math>
+        </kineticLaw>
+      </reaction>
+    </listOfReactions>
+  </model>
+</sbml>

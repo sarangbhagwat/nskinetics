@@ -1,18 +1,37 @@
-Shipped model
-=============
+Shipped models
+==============
+
+This page documents the two model packages under ``nskinetics.models``, each
+a subpackage that holds the Antimony source and the SBML of its models next
+to the Python helpers documented here:
+
+- `S. cerevisiae ethanol/isobutanol model`_
+  (``nskinetics.models.s_cerevisiae_ferm_fb_inhib_mod_ibo``): the fed-batch
+  fermentation model behind :doc:`/tutorial/05_real_model` and the
+  :doc:`isobutanol biorefinery demonstration </case_studies/isobutanol/index>`.
+- `Pd/C oxidation of 3-HP to malonic acid`_
+  (``nskinetics.models.pd_c_3hp_oxidation``): three kinetic models of a
+  published kinetic study and of its data deposit, presented on
+  :doc:`/case_studies/pd_c_3hp_oxidation`.
+
+``import nskinetics`` imports neither package.
+
+*S. cerevisiae* ethanol/isobutanol model
+----------------------------------------
 
 .. currentmodule:: nskinetics.models.s_cerevisiae_ferm_fb_inhib_mod_ibo
 
 The shipped *S. cerevisiae* ethanol/isobutanol model (``te_r``) ships with
 kinetic-only scenario presets, a flux-map layout, and a classification of
 its kinetic parameters that names a parameter change in a few words.
+Importing the subpackage builds and configures the model.
 
-Every name documented on this page is re-exported from the subpackage, so
+Every name documented in this section is re-exported from the subpackage, so
 ``from nskinetics.models.s_cerevisiae_ferm_fb_inhib_mod_ibo import
 describe_parameter_change`` works without naming the defining submodule.
 
 Scenarios and flux map
-----------------------
+~~~~~~~~~~~~~~~~~~~~~~
 
 The shipped model carries a ready-made layout and a one-call end-to-end
 helper. ``FLUX_MAP_SPEC.reactions`` is the reaction list to hand to
@@ -56,7 +75,7 @@ Ehrlich branch switched on -- not the full scenario-B configuration of the
 .. autofunction:: apply_scenario_B
 
 Parameter categories
---------------------
+~~~~~~~~~~~~~~~~~~~~
 
 .. currentmodule:: nskinetics.models.s_cerevisiae_ferm_fb_inhib_mod_ibo.parameter_categories
 
@@ -135,3 +154,243 @@ is visible in ``V406.nsk_results_df``.
 .. autofunction:: describe_parameter_change
 
 .. autofunction:: categorize
+
+Pd/C oxidation of 3-HP to malonic acid
+--------------------------------------
+
+.. currentmodule:: nskinetics.models.pd_c_3hp_oxidation
+
+``nskinetics.models.pd_c_3hp_oxidation`` holds three kinetic models of the
+selective oxidation of 3-hydroxypropionic acid (3-HP) to malonic acid (MA)
+over 10 % Pd/C, after S. Y. Kim, J. E. Chavarrio, J. Install and G. W. Huber,
+*Appl. Catal. B: Environ. Energy* 386 (2026) 126403: the paper's H2O2 and O2
+models (50 °C) and the model of the authors' deposited heat-map script,
+called here the simplified reversible model. With them come the authors'
+deposited data, curves digitized from the published figures, the fit that
+defines one constant of the third model, and the functions that draw the
+paper's Figs. 9 and 11 and SI Fig. S12 from the models.
+:doc:`/case_studies/pd_c_3hp_oxidation` presents the models, the figures,
+how to change the operating conditions, and what does not match the paper;
+``NOTES.md`` in the package folder is the full record.
+
+Unlike the *S. cerevisiae* package, importing this subpackage loads no model
+and runs no simulation: each loader builds a new
+:class:`~nskinetics.KineticModel` when called (time in min, concentrations
+in M). Temperatures are in K where an argument is named ``T`` and in
+degrees Celsius where its name ends in ``_C``. It needs no optional
+dependencies. Every name documented in this section except the figure
+functions is re-exported from the subpackage, so
+``from nskinetics.models.pd_c_3hp_oxidation import load_o2_model`` works; the
+figure module is imported explicitly
+(``from nskinetics.models.pd_c_3hp_oxidation import figures``).
+
+Loaders
+~~~~~~~
+
+Each of the three models is an Antimony file with a generated SBML file
+next to it; the module attributes ``h2o2_antimony_filename``,
+``o2_antimony_filename`` and ``o2_simplified_reversible_antimony_filename``
+hold the file names. What a
+loader selects (temperature, constant set, initial condition) is part of the
+model it builds and survives ``reset()`` and ``compile_events()``; each
+docstring names the parameters meant to be changed with ``set_value``.
+
+.. currentmodule:: nskinetics.models.pd_c_3hp_oxidation.pd_c_3hp_oxidation
+
+.. autofunction:: load_h2o2_model
+
+.. autofunction:: load_o2_model
+
+.. autofunction:: load_o2_simplified_reversible_model
+
+.. autofunction:: simulate_at_times
+
+Species, plotted quantities and constant sets
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. autodata:: SPECIES
+
+.. autodata:: NORMALIZED
+
+.. autodata:: H2O2_NODE_PARAMETER_SETS
+   :annotation:
+
+.. autodata:: O2_NODE_PARAMETER_SETS
+   :annotation:
+
+.. autodata:: SIMPLIFIED_REVERSIBLE_PARAMETER_SETS
+   :annotation:
+
+.. autodata:: SIMPLIFIED_REVERSIBLE_INITIAL_CONDITIONS
+
+.. autodata:: TABLE_S4
+   :annotation:
+
+Reference data
+~~~~~~~~~~~~~~
+
+.. currentmodule:: nskinetics.models.pd_c_3hp_oxidation.reference
+
+The readers return the reference data shipped in ``reference_data/`` as
+tidy tables whose columns carry the models' selection names. The deposited
+files (Dryad, https://doi.org/10.5061/dryad.jsxksn0q4, CC0) are verbatim
+copies; the readers undo their known quirks. Curves marked *digitized* were
+read from the published figures, the 50 °C data table of the authors'
+heat-map script is transcribed from that script, and
+``reference_data/README.md`` gives the provenance of every file.
+``reference_data_dir`` is the path of the folder.
+
+.. autofunction:: read_fig9a_h2o2
+
+.. autofunction:: read_fig9b_o2
+
+.. autofunction:: read_figS12a_h2o2_inset_digitized
+
+.. autofunction:: read_figS12b_opa_inset_digitized
+
+.. autofunction:: read_fig10_o2
+
+.. autofunction:: read_fig10d_arrhenius
+
+.. autofunction:: read_heatmap_script_data
+
+.. autofunction:: read_fig11a_selectivity_digitized
+
+.. autofunction:: read_fig11b_yield_digitized
+
+Heat maps (Fig. 11)
+~~~~~~~~~~~~~~~~~~~
+
+.. currentmodule:: nskinetics.models.pd_c_3hp_oxidation.heat_maps
+
+Temperature--time maps of the two quantities of Fig. 11, MA "selectivity"
+(``X_MA``) and MA "yield" (``(1 - X_HP3)*X_MA``), and the measures that
+compare a computed map with the contour lines digitized from the published
+figure.
+
+.. autodata:: FIG11_T_C
+   :annotation:
+
+.. autodata:: FIG11_TIMES
+   :annotation:
+
+.. autodata:: FIG11_TIME_OFFSET
+
+.. autodata:: FIG11_LEVELS
+
+.. autodata:: FIG11_MIN_PER_PX
+
+.. autodata:: FIG11_C_PER_PX
+
+.. autofunction:: simulate_heat_maps
+
+.. autofunction:: fig11_heat_maps
+
+.. autofunction:: heat_map_maximum
+
+.. autofunction:: heat_map_ridge
+
+.. autofunction:: contour_offsets
+
+.. autofunction:: contour_shifts
+
+Constants of the simplified reversible model: the fit
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. currentmodule:: nskinetics.models.pd_c_3hp_oxidation.fitting
+
+The least-squares fit to the 50 °C data of the authors' heat-map script
+that defines ``k_3`` of the simplified reversible model, the one constant
+for which the deposit gives no value, with the other nine held at the
+values the deposit gives.
+
+.. autofunction:: fit_simplified_reversible_constants
+
+Temperature series and Arrhenius plot (Fig. 10)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. currentmodule:: nskinetics.models.pd_c_3hp_oxidation.temperature_series
+
+The measures that compare a model with a table of experimental points, such
+as those of Fig. 10a--c, and the points and straight lines of the Arrhenius
+plot (Fig. 10d). The model curves of Fig. 10a--c are not reproduced by this
+package.
+
+.. autodata:: FIG10_TEMPERATURES_C
+
+.. autodata:: FIG10D_REGRESSION_TEMPERATURES_C
+
+.. autodata:: TEXT_ACTIVATION_ENERGIES
+
+.. autofunction:: pooled_r2
+
+.. autofunction:: rms_difference
+
+.. autofunction:: fig10d_points
+
+.. autofunction:: fig10d_regression_lines
+
+.. autofunction:: fig10d_text_lines
+
+Emulation of the authors' solver run
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. currentmodule:: nskinetics.models.pd_c_3hp_oxidation.solver_emulation
+
+The model curves the authors deposited for Fig. 9 are solver steps that lie
+up to 2.0e-3 from the converged solutions; they are
+reproduced step for step by the method of MATLAB ``ode23s`` at default
+tolerances (emulated; MATLAB was not run). ``solver_emulation`` repeats
+that solver run with the rates of a shipped model, so that the models can
+be compared with the deposited nodes to the digits the files print. It is
+used for verification only (the package tests and
+:doc:`/case_studies/pd_c_3hp_oxidation`); it is not a general-purpose
+solver.
+
+.. autofunction:: ode23s
+
+.. autofunction:: emulate_authors_run
+
+.. autofunction:: emulate_fig9a
+
+.. autofunction:: emulate_fig9b
+
+.. autofunction:: node_deviations
+
+Figures
+~~~~~~~
+
+.. currentmodule:: nskinetics.models.pd_c_3hp_oxidation.figures
+
+``figures`` draws Fig. 9, SI Fig. S12 and Fig. 11 of the paper from the
+models, and two verification figures. Each ``plot_*`` function returns a
+new matplotlib figure; each ``draw_*`` function draws one panel on an
+existing axes. Run the module as a script to write the figures to a folder
+(``--figures``, ``--formats`` and ``--dpi`` select the figures, the file
+formats and the resolution of the PNG files)::
+
+    python -m nskinetics.models.pd_c_3hp_oxidation.figures OUTPUT_DIR
+
+.. autofunction:: save_figures
+
+.. autofunction:: plot_fig9
+
+.. autofunction:: plot_figS12
+
+.. autofunction:: plot_fig11
+
+.. autofunction:: plot_fig11_verification
+
+.. autofunction:: plot_solver_emulation
+
+.. autofunction:: draw_fig9a
+
+.. autofunction:: draw_fig9b
+
+.. autofunction:: draw_figS12a
+
+.. autofunction:: draw_figS12b
+
+.. autofunction:: draw_fig11a
+
+.. autofunction:: draw_fig11b
