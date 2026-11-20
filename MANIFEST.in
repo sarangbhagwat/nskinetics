@@ -7,6 +7,8 @@ include requirements_isobutanol.txt
 
 # Bundled model files loaded by name at import/run time (antimony + SBML).
 recursive-include nskinetics/models *.txt *.xml
+# Pd/C 3-HP oxidation models: provenance notes and reference data.
+recursive-include nskinetics/models/pd_c_3hp_oxidation *.md *.csv
 
 # Reference data used by the test suite.
 recursive-include nskinetics/tests/data *.txt

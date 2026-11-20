@@ -63,6 +63,12 @@ setup(
         # tutorial loads the shipped SBML .xml). These must be in the wheel so
         # installed (non-editable) copies can find them.
         'nskinetics.models.s_cerevisiae_ferm_fb_inhib_mod_ibo': ['*.txt', '*.xml'],
+        # Pd/C 3-HP oxidation models: Antimony + SBML, the provenance notes,
+        # and the reference data (deposited and digitized CSVs) that the
+        # readers, figures and tests load by name.
+        'nskinetics.models.pd_c_3hp_oxidation': ['*.txt', '*.xml', '*.md',
+                                                 'reference_data/*.csv',
+                                                 'reference_data/*.md'],
         # Reference antimony used by the events tests, plus the isobutanol
         # tests' fixture and the script-style checks their wrappers run in
         # fresh processes (scripts/ has no __init__.py, so it ships as data).
