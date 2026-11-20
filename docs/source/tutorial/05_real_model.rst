@@ -167,7 +167,7 @@ species, so it has no amount/concentration distinction.)
 (``f_O2`` is the model's oxygen-transfer factor — 1 while the vessel's
 ``kLa``-bounded O2 transfer keeps up with the aerobic fluxes' demand, below 1
 while it throttles them; see
-:doc:`the shipped-model API page </API/models>`.)
+:doc:`the shipped-models API page </API/models>`.)
 
 Running the full snippet above end to end prints:
 
@@ -229,7 +229,7 @@ in :doc:`06_process_tea_bridge` is never bound (its aeration stops at 5 g/L
 biomass). Lower ``r.kLa`` to describe a poorly aerated vessel and watch
 ``f_O2`` dip below 1 — in this run nothing happens until ``kLa`` falls
 below about 88 /h (demand 17.5 mmol/L/h versus a cap of 0.2 × ``kLa``);
-:doc:`the shipped-model API page </API/models>` documents the parameters.
+:doc:`the shipped-models API page </API/models>` documents the parameters.
 
 ``[s_IBO]`` stays at exactly ``0.0``. This is not a bug — it is the shipped
 model's own default: the first three rate constants of the
