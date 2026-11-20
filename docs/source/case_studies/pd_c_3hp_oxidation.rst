@@ -44,8 +44,8 @@ model. Its API is documented on :doc:`the shipped-models page </API/models>`.
 
 The paper describes one model per oxidant. Redrawing the model curves of its
 Figs. 9, 10 and 11 took four models, two of which are not in the paper, and
-one factor that is stated in neither the paper nor the deposit. Two things
-follow, and `What does not match the paper, and what is inferred`_ gives the
+one factor that is stated in neither the paper nor the deposit. Two cautions
+apply, and `What does not match the paper, and what is inferred`_ gives the
 details; read it before using a model for anything other than redrawing the
 figures:
 
@@ -57,7 +57,8 @@ figures:
   being reproduced; the others, and the five activation energies, are taken
   from the deposited Arrhenius table and the heat-map script. That agreement
   shows consistency, not that those models are right. The points of Fig. 10d
-  are deposited data, not model output.
+  are deposited data and its lines are regressions through them; neither is
+  computed with a model of this package.
 - Several statements on this page rest on analyses that are not in the
   repository (fits to the deposited curves and to digitized lines). They
   are marked "(not shipped)"; `What is not in the repository`_ lists them.
@@ -167,6 +168,11 @@ model:
       60   0.03389  0.001866 0.01742  3.25e-05 3.064e-05 0.006766
      240  0.006109 0.0003365 0.03374 0.0003618 0.0003411  0.01911
      600 0.0001986 1.094e-05 0.02519  0.001051 0.0009906  0.03256
+
+``km.simulate`` continues from the current state of the model: a second
+call starts where the first one ended, although its time column starts
+again at the start time given. To start a new run, call ``km.reset()``
+first, pass ``reset=True`` to ``simulate``, or use ``simulate_at_times``.
 
 ``simulate_at_times`` resets a model and returns the plotted quantities (or
 any other selection) at exactly the times asked for, for example the
@@ -671,8 +677,11 @@ equations numbered 6), with the reference at 50 °C. At 50 °C it is the
 published model by construction. Three activation energies are those quoted
 in the text (59.8, 91.6 and 59.5 kJ/mol; the first is applied to both R1
 and R2); the other two (51.79 kJ/mol for 3-HP → D and 10 kJ/mol for
-MA → OXA, a round value) appear only in the authors' heat-map script.
-Applying them to this six-reaction model is an NSKinetics addition: the
+MA → OXA, a round value) appear only in the authors' heat-map script. The
+text says that the three it quotes were obtained from the Arrhenius plot of
+Fig. 10d; the lines of that plot give 59.9, 69.0 and 52.1 kJ/mol (see
+`Fig. 10d and the activation energies of the text`_). Applying the five
+values to this six-reaction model is an NSKinetics addition: the
 text describes Fig. 11 this way, but none of the paper's temperature
 results is reproduced with it.
 
@@ -744,7 +753,8 @@ constant sets that reproduce the published curves
      - 0.9996 / 0.008
      - 0.990 / 0.029
      - 0.993 / 0.026
-   * - Time to half conversion of 3-HP, Table 3 at T / per-temperature set
+   * - Time at which the plotted fraction ``X_HP3`` falls to 0.5, Table 3
+       at T / per-temperature set
      - 458 min / not reached
      - 16.0 / 75.0 min
      - 4.2 / 22.0 min
@@ -756,6 +766,13 @@ constant sets that reproduce the published curves
      - 0.023 at 1890 min
      - 0.436 at 180 min
      - 0.568 at 40 min
+
+The pooled R2 and rms are taken over all deposited rows. The published
+panels end at 1440 min; the deposit also has samples at 1740 and 1890 min
+(25 °C) and at 1560 min (100 °C). The text of the paper gives a maximum MA
+yield of 52.6 % at 75 °C, which is not in the deposited data (largest MA
+fraction 0.436, at 180 min); its 56.8 % at 100 °C and 2.3 % after 31.5 h at
+25 °C are.
 
 The model is too fast at all three temperatures. At 25 °C it predicts 0.051
 of the 3-HP left at 1890 min, where 0.876 was measured. At 100 °C the height
@@ -781,29 +798,41 @@ of the MA maximum is about right, but it comes at 13 min instead of 40 min.
    Drawn by ``plot_fig10_table3_o2``. (a–c) The experiments of Fig. 10 with
    the temperature-extended Table 3 O2 model (solid lines) and the
    reversible variant with its per-temperature constant sets (dashed
-   lines); the boxes give the pooled R2 of both, to three decimals. (d) The
+   lines); the boxes give the pooled R2 of both, to three decimals. The
+   time axes of panels a to c end at 1440 min, as do the time axes of
+   the published panels; the samples after that (1740 and 1890 min at
+   25 °C, 1560 min at 100 °C) are not drawn but are counted in R2. (d) The
    points of Fig. 10d with the published regression lines (dashed) and the
    lines that the activation energies of the text give through the 50 °C
-   points (solid).
+   points (solid). The O2 model has these activation energies, so each
+   solid line is the plotted 50 °C constant multiplied by the Arrhenius
+   factor of the model. Whether the solid lines are the model's own
+   constants depends on the rate law behind the plotted constants, which
+   is not stated (see `Fig. 10d and the activation energies of the text`_).
 
-**Why.** The 50 °C constant of 3-HP conversion lies well off the Arrhenius
-regression through the other temperatures. The measured 3-HP conversion at
-75 °C is no faster than at 50 °C (half converted between 60 and 90 min at
-both), whereas the Arrhenius factor of the model from 50 to 75 °C is 4.9 for
-R1 and R2. The same shows in Fig. 10d, where the 50 °C point of the 3-HP →
-MA constant lies a factor of 4.3 above the regression line through the other
+**Why.** The measured 3-HP conversion at 75 °C is no faster than at 50 °C
+(the plotted fraction of 3-HP falls to 0.5 between 60 and 90 min at both),
+whereas the Arrhenius factor of the model from 50 to 75 °C is 4.9 for R1 and
+R2. The same shows in Fig. 10d, where the 50 °C point of the 3-HP → MA
+constant lies a factor of 4.3 above the regression line through the other
 three points. An extrapolation anchored at 50 °C with the activation
 energies of the text therefore overshoots at 25, 75 and 100 °C. This
 accounts for part of the misfit only: with the constants of R1 and R2
-lowered by that factor, the pooled R2 rises from 0.58 and 0.64 to 0.82 and
-0.85 at 25 and 75 °C and stays at 0.75 at 100 °C. Most of the rest is the
-3-HP → D step, which is extrapolated from 50 °C with an activation energy
-that appears only in the script; with its constant lowered tenfold as well,
-the pooled R2 is 0.96, 0.98 and 0.93 (both are illustrations, not fits, and
-are pinned by the package tests). Part of the difference from the published
-heat maps is also structural: the Table 3 model has the OPA intermediate and
-no reverse terms, and its O2 factor stays above 0.999 where that of the
-simplified model falls to 0.83.
+lowered by that factor (``k_1_ref`` and ``k_2_ref`` divided by 4.3), the
+pooled R2 rises from 0.58 and 0.64 to 0.82 and 0.85 at 25 and 75 °C and
+stays at 0.75 at 100 °C. Most of the rest is the 3-HP → D step, which is
+extrapolated from 50 °C with an activation energy that appears only in the
+script; with its constant lowered tenfold as well (``k_5_ref`` divided by
+10), the pooled R2 is 0.96, 0.98 and 0.93 (both are illustrations, not
+fits, and are pinned by the package tests). No other activation energy of
+this step (``Ea_5``) does the same with its 50 °C constant kept: a low one
+fits 75 and 100 °C and not 25 °C, a high one the reverse (0.26, 0.99 and
+0.93 for zero, and 0.96, 0.10 and 0.20 for 120 kJ/mol, with R1 and R2
+lowered by 4.3), and the lowest of the three values is 0.79 at best, near
+47 kJ/mol. In the model this step is too fast on both sides of 50 °C. Part
+of the difference from the published heat maps is also structural: the
+Table 3 model has the OPA intermediate and no reverse terms, and its O2
+factor stays above 0.999 where that of the simplified model falls to 0.83.
 
 **What to use instead.** For the curves of Fig. 10a–c use
 ``load_o2_reversible_model``; its three constant sets are separate fits
@@ -980,13 +1009,15 @@ verification only: to simulate a model, use the model.
    Fig. 10, 100 C: 24 steps (deposited 24), node times within 5e-03 min, values within 5.7e-06
 
 The deposited files print values to five decimals, and node times to five
-decimals (Fig. 9) or two (Fig. 10), so these differences are the print
-rounding of the files. The same holds for Fig. 9a (23 steps, values within
-6.8e-6) and for the H2O2 trace of SI Fig. S12a (24 steps, of which the file
-holds all but the last; within 4.4e-6 equivalents). The package tests
-require the deposited number of steps, node times within 2e-5 min (Fig. 9)
-or 0.01 min (Fig. 10) and values within 1e-5; the solver error that the
-accurate-solver tests have to allow for is 18 to 270 times larger.
+decimals (Fig. 9) or two (Fig. 10), so the differences of every run but the
+second are the print rounding of the files. The same holds for Fig. 9a (23
+steps, values within 6.8e-6) and for the H2O2 trace of SI Fig. S12a (24
+steps, of which the file holds all but the last; within 4.4e-6 equivalents).
+The package tests require the deposited number of steps, node times within
+2e-5 min (Fig. 9) or 0.01 min (Fig. 10) and values within 1e-5; the solver
+error that the accurate-solver tests have to allow for is 18 to 270 times
+larger for the plotted fractions (1.8e-4 for Fig. 10a to 2.7e-3 for
+Fig. 10c; for the H2O2 trace it is 0.012 equivalents).
 
 The constants matter at this level. For Fig. 10 they are the six-digit sets
 of the reversible O2 variant. For Fig. 9 they are sets inferred from the
@@ -1141,23 +1172,73 @@ name of a set, not a temperature. The model is a reproduction aid.
 Fig. 10d and the activation energies of the text
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The paper does not say of which model the points of the Arrhenius plot are
-constants. They are taken here as three rate constants of the simplified
+The text of the paper says that its activation energies "were obtained from
+Arrhenius plot in Fig. 10d" and gives 59.8, 91.6 and 59.5 kJ/mol; the O2
+model uses these for R1 and R2, R3 and R6. The deposit holds the points and
+the lines of that plot (``read_fig10d_arrhenius``, ``fig10d_points``): the
+logarithms of three rate constants at 25, 50, 75 and 100 °C, which the
+figure labels 3-HP → MA, MA → AAc and MA → Others. The paper does not say
+of which model they are constants, and neither the paper nor the deposit
+gives their unit; the package takes it to be 1/min, the time unit of the
+authors' scripts. The slopes of the lines do not depend on it. The package
+names the constants ``k_1``, ``k_2`` and ``k_5``, as the authors' heat-map
+script numbers these reactions; these are not the numbers of the O2 model.
+
+The points are taken here as three rate constants of the simplified
 reversible model (3-HP → MA, MA → AAc and MA → D), fitted to the experiment
 of each temperature. Three things support this: the figure names a one-step
-3-HP → MA reaction, which only that model has; the 50 °C row supplies the
-three rate constants with which that model reproduces Fig. 11b (fitted
-freely to the contour lines of that panel, one of them came out within 0.1 %
-of the tabulated value; not shipped); and refits of that model to the
-experiments at 50, 75 and 100 °C come within 9 % of the points (not shipped;
-the refit at 25 °C is ill-determined). The points agree with neither the
-Table 3 model nor the model that reproduces the curves of panels a to c.
-Each dashed line is a regression through three of the four points: it leaves
-out the 50 °C point for 3-HP → MA and the 25 °C point for the other two. The
-lines give activation energies of 59.93, 68.96 and 52.09 kJ/mol; the text
-gives 59.8, 91.6 and 59.5 kJ/mol. No subset of the plotted points gives 91.6
-or 59.5 kJ/mol. The text values are those of the heat-map script; where they
-come from is not known.
+3-HP → MA reaction, which only that model has; with the 50 °C row as three
+of its five rate constants and the other two fitted, that model reproduces
+the contour lines of Fig. 11b (with all five fitted to those lines, the
+constant of MA → D came out 0.1 % from the tabulated value; not shipped);
+and refits of that model to the experiments at 50, 75 and 100 °C come
+within 9 % of the points (not shipped; the refit at 25 °C is
+ill-determined). The assignment assumes that the plotted constants follow
+the rate law of the heat-map script, which is not established; the
+comparison of the 50 °C points with the Table 3 constants below is made
+with and without that rate law. The points are not constants of the model
+that reproduces the curves of panels a to c.
+
+Each dashed line of the figure is a regression through three of the four
+points: it leaves out the 50 °C point for 3-HP → MA and the 25 °C point for
+the other two. The lines give activation energies of 59.93, 68.96 and
+52.09 kJ/mol (``fig10d_regression_lines``); the text gives 59.8, 91.6 and
+59.5 kJ/mol. No subset of the plotted points gives 91.6 or 59.5 kJ/mol. The
+text values are those of the heat-map script; where they come from is not
+known.
+
+Panel d of the figure in `Limits of the temperature-extended O2 model`_
+draws the lines that the text values give through the 50 °C points
+(``fig10d_text_lines``). Each is the plotted 50 °C constant multiplied by
+the Arrhenius factor that the O2 model applies to the corresponding step.
+
+Whether these lines are the model's own constants ``k_j(T)`` depends on how
+the plotted 50 °C values relate to the Table 3 constants, and that depends
+on a rate law the paper does not state and on the inferred unit. In 1/min
+for the 0.2 g batch the O2 model has 7.26e-3 for 3-HP → OPA, 6.32e-5 for
+MA → AAc and 1.104e-3 for MA → D at 50 °C; the plotted values are 2.14e-3,
+5.2e-5 and 1.0625e-3.
+
+- MA → AAc and MA → D: the plotted values are 0.82 and 0.96 times the
+  model's. Both lie within the 95 % confidence intervals of Table 3 (its ±
+  values read as half-widths: 3.52e-5 to 9.12e-5 and 1.044e-3 to
+  1.164e-3 1/min).
+- 3-HP → MA: taken as it stands, the plotted value is 0.29 times the
+  model's (the model's is 3.39 times larger), outside the interval
+  (6.855e-3 to 7.668e-3 1/min). In the authors' heat-map script the constant
+  of this reaction multiplies an O2 activity, ``yO2*P/f0``, which is
+  3.5/1.01325 = 3.45 for pure O2 (the script starts with ``yO2`` = 1); on
+  that basis the plotted value corresponds to 7.39e-3 1/min, 1.02 times the
+  model's and within the interval.
+
+So if the plotted constants follow the rate law of the heat-map script,
+which is not established (the README of the deposit describes that script
+as "expanded from 10. Arrhenius plot data", which is consistent with it and
+no more), the solid lines of panel d are the O2 model's own ``k_j(T)`` to
+within the uncertainty of Table 3. If the plotted constant of 3-HP → MA is
+instead taken as it stands, the model's line for this step runs parallel to
+the drawn one and a factor of 3.39 higher. The comparison of the slopes
+holds in either case.
 
 Fig. 11 is reproduced with the simplified model of the deposited script
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

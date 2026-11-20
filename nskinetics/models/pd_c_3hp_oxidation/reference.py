@@ -241,22 +241,35 @@ def read_fig10d_arrhenius():
     -------
     dict of pandas.DataFrame
         ``'points'``
-            The four fitted points (25, 50, 75 and 100 C): ``inv_T`` (1/K,
+            The four plotted points (25, 50, 75 and 100 C): ``inv_T`` (1/K,
             as printed, to five decimals) and the natural logarithms
-            ``ln_k_1``, ``ln_k_2`` and ``ln_k_5`` of three rate constants
-            in 1/min, named as described in the Notes.
+            ``ln_k_1``, ``ln_k_2`` and ``ln_k_5`` of three rate constants,
+            named as described in the Notes.
         ``'line_k_1'``, ``'line_k_2'``, ``'line_k_5'``
             The straight line of the published figure for each constant:
             ``inv_T`` and the logarithm.
 
     Notes
     -----
-    The file labels the three constants k1, k2 and k3, and the paper does
-    not say of which model they are. They are taken to be ``k_1`` (3-HP to
-    MA), ``k_2`` (MA to AAc) and ``k_5`` (MA to D) of the simplified
-    reversible model (see ``NOTES.md``), and the column labelled k3 is
-    renamed accordingly. The 50 C row supplies ``k_1``, ``k_2`` and ``k_5``
-    of the ``'fig11b'`` constant set of that model.
+    The file labels the three constants k1, k2 and k3, and the published
+    figure names them 3-HP to MA, MA to AAc and MA to Others. The paper
+    does not say of which model they are. They are named here ``k_1``,
+    ``k_2`` and ``k_5``, the numbers these three reactions have in the
+    authors' heat-map script, which holds the activation energies the text
+    quotes for them; the column labelled k3 is renamed accordingly. These
+    are not the numbers of the O2 model of this package, in which 3-HP to
+    MA is R1 followed by R2, MA to AAc is R3 and MA to D is R6. The
+    plotted 50 C values are not numerically the Table 3 constants;
+    ``NOTES.md`` compares the two.
+
+    The model of that script is the simplified reversible model of this
+    package, and the constants are taken to be its ``k_1``, ``k_2`` and
+    ``k_5`` (see ``NOTES.md``). The 50 C row supplies ``k_1``, ``k_2`` and
+    ``k_5`` of the ``'fig11b'`` constant set of that model.
+
+    Neither the file nor the paper gives the unit of the constants. The
+    package takes them to be in 1/min, the time unit of the authors'
+    scripts (``NOTES.md``).
     """
     with open(os.path.join(reference_data_dir, '11-4_Arrhenius.csv'),
               encoding='utf-8-sig', newline='') as f:

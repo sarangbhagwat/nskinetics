@@ -28,7 +28,7 @@ check their SHA-256.
 | `11-1_25C_Kinetic.csv` | Fig. 10a (O2, 25 C): experimental points and the authors' model curve |
 | `11-2_75C_Kinetic.csv` | Fig. 10b (O2, 75 C): the same |
 | `11-3_100C_Kinetic.csv` | Fig. 10c (O2, 100 C): the same |
-| `11-4_Arrhenius.csv` | Fig. 10d (Arrhenius plot, O2): logarithms of three rate constants at 25, 50, 75 and 100 C, taken to be constants of the authors' simplified reversible model (see `../NOTES.md`), and the straight lines drawn through them |
+| `11-4_Arrhenius.csv` | Fig. 10d (Arrhenius plot, O2): logarithms of three rate constants at 25, 50, 75 and 100 C, and the straight lines drawn through them. The paper does not say of which model the constants are; they are taken to be constants of the authors' simplified reversible model (see `../NOTES.md`) |
 
 In `10-1`, `10-2` and `11-1` to `11-3` all values are normalized
 concentrations (each species over the sum of 3-HP, MA, AAc, OXA and D); the
@@ -75,14 +75,21 @@ Layout and known quirks:
   as posted; see `../NOTES.md`.
 - `11-4`: two header rows. Columns 1-4 hold the points: 1/T in 1/K, printed
   to five decimals (0.00335, 0.00309, 0.00287, 0.00268, i.e. 25, 50, 75 and
-  100 C), and the natural logarithms of three rate constants in 1/min,
-  labelled `ln k1`, `ln k2` and `ln k3`. Columns 5-6, 7-8 and 9-10 hold the
-  lines (10, 18 and 20 rows). The paper does not say of which model the
-  three constants are. They are taken to be `k_1` (3-HP to MA), `k_2` (MA
-  to AAc) and `k_5` (MA to D) of the simplified reversible model (see
-  `../NOTES.md`), so the column labelled `k3` is read as that model's
-  `k_5`. The 50 C row supplies `k_1`, `k_2` and `k_5` of the `'fig11b'`
-  constant set of that model.
+  100 C), and the natural logarithms of three rate constants, labelled
+  `ln k1`, `ln k2` and `ln k3`. The second header row gives a unit for 1/T
+  only (`/K`); the constants are taken to be in 1/min, which is inferred
+  (`../NOTES.md`). Columns 5-6, 7-8 and 9-10 hold the lines (10, 18 and 20
+  rows). The paper does not say of which model the three constants are; the
+  published figure names them 3-HP to MA, MA to AAc and MA to Others. The
+  reader returns them as `k_1`, `k_2` and `k_5`, the numbers these reactions
+  have in the authors' heat-map script, so the column labelled `k3` is read
+  as `k_5`. These are not the numbers of the O2 model of this package (3-HP
+  to MA is its R1 followed by R2, MA to AAc its R3 and MA to D its R6), and
+  the 50 C row is not numerically the Table 3 constants (`../NOTES.md`
+  compares the two). The constants are taken to be those of the simplified
+  reversible model, the model of that script (see `../NOTES.md`); the 50 C
+  row supplies `k_1`, `k_2` and `k_5` of the `'fig11b'` constant set of that
+  model.
 
 ## Digitized from SI Fig. S12 (not deposited data)
 

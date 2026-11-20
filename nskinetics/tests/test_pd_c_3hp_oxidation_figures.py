@@ -56,6 +56,12 @@ def _key_labels(key):
     return labels[:5], labels[5:]
 
 
+def _marker_only_lines(ax):
+    """The series drawn as markers without a line (experimental points)."""
+    return [line for line in ax.get_lines()
+            if line.get_linestyle() == 'None' and len(line.get_xdata()) > 1]
+
+
 def _png_size(path):
     with open(path, 'rb') as f:
         header = f.read(24)
@@ -72,6 +78,15 @@ def test_fig9_draws_model_experiment_and_deposited_curve():
             assert len(_lines_with_data(panel)) == 15
             assert panel.get_xlim() == (-30., 1440.)
             assert panel.get_xlabel() == 'Time (min)'
+            # markers are drawn whole on the frame, so no sample taken
+            # after the end of the time axis may be drawn (Fig. 9b has
+            # samples at 1470 and 1680 min)
+            experiment = read()['experiment']
+            drawn = experiment[experiment['time'] <= figures._T_END]
+            markers = _marker_only_lines(panel)
+            assert len(markers) == 5
+            for line in markers:
+                assert np.array_equal(line.get_xdata(), drawn['time'])
             deposited = read()['model']
             drawn = [line for line in panel.get_lines()
                      if len(line.get_xdata()) == len(deposited)]
@@ -326,6 +341,13 @@ def test_fig10_draws_the_profiles_and_the_arrhenius_plot():
             assert len(_lines_with_data(panel)) == 15
             assert panel.get_xlim() == (-30., 1440.)
             assert panel.get_ylim() == (-0.05, 1.0)
+            # the samples after the end of the time axis are not drawn
+            experiment = pkg.read_fig10_o2(temperature_C)['experiment']
+            drawn = experiment[experiment['time'] <= figures._T_END]
+            markers = _marker_only_lines(panel)
+            assert len(markers) == 5
+            for line in markers:
+                assert np.array_equal(line.get_xdata(), drawn['time'])
             deposited = pkg.read_fig10_o2(temperature_C)['model']
             drawn = [line for line in panel.get_lines()
                      if len(line.get_xdata()) == len(deposited)]
@@ -378,11 +400,21 @@ def test_fig10_table3_o2_draws_the_comparison(tmp_path):
         assert len(panels) == 4
         # pooled R2 of the Table 3 model and of the per-temperature set
         for panel, temperature_C, r2 in zip(
-                panels, (25, 75, 100),
+                panels, pkg.FIG10_TEMPERATURES_C,
                 (('0.579', '1.000'), ('0.644', '0.990'), ('0.746', '0.993'))):
             # 5 Table 3 lines + 5 experimental series + 5 dashed fits
             lines = _lines_with_data(panel)
             assert len(lines) == 15
+            # the samples after the end of the time axis (1740 and 1890 min
+            # at 25 C, 1560 min at 100 C) are not drawn
+            experiment = pkg.read_fig10_o2(temperature_C)['experiment']
+            drawn = experiment[experiment['time'] <= figures._T_END]
+            assert len(experiment) - len(drawn) == {25: 2, 75: 0,
+                                                    100: 1}[temperature_C]
+            markers = _marker_only_lines(panel)
+            assert len(markers) == 5
+            for line in markers:
+                assert np.array_equal(line.get_xdata(), drawn['time'])
             times = lines[0].get_xdata()[[0, 480, 2880]]
             for line, load in (
                     (lines[0], lambda: pkg.load_o2_model(
@@ -399,21 +431,48 @@ def test_fig10_table3_o2_draws_the_comparison(tmp_path):
                 'R$^2$ = %s (reversible variant)' % r2]
         # the keys of panels a to c are above the panels
         assert len(fig.legends) == 2
-        # panel d: per constant, the regression line and the line of the
-        # activation energy quoted in the text through the 50 C point
+        # panel d: the three series of four points, as deposited
         arrhenius = panels[3]
+        assert arrhenius.get_xlim() == (2.6, 3.45)
+        assert arrhenius.get_ylim() == (-13., -3.)
+        assert arrhenius.get_xlabel() == '1000/T (K$^{-1}$)'
+        points = pkg.fig10d_points()
+        series = [line for line in arrhenius.get_lines()
+                  if len(line.get_xdata()) == 4]
+        assert len(series) == 3
+        for line, name in zip(series, ('k_1', 'k_2', 'k_5')):
+            assert np.allclose(line.get_xdata(), 1000.*points['inv_T'])
+            assert np.array_equal(line.get_ydata(), points['ln_' + name])
+        # in the colors of the published series: those of MA, AAc and Others
+        assert [to_hex(line.get_markeredgecolor()) for line in series] == [
+            color for _, color in figures._FIG10D_SERIES.values()] == [
+            '#a66bd6', '#1f6fdb', '#6f9bc4']
+        # per constant, the regression line (from 100 C to the end of the
+        # published line) and the line of the activation energy quoted in
+        # the text through the 50 C point (from 100 C to 25 C)
         lines = _two_point_lines(arrhenius)
         assert len(lines) == 6
-        points = pkg.fig10d_points()
-        for (regression, text), name, Ea in zip(
+        for (regression, text), name, Ea, (slope, at_100C, T_end) in zip(
                 zip(lines[::2], lines[1::2]), ('k_1', 'k_2', 'k_5'),
-                (59781.2, 91594.6, 59549.8)):
+                (59781.2, 91594.6, 59549.8),
+                ((-7208.69, -4.61102, 25.), (-8293.97, -6.32951, 25.13),
+                 (-6265.49, -4.17048, 23.50))):
             assert regression.get_linestyle() == '--'
+            assert _slope_and_value_at_100C(regression) == pytest.approx(
+                (slope, at_100C), rel=1e-4, abs=2e-5)
+            assert list(1000./regression.get_xdata() - 273.15) == (
+                pytest.approx([100., T_end], abs=1e-9))
+            assert list(1000./text.get_xdata() - 273.15) == (
+                pytest.approx([100., 25.], abs=1e-9))
             slope, at_100C = _slope_and_value_at_100C(text)
             assert -8.314*slope == pytest.approx(Ea, rel=1e-9)
             assert at_100C + slope*(1./323.15 - 1./373.15) == pytest.approx(
                 points['ln_' + name][1], abs=1e-9)
-        assert arrhenius.get_legend() is not None
+        assert [text.get_text()
+                for text in arrhenius.get_legend().get_texts()] == [
+            '3-HP $\\rightarrow$ MA', 'MA $\\rightarrow$ AAc',
+            'MA $\\rightarrow$ Others', 'Regression line (published)',
+            'E$_a$ of the text, from 50 \N{DEGREE SIGN}C']
         path = os.path.join(str(tmp_path), 'fig10_table3_o2.png')
         fig.savefig(path, dpi=50)
         assert os.path.getsize(path) > 0
@@ -507,13 +566,17 @@ def test_fig10_panel_also_takes_the_label_of_the_constant_set(temperature_C):
 
 
 def test_save_figures_writes_the_figures_named(tmp_path):
+    # the names the command line offers (--figures)
+    assert list(figures._FIGURES) == [
+        'fig9', 'fig10', 'fig10_table3_o2', 'figS12', 'fig11',
+        'fig11_verification', 'fig11_table3_o2', 'solver_emulation']
     paths = figures.save_figures(str(tmp_path), formats=('pdf',),
-                                 figures=['fig10'])
+                                 figures=['fig9'])
     assert [os.path.basename(path) for path in paths] == [
-        'pd_c_3hp_oxidation_fig10.pdf']
+        'pd_c_3hp_oxidation_fig9.pdf']
     assert os.path.getsize(paths[0]) > 0
     with pytest.raises(ValueError, match='unknown figures'):
-        figures.save_figures(str(tmp_path), figures=['fig10e'])
+        figures.save_figures(str(tmp_path), figures=['fig9c'])
 
 
 def test_save_figures_dpi_sets_the_size_of_the_png(tmp_path):

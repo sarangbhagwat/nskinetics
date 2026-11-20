@@ -175,9 +175,11 @@ model *kim2026_o2()
   // the authors' heat-map script (APCATB_D_25_08770_heatmap.m in the Dryad
   // deposit), which was written for their simplified five-reaction model
   // (3-HP -> MA in one step); they are assigned here to the corresponding
-  // steps of this six-reaction model.
-  // Ea_1, Ea_2: "MA production", 59.8 kJ/mol in the paper text (Section 3.4,
-  //   Fig. 10d); the single value is applied to both steps 3-HP -> OPA -> MA.
+  // steps of this six-reaction model. The paper says that the three values
+  // it quotes were obtained from the Arrhenius plot of its Fig. 10d; the
+  // lines of that plot give 59.9, 69.0 and 52.1 kJ/mol (see NOTES.md).
+  // Ea_1, Ea_2: "MA production", 59.8 kJ/mol in the paper text (Section
+  //   3.4); the single value is applied to both steps 3-HP -> OPA -> MA.
   Ea_1 = 59781.2;
   Ea_1 has j_per_mol;
   Ea_2 = 59781.2;
@@ -283,7 +285,9 @@ and the use of the depleting O2 state yO2.
 NSKinetics addition: the Arrhenius temperature dependence k(T) of the six steps (the
 Arrhenius relation of the paper, the second of its two equations numbered 6;
 T_ref = 50 C), with activation energies from the paper text and from the authors'
-heat-map script. The paper's own temperature results are not reproduced by this file:
+heat-map script. The lines of the paper's Arrhenius plot (Fig. 10d) give 69.0 and
+52.1 kJ/mol where the text, and this file, have 91.6 (Ea_3) and 59.5 kJ/mol (Ea_6).
+The paper's own temperature results are not reproduced by this file:
 the heat maps (Fig. 11) are those of a simplified reversible five-reaction model
 (pd_c_3hp_oxidation_o2_simplified_reversible_antimony.txt), whose rate constants the
 points of the Arrhenius plot (Fig. 10d) are taken to be, and the 25/75/100 C curves

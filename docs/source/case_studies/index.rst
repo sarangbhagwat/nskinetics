@@ -55,7 +55,9 @@ what agrees with the publication and what does not.
       published 50 °C model, extended to other temperatures as the paper
       describes, reproduces neither the published heat maps nor the
       experiments at 25, 75 and 100 °C; the paper's Figs. 10 and 11 are
-      reproduced only with two other models that are not in the paper.**
+      reproduced only with two other models that are not in the paper.** The
+      points and lines of its Arrhenius plot (Fig. 10d) are compared with
+      lines of the O2 model's activation energies.
 
       +++
       ``nskinetics.models.pd_c_3hp_oxidation`` · 4 models, deposited and

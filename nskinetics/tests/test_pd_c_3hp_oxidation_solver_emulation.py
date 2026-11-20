@@ -167,10 +167,71 @@ def test_ode23s_step_rules_on_a_linear_problem():
     assert len(info['error']) == len(t) - 1 == len(y) - 1
     # third-order steps at a relative tolerance of 1e-3
     assert np.abs(y[:, 0] - np.exp(-t)).max() < 2e-3
-    # a step grows by at most a factor of five and never beyond max_step
+    # a step never grows beyond max_step
     t, _, _ = ode23s(lambda y: -y, 5., [1.], max_step=0.2)
     assert np.diff(t).max() <= 0.2 + 1e-12
-    assert (np.diff(t)[1:]/np.diff(t)[:-1]).max() <= 5. + 1e-9
+
+
+def test_ode23s_lets_a_step_grow_at_most_fivefold():
+    # After a step without a rejection the next one is the step divided by
+    # 1.25*(error/rtol)**(1/3), at most five times it: the limit applies
+    # when the error is below (0.2/1.25)**3 = 0.0041 of the tolerance. In
+    # the six deposited runs that is the case only in the last step and in
+    # steps that are already of the largest size, max_step = 0.1*t_end, so
+    # the limit is tested here on y' = -100 y with y(0) = 1, integrated to
+    # t = 100. Once y is far below atol/rtol the error estimate collapses,
+    # and the steps grow from 0.04 to max_step = 10.
+    t, _, info = ode23s(lambda y: -100.*y, 100., [1.])
+    steps, errors = np.diff(t), np.array(info['error'])
+    assert info['failed'] == [] and len(steps) == 56
+    assert errors[42:46] == pytest.approx(
+        [7.29e-3, 3.78e-3, 9.57e-4, 5.20e-5], rel=2e-3)
+    # error above the limit: the step grows by 1/(1.25*error**(1/3)) = 4.13
+    assert steps[43]/steps[42] == pytest.approx(
+        1./(1.25*errors[42]**(1./3.)), rel=1e-12)
+    assert steps[43]/steps[42] == pytest.approx(4.1265, abs=1e-3)
+    # error below it, twice: exactly five times the step, where the
+    # unlimited rule would give 5.14 and 8.12 times
+    assert steps[44]/steps[43] == pytest.approx(5., rel=1e-12)
+    assert steps[45]/steps[44] == pytest.approx(5., rel=1e-12)
+    assert 1./(1.25*errors[43:45]**(1./3.)) == pytest.approx([5.14, 8.12],
+                                                             abs=0.01)
+    # then max_step takes over
+    assert steps[45] == pytest.approx(4.3827, abs=1e-4)
+    assert steps[46:55] == pytest.approx(10., rel=1e-12)
+    # every step follows the rule
+    growth = np.where(errors > 0.16**3, 1./(1.25*errors**(1./3.)), 5.)
+    assert steps[1:55] == pytest.approx(
+        np.minimum(10., growth[:54]*steps[:54]), rel=1e-12)
+
+
+def test_ode23s_stretches_a_step_that_would_end_just_before_t_end():
+    # A step that would end within 10 % of its own length before t_end is
+    # stretched to end there, even beyond max_step; one that would end
+    # further from it is followed by a short last step. The last step of
+    # the 100 C run of Fig. 10c is stretched (see
+    # test_emulation_returns_the_deposited_nodes) and that of the other five
+    # deposited runs is cut short at t_end, so both cases are tested
+    # here on y' = -y with max_step = 0.2: after the first step (0.1131)
+    # every step is 0.2.
+    def run(t_end):
+        t, _, info = ode23s(lambda y: -y, t_end, [1.], max_step=0.2)
+        assert info['failed'] == [] and t[-1] == t_end
+        return t, np.diff(t)
+
+    t, steps = run(5.)
+    assert steps[0] == pytest.approx(0.113137, abs=1e-6)
+    assert steps[1:-1] == pytest.approx(0.2, rel=1e-12)
+    # ... so a run that ends 1.08 steps after t[5] stretches its last step
+    _, stretched = run(t[5] + 1.08*0.2)
+    assert len(stretched) == 6
+    assert stretched[:5] == pytest.approx(steps[:5], rel=1e-12)
+    assert stretched[5] == pytest.approx(0.216, rel=1e-9)
+    # ... and one that ends 1.12 steps after it takes a full step and a
+    # short one
+    _, two = run(t[5] + 1.12*0.2)
+    assert len(two) == 7
+    assert two[5:] == pytest.approx([0.2, 0.024], rel=1e-9)
 
 
 def test_ode23s_weighs_the_error_with_the_larger_of_the_two_states():
@@ -218,6 +279,34 @@ def test_ode23s_rejects_a_step_and_keeps_the_reduced_step_size():
         assert emulate_fig10abc(temperature_C).attrs['ode23s']['failed'] == []
 
 
+def test_ode23s_rejected_step_rules_on_a_quadrature():
+    # The 25 C run has the only rejected step of the six deposited runs and
+    # tests the first retry alone, so the rules for a rejected step are
+    # tested here on y' = cos(10 t), written with the time as a
+    # first state. J f is zero at the start, so the first step tried is
+    # max_step, 0.5. It fails by a factor of 600 and is retried with a tenth
+    # of it (the lower limit of the factor), and after that twice with half
+    # the step. The step taken, 0.0125, is kept for the next one.
+    t, y, info = ode23s(lambda y: np.array([1., np.cos(10.*y[0])]), 5.,
+                        [0., 0.])
+    failed, steps = info['failed'], np.diff(t)
+    assert info['first_step'] == 0.5
+    assert [time for time, _, _ in failed[:3]] == [0., 0., 0.]
+    assert [step for _, step, _ in failed[:3]] == pytest.approx(
+        [0.5, 0.05, 0.025], rel=1e-12)
+    assert [error for _, _, error in failed[:3]] == pytest.approx(
+        [600.38, 10.363, 2.6008], rel=1e-4)
+    assert steps[:2] == pytest.approx([0.0125, 0.0125], rel=1e-9)
+    # The next rejection, by a factor of 1.84 at the tenth step: the step
+    # is retried with 0.8*(rtol/error)**(1/3) = 0.653 of it and kept.
+    time, step, error = failed[3]
+    assert time == t[9] and error == pytest.approx(1.8428, rel=1e-4)
+    assert steps[9] == pytest.approx(0.8*step/error**(1./3.), rel=1e-9)
+    assert steps[10] == pytest.approx(steps[9], rel=1e-9)
+    # the solution is sin(10 t)/10
+    assert np.abs(y[:, 1] - 0.1*np.sin(10.*t)).max() < 1e-3
+
+
 def test_ode23s_tolerances_other_than_the_defaults_miss_the_nodes():
     nodes, t_end, columns, time_limit = _reference('fig9b')
     km = _load('fig9b')
@@ -257,6 +346,36 @@ def test_emulation_returns_the_deposited_nodes(curve):
     info = emulated.attrs['ode23s']
     assert max(info['error']) < 0.6
     assert all(error > 100. for _, _, error in info['failed'])
+    errors, steps = np.array(info['error']), np.diff(emulated['time'])
+    growth = (1./(1.25*errors[-2]**(1./3.)) if errors[-2] > 0.16**3 else 5.)
+    if curve in _FIG10:
+        # Fig. 10: an error small enough for a step to grow fivefold occurs
+        # only in the last step and in steps of the largest size, max_step
+        # = 0.1*t_end, so these runs do not test that rule either (the
+        # largest growth of a step is 4.17-fold, at 25 C). The last
+        # step is cut short at t_end at 25 and 75 C. At 100 C it is
+        # stretched to t_end: 181.17 min, where max_step is 171.6 min.
+        small = errors[:-1] <= 0.16**3
+        assert steps[:-1][small] == pytest.approx(0.1*t_end, rel=1e-12)
+        assert small.sum() == {'fig10a': 0, 'fig10b': 1, 'fig10c': 5}[curve]
+        assert (steps[1:-1]/steps[:-2]).max() == pytest.approx(
+            {'fig10a': 4.172, 'fig10b': 1.554, 'fig10c': 1.565}[curve],
+            abs=2e-3)
+        proposed = min(0.1*t_end, growth*steps[-2])
+        if curve == 'fig10c':
+            assert proposed == pytest.approx(171.6, rel=1e-12)
+            assert steps[-1] == pytest.approx(181.17, abs=0.01)
+            assert proposed < steps[-1] < 1.1*proposed
+        else:
+            assert steps[-1] < 0.95*proposed
+    else:
+        assert info['failed'] == []
+        # Two step-size rules are not tested by the Fig. 9 runs. An error
+        # small enough for a step to grow fivefold occurs in the last two
+        # steps only, and the last step is cut short at t_end, not
+        # stretched to it.
+        assert (errors[:-2] > 0.16**3).all()
+        assert steps[-1] < 0.95*min(0.1*t_end, growth*steps[-2])
     assert _reproduces(deviations, curve)
 
 
@@ -282,7 +401,7 @@ def test_emulation_is_the_loaded_model(curve):
 def test_script_states_do_not_change_a_step(curve):
     # H2O, H2, O2 and CO2 of the posted script enter no rate; integrated
     # along or not, the steps are the same.
-    nodes, t_end, columns, _ = _reference(curve)
+    _, t_end, _, _ = _reference(curve)
     km = _load(curve)
     with_states = emulate_authors_run(km, t_end)
     without = emulate_authors_run(km, t_end, script_states=False)
@@ -293,6 +412,13 @@ def test_script_states_do_not_change_a_step(curve):
     assert extra == {'fig9b': {'state_H2O', 'state_H2', 'state_CO2'}}.get(
         curve, set() if curve in ('fig9a', 'figS12a_h2o2')
         else {'state_H2', 'state_O2', 'state_CO2'})
+    # their rows of the stoichiometric matrix of the posted O2 script
+    # (columns r1 to r6): 1 0 0 0 0 0, 0 0 0 1 0 0, -1 -1 0 -1 0 0 and
+    # 0 0 1 1 0 0
+    assert pkg.solver_emulation._SCRIPT_ROWS == {
+        'H2O': {'R1': 1.}, 'H2': {'R4': 1.},
+        'O2': {'R1': -1., 'R2': -1., 'R4': -1.},
+        'CO2': {'R3': 1., 'R4': 1.}}
 
 
 def test_emulated_run_starts_from_the_authors_initial_state():
@@ -336,6 +462,10 @@ def test_emulation_leaves_the_model_reset_and_keeps_set_values():
 
 
 def test_emulation_refuses_a_model_without_a_deposited_curve():
+    other = nsk.KineticModel(te.loada('S1 -> S2; k*S1; k = 1; S1 = 1'),
+                             units={'time': 'min', 'conc': 'M'})
+    with pytest.raises(ValueError, match='no deposited curve'):
+        emulate_authors_run(other, 100.)
     with pytest.raises(ValueError, match='no deposited curve'):
         emulate_authors_run(load_o2_simplified_reversible_model(), 100.)
     for temperature_C in (50, '50C', 348.15):
@@ -587,6 +717,8 @@ def test_linear_reverse_of_reaction_1_misses_the_nodes(curve, largest):
     assert deviations['max'] == pytest.approx(largest, rel=0.03)
     assert not _reproduces(deviations, curve)
 
+
+# --- 7. how tightly the nodes pin each constant -------------------------------
 
 # Relative change of each constant that the limits detect: the smallest
 # power of ten for which the run then misses a limit at least twofold, in

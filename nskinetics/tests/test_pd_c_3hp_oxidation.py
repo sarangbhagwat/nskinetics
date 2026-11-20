@@ -128,6 +128,12 @@ def test_kinetic_model_simulate_runs(o2_model):
     df = o2_model.results_df
     assert len(df) == 1441
     assert df['[MA]'].max() == pytest.approx(0.0337, abs=2e-4)   # 56 % of C0
+    # As for every KineticModel, a second call continues from the state
+    # the first one ended in; reset=True (or reset()) starts a new run.
+    end = df['[HP3]'].iloc[-1]
+    assert 0. < end < 1e-6
+    assert o2_model.simulate(0., 60., 2)[0, 1] == end
+    assert o2_model.simulate(0., 60., 2, reset=True)[0, 1] == 0.06
     o2_model.reset()
 
 
@@ -279,7 +285,8 @@ def test_o2_model_matches_the_deposited_fig9b_curve(o2_model, fig9b):
 def test_o2_model_opa_matches_the_published_inset(o2_model):
     published = pkg.read_figS12b_opa_inset_digitized()
     sim = simulate_at_times(o2_model, published['time'], ['x_OPA'])
-    assert np.abs(sim['x_OPA'] - published['x_OPA']).max() <= 5e-7
+    assert np.abs(sim['x_OPA'] - published['x_OPA']).max() == pytest.approx(
+        3.0e-7, abs=5e-8)
     # peak of the smooth curve: 1.43e-5 at 20.5 min (4.2 % of the 3-HP feed)
     early = simulate_at_times(o2_model, np.arange(0., 60.01, 0.5), ['x_OPA'])
     peak = early['x_OPA'].idxmax()
@@ -635,6 +642,15 @@ def test_readers_undo_the_deposit_quirks(fig9a, fig9b):
                   fig9b['experiment'], fig9b['model']):
         assert list(table.columns) == ['time'] + _NORMALIZED
         assert np.allclose(table[_NORMALIZED].sum(axis=1), 1., atol=5e-5)
+
+
+def test_ma_fraction_of_the_fig9b_experiment_is_largest_at_240_min(fig9b):
+    # the value NOTES.md quotes for the 3-HP run of Fig. 9b
+    experiment = fig9b['experiment']
+    time = experiment['time'].to_numpy()
+    X_MA = experiment['X_MA'].to_numpy()
+    assert time[X_MA.argmax()] == 240.
+    assert X_MA.max() == pytest.approx(0.5483, abs=5e-5)
 
 
 def test_digitized_inset_readers():

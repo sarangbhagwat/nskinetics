@@ -11,14 +11,19 @@ Kim et al., Appl. Catal. B: Environ. Energy 386 (2026) 126403): the measures
 used to compare a model with the experimental points of Fig. 10a-c, and the
 straight lines of Fig. 10d.
 
-The points of Fig. 10d are taken to be rate constants of the authors'
-simplified reversible model (``load_o2_simplified_reversible_model``): the
-50 C point agrees with the constants with which that model reproduces
-Fig. 11, and refits of that model to the experiments come close to the
-other points (``NOTES.md``). They are not constants of the model that
-reproduces the curves of Fig. 10a-c (``load_o2_reversible_model``). They
-cannot be recomputed and are read from the deposited table; the lines drawn
-through them are recomputed here.
+The paper does not say of which model the points of Fig. 10d are rate
+constants. They cannot be recomputed and are read from the deposited table
+(``read_fig10d_arrhenius``, which also explains their names); the lines
+drawn through them are recomputed here.
+
+The points are taken to be rate constants of the authors' simplified
+reversible model (``load_o2_simplified_reversible_model``): with the 50 C
+point as three of its rate constants that model reproduces Fig. 11b, and
+refits of that model to the experiments come close to the other points.
+This assumes that the plotted constants follow the rate law of the authors'
+heat-map script, which is not established (``NOTES.md``). The points are not
+constants of the model that reproduces the curves of Fig. 10a-c
+(``load_o2_reversible_model``).
 """
 import numpy as np
 import pandas as pd
@@ -43,14 +48,21 @@ FIG10D_REGRESSION_TEMPERATURES_C = {'k_1': (25, 75, 100),
 
 #: Temperatures in C at which the lines of Fig. 10d start and end in the
 #: published figure (the first and last row of each line of
-#: ``11-4_Arrhenius.csv``).
+#: ``11-4_Arrhenius.csv``). The file prints 1/T to five decimals (the last
+#: rows of the three lines read 25.36, 25.36 and 23.59 C); the end given
+#: here is the temperature at which the recomputed line takes the ``ln k``
+#: of its last row.
 FIG10D_LINE_ENDS_C = {'k_1': (100., 25.), 'k_2': (100., 25.13),
                       'k_5': (100., 23.50)}
 
 #: Activation energies in J/mol that the text of the paper quotes for the
 #: three constants of Fig. 10d (59.8, 91.6 and 59.5 kJ/mol), with the digits
-#: of the authors' heat-map script. They are not the slopes of the lines
-#: drawn in Fig. 10d.
+#: of the authors' heat-map script. Two of them (``k_2``, ``k_5``) are not
+#: the slopes of the lines drawn in Fig. 10d (68.96 and 52.09 kJ/mol); the
+#: ``k_1`` value agrees with its line (59.93 kJ/mol) to 0.15 kJ/mol. The
+#: keys are those of ``read_fig10d_arrhenius`` (3-HP to MA, MA to AAc, MA to
+#: D); the O2 model has these values as ``Ea_1`` and ``Ea_2``, ``Ea_3`` and
+#: ``Ea_6``.
 TEXT_ACTIVATION_ENERGIES = {'k_1': 59781.2, 'k_2': 91594.6, 'k_5': 59549.8}
 
 _R_GAS = 8.314          # J/(mol K), as in the authors' heat-map script
@@ -109,8 +121,10 @@ def fig10d_points():
         One row per temperature: ``T_C`` (25, 50, 75, 100), ``inv_T``
         (``1/(T_C + 273.15)`` in 1/K, unrounded) and ``ln_k_1``,
         ``ln_k_2``, ``ln_k_5`` as deposited (natural logarithms of three
-        rate constants in 1/min, taken to be ``k_1``, ``k_2`` and ``k_5``
-        of the simplified reversible model).
+        rate constants, taken to be in 1/min and named as by
+        :func:`.read_fig10d_arrhenius`: 3-HP to MA, MA to AAc and MA to D).
+        They are taken to be ``k_1``, ``k_2`` and ``k_5`` of the simplified
+        reversible model.
 
     Notes
     -----
@@ -159,14 +173,24 @@ def fig10d_text_lines():
     """The lines that the activation energies quoted in the text imply.
 
     Each line has the slope ``-Ea/R`` of :data:`TEXT_ACTIVATION_ENERGIES`
-    and passes through the 50 C point of Fig. 10d. This is how the
-    authors' heat-map script extrapolates the three constants from 50 C
-    (Fig. 11).
+    and passes through the 50 C point of Fig. 10d. The O2 model
+    (``load_o2_model``) has these activation energies for R1 and R2
+    (``'k_1'``), R3 (``'k_2'``) and R6 (``'k_5'``), so each line is the
+    plotted 50 C constant multiplied by that model's Arrhenius factor
+    ``k(T)/k_ref``. Whether the lines are the model's own ``k(T)`` depends
+    on the rate law behind the plotted constants, which the paper does not
+    state: the 50 C points of ``'k_2'`` and ``'k_5'`` lie within the 95 %
+    confidence intervals of Table 3 (its +- values read as half-widths), and
+    that of ``'k_1'`` does if it multiplies the O2 activity of the authors'
+    heat-map script; taken as it stands it is 3.39 times smaller than the
+    model's constant (``NOTES.md``). The lines are also how the authors'
+    heat-map script extrapolates the three constants from 50 C (Fig. 11).
 
     Returns
     -------
     dict of dict
-        As returned by :func:`fig10d_regression_lines`.
+        As returned by :func:`fig10d_regression_lines`; ``'temperatures_C'``
+        is ``(50,)``, the point each line passes through.
     """
     points = fig10d_points()
     at_50C = points[points['T_C'] == 50.].iloc[0]

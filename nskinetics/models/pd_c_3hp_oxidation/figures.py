@@ -29,8 +29,10 @@ Figures
     The experiments of Fig. 10a-c compared with the Table 3 O2 model
     extended with the Arrhenius relation (as the text of the paper
     describes for Fig. 11), with the per-temperature constant sets as
-    dashed lines; and the Arrhenius plot with the lines that the activation
-    energies quoted in the text imply next to the regression lines.
+    dashed lines and, in a box in each panel, the pooled R2 of the model
+    and of those sets against the experimental points; and the
+    Arrhenius plot (Fig. 10d) with the lines that the activation energies
+    quoted in the text imply next to the regression lines.
 ``figS12``
     SI Fig. S12: the same profiles with the predicted (a) H2O2 and (b) OPA
     as dashed lines and in the insets. The insets also show the published
@@ -151,9 +153,9 @@ _TAGS = {'H2O2': ('H$_2$O$_2$', '#fbb4b4', '#e98686'),
 # edge color.
 _TEMPERATURE_TAGS = {25: ('#b9d3e6', '#2f8fd0'), 75: ('#ffc9bb', '#ff7a3d'),
                      100: ('#ff8585', '#e5262b')}
-# Fig. 10d: the three plotted constants, named as the constants of the
-# simplified reversible model they are taken to be, with the label and the
-# color of the published series.
+# Fig. 10d: the three plotted constants, named as read_fig10d_arrhenius
+# names them (as the constants of the simplified reversible model they are
+# taken to be), with the label and the color of the published series.
 _FIG10D_SERIES = {'k_1': ('3-HP $\\rightarrow$ MA', _COLORS['X_MA']),
                   'k_2': ('MA $\\rightarrow$ AAc', _COLORS['X_AAc']),
                   'k_5': ('MA $\\rightarrow$ Others', _C_FIG10_OTHERS)}
@@ -233,7 +235,7 @@ def _species(ax, sim, experiment, ms=6.5, lw=1.8, colors=_COLORS):
                 clip_on=False)
 
 
-def _frame(ax, ylim=(-0.05, 1.0), labelsize=15, inward_ticks=True):
+def _frame(ax, ylim=(-0.05, 1.0), inward_ticks=True):
     ax.set_xlim(-30., _T_END)
     ax.set_ylim(*ylim)
     ax.set_xticks([0, 500, 1000])
@@ -246,9 +248,8 @@ def _frame(ax, ylim=(-0.05, 1.0), labelsize=15, inward_ticks=True):
         ax.yaxis.set_minor_locator(MultipleLocator(0.1))
         ax.tick_params(which='both', direction='in')
         ax.tick_params(which='minor', length=3, width=1.2)
-    ax.set_xlabel('Time (min)', fontsize=labelsize)
-    ax.set_ylabel('Normalized\nConcentration', fontsize=labelsize,
-                  linespacing=0.9)
+    ax.set_xlabel('Time (min)', fontsize=15)
+    ax.set_ylabel('Normalized\nConcentration', fontsize=15, linespacing=0.9)
 
 
 def _tag(ax, oxidant, xy=(0.965, 0.955), fontsize=16):
@@ -327,8 +328,8 @@ def _draw_fig9_panel(ax, km, reference, oxidant, legend_anchor,
 
 
 def _temperature_tag(ax, temperature_C, r2_text, y=0.775):
-    """Temperature box and, below it, a box with ``r2_text`` (the pooled R2
-    against the experiment)."""
+    """Temperature box at height ``y`` (axes fraction) and, below it, a box
+    with ``r2_text`` (the pooled R2 against the experiment)."""
     face, edge = _TEMPERATURE_TAGS[temperature_C]
     ax.text(0.945, y, '%d \N{DEGREE SIGN}C' % temperature_C,
             transform=ax.transAxes, ha='right', va='center', fontsize=17,
@@ -348,6 +349,12 @@ def _inset(ax, bounds):
     inset.set_ylabel('Normalized\nConcentration', fontsize=9,
                      linespacing=0.9, labelpad=2)
     return inset
+
+
+def _panel_letters(axes, x=-0.25):
+    for ax, letter in zip(axes, 'abcd'):
+        ax.text(x, 1.0, letter, transform=ax.transAxes, fontsize=24,
+                va='top', color=_C_INK)
 
 
 #%% Panels
@@ -424,7 +431,7 @@ def _draw_arrhenius_points(ax):
                 marker='o', ms=8, mfc='none', mec=color, mew=1.8, zorder=3)
 
 
-def _arrhenius_frame(ax, labelsize=15):
+def _arrhenius_frame(ax):
     ax.set_xlim(2.6, 3.45)
     ax.set_ylim(-13., -3.)
     ax.set_xticks(np.arange(2.6, 3.41, 0.2))
@@ -434,14 +441,14 @@ def _arrhenius_frame(ax, labelsize=15):
     ax.tick_params(which='both', direction='in')
     ax.tick_params(which='major', length=5)
     ax.tick_params(which='minor', length=3, width=1.2)
-    ax.set_xlabel('1000/T (K$^{-1}$)', fontsize=labelsize)
-    ax.set_ylabel('ln k', fontsize=labelsize)
+    ax.set_xlabel('1000/T (K$^{-1}$)', fontsize=15)
+    ax.set_ylabel('ln k', fontsize=15)
 
 
 def draw_fig10d(ax):
     """Draw Fig. 10d: the Arrhenius plot.
 
-    The circles are the deposited points: ``ln k`` (k in 1/min) of three
+    The circles are the deposited points: ``ln k`` (k taken as 1/min) of three
     rate constants at 25, 50, 75 and 100 C, taken to be 3-HP to MA
     (``k_1``), MA to AAc (``k_2``) and MA to others (``k_5``) of the
     simplified reversible model (see ``NOTES.md``; the paper does not name
@@ -814,16 +821,8 @@ def plot_fig9():
                                    (1, 'O2', draw_fig9b)):
             draw(axes[row, 0])
             _draw_reactions(axes[row, 1], oxidant)
-            axes[row, 0].text(-0.26, 1.0, 'ab'[row], fontsize=24,
-                              transform=axes[row, 0].transAxes, va='top',
-                              color=_C_INK)
+        _panel_letters(axes[:, 0], x=-0.26)
     return fig
-
-
-def _panel_letters(axes, x=-0.25):
-    for ax, letter in zip(axes, 'abcd'):
-        ax.text(x, 1.0, letter, transform=ax.transAxes, fontsize=24,
-                va='top', color=_C_INK)
 
 
 def plot_fig10():
@@ -860,13 +859,20 @@ def plot_fig10_table3_o2():
     not this extension) and the curves of the per-temperature constant
     sets (dashed lines; the reversible O2 variant, which reproduces the
     published curves). The box gives the pooled R2 of each against all
-    experimental points of the panel: first the Table 3 model, then the
-    per-temperature set.
+    deposited experimental rows of that temperature (the Table 3 model
+    first). The time axis ends at 1440 min, as in the published
+    panels; the samples after it (1740 and 1890 min at 25 C, 1560 min at
+    100 C) are not drawn but are counted in R2.
 
     Panel d: the points of Fig. 10d with the published regression lines
     (dashed) and the lines that the activation energies quoted in the text
-    imply (solid; 59.8, 91.6 and 59.5 kJ/mol through the 50 C points, as in
-    the authors' heat-map script), over 25 to 100 C.
+    imply (solid; 59.8, 91.6 and 59.5 kJ/mol through the 50 C points), over
+    25 to 100 C. The model has these activation energies for R1 and R2, R3
+    and R6, so each solid line is the plotted 50 C constant multiplied by
+    the model's Arrhenius factor ``k(T)/k_ref``. Whether the solid lines
+    are the model's own constants depends on the rate law behind the
+    plotted constants, which the paper does not state (see
+    ``fig10d_text_lines`` and ``NOTES.md``).
 
     The curves of the Table 3 model cross the whole of panels a to c, so
     the keys are placed above the panels and not inside them.
@@ -950,10 +956,9 @@ def plot_figS12():
     with plt.rc_context(_RC_PARAMS):
         fig, axes = plt.subplots(1, 2, figsize=(11.6, 4.3),
                                  gridspec_kw=dict(wspace=0.36))
-        for ax, letter, draw in zip(axes, 'ab', (draw_figS12a, draw_figS12b)):
+        for ax, draw in zip(axes, (draw_figS12a, draw_figS12b)):
             draw(ax)
-            ax.text(-0.25, 1.0, letter, transform=ax.transAxes, fontsize=24,
-                    va='top', color=_C_INK)
+        _panel_letters(axes)
     return fig
 
 

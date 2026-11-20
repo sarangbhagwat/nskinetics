@@ -614,7 +614,8 @@ def test_observed_maxima_quoted_in_the_text(maps):
     # "experimentally observed maximum was 50.5 %": the quantity of panel b,
     # (1 - X_HP3)*X_MA, of the deposited 50 C experiment is largest at
     # 360 min and equals that number. The paper does not say how it was
-    # computed; X_MA alone is largest at 240 min and never 0.505.
+    # computed; X_MA alone is largest at 240 min (0.548, pinned in
+    # test_pd_c_3hp_oxidation.py) and never 0.505.
     experiment = pkg.read_fig9b_o2()['experiment']
     time = experiment['time'].to_numpy()
     X_HP3 = experiment['X_HP3'].to_numpy()
@@ -623,8 +624,6 @@ def test_observed_maxima_quoted_in_the_text(maps):
     assert time[product.argmax()] == 360.
     assert product.max() == pytest.approx(0.5051, abs=5e-5)
     assert np.sort(product)[-2] < 0.49
-    assert time[X_MA.argmax()] == 240.
-    assert X_MA.max() == pytest.approx(0.5483, abs=5e-5)
     assert np.abs(X_MA - 0.505).min() > 0.01
     # The companion number, an "observed maximum of 56.9 % at 50 C (purple
     # star on plot)" for the selectivity of panel a, is not identified: it
@@ -828,15 +827,3 @@ def test_published_stars_against_the_cells_named_in_the_text(digitized):
     star = digitized['b']['stars'].loc['red_star']
     assert (star['time'] - FIG11_TIMES[7], star['T_C'] - 84.) == pytest.approx(
         (6.8, -0.1), abs=0.1)
-
-
-def test_arrhenius_table_reader():
-    tables = pkg.read_fig10d_arrhenius()
-    assert list(tables) == ['points', 'line_k_1', 'line_k_2', 'line_k_5']
-    points = tables['points']
-    assert list(points.columns) == ['inv_T', 'ln_k_1', 'ln_k_2', 'ln_k_5']
-    assert list(points['inv_T']) == [0.00335, 0.00309, 0.00287, 0.00268]
-    assert list(points.iloc[1]) == [0.00309, -6.14695, -9.86427, -6.84713]
-    assert [len(tables[name]) for name in ('line_k_1', 'line_k_2',
-                                           'line_k_5')] == [10, 18, 20]
-    assert list(tables['line_k_5'].iloc[-1]) == [0.00337, -8.50046]
