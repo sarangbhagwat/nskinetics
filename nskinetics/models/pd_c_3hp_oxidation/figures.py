@@ -6,8 +6,9 @@
 # https://github.com/sarangbhagwat/nskinetics/blob/main/LICENSE
 # for license details.
 """
-Regenerate the kinetic-model figures of Kim et al., Appl. Catal. B: Environ.
-Energy 386 (2026) 126403, from the NSKinetics models of this package.
+Regenerate Fig. 9 and SI Fig. S12, and draw Fig. 11 and two verification
+figures, of Kim et al., Appl. Catal. B: Environ. Energy 386 (2026) 126403,
+from the NSKinetics models of this package.
 
 Figures
 -------
@@ -24,11 +25,12 @@ Figures
     the authors deposited.
 ``fig11``
     Fig. 11: heat maps of (a) MA "selectivity" and (b) MA "yield" over
-    temperature and time, computed with the authors' simplified reversible
-    model as their heat-map script runs it, both panels with the default
-    constants of the model (the ``'deposit'`` set). The constants the
-    script fitted are not in the deposit, so the maps are close to the
-    published ones and not identical to them (``fig11_verification``).
+    temperature and time, computed with the simplified reversible model
+    (the model of the authors' heat-map script) as their script runs it,
+    both panels with the default constants of the model (the
+    ``'deposit'`` set). The constants that the script's run fitted are
+    not in the deposit, so the maps are close to the published ones and
+    not identical to them (``fig11_verification``).
     Contour lines at 0.1, 0.3 and 0.5, the red dashed line through the row
     maxima, a red star at the largest cell and a purple star at the maximum
     of the 50 C row; the insets are zooms of the same matrix. Two things
@@ -39,10 +41,13 @@ Figures
     The computed Fig. 11 maps with the contour lines, red dashed line and
     stars digitized from the published figure drawn on top as fine black
     dots, and the offset of every digitized contour sample from the
-    computed contour. The offsets are 0.35 px rms in panel b, about the
-    reading uncertainty of the published lines, and 1.11 px rms in
+    computed contour (positive where the computed map is above the level
+    of the contour at the sample: on the late side of the red dashed line
+    the published line then lies earlier than the computed one, on the
+    early side later). The offsets are 0.30 px rms in panel b, about the
+    reading uncertainty of the published lines, and 1.05 px rms in
     panel a, where single samples of the late 0.1 and 0.5 contours are up
-    to 2.5 and 3.6 px off: one constant set cannot match both published
+    to 2.5 and 3.0 px off: one constant set cannot match both published
     panels.
 
 ``solver_emulation``
@@ -543,7 +548,7 @@ def draw_fig11a(ax):
 
     Computed with the simplified reversible model and its default
     constants (the ``'deposit'`` set), as the authors' heat-map script runs
-    it; the contour lines are 1.11 px rms from the published ones (see
+    it; the contour lines are 1.05 px rms from the published ones (see
     :func:`plot_fig11_verification`). The red star is the largest cell of
     the map and the purple star the maximum of its 50 C row. The inset is a
     zoom of the same matrix; in the published figure the inset lines sit 7
@@ -566,7 +571,7 @@ def draw_fig11b(ax):
     """Draw Fig. 11b: heat map of MA "yield" (``(1 - X_HP3)*X_MA``).
 
     Computed with the same model and constants as :func:`draw_fig11a`; the
-    contour lines are 0.35 px rms from the published ones. In the published
+    contour lines are 0.30 px rms from the published ones. In the published
     figure the inset lines are up to 15 min off those of the main panel
     (41 min for the 0.3 contour on the late side). The largest cell is
     annotated, which the published panel does not do; the stars sit on the
@@ -722,13 +727,16 @@ def plot_fig11_verification():
     in black. Bottom row: the offset of every digitized contour sample
     from the computed contour line, in pixels of the published raster,
     against the temperature of the sample, with the rms offset of the
-    panel. Both panels are computed with the one default constant set of
-    the model. The published lines of panel b are matched to 0.35 px rms,
-    about their reading uncertainty (0.3 px); those of panel a are not
-    (1.11 px rms, single samples up to 2.5 and 3.6 px off on the late 0.1
-    and 0.5 contours), and the title of each panel says so. The two
-    published panels cannot both be matched by one constant set
-    (``NOTES.md``).
+    panel. An offset is positive where the computed map is above the level
+    of the contour at the sample: on the late side of the red dashed line
+    the published line then lies earlier than the computed one, on the
+    early side later. Both panels are computed with the one default
+    constant set of the model. The published lines of panel b are matched
+    to 0.30 px rms, about their reading uncertainty (0.3 px); those of
+    panel a are not (1.05 px rms, single samples up to 2.5 and 3.0 px off
+    on the late 0.1 and 0.5 contours), and the title of each panel says
+    so. The two published panels cannot both be matched by one constant
+    set (``NOTES.md``).
 
     Returns
     -------
@@ -930,8 +938,9 @@ def save_figures(output_dir, formats=('png', 'pdf'), figures=None, dpi=600):
 def main():
     parser = argparse.ArgumentParser(
         prog='python -m nskinetics.models.pd_c_3hp_oxidation.figures',
-        description='Regenerate Fig. 9, SI Fig. S12 and Fig. 11 of Kim et '
-                    'al. (2026) from the NSKinetics models, and draw the '
+        description='Regenerate Fig. 9 and SI Fig. S12 of Kim et al. '
+                    '(2026) from the NSKinetics models, draw Fig. 11 with '
+                    'the simplified reversible model, and draw the '
                     'verification figures.')
     parser.add_argument('output_dir', help='folder to write the figures to')
     parser.add_argument('--formats', nargs='+', default=['png', 'pdf'],

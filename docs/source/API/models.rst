@@ -164,11 +164,11 @@ Pd/C oxidation of 3-HP to malonic acid
 selective oxidation of 3-hydroxypropionic acid (3-HP) to malonic acid (MA)
 over 10 % Pd/C, after S. Y. Kim, J. E. Chavarrio, J. Install and G. W. Huber,
 *Appl. Catal. B: Environ. Energy* 386 (2026) 126403: the paper's H2O2 and O2
-models (50 °C) and the simplified reversible model of the authors' deposited
-heat-map script. With them come the authors' deposited data, curves
-digitized from the published figures, the fit that defines two constants of
-the third model, and the functions that draw the paper's Figs. 9 and 11 and
-SI Fig. S12 from the models.
+models (50 °C) and the model of the authors' deposited heat-map script,
+called here the simplified reversible model. With them come the authors'
+deposited data, curves digitized from the published figures, the fit that
+defines one constant of the third model, and the functions that draw the
+paper's Figs. 9 and 11 and SI Fig. S12 from the models.
 :doc:`/case_studies/pd_c_3hp_oxidation` presents the models, the figures,
 how to change the operating conditions, and what does not match the paper;
 ``NOTES.md`` in the package folder is the full record.
@@ -237,7 +237,8 @@ files (Dryad, https://doi.org/10.5061/dryad.jsxksn0q4, CC0) are verbatim
 copies; the readers undo their known quirks. Curves marked *digitized* were
 read from the published figures, the 50 °C data table of the authors'
 heat-map script is transcribed from that script, and
-``reference_data/README.md`` gives the provenance of every file. ``reference_data_dir`` is the path of the folder.
+``reference_data/README.md`` gives the provenance of every file.
+``reference_data_dir`` is the path of the folder.
 
 .. autofunction:: read_fig9a_h2o2
 
@@ -299,8 +300,9 @@ Constants of the simplified reversible model: the fit
 .. currentmodule:: nskinetics.models.pd_c_3hp_oxidation.fitting
 
 The least-squares fit to the 50 °C data of the authors' heat-map script
-that defines ``k_3`` and ``k_4`` of the simplified reversible model, with
-the other eight constants held at the values the deposit gives.
+that defines ``k_3`` of the simplified reversible model, the one constant
+for which the deposit gives no value, with the other nine held at the
+values the deposit gives.
 
 .. autofunction:: fit_simplified_reversible_constants
 
@@ -361,8 +363,9 @@ Figures
 .. currentmodule:: nskinetics.models.pd_c_3hp_oxidation.figures
 
 ``figures`` draws Fig. 9, SI Fig. S12 and Fig. 11 of the paper from the
-models, and two verification figures. Each ``plot_*`` function returns a new matplotlib
-figure; each ``draw_*`` function draws one panel on an existing axes. Run
+models, and two verification figures. Each ``plot_*`` function returns a
+new matplotlib figure; each ``draw_*`` function draws one panel on an
+existing axes. Run
 the module as a script to write the figures to a folder (``--figures``,
 ``--formats`` and ``--dpi`` select the figures, the file formats and the
 resolution of the PNG files)::

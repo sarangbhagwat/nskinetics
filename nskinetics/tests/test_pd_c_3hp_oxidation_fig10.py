@@ -413,9 +413,9 @@ def test_rms_difference_and_pooled_r2_by_hand():
 
 
 @pytest.mark.parametrize('initial_condition, expected', [
-    ('fitting', ((25, 0.652, 0.221), (75, 0.641, 0.175), (100, 0.756, 0.147))),
-    ('heatmap', ((25, 0.560, 0.248), (75, 0.637, 0.176),
-                 (100, 0.757, 0.147)))])
+    ('fitting', ((25, 0.653, 0.220), (75, 0.641, 0.175), (100, 0.757, 0.147))),
+    ('heatmap', ((25, 0.561, 0.248), (75, 0.637, 0.176),
+                 (100, 0.758, 0.146)))])
 def test_simplified_model_does_not_describe_the_other_temperatures(
         initial_condition, expected):
     # NOTES.md, "Limits of the temperature dependence": the model with its
@@ -429,17 +429,17 @@ def test_simplified_model_does_not_describe_the_other_temperatures(
         km = load_o2_simplified_reversible_model(
             T=temperature_C + 273.15, initial_condition=initial_condition)
         sim = simulate_at_times(km, experiment['time'])
-        assert pooled_r2(experiment, sim) == pytest.approx(r2, abs=2e-3)
+        assert pooled_r2(experiment, sim) == pytest.approx(r2, abs=6e-4)
         assert rms_difference(experiment, sim) == pytest.approx(rms, abs=6e-4)
 
 
 def test_simplified_model_describes_the_50C_experiment():
     # At 50 C, the temperature of the data it was fitted to: pooled R2
-    # 0.9939 and rms 0.0205 against the 16 deposited rows of Fig. 9b
-    # (fitting convention); 0.9922 and 0.0233 in the heat-map convention.
+    # 0.9939 and rms 0.0206 against the 16 deposited rows of Fig. 9b
+    # (fitting convention); 0.9921 and 0.0234 in the heat-map convention.
     experiment = pkg.read_fig9b_o2()['experiment']
-    for initial_condition, r2, rms in (('fitting', 0.9939, 0.0205),
-                                       ('heatmap', 0.9922, 0.0233)):
+    for initial_condition, r2, rms in (('fitting', 0.9939, 0.0206),
+                                       ('heatmap', 0.9921, 0.0234)):
         sim = simulate_at_times(load_o2_simplified_reversible_model(
             initial_condition=initial_condition), experiment['time'])
         assert pooled_r2(experiment, sim) == pytest.approx(r2, abs=2e-4)
@@ -481,21 +481,21 @@ def test_simplified_model_is_too_fast_at_25_75_and_100C():
             times, sim['X_HP3'].to_numpy())
         peak[temperature_C] = maximum(times, sim['X_MA'].to_numpy())
     assert [half[T] for T in TEMPERATURES_C] == pytest.approx(
-        [474.06, 15.19, 3.93], abs=0.02)
-    for T, (value, time) in ((25, (0.4262, 1200.3)), (75, (0.5848, 51.1)),
-                             (100, (0.5931, 12.7))):
+        [475.48, 15.22, 3.94], abs=0.02)
+    for T, (value, time) in ((25, (0.4270, 1202.6)), (75, (0.5857, 51.1)),
+                             (100, (0.5938, 12.75))):
         assert peak[T][0] == pytest.approx(value, abs=1e-4)
         assert peak[T][1] == pytest.approx(time, abs=0.06)
     # 25 C, last sample (1890 min): 0.876 of the 3-HP is left and the MA
-    # fraction is 0.023; the model has 0.160 and 0.396.
+    # fraction is 0.023; the model has 0.161 and 0.397.
     experiment = pkg.read_fig10_o2(25)['experiment']
     km = load_o2_simplified_reversible_model(T=298.15,
                                              initial_condition='fitting')
     sim = simulate_at_times(km, experiment['time'])
     assert experiment['X_HP3'].iloc[-1] == 0.87637
     assert experiment['X_MA'].iloc[-1] == 0.02335
-    assert sim['X_HP3'].iloc[-1] == pytest.approx(0.160, abs=1e-3)
-    assert sim['X_MA'].iloc[-1] == pytest.approx(0.396, abs=1e-3)
+    assert sim['X_HP3'].iloc[-1] == pytest.approx(0.1605, abs=2e-4)
+    assert sim['X_MA'].iloc[-1] == pytest.approx(0.3974, abs=2e-4)
     # forward first-order constant of 3-HP loss (k_1*P/f0 + k_4), 1/min,
     # against the measured average
     loss = km.get_value('k_1')*km.get_value('PF') + km.get_value('k_4')
@@ -506,9 +506,9 @@ def test_simplified_model_is_too_fast_at_25_75_and_100C():
     km = load_o2_simplified_reversible_model(T=348.15)
     assert km.get_value('k_1')/km.get_value('k_1_ref') == pytest.approx(
         4.94, abs=0.01)
-    # 100 C: final acetic acid fraction 0.170; measured 0.09 to 0.11
+    # 100 C: final acetic acid fraction 0.171; measured 0.09 to 0.11
     sim = simulate_at_times(load_o2_simplified_reversible_model(
         T=373.15, initial_condition='fitting'), [1560.])
-    assert sim['X_AAc'][0] == pytest.approx(0.170, abs=1e-3)
+    assert sim['X_AAc'][0] == pytest.approx(0.1706, abs=2e-4)
     late = pkg.read_fig10_o2(100)['experiment'].iloc[-3:]
     assert late['X_AAc'].between(0.09, 0.11).all()

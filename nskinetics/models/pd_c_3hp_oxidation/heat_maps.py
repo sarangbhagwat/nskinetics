@@ -135,10 +135,10 @@ def fig11_heat_maps():
     The model is run as in the authors' heat-map script (unit mole
     fractions at plotted time 10 min) with its default constants, the
     ``'deposit'`` set. This takes 71 integrations, one per temperature, as
-    in the script. The fitted constants of the script are not in the
-    deposit, so these maps are not the published ones: their contour lines
-    lie 1.11 px (panel a) and 0.35 px (panel b) rms from the published
-    lines (see ``NOTES.md``).
+    in the script. The constants that the script's run fitted are not in
+    the deposit, so these maps are not the published ones: their contour
+    lines lie 1.05 px (panel a) and 0.30 px (panel b) rms from the
+    published lines (see ``NOTES.md``).
 
     Returns
     -------

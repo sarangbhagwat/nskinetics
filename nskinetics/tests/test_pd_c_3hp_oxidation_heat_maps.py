@@ -5,30 +5,31 @@
 # This module is under the MIT open-source license. See
 # https://github.com/sarangbhagwat/nskinetics/blob/main/LICENSE
 # for license details.
-"""Tests of the simplified reversible O2 model, of the fit that defines two of
+"""Tests of the simplified reversible O2 model, of the fit that defines one of
 its constants, and of the temperature-time heat maps (Fig. 11 of Kim et al.,
 Appl. Catal. B: Environ. Energy 386 (2026) 126403) in
 ``nskinetics.models.pd_c_3hp_oxidation``.
 
 The authors deposited the script that draws Fig. 11 but neither the heat-map
-matrices nor the fitted constants. The constants of the model are defined
-from the deposit: eight are values the deposit gives, and ``k_3`` and
-``k_4`` are a least-squares fit to the 50 C data table of the script. The
-model is checked in three steps:
+matrices nor the constants its run fitted. Every constant of the model that
+the deposit gives is used as given (nine of ten, among them ``k_4`` =
+0.0023 of the vector ``k0`` written in the script), and ``k_3``, which
+``k0`` writes as 0.0000, is a least-squares fit to the 50 C data table of
+the script. The model is checked in three steps:
 
 * its rate laws, Arrhenius factors and initial conditions against an
   independent evaluation of the equations of the authors' script, written
   out again in this module;
-* its constants: the eight pinned ones against the deposit, and ``k_3`` and
-  ``k_4`` as the result of ``fit_simplified_reversible_constants``, from
-  three starting points; and
+* its constants: the nine pinned ones against the deposit, and ``k_3`` as
+  the result of ``fit_simplified_reversible_constants``, from four
+  starting points; and
 * its heat maps against the published figure: the contour lines of the two
   main panels, digitized and shipped with the package, and the two maxima
   quoted in the text. The constants are not fitted to the figure, so this
   is a comparison, and its result is pinned as measured: an rms offset of
-  0.35 px in panel b and 1.11 px in panel a, where 1 px of the published
+  0.30 px in panel b and 1.05 px in panel a, where 1 px of the published
   raster is 3.07 min or 0.148 C and the digitization is good to about
-  0.3 px. The vector ``k0`` printed in the script is far off both
+  0.3 px. The vector ``k0`` written in the script is far off both
   panels. The red dashed line of the figure (the row maxima) is compared
   with the digitized one as well: it has to sit in the published grid
   column on average.
@@ -59,7 +60,7 @@ C0 = 0.06                       # M
 X_3HP_FITTING = 0.000339        # 3-HP mole fraction of the script's fits
 
 # The documented constant sets at 50 C (NOTES.md), in the script's order.
-DEPOSIT = (2.139999e-3, 5.199984e-5, 1.4200e-5, 2.3204e-3, 1.062501e-3,
+DEPOSIT = (2.139999e-3, 5.199984e-5, 1.4215e-5, 0.0023, 1.062501e-3,
            4.7840, 0.5918, 3.5116, 81.6870, 52.0472)
 K0_PRINTED = (0.0021, 0.0001, 0.0000, 0.0023, 0.0010,
               4.7840, 0.5918, 3.5116, 81.6870, 52.0472)
@@ -162,8 +163,9 @@ def test_constant_sets_are_the_documented_ones():
     # the default of the loader is the 'deposit' set
     km = load_o2_simplified_reversible_model()
     assert [km.get_value(n) for n in _NAMES] == list(DEPOSIT)
-    # K_6 to K_10 are those of the vector k0 printed in the script
+    # k_4 and K_6 to K_10 are those of the vector k0 written in the script
     assert DEPOSIT[5:] == K0_PRINTED[5:]
+    assert DEPOSIT[3] == K0_PRINTED[3]
 
 
 @pytest.mark.parametrize('parameter_set', ['table3', 'fitted', 'Deposit',
@@ -201,13 +203,26 @@ def test_three_rate_constants_come_from_the_deposited_arrhenius_table():
             np.exp(row_50C['ln_' + name]), rel=1e-6), name
 
 
-def test_equilibrium_constants_are_those_printed_in_the_script():
+def test_equilibrium_constants_are_those_written_in_the_script():
     # k0 = [0.0021 0.0001 0.0000 0.0023 0.0010 4.7840 0.5918 3.5116 81.6870
     # 52.0472] in APCATB_D_25_08770_heatmap.m
     assert K0_PRINTED[5:] == (4.7840, 0.5918, 3.5116, 81.6870, 52.0472)
     deposit = pkg.SIMPLIFIED_REVERSIBLE_PARAMETER_SETS['deposit']
     assert [deposit['K_%d_ref' % i] for i in range(6, 11)] == list(
         K0_PRINTED[5:])
+
+
+def test_rate_constants_against_the_vector_k0_of_the_script():
+    # k_4 is k0's 0.0023, its only source in the deposit. k_3, which k0
+    # writes as 0.0000, is the one fitted constant; it rounds to that.
+    deposit = pkg.SIMPLIFIED_REVERSIBLE_PARAMETER_SETS['deposit']
+    assert K0_PRINTED[:5] == (0.0021, 0.0001, 0.0000, 0.0023, 0.0010)
+    assert deposit['k_4_ref'] == K0_PRINTED[3] == 0.0023
+    assert round(deposit['k_3_ref'], 4) == K0_PRINTED[2] == 0.
+    # k_1, k_2 and k_5 come from the Arrhenius table, which k0 gives to
+    # four decimals: k_1 and k_2 round to k0, k_5 (1.0625e-3) does not.
+    assert [round(deposit['k_%d_ref' % i], 4) for i in (1, 2, 5)] == [
+        0.0021, 0.0001, 0.0011]
 
 
 def test_initial_condition_selects_the_mole_fraction_scale():
@@ -341,11 +356,11 @@ def test_the_two_conventions_give_different_curves_at_50C():
     X_MA = [simulate_at_times(load_o2_simplified_reversible_model(
                 initial_condition=name), times, ['X_MA'])['X_MA']
             for name in ('heatmap', 'fitting')]
-    # peak MA fraction 0.570 (heat-map convention) against 0.549 (fitting)
-    assert X_MA[0].max() == pytest.approx(0.5704, abs=0.001)
-    assert X_MA[1].max() == pytest.approx(0.5485, abs=0.001)
+    # peak MA fraction 0.571 (heat-map convention) against 0.549 (fitting)
+    assert X_MA[0].max() == pytest.approx(0.5714, abs=2e-4)
+    assert X_MA[1].max() == pytest.approx(0.5494, abs=2e-4)
     assert np.abs(X_MA[0] - X_MA[1]).max() == pytest.approx(0.0295,
-                                                            abs=0.001)
+                                                            abs=2e-4)
 
 
 def test_pressure_dependence_is_that_of_the_rate_form():
@@ -354,14 +369,14 @@ def test_pressure_dependence_is_that_of_the_rate_form():
     # the script's rate form, which was fitted to no other pressure. It is
     # strong (NOTES.md): X_HP3 at 60 min and X_MA at 240 min, 50 C, for 1,
     # 3.5 (the default of the script) and 10 bar.
-    for P, X_HP3, X_MA in ((1., 0.767, 0.268), (3.5, 0.559, 0.570),
-                           (10., 0.246, 0.702)):
+    for P, X_HP3, X_MA in ((1., 0.7675, 0.2684), (3.5, 0.5593, 0.5710),
+                           (10., 0.2463, 0.7028)):
         km = load_o2_simplified_reversible_model()
         assert km.get_value('P') == 3.5
         km.set_value('P', P)
         sim = simulate_at_times(km, [60., 240.], ['X_HP3', 'X_MA'])
         assert (sim['X_HP3'][0], sim['X_MA'][1]) == pytest.approx(
-            (X_HP3, X_MA), abs=1e-3)
+            (X_HP3, X_MA), abs=2e-4)
 
 
 # The paper's 8 h screening experiments at 50 C under 1, 3, 5, 10 and 20 bar
@@ -373,10 +388,10 @@ FIG3A_MA_YIELD = (2.654, 41.055, 20.531, 1.259, 0.589)
 
 
 @pytest.mark.parametrize('initial_condition, conversion, X_MA', [
-    ('heatmap', (0.8780, 0.9823, 0.9968, 0.9995, 0.9997),
-     (0.2990, 0.4750, 0.5135, 0.5270, 0.5120)),
-    ('fitting', (0.8561, 0.9589, 0.9787, 0.9892, 0.9946),
-     (0.2718, 0.4443, 0.4887, 0.5109, 0.4977))])
+    ('heatmap', (0.8768, 0.9822, 0.9967, 0.9995, 0.9997),
+     (0.3001, 0.4761, 0.5143, 0.5275, 0.5122)),
+    ('fitting', (0.8549, 0.9587, 0.9786, 0.9892, 0.9946),
+     (0.2728, 0.4454, 0.4896, 0.5114, 0.4979))])
 def test_pressure_dependence_is_contradicted_by_the_screening_experiments(
         initial_condition, conversion, X_MA):
     # The measured conversion is highest at 3 bar and falls to a third of
@@ -409,10 +424,10 @@ def test_model_at_the_temperatures_of_the_screening_experiments():
     # maps at 480 min of reaction, as loaded by default and with the
     # script's fitting start (NOTES.md):
     for initial_condition, expected in (
-            ('heatmap', [(0.5355, 0.3628), (0.9888, 0.4900),
-                         (0.9994, 0.0597), (0.9998, 0.0017)]),
-            ('fitting', [(0.5038, 0.3297), (0.9668, 0.4607),
-                         (0.9988, 0.0580), (0.9999, 0.0014)])):
+            ('heatmap', [(0.5346, 0.3631), (0.9887, 0.4910),
+                         (0.9994, 0.0598), (0.9999, 0.0017)]),
+            ('fitting', [(0.5029, 0.3300), (0.9666, 0.4618),
+                         (0.9988, 0.0581), (0.9999, 0.0014)])):
         modelled = []
         for T_C in (25., 50., 75., 100.):
             sim = simulate_at_times(load_o2_simplified_reversible_model(
@@ -576,13 +591,13 @@ def test_raster_scale_is_the_calibration_of_panel_a():
 
 # --- 5. the published Fig. 11 -------------------------------------------------
 
-@pytest.mark.parametrize('panel, rms, largest_mean', [('a', 1.109, 0.54),
-                                                      ('b', 0.345, 0.29)])
+@pytest.mark.parametrize('panel, rms, largest_mean', [('a', 1.049, 0.69),
+                                                      ('b', 0.304, 0.23)])
 def test_heat_maps_against_the_published_contours(maps, digitized, panel,
                                                   rms, largest_mean):
     # The constants are not fitted to the figure. Panel b is matched to
     # about the reading uncertainty of the digitized lines (0.3 px); panel a
-    # is not: its late 0.1 and 0.5 contours are 1.3 and 1.5 px rms off.
+    # is not: its late 0.1 and 0.5 contours are 1.26 and 1.28 px rms off.
     measured, per_branch = contour_scores(maps['deposit'], digitized[panel],
                                           panel)
     assert measured == pytest.approx(rms, abs=0.01)
@@ -594,15 +609,15 @@ def test_heat_maps_against_the_published_contours(maps, digitized, panel,
                           max_offset=None)[0] == pytest.approx(measured,
                                                                rel=1e-12)
     if panel == 'a':
-        assert per_branch[0.1, 'late'][0] == pytest.approx(1.25, abs=0.01)
-        assert per_branch[0.5, 'late'][0] == pytest.approx(1.48, abs=0.01)
+        assert per_branch[0.1, 'late'][0] == pytest.approx(1.26, abs=0.01)
+        assert per_branch[0.5, 'late'][0] == pytest.approx(1.28, abs=0.01)
         assert max(per_branch[level, 'early'][0]
-                   for level in (0.1, 0.3, 0.5)) == pytest.approx(0.72,
+                   for level in (0.1, 0.3, 0.5)) == pytest.approx(0.56,
                                                                   abs=0.01)
 
 
 @pytest.mark.parametrize('panel, at_least', [
-    ('a', 4.0),       # the vector printed in the script: 4.6 px
+    ('a', 4.0),       # the vector written in the script: 4.6 px
     ('b', 6.0)])      # 7.1 px
 def test_printed_vector_k0_misses_the_published_contours(
         maps, digitized, panel, at_least):
@@ -611,14 +626,14 @@ def test_printed_vector_k0_misses_the_published_contours(
 
 
 @pytest.mark.parametrize('change, rms_a, rms_b', [
-    (dict(time_offset=0.), 2.27, 3.83),             # plotted time 0 = feed
-    (dict(initial_condition='fitting'), 12.8, 14.5)])
+    (dict(time_offset=0.), 2.18, 3.79),             # plotted time 0 = feed
+    (dict(initial_condition='fitting'), 12.7, 14.4)])
 def test_properties_of_the_script_that_are_in_the_published_figure(
         digitized, change, rms_a, rms_b):
     # NOTES.md: without the 10 min offset of the time axis, or with the
     # script's fitting convention in place of its heat-map convention, the
     # same constants miss the published contours by far more than the
-    # 1.11 and 0.35 px of the model as the script runs it. (Offsets this
+    # 1.05 and 0.30 px of the model as the script runs it. (Offsets this
     # large are linearized estimates, clipped at 30 px per sample.)
     km = load_o2_simplified_reversible_model(
         initial_condition=change.get('initial_condition', 'heatmap'))
@@ -674,8 +689,8 @@ def test_maxima_quoted_in_the_text(maps):
     T_C, times, selectivity, MA_yield = maps['deposit']
     row, column = list(T_C).index(95.), 3
     assert times[column] == pytest.approx(26.76, abs=0.005)
-    # "59.1 % (95 C, 27 min)": 0.592 in that cell, the largest of the map
-    assert selectivity[row, column] == pytest.approx(0.5924, abs=5e-4)
+    # "59.1 % (95 C, 27 min)": 0.593 in that cell, the largest of the map
+    assert selectivity[row, column] == pytest.approx(0.5931, abs=2e-4)
     assert selectivity[row, column] == selectivity.max()
 
     row, column = list(T_C).index(84.), 7
@@ -684,7 +699,7 @@ def test_maxima_quoted_in_the_text(maps):
     # value is 0.548. The crest is flat (13 cells between 76 and 90 C are
     # within 0.001 of the maximum), so the cell is not required to be the
     # largest one.
-    assert MA_yield[row, column] == pytest.approx(0.5478, abs=5e-4)
+    assert MA_yield[row, column] == pytest.approx(0.5484, abs=2e-4)
     assert MA_yield.max() - MA_yield[row, column] < 1e-3
     assert MA_yield.max() < 0.552
     crest = np.argwhere(MA_yield > MA_yield.max() - 1e-3)
@@ -711,7 +726,7 @@ def test_observed_maxima_quoted_in_the_text(maps):
     # star on plot)" for the selectivity of panel a, is not identified: it
     # is not X_MA of that experiment (at most 0.548), and MA per 3-HP
     # converted, X_MA/(1 - X_HP3), is 0.621, 0.577 and 0.513 at 240, 360 and
-    # 450 min. The 50 C row of the computed map peaks at 0.5704.
+    # 450 min. The 50 C row of the computed map peaks at 0.5713.
     assert X_MA.max() < 0.569 - 0.02
     late = time >= 240.
     per_converted = X_MA[late]/(1. - X_HP3[late])
@@ -721,16 +736,16 @@ def test_observed_maxima_quoted_in_the_text(maps):
     assert np.abs(per_converted - 0.569).min() > 0.008
     T_C, _, selectivity, _ = maps['deposit']
     assert selectivity[list(T_C).index(50.)].max() == pytest.approx(
-        0.5704, abs=2e-4)
+        0.5713, abs=2e-4)
 
 
 def test_50C_row_maxima(maps):
     T_C, times, selectivity, MA_yield = maps['deposit']
     row = list(T_C).index(50.)
-    assert selectivity[row].max() == pytest.approx(0.5704, abs=2e-4)
+    assert selectivity[row].max() == pytest.approx(0.5713, abs=2e-4)
     assert heat_map_ridge(times, selectivity)[row] == pytest.approx(
         261.3, abs=0.1)
-    assert MA_yield[row].max() == pytest.approx(0.5325, abs=2e-4)
+    assert MA_yield[row].max() == pytest.approx(0.5333, abs=2e-4)
     assert heat_map_ridge(times, MA_yield)[row] == pytest.approx(322.8,
                                                                  abs=0.1)
 
@@ -755,15 +770,15 @@ def ridge_offsets(T_C, ridge, digitized):
 
 
 @pytest.mark.parametrize('panel, mean, rms, largest', [
-    ('a', 0.05, 0.83, 1.83), ('b', 0.05, 1.52, 6.48)])
+    ('a', 0.25, 0.89, 1.78), ('b', 0.29, 1.64, 7.45)])
 def test_ridge_is_the_published_red_dashed_line(maps, digitized, panel, mean,
                                                 rms, largest):
     # The red dashed line joins the row maxima, so it is defined to one
     # grid column: 5.585 min, 1.82 px of the published raster. It is
     # therefore held to the digitized line to half a column in the mean
     # (a line that sits one column off is 1.82 px off in the mean) and to
-    # one column in the rms. The largest single offsets (1.8 and 6.5 px)
-    # are at 32 to 34 C, where the row maxima are flat and the line
+    # one column in the rms. The largest single offsets (1.8 and 7.5 px)
+    # are at 30 to 31 C, where the row maxima are flat and the line
     # advances several columns per row.
     T_C, times = maps['deposit'][:2]
     matrix = maps['deposit'][2 if panel == 'a' else 3]
@@ -778,17 +793,17 @@ def test_ridge_is_the_published_red_dashed_line(maps, digitized, panel, mean,
     assert np.sqrt(np.mean(offsets**2)) <= column
     assert np.abs(offsets).max() == pytest.approx(largest, abs=0.02)
     assert digitized[panel]['ridge']['T_C'].to_numpy()[
-        np.abs(offsets).argmax()] < 34.
+        np.abs(offsets).argmax()] < 31.
     # negative control: the same line one column later or earlier fails
-    # the limit on the mean (1.86 and -1.77 px in panel a, 1.87 and
-    # -1.76 px in panel b)
+    # the limit on the mean (2.07 and -1.56 px in panel a, 2.11 and
+    # -1.53 px in panel b)
     for shift in (1, -1):
         shifted = times[np.argmax(matrix, axis=1) + shift]
         assert abs(ridge_offsets(T_C, shifted, digitized[panel]).mean()
                    ) > 0.5*column + 0.2
 
 
-@pytest.mark.parametrize('panel, largest', [('a', 1.12e-4), ('b', 1.36e-4)])
+@pytest.mark.parametrize('panel, largest', [('a', 1.11e-4), ('b', 1.36e-4)])
 def test_solver_of_the_script_does_not_matter_for_the_maps(maps, panel,
                                                            largest):
     # The script integrates each of the 299 intervals of the time grid with
@@ -812,7 +827,7 @@ def test_solver_of_the_script_does_not_matter_for_the_maps(maps, panel,
                                                              rel=0.05)
 
 
-# --- 6. the fit that defines k_3 and k_4 ---------------------------------------
+# --- 6. the fit that defines k_3 ---------------------------------------------
 
 def test_data_table_of_the_script():
     # The 16 samples of the script's function data(), with its digits.
@@ -853,81 +868,91 @@ def default_fit():
     return fit_simplified_reversible_constants()
 
 
-def test_default_k3_and_k4_are_the_result_of_the_fit(default_fit):
-    # The shipped k_3 and k_4 ARE the fit, to the five significant digits
-    # shipped: with every other constant at its deposited value, least
-    # squares on the 80 residuals of the script's data table.
+def test_default_k3_is_the_result_of_the_fit(default_fit):
+    # The shipped k_3 IS the fit, to the five significant digits shipped:
+    # with every other constant at its deposited value (k_4 = 0.0023 of
+    # k0), least squares on the 80 residuals of the script's data table.
     deposit = pkg.SIMPLIFIED_REVERSIBLE_PARAMETER_SETS['deposit']
     assert list(default_fit) == ['fitted', 'standard_errors',
                                  'sum_of_squares', 'n_residuals', 'values']
-    assert list(default_fit['fitted']) == ['k_3_ref', 'k_4_ref']
-    for name in ('k_3_ref', 'k_4_ref'):
-        assert float('%.5g' % default_fit['fitted'][name]) == deposit[name]
-    assert (deposit['k_3_ref'], deposit['k_4_ref']) == (1.4200e-5, 2.3204e-3)
-    # neither value is near a rounding boundary of its fifth digit
-    assert default_fit['fitted']['k_3_ref'] == pytest.approx(1.42000e-5,
-                                                             rel=1e-5)
-    assert default_fit['fitted']['k_4_ref'] == pytest.approx(2.32041e-3,
-                                                             rel=5e-6)
+    assert list(default_fit['fitted']) == ['k_3_ref']
+    k_3 = default_fit['fitted']['k_3_ref']
+    assert float('%.5g' % k_3) == deposit['k_3_ref'] == 1.4215e-5
+    # 1.42150e-5, 3.4e-5 (relative) from either rounding boundary of the
+    # fifth digit; the scatter over starting points, solver tolerances and
+    # Jacobian steps is below 1e-5 (NOTES.md)
+    assert k_3 == pytest.approx(1.42150e-5, rel=1e-5)
     assert default_fit['n_residuals'] == 80
-    assert default_fit['sum_of_squares'] == pytest.approx(0.0337728,
+    assert default_fit['sum_of_squares'] == pytest.approx(0.0337970,
                                                           abs=2e-7)
-    # the other eight constants are returned as they were held
+    # the other nine constants are returned as they were held
     assert {name: value for name, value in default_fit['values'].items()
-            if name not in default_fit['fitted']} == {
+            if name != 'k_3_ref'} == {
                 name: value for name, value in deposit.items()
-                if name not in default_fit['fitted']}
-    # standard errors: 31 % of k_3 and 3.7 % of k_4
-    errors = default_fit['standard_errors']
-    assert errors['k_3_ref'] == pytest.approx(4.42e-6, rel=0.01)
-    assert errors['k_4_ref'] == pytest.approx(8.62e-5, rel=0.01)
-    assert errors['k_3_ref']/deposit['k_3_ref'] == pytest.approx(0.311,
-                                                                 abs=0.005)
-    assert errors['k_4_ref']/deposit['k_4_ref'] == pytest.approx(0.037,
-                                                                 abs=0.001)
+                if name != 'k_3_ref'}
+    # standard error: 31 % of k_3
+    error = default_fit['standard_errors']['k_3_ref']
+    assert error == pytest.approx(4.38e-6, rel=0.01)
+    assert error/deposit['k_3_ref'] == pytest.approx(0.308, abs=0.005)
 
 
-@pytest.mark.parametrize('start', [(4.26e-5, 1.15e-3), (4.3e-6, 3.45e-3),
-                                   (1e-4, 1e-4)])
+@pytest.mark.parametrize('start', [(4.3e-6,), (3e-5,), (1e-4,)])
 def test_fit_is_reached_from_other_starting_points(default_fit, start):
     fit = fit_simplified_reversible_constants(start=start)
-    for name in ('k_3_ref', 'k_4_ref'):
-        # to 1e-5: k_3 has a standard error of 31 %, so the sum of squares
-        # is flat about the optimum (the fifth digit shipped needs 3.5e-5)
-        assert fit['fitted'][name] == pytest.approx(
-            default_fit['fitted'][name], rel=1e-5)
+    # to 1e-5 (7e-6 from the first start): k_3 has a standard error of
+    # 31 %, so the sum of squares is flat about the optimum; the limit is
+    # inside the 3.4e-5 that the fifth digit shipped allows
+    assert fit['fitted']['k_3_ref'] == pytest.approx(
+        default_fit['fitted']['k_3_ref'], rel=2.5e-5)
     assert fit['sum_of_squares'] == pytest.approx(
         default_fit['sum_of_squares'], rel=1e-9)
+
+
+def sum_of_squares(**changes):
+    """Of the shipped set, with constants scaled by the given factors."""
+    data = pkg.read_heatmap_script_data()
+    km = load_o2_simplified_reversible_model(initial_condition='fitting')
+    for name, factor in changes.items():
+        km.set_value(name, factor*km.get_value(name))
+    modeled = simulate_at_times(km, data['time'])
+    return ((modeled[list(pkg.NORMALIZED)].to_numpy()
+             - data[list(pkg.NORMALIZED)].to_numpy())**2).sum()
 
 
 def test_fit_is_deterministic_and_is_a_minimum(default_fit):
     again = fit_simplified_reversible_constants()
     assert again == default_fit
-    # the sum of squares of the shipped set, and of sets with k_3 or k_4
-    # moved by 1 %: the fit is the minimum
-    data = pkg.read_heatmap_script_data()
-
-    def sum_of_squares(**changes):
-        km = load_o2_simplified_reversible_model(initial_condition='fitting')
-        for name, factor in changes.items():
-            km.set_value(name, factor*km.get_value(name))
-        modeled = simulate_at_times(km, data['time'])
-        return ((modeled[list(pkg.NORMALIZED)].to_numpy()
-                 - data[list(pkg.NORMALIZED)].to_numpy())**2).sum()
-
+    # the sum of squares of the shipped set, and of sets with k_3 moved by
+    # 1 %: the shipped k_3 is the minimum
     shipped = sum_of_squares()
     assert shipped == pytest.approx(default_fit['sum_of_squares'], abs=1e-8)
-    for name in ('k_3_ref', 'k_4_ref'):
-        for factor in (0.99, 1.01):
-            assert sum_of_squares(**{name: factor}) > shipped + 1e-8
+    for factor in (0.99, 1.01):
+        assert sum_of_squares(k_3_ref=factor) > shipped + 1e-7
+
+
+def test_fit_with_k4_free_agrees_with_k0():
+    # The alternative of freeing k_4 as well (NOTES.md): k_3 = 1.42000e-5,
+    # k_4 = 2.32041e-3 (standard errors 31 % and 3.7 %), a sum of squares
+    # 0.07 % lower. The fitted k_4 rounds to k0's 0.0023.
+    fit = fit_simplified_reversible_constants(free=('k_3', 'k_4'))
+    k_3, k_4 = fit['fitted']['k_3_ref'], fit['fitted']['k_4_ref']
+    assert (k_3, k_4) == pytest.approx((1.42000e-5, 2.32041e-3), rel=2e-5)
+    assert round(k_4, 4) == 0.0023
+    assert fit['sum_of_squares'] == pytest.approx(0.0337728, abs=2e-7)
+    assert [fit['standard_errors'][name]/fit['fitted'][name]
+            for name in ('k_3_ref', 'k_4_ref')] == pytest.approx(
+                [0.311, 0.037], abs=0.001)
+    assert sum_of_squares() / fit['sum_of_squares'] == pytest.approx(
+        1.0007, abs=1e-4)
 
 
 def test_fit_of_all_five_rate_constants_returns_the_arrhenius_row():
-    # NOTES.md: with K_6 to K_10 as printed in the script and all five rate
+    # NOTES.md: with K_6 to K_10 as written in the script and all five rate
     # constants fitted to the same data, k_1, k_2 and k_5 come out 0.09,
     # 1.5 and 0.37 % above the 50 C row of the deposited Arrhenius table,
     # well inside their standard errors (2.5, 31 and 3.9 %). This is the
-    # support for taking that row as this model's constants.
+    # support for taking that row as this model's constants. The fitted
+    # k_4 is 0.53 % above k0's 0.0023, inside its standard error (5.4 %).
     deposit = pkg.SIMPLIFIED_REVERSIBLE_PARAMETER_SETS['deposit']
     fit = fit_simplified_reversible_constants(
         free=('k_1', 'k_2', 'k_3', 'k_4', 'k_5'))
@@ -939,36 +964,59 @@ def test_fit_of_all_five_rate_constants_returns_the_arrhenius_row():
             for name in ('k_1_ref', 'k_2_ref', 'k_5_ref')] == pytest.approx(
                 [0.0009, 0.0149, 0.0037], abs=1e-4)
     assert [fit['standard_errors'][name]/fitted[name]
-            for name in ('k_1_ref', 'k_2_ref', 'k_5_ref')] == pytest.approx(
-                [0.025, 0.311, 0.039], abs=0.002)
+            for name in ('k_1_ref', 'k_2_ref', 'k_4_ref', 'k_5_ref')
+            ] == pytest.approx([0.025, 0.311, 0.054, 0.039], abs=0.002)
     assert fit['sum_of_squares'] == pytest.approx(0.033768, abs=2e-6)
-    # k_3 and k_4 move by 0.25 and 0.35 %
-    assert fitted['k_3_ref']/deposit['k_3_ref'] == pytest.approx(0.9975,
+    # k_3 and k_4 against the shipped values: -0.35 and +0.53 %
+    assert fitted['k_3_ref']/deposit['k_3_ref'] == pytest.approx(0.9965,
                                                                  abs=2e-4)
-    assert fitted['k_4_ref']/deposit['k_4_ref'] == pytest.approx(0.9965,
+    assert fitted['k_4_ref']/deposit['k_4_ref'] == pytest.approx(1.0053,
                                                                  abs=2e-4)
 
 
 def test_fit_arguments():
     deposit = pkg.SIMPLIFIED_REVERSIBLE_PARAMETER_SETS['deposit']
-    # model-parameter names are accepted, and held values can be given
-    fit = fit_simplified_reversible_constants(
-        free=('k_4_ref',), values={'k_3_ref': 2e-5})
-    assert list(fit['fitted']) == ['k_4_ref']
-    assert fit['values']['k_3_ref'] == 2e-5
-    assert fit['values']['k_1_ref'] == deposit['k_1_ref']
-    assert fit['sum_of_squares'] > 0.0337728
+    # model-parameter names are accepted in free and in values, and held
+    # values are applied: with k_3 held at 2e-5, k_4 fits to 2.32004e-3
+    # and the sum of squares is 0.0345089
+    for free, values in ((('k_4_ref',), {'k_3_ref': 2e-5}),
+                         ('k_4', {'k_3': 2e-5})):
+        fit = fit_simplified_reversible_constants(free=free, values=values)
+        assert list(fit['fitted']) == ['k_4_ref']
+        assert fit['values']['k_3_ref'] == 2e-5
+        assert fit['values']['k_1_ref'] == deposit['k_1_ref']
+        assert fit['fitted']['k_4_ref'] == pytest.approx(2.32004e-3,
+                                                         rel=1e-5)
+        assert fit['sum_of_squares'] == pytest.approx(0.0345089, abs=2e-7)
+    # a free constant given in values is fitted from that value: K_8
+    # hardly changes the sum of squares, so the fit stays near its start
+    fit = fit_simplified_reversible_constants(values={'k_3': 3e-5})
+    assert fit['fitted']['k_3_ref'] == pytest.approx(1.42150e-5, rel=1e-5)
+    from_values = fit_simplified_reversible_constants(free='K_8',
+                                                      values={'K_8': 10.})
+    from_start = fit_simplified_reversible_constants(free='K_8', start=(10.,))
+    assert from_values['fitted'] == from_start['fitted']
+    assert from_values['fitted']['K_8_ref'] > 5.
+    assert fit_simplified_reversible_constants(free='K_8')['fitted'][
+        'K_8_ref'] < 5.
     # other data: the experimental block of the deposited Fig. 9b table,
     # which differs from the script's table in the rounding of two rows
     other = fit_simplified_reversible_constants(
         data=pkg.read_fig9b_o2()['experiment'])
-    assert other['fitted']['k_3_ref'] == pytest.approx(1.41979e-5, rel=1e-5)
-    assert other['fitted']['k_4_ref'] == pytest.approx(2.32047e-3, rel=1e-5)
-    for arguments in (dict(free=('k_6',)), dict(free=('k_3', 'k_3_ref')),
-                      dict(free=()), dict(values={'K_11_ref': 1.}),
-                      dict(start=(1e-5,)), dict(start=(1e-5, 0.)),
-                      dict(start=(1e-5, -1e-3))):
-        with pytest.raises(ValueError):
+    assert other['fitted']['k_3_ref'] == pytest.approx(1.42129e-5, rel=1e-5)
+    for arguments, message in (
+            (dict(free=('k_6',)), r"unknown constants \['k_6'\]"),
+            (dict(values={'K_11': 1.}), r"unknown constants \['K_11'\]"),
+            (dict(free=('k_3', 'k_3_ref')), 'each constant once'),
+            (dict(values={'k_4': 2e-3, 'k_4_ref': 2e-3}),
+             'each constant once'),
+            (dict(free=()), 'at least one constant'),
+            (dict(start=(1e-5, 1e-3)), 'one finite, positive value'),
+            (dict(start=(0.,)), 'one finite, positive value'),
+            (dict(start=(-1e-5,)), 'one finite, positive value'),
+            (dict(start=(np.inf,)), 'one finite, positive value'),
+            (dict(start=(np.nan,)), 'one finite, positive value')):
+        with pytest.raises(ValueError, match=message):
             fit_simplified_reversible_constants(**arguments)
 
 

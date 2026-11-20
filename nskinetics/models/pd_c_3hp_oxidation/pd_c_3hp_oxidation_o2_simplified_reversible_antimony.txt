@@ -1,7 +1,8 @@
 // Selective oxidation of 3-hydroxypropionic acid (3-HP) to malonic acid (MA)
-// over 10 % Pd/C with O2 as the oxidant: the authors' SIMPLIFIED REVERSIBLE
-// five-reaction model, transcribed from their script
-// APCATB_D_25_08770_heatmap.m in the data deposit (Dryad,
+// over 10 % Pd/C with O2 as the oxidant: the five-reaction model of the
+// authors' script APCATB_D_25_08770_heatmap.m, called here the SIMPLIFIED
+// REVERSIBLE model (the name is this package's), transcribed from that
+// script in the data deposit (Dryad,
 // https://doi.org/10.5061/dryad.jsxksn0q4) of
 //   Kim, Chavarrio, Install, Huber, Appl. Catal. B: Environ. Energy 386
 //   (2026) 126403, https://doi.org/10.1016/j.apcatb.2026.126403
@@ -12,11 +13,12 @@
 // constant" K_6..K_10. The model is not written out in the paper. It is
 // the model with which that script computes the published heat maps of MA
 // selectivity and yield over temperature and time (Fig. 11).
-// The constants the script fitted are not in the deposit. The ten 50 C
-// constants of this file are defined from the deposit: eight are values it
-// gives (three rate constants from the 50 C row of the deposited Arrhenius
-// table of Fig. 10d, five equilibrium constants as printed in the script),
-// and the other two are fitted to the 50 C data of the script.
+// The constants the script's run fitted are not in the deposit. Of the ten
+// 50 C constants of this file, every one the deposit gives is used as
+// given (three rate constants from the 50 C row of the deposited Arrhenius
+// table of Fig. 10d; k_4 and the five equilibrium constants from the
+// vector k0 written in the script), and the one it does not give, k_3, is
+// fitted to the 50 C data of the script.
 // Two properties of the script's heat-map run are kept here: (1) the
 // Arrhenius factor of each step is applied to its rate constant AND to its
 // equilibrium constant; (2) the heat maps start from unit mole fractions
@@ -43,6 +45,11 @@ model *kim2026_o2_simplified_reversible()
   // step i to k_i and then again to the equilibrium constant of the same
   // step, so k_i/K_(i+5) does not depend on temperature. This is kept
   // because it is what the script computes. At T = T_ref every factor is 1.
+  // The constants were fitted at 50 C only. At 25, 75 and 100 C the model
+  // does not describe the paper's experiments (Fig. 10a-c; pooled R2 0.64
+  // to 0.76 in the script's fitting convention, 0.56 to 0.76 in its
+  // heat-map convention; see NOTES.md, "Limits of the temperature
+  // dependence").
   k_1 := k_1_ref*exp(-(Ea_1/R_gas)*(1/T - 1/T_ref));
   k_2 := k_2_ref*exp(-(Ea_2/R_gas)*(1/T - 1/T_ref));
   k_3 := k_3_ref*exp(-(Ea_3/R_gas)*(1/T - 1/T_ref));
@@ -181,28 +188,33 @@ model *kim2026_o2_simplified_reversible()
   x_per_M has l_per_mol;
 
   // Constants at T_ref = 50 C. The deposit does not contain the values the
-  // script fitted; the script only prints the vector from which it takes
-  // the bounds of its search, to four decimals,
+  // script's run fitted; the script writes, to four decimals, the vector
+  // from which it takes the bounds of its search,
   //   k0 = [0.0021 0.0001 0.0000 0.0023 0.0010 4.7840 0.5918 3.5116
   //         81.6870 52.0472].
-  // Every value the deposit gives is used as given, and the rest is fitted
-  // (see NOTES.md, "Constants at 50 C"). Rate constants in 1/min (they are
-  // lumped: catalyst mass, 0.2 g, is not a factor in this model).
+  // Every constant the deposit gives is used as given; where it gives one
+  // twice, the full-precision value is used. The one constant it does not
+  // give, k_3, is fitted (see NOTES.md, "Constants at 50 C"). Rate
+  // constants in 1/min (they are lumped: catalyst mass, 0.2 g, is not a
+  // factor in this model).
   // k_1, k_2, k_5: exp() of the 50 C row of the deposited Arrhenius table
   //   11-4_Arrhenius.csv ("ln k1" = -6.14695, "ln k2" = -9.86427,
   //   "ln k3" = -6.84713; the column labelled k3 there is this model's k_5).
+  //   k0 has them to four decimals as 0.0021, 0.0001 and 0.0010; the last
+  //   disagrees with the table's 1.0625e-3, which would round to 0.0011.
   k_1_ref = 2.139999e-3;
   k_1_ref has per_min;
   k_2_ref = 5.199984e-5;
   k_2_ref has per_min;
-  // k_3, k_4: not in the deposit (k0 prints them as 0.0000 and 0.0023).
+  // k_3: k0 writes 0.0000 (below 5e-5), so the deposit gives no value.
   //   FITTED by least squares to the 50 C data table of the script, in the
-  //   script's fitting convention, with the other eight constants held
+  //   script's fitting convention, with the other nine constants held
   //   (fit_simplified_reversible_constants in fitting.py; five significant
-  //   digits). Standard errors: 31 % (k_3) and 3.7 % (k_4).
-  k_3_ref = 1.4200e-5;
+  //   digits). Standard error 31 %.
+  k_3_ref = 1.4215e-5;
   k_3_ref has per_min;
-  k_4_ref = 2.3204e-3;
+  // k_4: 0.0023 as in k0, its only source (two significant digits).
+  k_4_ref = 0.0023;
   k_4_ref has per_min;
   k_5_ref = 1.062501e-3;
   k_5_ref has per_min;
@@ -343,12 +355,16 @@ Transcribed from the authors' script APCATB_D_25_08770_heatmap.m (Dryad, DOI
 intermediate and every step has a reverse term. The model is not written out in the paper.
 
 Default state: 50 C, with the heat-map initial condition (unit mole fractions;
-x_per_M = 1/C0). The values the script fitted were not deposited. The rate constants k_1,
-k_2 and k_5 come from the deposited Arrhenius table (11-4_Arrhenius.csv), the equilibrium
-constants from the vector k0 printed in the script, and k_3 and k_4 are a least-squares
-fit to the 50 C data table of the script with the other eight constants held.
+x_per_M = 1/C0). The values the script's run fitted were not deposited. Every constant the
+deposit gives is used as given; where it gives one twice, the full-precision value is used.
+The rate constants k_1, k_2 and k_5 come from the deposited Arrhenius table
+(11-4_Arrhenius.csv, not the four-decimal values of k0), k_4 and the equilibrium constants
+from the vector k0 written in the script, and k_3 (0.0000 in k0) is a least-squares fit to
+the 50 C data table of the script with the other nine constants held.
 The Arrhenius factors are applied to the rate constants and to the equilibrium constants,
-as in the script.
+as in the script. The constants were fitted at 50 C only: at 25, 75 and 100 C the model does
+not describe the paper's experiments (Fig. 10a-c; pooled R2 0.56 to 0.76). Do not use P to
+explore pressure: the paper's screening experiments (Fig. 3a) contradict the model above 3 bar.
 ```
 end
 

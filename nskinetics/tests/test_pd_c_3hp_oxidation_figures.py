@@ -62,6 +62,24 @@ def _marker_only_lines(ax):
             if line.get_linestyle() == 'None' and len(line.get_xdata()) > 1]
 
 
+def _model_lines(ax, n_points):
+    """The solid model lines of a profile panel, in the order of
+    ``NORMALIZED``."""
+    return [line for line in ax.get_lines()
+            if line.get_linestyle() == '-' and line.get_marker() == 'None'
+            and len(line.get_xdata()) == n_points]
+
+
+def _assert_lines_are_the_model(lines, km, selections):
+    """Each line holds the trajectory of ``km`` for its selection."""
+    assert len(lines) == len(selections)
+    times = lines[0].get_xdata()
+    sim = pkg.simulate_at_times(km, times, list(selections))
+    for line, name in zip(lines, selections):
+        assert np.array_equal(line.get_xdata(), times)
+        assert np.allclose(line.get_ydata(), sim[name], rtol=0., atol=1e-12)
+
+
 def _png_size(path):
     with open(path, 'rb') as f:
         header = f.read(24)
@@ -72,10 +90,15 @@ def test_fig9_draws_model_experiment_and_deposited_curve():
     fig = figures.plot_fig9()
     try:
         panel_a, reactions_a, panel_b, reactions_b = fig.axes
-        for panel, read in ((panel_a, pkg.read_fig9a_h2o2),
-                            (panel_b, pkg.read_fig9b_o2)):
+        for panel, read, load in (
+                (panel_a, pkg.read_fig9a_h2o2, pkg.load_h2o2_model),
+                (panel_b, pkg.read_fig9b_o2, pkg.load_o2_model)):
             # 5 model lines + 5 experimental series + 5 deposited polylines
             assert len(_lines_with_data(panel)) == 15
+            # the model lines are the Table 3 model of the panel's oxidant
+            _assert_lines_are_the_model(
+                _model_lines(panel, len(figures._T_DENSE)), load(),
+                pkg.NORMALIZED)
             assert panel.get_xlim() == (-30., 1440.)
             assert panel.get_xlabel() == 'Time (min)'
             # markers are drawn whole on the frame, so no sample taken
@@ -161,11 +184,47 @@ def test_figS12_draws_the_insets(tmp_path):
         (inset_a,), (inset_b,) = panel_a.child_axes, panel_b.child_axes
         assert inset_a.get_ylim() == (-0.3, 15.)
         assert inset_b.get_xlim() == (-50., 600.)
-        # (a) species, published curve, deposited trace, predicted H2O2
+        n = len(figures._T_DENSE)
+        # species lines of the main axes and of inset a: the Table 3 models
+        for ax, load in ((panel_a, pkg.load_h2o2_model),
+                         (inset_a, pkg.load_h2o2_model),
+                         (panel_b, pkg.load_o2_model)):
+            _assert_lines_are_the_model(_model_lines(ax, n), load(),
+                                        pkg.NORMALIZED)
+        # the dashed lines are the predicted H2O2 and OPA of those models
+        for ax, load, name, scale in (
+                (panel_a, pkg.load_h2o2_model, 'eq_H2O2', 1.),
+                (inset_a, pkg.load_h2o2_model, 'eq_H2O2', 1.),
+                (panel_b, pkg.load_o2_model, 'x_OPA', 1.),
+                (inset_b, pkg.load_o2_model, 'x_OPA', 1e5)):
+            (dashed,) = [line for line in ax.get_lines()
+                         if line.get_linestyle() == '--']
+            sim = pkg.simulate_at_times(load(), dashed.get_xdata(), [name])
+            assert np.allclose(dashed.get_ydata(), scale*sim[name],
+                               rtol=0., atol=1e-12*scale)
         h2o2 = inset_a.get_lines()[-1]
         assert h2o2.get_ydata()[0] == pytest.approx(15.)
+        # (a) the 'Published (digitized)' line is the digitized inset of SI
+        # Fig. S12a, and the squares are the deposited trace
+        published = pkg.read_figS12a_h2o2_inset_digitized()
+        trace = pkg.read_fig9a_h2o2()['h2o2_trace']
+        (line,) = [line for line in inset_a.get_lines()
+                   if line.get_linestyle() == '-'
+                   and to_hex(line.get_color()) == figures._C_INK]
+        assert np.array_equal(line.get_xdata(), published['time'])
+        assert np.array_equal(line.get_ydata(), published['eq_H2O2'])
+        (squares,) = [line for line in inset_a.get_lines()
+                      if line.get_marker() == 's']
+        assert np.array_equal(squares.get_xdata(), trace['time'])
+        assert np.array_equal(squares.get_ydata(), trace['eq_H2O2'])
+        labels = [text.get_text()
+                  for text in inset_a.get_legend().get_texts()]
+        assert labels[1:] == ['Published (digitized)', 'Deposited trace']
         # (b) published polyline and predicted OPA, on the 1e-5 axis
         published, opa = inset_b.get_lines()
+        digitized = pkg.read_figS12b_opa_inset_digitized()
+        assert np.array_equal(published.get_xdata(), digitized['time'])
+        assert np.array_equal(published.get_ydata(), digitized['x_OPA']*1e5)
         assert len(published.get_xdata()) == 13
         assert 1.40 <= max(opa.get_ydata()) <= 1.47
         path = os.path.join(str(tmp_path), 'figS12.png')
@@ -215,8 +274,8 @@ def test_fig11_draws_both_heat_maps_with_the_default_constant_set():
         panel_a, panel_b = _heat_map_axes(fig)
         T_C, times, selectivity, MA_yield = pkg.fig11_heat_maps()
         for panel, matrix, label, value in (
-                (panel_a, selectivity, 'MA Selectivity', 0.5924),
-                (panel_b, MA_yield, 'MA Yield', 0.5478)):
+                (panel_a, selectivity, 'MA Selectivity', 0.5931),
+                (panel_b, MA_yield, 'MA Yield', 0.5484)):
             assert np.array_equal(_mesh(panel), matrix)
             assert panel.get_xlim() == (7.2, 1682.8)
             assert panel.get_ylim() == (29.5, 100.5)
@@ -228,7 +287,7 @@ def test_fig11_draws_both_heat_maps_with_the_default_constant_set():
             # red star on the largest cell, purple star on the 50 C row maximum
             red, purple = _star_positions(panel)
             maximum = pkg.heat_map_maximum(T_C, times, matrix)
-            assert maximum[0] == pytest.approx(value, abs=5e-4)
+            assert maximum[0] == pytest.approx(value, abs=2e-4)
             _, T_max, t_max = maximum
             assert red == (t_max, T_max)
             assert purple == (times[np.argmax(matrix[20])], 50.)
@@ -273,7 +332,7 @@ def test_fig11_verification_overlays_the_digitized_lines():
         for top, bottom, read, matrix, rms, matched in zip(
                 tops, bottoms, (pkg.read_fig11a_selectivity_digitized,
                                 pkg.read_fig11b_yield_digitized), maps[2:],
-                (1.11, 0.35), ('not matched', 'matched')):
+                (1.05, 0.30), ('not matched', 'matched')):
             digitized = read()
             # both panels are the maps of the one default constant set
             assert np.array_equal(_mesh(top), matrix)
@@ -291,7 +350,7 @@ def test_fig11_verification_overlays_the_digitized_lines():
                          + drawn[0].get_markeredgewidth())
             assert dot_width <= 0.5*min(contours.get_linewidths())
             # six groups of offsets (three levels, two sides). The misfit
-            # of panel a (1.11 px rms, single samples up to 3.6 px) is
+            # of panel a (1.05 px rms, single samples up to 3.0 px) is
             # drawn and named: in the title, and in the offsets panel.
             groups = [line for line in bottom.get_lines()
                       if len(line.get_xdata()) > 2]
@@ -302,7 +361,7 @@ def test_fig11_verification_overlays_the_digitized_lines():
             low, high = bottom.get_ylim()
             assert low < offsets.min() and offsets.max() < high
             assert np.abs(offsets).max() == pytest.approx(
-                3.60 if matched == 'not matched' else 1.46, abs=0.01)
+                3.02 if matched == 'not matched' else 1.64, abs=0.01)
             assert top.get_title() == (
                 'Published contours %s by the model: rms offset %.2f px'
                 % (matched, rms))
@@ -379,9 +438,12 @@ def test_solver_emulation_titles_do_not_run_into_each_other(font,
 
 
 def test_save_figures_writes_the_figures_named(tmp_path):
-    # the names the command line offers (--figures)
+    # the names the command line offers (--figures), each mapped to the
+    # plot function of that name
     assert list(figures._FIGURES) == [
         'fig9', 'figS12', 'fig11', 'fig11_verification', 'solver_emulation']
+    for name, plot in figures._FIGURES.items():
+        assert plot is getattr(figures, 'plot_' + name), name
     paths = figures.save_figures(str(tmp_path), formats=('pdf',),
                                  figures=['fig9'])
     assert [os.path.basename(path) for path in paths] == [
@@ -389,6 +451,22 @@ def test_save_figures_writes_the_figures_named(tmp_path):
     assert os.path.getsize(paths[0]) > 0
     with pytest.raises(ValueError, match='unknown figures'):
         figures.save_figures(str(tmp_path), figures=['fig9c'])
+
+
+def test_command_line_writes_the_figures_named(tmp_path, monkeypatch,
+                                              capsys):
+    # python -m nskinetics.models.pd_c_3hp_oxidation.figures OUTPUT_DIR ...
+    monkeypatch.setattr('sys.argv', [
+        'figures', str(tmp_path), '--figures', 'figS12', '--formats', 'png',
+        '--dpi', '20'])
+    figures.main()
+    path = os.path.join(str(tmp_path), 'pd_c_3hp_oxidation_figS12.png')
+    assert capsys.readouterr().out == f'Saved {path}\n'
+    assert os.listdir(str(tmp_path)) == ['pd_c_3hp_oxidation_figS12.png']
+    monkeypatch.setattr('sys.argv', ['figures', str(tmp_path), '--figures',
+                                     'fig9c'])
+    with pytest.raises(SystemExit):
+        figures.main()
 
 
 def test_save_figures_dpi_sets_the_size_of_the_png(tmp_path):

@@ -13,8 +13,9 @@ CC0), referred to below as "the deposit".
 
 These notes separate what is **printed** in the paper or its SI, what was
 **inferred** from the deposit because the paper does not state it, and what
-is an **NSKinetics addition**. They also list the places where the paper and
-the deposit disagree and that matter for these models.
+was **fitted** here (one constant, `k_3` of the simplified reversible
+model). They also list the places where the paper and the deposit disagree
+and that matter for these models.
 
 Two conventions are used throughout:
 
@@ -31,7 +32,7 @@ Two conventions are used throughout:
   solver run is shipped (`solver_emulation.py`): that the shipped models
   return the deposited model nodes to their printed digits is tested, and
   so is what each inferred choice contributes to that. The fit that
-  defines two constants of the simplified reversible model is shipped as
+  defines one constant of the simplified reversible model is shipped as
   well (`fitting.py`), and the tests repeat it.
 
 ## The three models
@@ -44,19 +45,21 @@ maps of Fig. 11 were computed. The package ships these three:
 |---|---|---|
 | H2O2 model (`load_h2o2_model`) | Table 3, H2O2 column | Fig. 9a (50 C), which it reproduces. Its predicted H2O2 is compared with SI Fig. S12a, whose H2O2 curve lies up to 0.38 equivalents lower and is matched only with other constants |
 | O2 model (`load_o2_model`) | Table 3, O2 column, with one inferred factor | Fig. 9b and SI Fig. S12b (50 C), which it reproduces. It has no temperature parameter |
-| Simplified reversible O2 model (`load_o2_simplified_reversible_model`) | no; in the authors' deposited heat-map script | Fig. 11 (rms offset of the contour lines 1.11 px in panel a and 0.35 px in panel b); the 50 C experiment; the experiments at 25, 75 and 100 C, which it does not describe |
+| Simplified reversible O2 model (`load_o2_simplified_reversible_model`; the name is this package's) | no; in the authors' deposited heat-map script | Fig. 11 (rms offset of the contour lines 1.05 px in panel a and 0.30 px in panel b); the 50 C experiment; the experiments at 25, 75 and 100 C, which it does not describe |
 
 The two Table 3 models are the published ones, at 50 C. The only model of
 the package with a temperature is the simplified reversible model, and its
 temperature dependence is that of the script.
 
-The constants that the script fitted for the simplified reversible model
-are not in the deposit. The ten 50 C constants of the shipped model are
-defined by one rule: **every value the deposit gives is used as given, and
-the rest is fitted to the 50 C data with the authors' fitting set-up.**
-Eight are given (three rate constants from the 50 C row of the deposited
-Arrhenius table, five equilibrium constants as printed in the script), and
-two (`k_3`, `k_4`) are fitted, by a function that is shipped ("Constants at
+The constants that the script's run fitted for the simplified reversible
+model are not in the deposit. The ten 50 C constants of the shipped model
+are defined by one rule: **every constant the deposit gives is used as
+given, the full-precision value where it gives one twice, and the one it
+does not give is fitted to the 50 C data with the authors' fitting
+set-up.** Nine are given: three rate constants from the 50 C row of the
+deposited Arrhenius table, and `k_4` = 0.0023 and the five equilibrium
+constants from the vector `k0` written in the script. `k_3`, which `k0`
+writes as 0.0000, is fitted, by a function that is shipped ("Constants at
 50 C" below). No constant of the package is fitted to a published figure.
 Fig. 11 is therefore a comparison, not a fit: that the model comes close
 to it shows that the constants are consistent with the published figure,
@@ -68,9 +71,9 @@ not that they are the authors'.
 |---|---|
 | `pd_c_3hp_oxidation_h2o2_antimony.txt` (+ `_sbml.xml`) | H2O2 model: Table 3 H2O2 column, Fig. 9a |
 | `pd_c_3hp_oxidation_o2_antimony.txt` (+ `_sbml.xml`) | O2 model: Table 3 O2 column, Fig. 9b, SI Fig. S12b |
-| `pd_c_3hp_oxidation_o2_simplified_reversible_antimony.txt` (+ `_sbml.xml`) | the authors' simplified reversible O2 model (no OPA) of their heat-map script (Fig. 11); not in the paper |
+| `pd_c_3hp_oxidation_o2_simplified_reversible_antimony.txt` (+ `_sbml.xml`) | the simplified reversible O2 model (the name is this package's; no OPA): the model of the authors' heat-map script (Fig. 11); not in the paper |
 | `pd_c_3hp_oxidation.py` | loaders (`load_h2o2_model`, `load_o2_model`, `load_o2_simplified_reversible_model`), `simulate_at_times`, `TABLE_S4`, the constant sets of the simplified model, and the constant sets inferred from the deposited Fig. 9 nodes (`H2O2_NODE_PARAMETER_SETS`, `O2_NODE_PARAMETER_SETS`) |
-| `fitting.py` | `fit_simplified_reversible_constants`: the least-squares fit to the 50 C data of the script that defines `k_3` and `k_4` of the simplified model |
+| `fitting.py` | `fit_simplified_reversible_constants`: the least-squares fit to the 50 C data of the script that defines `k_3` of the simplified model |
 | `solver_emulation.py` | a port of MATLAB `ode23s` and the repeat of the authors' solver run with the rates of a shipped model, for the comparison with the deposited model nodes of Fig. 9 (verification only) |
 | `heat_maps.py` | the temperature-time maps of Fig. 11 and their comparison with digitized contour lines |
 | `temperature_series.py` | the lines of the Arrhenius plot (Fig. 10d) and the measures used to compare a model with a table of experimental points |
@@ -231,13 +234,13 @@ of the paper's Eqs. 1 and 3, after 480 min at 50 C unless varied.
 
 | Series (8 h) | Condition | Measured: conversion / MA yield, % | Model: conversion / MA yield, % |
 |---|---|---|---|
-| O2 pressure, Fig. 3a | 1 bar | 21.7 / 2.7 | simplified model, `P` set: 87.8 / 29.9 |
-| | 3 bar | 72.8 / 41.1 | 98.2 / 47.5 |
+| O2 pressure, Fig. 3a | 1 bar | 21.7 / 2.7 | simplified model, `P` set: 87.7 / 30.0 |
+| | 3 bar | 72.8 / 41.1 | 98.2 / 47.6 |
 | | 5 bar | 63.2 / 20.5 | 99.7 / 51.4 |
 | | 10 bar | 25.0 / 1.3 | 99.9 / 52.7 |
 | | 20 bar | 25.9 / 0.6 | 100.0 / 51.2 |
-| Temperature with O2, Fig. 3c | 25 C | 8.5 / 1.4 | simplified model at T: 53.6 / 36.3 |
-| | 50 C | 72.8 / 41.1 | 98.9 / 49.0 (O2 model: 99.0 / 48.0) |
+| Temperature with O2, Fig. 3c | 25 C | 8.5 / 1.4 | simplified model at T: 53.5 / 36.3 |
+| | 50 C | 72.8 / 41.1 | 98.9 / 49.1 (O2 model: 99.0 / 48.0) |
 | | 75 C | 95.5 / 35.7 | 99.9 / 6.0 |
 | | 100 C | 84.6 / 2.1 | 100.0 / 0.2 |
 | H2O2 charge, Fig. 2a | 5 equivalents | 14.0 / 4.7 | H2O2 model, `eq_H2O2_0` set: 41.8 / 9.7 |
@@ -248,11 +251,12 @@ of the paper's Eqs. 1 and 3, after 480 min at 50 C unless varied.
 
 The simplified model is as its loader builds it (default constants,
 heat-map start); with the script's fitting start the pressure column reads
-85.6, 95.9, 97.9, 98.9 and 99.5 % conversion and 27.2, 44.4, 48.9, 51.1 and
-49.8 % MA, and the temperature column 50.4, 96.7, 99.9 and 100.0 %
-conversion and 33.0, 46.1, 5.8 and 0.1 % MA. The last two bars of Fig. 2a are labelled 20 and 30 on the axis of the
-published figure and `1: 30` and `1: 50` in the deposit; the text speaks of
-ratios "from 1:5 to 1:30". Both readings are given.
+85.5, 95.9, 97.9, 98.9 and 99.5 % conversion and 27.3, 44.5, 49.0, 51.1
+and 49.8 % MA, and the temperature column 50.3, 96.7, 99.9 and 100.0 %
+conversion and 33.0, 46.2, 5.8 and 0.1 % MA. The last two bars of Fig. 2a
+are labelled 20 and 30 on the axis of the published figure and `1: 30` and
+`1: 50` in the deposit; the text speaks of ratios "from 1:5 to 1:30". Both
+readings are given.
 
 Two rows of the deposited Fig. 3a table differ from, or repeat, the SI:
 
@@ -301,7 +305,7 @@ What the comparison shows:
   15 equivalents the model is too fast (41.8 against 14.0 % at
   5 equivalents), and at 15 it gives 64.7 against 78.4 %.
 - **Temperature.** At 25 C the simplified model, the model of Fig. 11,
-  converts 54 % in 8 h where 8.5 % was measured, as in the comparison with
+  converts 53 % in 8 h where 8.5 % was measured, as in the comparison with
   the 25 C time course. At 75 C it has 6 % MA left after 8 h where the
   screening experiment has a yield of 35.7 %.
 - **The screening experiments and the time courses are not on the same
@@ -854,7 +858,8 @@ emulated steps and of the accurate solution from the nodes.
    "`x_O2_ref`").
 9. **Solver.** Section 2.6 names `ode23s` and `ode15s`; the deposited curves
    are reproduced step for step by an emulation of `ode23s` at default
-   tolerances (previous section; MATLAB itself was not run).
+   tolerances (previous section; MATLAB itself was not run). Section 2.6
+   names MATLAB R2024b, the README of the deposit R2024a.
 10. **Maximum MA yield at 75 C.** The text gives maximum MA yields of 52.6 %
     (75 C) and 56.8 % (100 C). The largest measured MA fractions in the
     deposit are 0.436 (75 C, 180 min) and 0.568 (100 C, 40 min); the 75 C
@@ -921,11 +926,11 @@ each reaction runs at `r_j/x_per_M` (M/min), and `yH2' = r_3`,
 `yCO2' = r_2 + r_3`. This is the script's system exactly. The package tests
 compare the rates and derivatives of the model with the script's equations,
 written out again in the test module. In addition, the trajectories were
-compared with an independent scipy implementation of the script's equations
-(not shipped; same constants; LSODA and Radau at rtol 1e-12) in both conventions
-below, for the two constant sets at 30, 50, 84, 95 and 100 C: at the
-loader's CVODE tolerances (rtol 1e-9, atol 1e-10) the liquid fractions
-agree to 2e-8 of the feed and the gas fractions to 2e-9.
+compared with an independent scipy implementation of the script's
+equations (not shipped; same constants; LSODA and Radau at rtol 1e-12) in
+both conventions below, for the two constant sets at 30, 50, 84, 95 and
+100 C: at the loader's CVODE tolerances (rtol 1e-9, atol 1e-10) the liquid
+fractions agree to 2e-8 of the feed and the gas fractions to 2e-9.
 
 Temperature: `p(T) = p_ref*exp(-(Ea/R_gas)*(1/T - 1/T_ref))` for all ten
 parameters, `T_ref` = 323.15 K and `R_gas` = 8.314 J/(mol K), with `Ea` =
@@ -941,7 +946,7 @@ lines give 59.93, 68.96 and 52.09 kJ/mol (section "Arrhenius plot
 ### Three properties of the script that are in the published figure
 
 Each was tested against the contour lines digitized from Fig. 11b by removing
-it (default constants; the rms offset is 0.35 px with all three in place,
+it (default constants; the rms offset is 0.30 px with all three in place,
 1 px = 3.07 min or 0.148 C). The offsets without refitting were measured
 with the package; the tests pin those of the second and third. Offsets
 above about 1 px are not distances: they are the linearized estimate of
@@ -953,7 +958,7 @@ Fig. 11b with the property removed (not shipped).
 1. **The Arrhenius factor of step i multiplies `k_i` and also `K_(i+5)`**
    (the script's `Ea` vector is the five values repeated), so `k_i/K_(i+5)`
    does not change with temperature. Scaling only the rate constants gives
-   3.0 px (1.3 px after refitting).
+   2.8 px (1.3 px after refitting).
 2. **The heat maps start from unit mole fractions.** The script has two
    initial conditions, selected here by `x_per_M` (the loader's
    `initial_condition`):
@@ -969,7 +974,7 @@ Fig. 11b with the property removed (not shipped).
      term, and `yO2` stays above 0.9999.
 
    The same constants give different curves in the two conventions: at 50 C
-   the MA fraction peaks at 0.570 (heat map) against 0.549 (fitting), and the
+   the MA fraction peaks at 0.571 (heat map) against 0.549 (fitting), and the
    curves differ by up to 0.03. The 50 C row of Fig. 11 is therefore not the
    50 C curve the same script fits and plots. With the fitting convention
    the heat maps miss the published contours by 14 px with the clip (91 px
@@ -977,7 +982,7 @@ Fig. 11b with the property removed (not shipped).
 3. **The time axis of Fig. 11 is the reaction time plus 10 min.** The script
    places the feed at its first plotted time, 10 min. Model time here is the
    reaction time; `heat_maps.py` adds the offset (`FIG11_TIME_OFFSET`).
-   Starting at plotted time 0 gives 3.8 px (6.4 px without the clip; 2.9 px
+   Starting at plotted time 0 gives 3.8 px (6.6 px without the clip; 2.9 px
    after refitting).
 
 Two further points: the script uses a pressure of 3.5 bar (the captions give
@@ -987,36 +992,51 @@ quantities `fig11a_selectivity` and `fig11b_yield`).
 
 ### Constants at 50 C
 
-**What the deposit holds.** The constants the script fitted are not in the
-deposit. The script prints one vector of ten numbers, to four decimals,
-`k0 = [0.0021 0.0001 0.0000 0.0023 0.0010 4.7840 0.5918 3.5116 81.6870
-52.0472]` (five rate constants, then five equilibrium constants;
+**What the deposit holds.** The constants the script's run fitted are not
+in the deposit. The script writes one vector of ten numbers, to four
+decimals, `k0 = [0.0021 0.0001 0.0000 0.0023 0.0010 4.7840 0.5918 3.5116
+81.6870 52.0472]` (five rate constants, then five equilibrium constants;
 `'k0_printed'`). In the script `k0` only sets the size and the bounds of
-the global search (0 to 1.5 times `k0`). Run as the heat-map model, it is
-far from the figure (4.6 and 7.1 px on panels a and b). The deposit also
-holds the Arrhenius table of Fig. 10d (`11-4_Arrhenius.csv`), whose 50 C row
-gives the logarithms of three rate constants, taken to be `k_1`, `k_2` and
-`k_5` of this model (section "Arrhenius plot (Fig. 10d)").
+the global search: the particle swarm searches 0 to 1.5 times `k0`. For
+`k_3` that interval is 0 to 0, so the swarm can only return `k_3` = 0;
+`lsqcurvefit` then starts from the swarm's result with a lower bound of 0
+and no upper bound and stops after at most five iterations. What `k_3` the
+authors' run ended with therefore does not follow from the script text,
+and whether `k0` holds the result of an earlier run is not stated. Run as
+the heat-map model, `k0` is far from the figure (4.6 and 7.1 px on panels a
+and b). The deposit also holds the Arrhenius table of Fig. 10d
+(`11-4_Arrhenius.csv`), whose 50 C row gives the logarithms of three rate
+constants, taken to be `k_1`, `k_2` and `k_5` of this model (section
+"Arrhenius plot (Fig. 10d)").
 
-**The rule.** Every value the deposit gives is used as given, and the rest
-is fitted to the 50 C data with the authors' fitting set-up. Rate constants
-in 1/min; they are lumped (no catalyst mass).
+**The rule.** Every constant the deposit gives is used as given. Where the
+deposit gives a constant twice, the full-precision value is used: `k_1`,
+`k_2` and `k_5` are exp() of the 50 C row of `11-4_Arrhenius.csv`, which
+`k0` gives to four decimals as 0.0021, 0.0001 and 0.0010 (the last
+disagrees with the table's 1.0625e-3, which would round to 0.0011).
+`K_6` to `K_10` are those of `k0`, and so is `k_4` = 0.0023, its only
+source (two significant digits). `k_3`, which `k0` writes as 0.0000 (below
+5e-5), is the only constant fitted: to the 50 C data table of the script,
+with the script's fitting convention. Rate constants in 1/min; they are
+lumped (no catalyst mass).
 
 | Constant | Value (`'deposit'`, the default) | Source |
 |---|---|---|
-| `k_1` | 2.139999e-3 | exp(-6.14695): 50 C row of the deposited `11-4_Arrhenius.csv`, "ln k1" |
-| `k_2` | 5.199984e-5 | exp(-9.86427): same row, "ln k2" |
-| `k_3` | 1.4200e-5 | **fitted** (below); standard error 4.4e-6 (31 %) |
-| `k_4` | 2.3204e-3 | **fitted** (below); standard error 8.6e-5 (3.7 %) |
-| `k_5` | 1.062501e-3 | exp(-6.84713): same row, the column labelled "ln k3" |
-| `K_6`, `K_7`, `K_8`, `K_9`, `K_10` | 4.7840, 0.5918, 3.5116, 81.6870, 52.0472 | as printed in the script (`k0`) |
+| `k_1` | 2.139999e-3 | exp(-6.14695): 50 C row of the deposited `11-4_Arrhenius.csv`, "ln k1" (`k0`: 0.0021) |
+| `k_2` | 5.199984e-5 | exp(-9.86427): same row, "ln k2" (`k0`: 0.0001) |
+| `k_3` | 1.4215e-5 | **fitted** (below); standard error 4.4e-6 (31 %); `k0`: 0.0000 |
+| `k_4` | 0.0023 | `k0`, its only source |
+| `k_5` | 1.062501e-3 | exp(-6.84713): same row, the column labelled "ln k3" (`k0`: 0.0010) |
+| `K_6`, `K_7`, `K_8`, `K_9`, `K_10` | 4.7840, 0.5918, 3.5116, 81.6870, 52.0472 | as written in the script (`k0`) |
 
-For `k_3` and `k_4` the deposit has no value: `k0` gives them as 0.0000 and
-0.0023, which is two digits of `k_4` and none of `k_3`.
+In the model these 50 C constants are the parameters `k_1_ref` to
+`K_10_ref`; `k_1` to `K_10` are their values at `T` (the Arrhenius
+assignment rules). `fit_simplified_reversible_constants` accepts either
+name and returns the `_ref` names.
 
 **The fit.** `fit_simplified_reversible_constants` (`fitting.py`) fits
 chosen constants of the model to the 50 C data by least squares, the others
-held. Its set-up is that of the script's own fit:
+held; by default `k_3` alone. Its set-up is that of the script's own fit:
 
 - *Data:* the table of 16 samples (0 to 1680 min, five fractions each) that
   the script carries in its function `data()`, shipped as
@@ -1032,16 +1052,37 @@ held. Its set-up is that of the script's own fit:
   those of the table at the 16 sample times, all 80 values, unweighted (the
   five of the t = 0 row are zero).
 
-With `K_6` to `K_10`, `k_1`, `k_2` and `k_5` held at the values above, the
-fit of `k_3` and `k_4` gives 1.42000e-5 and 2.32041e-3 1/min, shipped to
-five significant digits, with a sum of squares of 0.033773 (pooled R2
-0.9939, rms 0.0205). The same optimum is reached from three other starting
-points to 1e-5 of the values (tested), and the test suite checks that the
-shipped `k_3` and `k_4` are the rounded result of the function. The
-standard errors (from the Jacobian at the optimum, 78 degrees of freedom)
-say how well the data determine each with the other held: `k_4` to 3.7 %,
-`k_3` to 31 % only. The product of step 3, OXA, is at most 3 % of the
-liquid, so the data hold little information on `k_3`.
+With the other nine constants held at the values above, the fit gives
+`k_3` = 1.42150e-5 1/min, shipped to five significant digits, with a sum
+of squares of 0.033797 (pooled R2 0.9939, rms 0.0206). The same optimum is
+reached from other starting points to 1e-5 of the value (7e-6 at most over
+eleven starts from 1e-6 to 1e-3; three are tested), and an independent
+scipy implementation of the script's equations (not shipped; Radau and
+LSODA, scalar minimization and least squares) gives 1.42150e-5 as well.
+The test suite checks that the shipped `k_3` is the rounded result of the
+function. The result is at least 3.4e-5 (relative) from a rounding
+boundary of the fifth digit; tolerances of the integration and the step of
+the central-difference Jacobian move it by less than 1e-5, whereas scipy's
+default two-point Jacobian stops the iteration early: 2.8e-4 lower
+(1.4211e-5) from the default start, and from the starts 1e-6, 4.3e-6,
+3e-5 and 1e-4 between 1.1e-3 lower and 3.6e-3 higher. A two-point Jacobian
+with a step of 1e-6 comes closer but still crosses the rounding boundary
+from the start 3e-5 (1.42145e-5, -3.8e-5). The standard error (from the
+Jacobian at the optimum, 79 degrees of freedom; the script divides by
+twice the number of residuals minus ten) says how well the data determine
+`k_3` with the others held: to 31 % only. The product of step 3, OXA, is at
+most 3.2 % of the liquid in the data, so they hold little information on
+`k_3`.
+
+**Alternative: `k_4` fitted as well** (`free=('k_3', 'k_4')`; tested, not
+the shipped set). With the other eight held, the fit gives `k_3` =
+1.42000e-5 and `k_4` = 2.32041e-3 1/min (standard errors 31 % and 3.7 %)
+and a sum of squares of 0.0337728, 0.07 % below that of the shipped set.
+The fitted `k_4` agrees with the 0.0023 of `k0` to its precision (it
+rounds to it), and `k_3` changes by 0.1 %. With these two values the heat
+maps lie 1.11 px (panel a) and 0.35 px (panel b) from the published
+contours, with maxima of 0.592 and 0.548 (against 1.05 and 0.30 px and
+0.593 and 0.548 with the shipped set).
 
 **What is not the authors' procedure.** The script obtains its constants in
 two stages, all ten constants free: a particle swarm (`particleswarm`, 100
@@ -1051,52 +1092,59 @@ options that set a maximum of five iterations. Every trajectory is integrated
 with `ode23s` at default tolerances, restarted at each sample. The swarm is
 random, and neither stage is run to convergence, so the authors' constants
 cannot be recomputed from the deposit: another run of the same script gives
-other constants. (As posted, the upper bound of `k_3` in the swarm is
-1.5 times 0.0000, i.e. zero.) The fit of this package differs in three
-ways: it is carried to convergence, its integration is accurate (CVODE,
-relative tolerance 1e-12), and only the constants without a deposited value
-are free. It is deterministic.
+other constants. The fit of this package differs in four ways: it is
+carried to convergence; its integration is accurate (CVODE, relative
+tolerance 1e-12) and runs through all sample times at once; only the
+constant without a deposited value is free; and it is deterministic.
 
 **Why the given values are held, and what supports them.** The numbers
 below were computed with the package unless marked "(not shipped)".
 
 1. *A converged fit of all ten constants does not determine the equilibrium
    constants.* With all ten free (the same function), the five rate
-   constants come out the same from ten starting points (2.1310e-3,
+   constants come out the same from every starting point tried (2.1310e-3,
    5.434e-5, 1.4636e-5, 2.3931e-3 and 9.747e-4 1/min; sum of squares
-   0.03195) and so does `K_6` (4.44), but `K_7` and `K_8` end anywhere
-   (24 to 6800, and 0.001 to 1.6e5), and `K_9` and `K_10` run to 1e5 and
-   beyond, where the reverse terms of steps 4 and 5 vanish. The heat maps
-   of these fits lie 2.7 to 2.8 px (panel a) and 1.8 to 1.9 px (panel b)
-   from the published contours, with maxima of 0.596 and 0.554. The data
-   alone therefore do not give the equilibrium constants, and the published
-   contours are matched better by the printed equilibrium constants with
-   the rate constants that go with them (1.11 and 0.35 px, item 3) than by
+   0.03195) and so does `K_6` (4.44), but `K_7` and `K_8` end wherever the
+   start leads (for example 24 to 6800 and 0.001 to 1.6e5 over ten starting
+   points, and 2.1e3 and 2.7e5 from the function's default start; these are
+   examples, not bounds), and `K_9` and `K_10` run to 1e5 and beyond, where
+   the reverse terms of steps 4 and 5 vanish. The heat maps of these fits
+   lie 2.7 to 2.8 px (panel a) and 1.8 to 1.9 px (panel b) from the
+   published contours, with maxima of 0.596 and 0.554. The data alone
+   therefore do not give the equilibrium constants, and the published
+   contours are matched better by the equilibrium constants of `k0` with
+   the rate constants that go with them (1.05 and 0.30 px, item 3) than by
    the converged fit. (Measured with the package; not pinned by a test.)
-2. *With the printed equilibrium constants, the data return the 50 C row of
-   the Arrhenius table.* With `K_6` to `K_10` held as printed and all five
-   rate constants fitted, `k_1`, `k_2` and `k_5` come out as 2.1419e-3,
-   5.277e-5 and 1.0664e-3 1/min: 0.09, 1.5 and 0.37 % above the values of
-   the row (2.1400e-3, 5.200e-5, 1.0625e-3), well inside their standard
-   errors (2.5, 31 and 3.9 %). `k_3` and `k_4` then move by 0.25 and
-   0.35 %, and the sum of squares falls from 0.033773 to 0.033768 (tested).
-   This is the support for reading that row as constants of this model:
-   they are, within the accuracy of the data, what this model with these
-   equilibrium constants gives when it is fitted to the script's table. It
-   is an inference; neither the paper nor the deposit says so.
+2. *With the equilibrium constants of `k0`, the data return the 50 C row of
+   the Arrhenius table and the `k_4` of `k0`.* With `K_6` to `K_10` held as
+   written and all five rate constants fitted, `k_1`, `k_2` and `k_5` come
+   out as 2.1419e-3, 5.277e-5 and 1.0664e-3 1/min: 0.09, 1.5 and 0.37 %
+   above the values of the row (2.1400e-3, 5.200e-5, 1.0625e-3), well
+   inside their standard errors (2.5, 31 and 3.9 %). `k_4` comes out as
+   2.3122e-3, 0.53 % above the 0.0023 of `k0` (standard error 5.4 %), and
+   `k_3` as 1.4165e-5, 0.35 % below the shipped value; the sum of squares
+   falls from 0.033797 to 0.033768 (tested). This is the support for
+   reading that row as constants of this model: they are, within the
+   accuracy of the data, what this model with these equilibrium constants
+   gives when it is fitted to the script's table. It is an inference;
+   neither the paper nor the deposit says so.
 3. *The resulting heat maps are close to the published ones* (next
-   subsection): rms offsets of 1.11 px (panel a) and 0.35 px (panel b) from
-   the digitized contour lines, and maxima of 0.592 (95 C, 27 min) and
+   subsection): rms offsets of 1.05 px (panel a) and 0.30 px (panel b) from
+   the digitized contour lines, and maxima of 0.593 (95 C, 27 min) and
    0.548 (84 C, 49 min), where the text gives 59.1 % and 55.2 % for the
    same cells.
 4. *Fits to the published contour lines agree with the data fit* (not
-   shipped). With the other eight constants held, `k_3` and `k_4` fitted to
-   the contour lines digitized from Fig. 11b come out as 1.433e-5 and
-   2.305e-3 1/min, 0.9 % above and 0.7 % below the values fitted to the
-   data (rms offset 0.27 px in panel b, 1.07 px in panel a). With all five
-   rate constants fitted to those lines, `k_1`, `k_2` and `k_5` come out
-   0.03 % above, 2.2 % below and 0.10 % below the 50 C row (rms offset
-   0.25 px). The figure was not used to define any shipped constant.
+   shipped). With the other nine constants held, `k_3` fitted to the
+   contour lines digitized from Fig. 11b comes out as 1.449e-5, 1.9 %
+   above the value fitted to the data (rms offset 0.28 px in panel b,
+   1.08 px in panel a); fitted to the lines of both panels together, as
+   1.418e-5, 0.3 % below it. With `k_3` and `k_4` both fitted to the panel
+   b lines (the other eight held), they come out as 1.433e-5 and
+   2.305e-3 1/min, 0.8 % above the shipped `k_3` and 0.2 % above the `k_4`
+   of `k0` (0.27 px in panel b, 1.07 px in panel a). With all five rate
+   constants fitted to those lines, `k_1`, `k_2` and `k_5` come out 0.03 %
+   above, 2.2 % below and 0.10 % below the 50 C row (rms offset 0.25 px).
+   The figure was not used to define any shipped constant.
 5. *The authors' procedure, emulated, scatters by more than these
    differences* (not shipped, and approximate: a plain global-best particle
    swarm and a bounded trust-region least squares stopped after five
@@ -1113,18 +1161,13 @@ below were computed with the package unless marked "(not shipped)".
    With the trajectories integrated as the script integrates them (the
    `ode23s` port of `solver_emulation.py`, restarted at each sample, default
    tolerances), they differ from the accurate ones by at most 3.0e-5 at the
-   samples, and the fitted `k_3` and `k_4` change by +0.012 % and -0.005 %.
-   Fitting to the experimental block of `10-2_kinetic_model_O2.csv` instead
-   of the script's table changes them by -0.015 % and +0.003 % (tested).
-
-The value of `k_5` in the Arrhenius table, 1.0625e-3, would print as 0.0011,
-not as the 0.0010 of `k0`, so `k0` is not the 50 C row rounded to four
-decimals. (The other four rate constants of the shipped set do print as
-`k0` prints them: 0.0021, 0.0001, 0.0000 and 0.0023.)
+   samples, and the fitted `k_3` changes by +0.012 %. Fitting to the
+   experimental block of `10-2_kinetic_model_O2.csv` instead of the
+   script's table changes it by -0.015 % (tested).
 
 How much the equilibrium constants matter for the heat maps: `K_6` has no
 effect on them, and a 10 % change of `K_8`, `K_7`, `K_9` or `K_10` moves
-them by at most 9e-8, 5e-5, 1.1e-3 and 1.1e-3 (measured with the package).
+them by at most 9e-8, 5e-5, 1.0e-3 and 1.1e-3 (measured with the package).
 
 **The two published panels cannot come from one set of constants.** Since
 yield <= selectivity everywhere, the late side of a yield contour must lie
@@ -1135,15 +1178,15 @@ contours of panel b lie later than those of panel a above 62 C, by 2.2 % in
 the median and up to 4.4 % (a median of 1.2 to 2.4 px, up to 4.6 px; panel
 a interpolated to the temperatures of the panel b samples; tested on the
 digitized lines). No single run can produce both panels. The shipped set
-is 0.35 px from panel b and 1.11 px from panel a. Fits to the contour
+is 0.30 px from panel b and 1.05 px from panel a. Fits to the contour
 lines (not shipped) show what each panel would take: panel a alone is
 matched to 0.17 px with `k_3`, `k_4`, `k_5` and `K_10` free (`K_10` then
-falls to 23), which leaves panel b 1.45 px off; with `k_3` and `k_4` free
-and both panels fitted together the offsets are 0.98 and 0.37 px; and with
-all ten constants free and both panels fitted together they are still
-0.60 and 0.48 px. Why the panels differ (separate runs of the script, or
-other settings) is not known. The package ships one set, defined without
-the figure, and reports the misfit of panel a
+falls to 23), which leaves panel b 1.45 px off; with `k_3` free and both
+panels fitted together the offsets are 1.05 and 0.31 px, with `k_3` and
+`k_4` free 0.98 and 0.37 px, and with all ten constants free still 0.60
+and 0.48 px. Why the panels differ (separate runs of the script, or other
+settings) is not known. The package ships one set, defined without the
+figure, and reports the misfit of panel a
 (`figures.plot_fig11_verification` draws it).
 
 ### Agreement with the published Fig. 11
@@ -1158,18 +1201,21 @@ tolerance 1e-9) and pinned by its tests:
 
 | Comparison | Panel a | Panel b |
 |---|---|---|
-| rms offset of the contour samples | 1.11 px | 0.35 px |
-| largest rms offset of one contour branch | 1.48 px (0.5, late) | 0.45 px (0.5, late) |
-| largest mean offset of one contour branch | 0.54 px | 0.29 px |
-| largest offset of a single sample | 3.6 px (0.5, late, 31 C) | 1.5 px (0.5, late, 30 C) |
-| largest cell of the map | 0.5924 at 95 C, 26.76 min | 0.5478 at 84 C, 49.10 min |
-| maximum of the 50 C row | 0.5704 at 261.3 min | 0.5325 at 322.8 min |
-| red dashed line minus the digitized one, along time: mean / rms | +0.05 / 0.83 px | +0.05 / 1.52 px |
+| rms offset of the contour samples | 1.05 px | 0.30 px |
+| largest rms offset of one contour branch | 1.28 px (0.5, late) | 0.39 px (0.5, late) |
+| largest mean offset of one contour branch | 0.69 px (0.3, late) | 0.23 px (0.5, late) |
+| largest offset of a single sample | 3.0 px (0.5, late, 31 C) | 1.6 px (0.5, late, 30 C) |
+| largest cell of the map | 0.5931 at 95 C, 26.76 min | 0.5484 at 84 C, 49.10 min |
+| maximum of the 50 C row | 0.5713 at 261.3 min | 0.5333 at 322.8 min |
+| red dashed line minus the digitized one, along time: mean / rms | +0.25 / 0.89 px | +0.29 / 1.64 px |
 
 Panel b is matched to about the reading uncertainty of the digitized lines.
-Panel a is not: its early contours are within 0.72 px rms, but its late
-0.1 and 0.5 contours are 1.25 and 1.48 px rms off, in a pattern that
-changes sign along each line (the lower panels of the verification figure).
+Panel a is not: its early contours are within 0.56 px rms, but its late
+0.1, 0.3 and 0.5 contours are 1.26, 1.03 and 1.28 px rms off, in a pattern
+that changes sign along each line (the lower panels of the verification
+figure). An offset is positive where the computed map is above the level
+of the contour at the sample: on a late branch the published line then
+lies earlier than the computed one, on an early branch later.
 This is the misfit that one set of constants cannot remove (previous
 subsection).
 
@@ -1177,11 +1223,11 @@ The red dashed line joins the row maxima (`heat_map_ridge`), so it is
 defined to one grid column, 5.585 min or 1.82 px; a line that sat one column
 off would be 1.82 px off in the mean. The digitized line has 118 (a) and 226
 (b) samples. The tests require the mean offset within half a column and the
-rms within one column. The largest single offsets, 1.8 px (a) and 6.5 px
-(b), are at 32 to 34 C, where the row maxima are flat and the line advances
+rms within one column. The largest single offsets, 1.8 px (a) and 7.5 px
+(b), are at 30 to 31 C, where the row maxima are flat and the line advances
 several columns per row. In panel b the agreement holds over the whole line
 and not for every part of it: the mean offset is -1.3 px between 45 and
-60 C and +1.1 px between 60 and 80 C (0.7 and 0.6 of a column).
+60 C and +1.2 px between 60 and 80 C (0.7 and 0.6 of a column).
 
 Read from the colours of the published maps (not shipped): the maps agree
 with the colour field to an rms of 0.005 in both panels where the value is
@@ -1211,7 +1257,7 @@ shipped).
 3. **Time axis.** "27 min" and "49 min" in the text are the grid columns
    26.76 and 49.10 min of the plotted time, i.e. 16.8 and 39.1 min of
    reaction.
-4. **Maximum selectivity, "59.1 % (95 C, 27 min)".** The model has 0.592 in
+4. **Maximum selectivity, "59.1 % (95 C, 27 min)".** The model has 0.593 in
    that cell, which is the largest cell of its map.
 5. **Maximum yield, "55.2 % (84 C, 49 min)".** The cell is the largest of the
    model's map as well, with a value of 0.548. The colour of the published
@@ -1239,7 +1285,7 @@ shipped).
      is at most 0.548 (240 min). MA per 3-HP converted, `X_MA/(1 - X_HP3)`,
      is 0.621, 0.577 and 0.513 at 240, 360 and 450 min and higher before:
      0.569 at no sampling time. The 50 C row of the model's selectivity map
-     peaks at 0.570 at 261 min, near the purple star (254 min), but that is
+     peaks at 0.571 at 261 min, near the purple star (254 min), but that is
      a model value, not an observed one. The 8 h screening experiment at
      the same nominal condition has an MA selectivity of 56.4 % (Fig. 3a),
      which is not 56.9 either.
@@ -1287,7 +1333,14 @@ the curves are. Neither posted script produces them as posted:
 `APCATB_D_25_08770_kinetic_opt.m` is the irreversible six-reaction model of
 Table 3 (posted with the 75 C data as its example), and
 `APCATB_D_25_08770_heatmap.m` is the simplified reversible model, with the
-50 C data. The README of the
+50 C data. The deposited curves themselves exclude the first: in the model
+block of `11-2_75C_Kinetic.csv` 3-HP falls from 1 to 0.00265 by 707 min and
+then stays at 0.00245 from 1024 to 1584 min, and in that of
+`11-3_100C_Kinetic.csv` it stays at 5.20e-5 from 677 to 1716 min. In the
+posted O2 script 3-HP is consumed by two irreversible first-order steps
+(`r(1) = k(1)*x3HP*yO2` with `yO2 = 1.0`, and `r(5) = k(5)*x3HP`), so it
+falls by the same factor in equal times and cannot level off at a value
+above zero; a reverse term, as in the heat-map script, can. The README of the
 deposit says that the posted codes are "an example" and that "details were
 adjusted for each time (H2O2, O2, parameters to fit, etc)"; how the curves
 of Fig. 10a-c were computed is not stated. The published panels print
@@ -1302,7 +1355,6 @@ points (tested): the largest measured MA fraction is 0.023 at 1890 min
 panels end at 1440 min, and the samples at 1740 and 1890 min (25 C) and
 1560 min (100 C) are in the deposit but not in the figure (items 10 and 11
 of "Paper versus deposit: discrepancies that affect these models").
-(Section 2.6 names MATLAB R2024b, the README of the deposit R2024a.)
 
 ## Arrhenius plot (Fig. 10d)
 
@@ -1467,9 +1519,10 @@ four points misses the first row of the line by 0.013 or more; tested).
    (Ea) for key steps were obtained from Arrhenius plot in Fig. 10d" and
    gives 59.8 (MA production), 91.6 (MA to AAc) and 59.5 kJ/mol
    (decomposition). The drawn lines give 59.93, 68.96 and 52.09 kJ/mol. No
-   subset of two, three or four of the plotted points gives 91.6 for `k_2`
-   (nearest: 80.2 from 50 and 75 C) or 59.5 for `k_5` (nearest: 61.4 from 50
-   and 75 C); for `k_1` the drawn line (59.93) is the nearest to 59.8. The
+   subset of two, three or four of the plotted points of MA -> AAc (`k_2`)
+   gives 91.6 (nearest: 80.2 from 50 and 75 C), and none of MA -> Others
+   (`k_5`) gives 59.5 (nearest: 61.4 from 50 and 75 C); for `k_1` the drawn
+   line (59.93) is the nearest to 59.8. The
    text values are those of the heat-map script (59781.2, 91594.6 and
    59549.8 J/mol). Where they come from is not known; they are used as the
    script has them in the simplified reversible model (`Ea_1`, `Ea_2` and
@@ -1499,8 +1552,8 @@ holds, with the model as shipped (default constants). All numbers are
 measured with the package and pinned by its tests.
 
 **At 50 C** the model describes the experiment it was fitted to: pooled R2
-0.9939 and rms difference 0.0205 against the 16 deposited rows of Fig. 9b in
-the script's fitting convention (0.9922 and 0.0233 in its heat-map
+0.9939 and rms difference 0.0206 against the 16 deposited rows of Fig. 9b in
+the script's fitting convention (0.9921 and 0.0234 in its heat-map
 convention; the Table 3 O2 model has 0.9945).
 
 **At 25, 75 and 100 C** it does not describe the experiments of Fig. 10a-c.
@@ -1510,11 +1563,11 @@ end), with `pooled_r2` and `rms_difference` of `temperature_series.py`:
 
 | | 25 C | 75 C | 100 C |
 |---|---|---|---|
-| pooled R2 / rms, fitting convention | 0.652 / 0.221 | 0.641 / 0.175 | 0.756 / 0.147 |
-| pooled R2 / rms, heat-map convention | 0.560 / 0.248 | 0.637 / 0.176 | 0.757 / 0.147 |
-| time at which `X_HP3` falls to 0.5, model | 474 min | 15.2 min | 3.9 min |
+| pooled R2 / rms, fitting convention | 0.653 / 0.220 | 0.641 / 0.175 | 0.757 / 0.147 |
+| pooled R2 / rms, heat-map convention | 0.561 / 0.248 | 0.637 / 0.176 | 0.758 / 0.146 |
+| time at which `X_HP3` falls to 0.5, model | 475 min | 15.2 min | 3.9 min |
 | the same, experiment | not reached (0.876 left at 1890 min) | between 60 and 90 min | between 20 and 40 min |
-| maximum MA fraction, model | 0.426 at 1200 min | 0.585 at 51 min | 0.593 at 13 min |
+| maximum MA fraction, model | 0.427 at 1203 min | 0.586 at 51 min | 0.594 at 13 min |
 | maximum MA fraction, experiment | 0.023 at 1890 min | 0.436 at 180 min | 0.568 at 40 min |
 
 (Model rows three and five: fitting convention, interpolated on a 0.1 min
@@ -1524,13 +1577,13 @@ affect these models".)
 
 The model is too fast at all three temperatures:
 
-- **25 C.** It has 0.160 of the 3-HP left at 1890 min and an MA fraction of
+- **25 C.** It has 0.16 of the 3-HP left at 1890 min and an MA fraction of
   0.40; measured are 0.876 and 0.023. Its forward first-order constant of
   3-HP loss (`k_1*P/f0 + k_4`), 1.6e-3 1/min, is about 23 times the
   measured average (7e-5 1/min, from 0.876 left at 1890 min).
 - **75 C.** The predicted `X_HP3` falls to 0.5 after 15 min; measured, it
   is 0.53 at 60 min and 0.28 at 120 min. The predicted MA maximum is higher
-  (0.58 against 0.44) and 3.5 times earlier.
+  (0.59 against 0.44) and 3.5 times earlier.
 - **100 C.** The height of the MA maximum is about right (0.59 against
   0.57), but it comes at 13 min instead of 40 min, and the final acetic
   acid fraction is 0.17 against a measured 0.09 to 0.11.
@@ -1547,7 +1600,7 @@ is 4.3, 4.3 and 4.2 times the plotted value there (`k_2`: 0.0045, 1.35 and
 3.14 times; `k_5`: 0.10, 0.95 and 1.47 times).
 
 **The 8 h screening experiments** at 25, 75 and 100 C are not described
-either (25 C: 54 % conversion against a measured 8.5 %; 75 C: 6 % MA left
+either (25 C: 53 % conversion against a measured 8.5 %; 75 C: 6 % MA left
 against a yield of 35.7 %), and the model's response to the pressure `P` is
 contradicted by the paper's pressure series. Both comparisons are in
 "Experiments of the paper that the models were not built on".
@@ -1587,14 +1640,16 @@ these numbers cannot be re-derived from the repository:
   nodes and how far each constant can be moved on its own; they do not show
   that no other constants or rate laws would return them.
 - **Fits to the experiments:** the refit of the O2 constants with and
-  without the 120 min row. (The fits of the simplified model to the 50 C
-  data are made with the shipped `fit_simplified_reversible_constants`.
-  Those of `k_3` and `k_4` and of the five rate constants are tested; those
-  of all ten constants, at 50 C and at the other temperatures, were run
-  with the same function and are not pinned by a test.)
-- **Fits to the digitized contour lines of Fig. 11:** the fits of `k_3` and
-  `k_4`, of the five rate constants, of `k_3`, `k_4`, `k_5` and `K_10`, and
-  of all ten constants to the contour lines of one or both panels, quoted
+  without the 120 min row, and the independent scipy fit of `k_3` quoted in
+  "Constants at 50 C". (The fits of the simplified model to the 50 C data
+  are made with the shipped `fit_simplified_reversible_constants`. Those of
+  `k_3`, of `k_3` and `k_4`, and of the five rate constants are tested;
+  those of all ten constants, at 50 C and at the other temperatures, were
+  run with the same function and are not pinned by a test.)
+- **Fits to the digitized contour lines of Fig. 11:** the fits of `k_3`,
+  of `k_3` and `k_4`, of the five rate constants, of `k_3`, `k_4`, `k_5`
+  and `K_10`, and of all ten constants to the contour lines of one or both
+  panels, quoted
   in "Constants at 50 C" and for the assignment of the Fig. 10d points, and
   the offsets "after refitting" of the three properties of the script. No
   shipped constant comes from these fits.
@@ -1603,7 +1658,7 @@ these numbers cannot be re-derived from the repository:
   five least-squares iterations. It is approximate (MATLAB's `particleswarm`
   and `lsqcurvefit` were not run and differ in detail) and is quoted for
   the size of the scatter only.
-- **Other solver runs.** The fit of `k_3` and `k_4` with the trajectories
+- **Other solver runs.** The fit of `k_3` with the trajectories
   integrated by the `ode23s` port (item 6 there); the repeat of the
   heat-map script's solver runs for the rows of Fig. 11 other than 100 C
   (the tests repeat the 100 C row); and the independent scipy
@@ -1630,7 +1685,7 @@ prints; what each inferred choice (`x_O2_ref`, the O2 state, `k_7` without
 the catalyst mass, the normalization without OPA) contributes to that with
 the shipped constants; that the simplified reversible model implements the
 equations of the authors' script; that its constants are the values of the
-deposit and, for `k_3` and `k_4`, the result of the shipped fit; how far
+deposit and, for `k_3`, the result of the shipped fit; how far
 its heat maps are from the published contour lines; that it does not
 describe the experiments at 25, 75 and 100 C; and that each model
 implements the rate laws written in these notes.

@@ -28,7 +28,7 @@ check their SHA-256.
 | `11-1_25C_Kinetic.csv` | Fig. 10a (O2, 25 C): experimental points and the authors' model curve |
 | `11-2_75C_Kinetic.csv` | Fig. 10b (O2, 75 C): the same |
 | `11-3_100C_Kinetic.csv` | Fig. 10c (O2, 100 C): the same |
-| `11-4_Arrhenius.csv` | Fig. 10d (Arrhenius plot, O2): logarithms of three rate constants at 25, 50, 75 and 100 C, and the straight lines drawn through them. The paper does not say of which model the constants are; they are taken to be constants of the authors' simplified reversible model (see `../NOTES.md`) |
+| `11-4_Arrhenius.csv` | Fig. 10d (Arrhenius plot, O2): logarithms of three rate constants at 25, 50, 75 and 100 C, and the straight lines drawn through them. The paper does not say of which model the constants are; they are taken to be constants of the model of the authors' heat-map script, called in this package the simplified reversible model (see `../NOTES.md`) |
 
 In `10-1`, `10-2` and `11-1` to `11-3` all values are normalized
 concentrations (each species over the sum of 3-HP, MA, AAc, OXA and D); the
@@ -49,9 +49,9 @@ inferred from the nodes, 0.01 to 0.6 % off Table 3 as printed; with Table 3
 as printed those values agree within 4.4e-4. The H2O2 trace of `10-1` needs
 a separate inferred set, 4 to 22 % off Table 3 (`k_6` unchanged); with
 Table 3 as printed that run takes 23 steps instead of 24. The model curves
-of `11-1` to `11-3` are coarse polylines of the same kind (18 to 24 unevenly
-spaced steps). They are shipped as deposited and are not reproduced by any
-model of this package.
+of `11-1` to `11-3` are polylines of 18 to 24 unevenly spaced steps, like
+solver output; how they were computed is not stated. They are shipped as
+deposited and are not reproduced by any model of this package.
 
 Layout and known quirks:
 
@@ -101,17 +101,17 @@ Layout and known quirks:
 table of 16 samples (0 to 1680 min) that the deposited script
 `APCATB_D_25_08770_heatmap.m` carries in its function `data()` ("Input data
 (example, 50 C O2)") and fits its model to: the time in min and the
-normalized concentrations of 3-HP, MA, AA, OXA and D, with the digits the
-script prints. The numbers were copied from the script by a program and are
-checked by the package tests. `read_heatmap_script_data` in `reference.py`
-reads it.
+normalized concentrations of 3-HP, MA, AA, OXA and D, with the digits
+written in the script. The numbers were copied from the script by a program
+and are checked by the package tests. `read_heatmap_script_data` in
+`reference.py` reads it.
 
 The table is the experimental block of `10-2_kinetic_model_O2.csv` with one
 difference: the script gives the last two rows (1470 and 1680 min) to four
 decimals, the file to five, of which they are the rounded values (largest
 difference 5e-5). The other 14 rows are equal. It is shipped separately
-because it, and not the file, is what the script fits: `k_3` and `k_4` of
-the simplified reversible model are fitted to this table
+because it, and not the file, is what the script fits: `k_3` of the
+simplified reversible model is fitted to this table
 (`fit_simplified_reversible_constants`; see `../NOTES.md`, "Constants at
 50 C").
 

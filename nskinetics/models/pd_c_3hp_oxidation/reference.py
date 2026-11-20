@@ -284,7 +284,7 @@ def read_heatmap_script_data():
     Notes
     -----
     ``heatmap_script_50C_data.csv`` is transcribed from the script, with
-    the digits the script prints. The table is the experimental block of
+    the digits written in it. The table is the experimental block of
     ``10-2_kinetic_model_O2.csv`` (:func:`read_fig9b_o2`) with one
     difference: the last two rows (1470 and 1680 min) are given to four
     decimals in the script and to five in that file, of which they are the

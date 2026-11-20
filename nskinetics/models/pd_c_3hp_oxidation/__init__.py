@@ -16,11 +16,14 @@
 # * O2 model (``load_o2_model``; Table 3, O2 column): reproduces Fig. 9b
 #   and SI Fig. S12b. It is the published model at 50 C and has no
 #   temperature parameter;
-# * simplified reversible O2 model (``load_o2_simplified_reversible_model``)
-#   of the authors' deposited heat-map script (Fig. 11), with its
-#   temperature dependence. Its constants are defined from the deposit:
-#   every value the deposit gives is used as given, and the two it does
-#   not give are fitted to the 50 C data of the script
+# * simplified reversible O2 model (``load_o2_simplified_reversible_model``;
+#   the name is this package's): the model of the authors' deposited
+#   heat-map script (Fig. 11), with its temperature dependence. Every
+#   constant the deposit gives is used as given (where it gives one twice,
+#   the full-precision value): k_1, k_2 and k_5 from the deposited Arrhenius
+#   table, k_4 = 0.0023 and K_6 to K_10 from the vector k0 written in the
+#   script. The one constant it does not give, k_3 (0.0000 in k0), is
+#   fitted to the 50 C data of the script
 #   (``fit_simplified_reversible_constants`` in ``fitting``).
 #
 # Time is in min, concentrations are in M and temperatures are in K where an

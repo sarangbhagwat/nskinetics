@@ -16,8 +16,9 @@ constants. They cannot be recomputed and are read from the deposited table
 (``read_fig10d_arrhenius``, which also explains their names); the lines
 drawn through them are recomputed here.
 
-The points are taken to be rate constants of the authors' simplified
-reversible model (``load_o2_simplified_reversible_model``), and the 50 C
+The points are taken to be rate constants of the model of the authors'
+heat-map script, called here the simplified reversible model
+(``load_o2_simplified_reversible_model``), and the 50 C
 point supplies three of the default constants of that model. Taking them so
 means that the plotted constants follow the rate law of the authors'
 heat-map script, which the reasons given in ``NOTES.md`` support but do not

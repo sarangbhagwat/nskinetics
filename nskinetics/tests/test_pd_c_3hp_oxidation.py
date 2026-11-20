@@ -613,7 +613,14 @@ def test_ma_fraction_of_the_fig9b_experiment_is_largest_at_240_min(fig9b):
 def test_digitized_inset_readers():
     h2o2 = pkg.read_figS12a_h2o2_inset_digitized()
     assert {'time', 'eq_H2O2', 'source_axes'} <= set(h2o2.columns)
-    assert set(h2o2['source_axes']) == {'inset', 'main'}
+    # all 367 samples, 81 read from the inset and 286 from the main axes,
+    # in the order of the file
+    assert len(h2o2) == 367
+    assert h2o2['source_axes'].value_counts().to_dict() == {'main': 286,
+                                                           'inset': 81}
+    assert list(h2o2.iloc[0][['time', 'eq_H2O2']]) == [4.53, 14.46183]
+    assert list(h2o2.iloc[-1][['time', 'eq_H2O2']]) == [1414.69, 0.00047]
+    assert (np.diff(h2o2['time']) > 0.).all()
     assert h2o2['eq_H2O2'].between(0., 15.1).all()
     opa = pkg.read_figS12b_opa_inset_digitized()
     assert list(opa.columns) == ['time', 'time_unc', 'x_OPA', 'X_HP3',
@@ -639,6 +646,28 @@ _MODEL_FILES = [(pkg.h2o2_antimony_filename, load_h2o2_model),
 def _sbml_path(antimony_filename):
     return os.path.join(
         _PKG_DIR, antimony_filename.replace('_antimony.txt', '_sbml.xml'))
+
+
+@pytest.mark.parametrize('antimony_filename', [f for f, _ in _MODEL_FILES])
+def test_shipped_sbml_is_the_conversion_of_the_antimony_file(
+        antimony_filename):
+    # Byte for byte, with the Antimony and libSBML versions named in the
+    # header of the shipped file; with other versions the output may differ
+    # in form, and the semantic tests below still apply.
+    antimony = pytest.importorskip('antimony')
+    with open(os.path.join(_PKG_DIR, antimony_filename),
+              encoding='utf-8') as f:
+        text = f.read()
+    with open(_sbml_path(antimony_filename), encoding='utf-8') as f:
+        shipped = f.read()
+    antimony.clearPreviousLoads()
+    assert antimony.loadAntimonyString(text) >= 0
+    generated = antimony.getSBMLString(antimony.getMainModuleName())
+    header = shipped.splitlines()[1]
+    if generated.splitlines()[1] != header:
+        pytest.skip(f'generated with other versions than the shipped file '
+                    f'({header})')
+    assert generated == shipped
 
 
 @pytest.mark.parametrize('antimony_filename, load', _MODEL_FILES)

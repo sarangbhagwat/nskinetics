@@ -19,14 +19,16 @@ Three models are provided, each as an Antimony file next to this module:
 * the O2 model (Table 3, O2 column), which reproduces Fig. 9b and SI
   Fig. S12b. It is the published model at 50 C and has no temperature
   parameter;
-* the authors' simplified reversible five-reaction O2 model (no OPA), which
-  is not in the paper but is the model of their deposited heat-map script
-  (Fig. 11). Its ten 50 C constants are defined from the deposit: eight
-  are the values the deposit gives (three rate constants from the 50 C
-  row of the deposited Arrhenius table of Fig. 10d, five equilibrium
-  constants as printed in the script) and the other two are fitted to the
-  50 C data of the script (``fitting``). The temperature dependence is
-  the script's.
+* the five-reaction O2 model (no OPA) of the authors' deposited heat-map
+  script (Fig. 11), called here the simplified reversible model. It is not
+  in the paper. Every constant the deposit gives is used as given, and
+  where the deposit gives one twice, the full-precision value: three rate
+  constants from the 50 C row of the deposited Arrhenius table of
+  Fig. 10d (not the four-decimal values of ``k0``), and ``k_4`` and the
+  five equilibrium constants from the vector ``k0`` written in the
+  script. The one constant without a value in the deposit, ``k_3``
+  (``k0`` writes 0.0000), is fitted to the 50 C data of the script
+  (``fitting``). The temperature dependence is the script's.
 
 The rate laws of the two Table 3 models have the form of SI Fig. S2 (rate
 expressions), ``r_j = k_jf*prod(a_i^n_ij)``, with every order ``n`` equal
@@ -171,26 +173,34 @@ _SIMPLIFIED_REVERSIBLE_NAMES = (
 
 #: Constant sets of the simplified reversible model at 50 C, in the order of
 #: the authors' script: five rate constants (1/min) and five equilibrium
-#: constants. The constants the script fitted were not deposited (see
+#: constants. The constants the script's run fitted were not deposited (see
 #: ``NOTES.md``).
 #:
 #: ``'deposit'``
-#:     The default of the Antimony file and of the loader: every value the
-#:     deposit gives, and the rest fitted. ``k_1``, ``k_2`` and ``k_5`` are
-#:     ``exp()`` of the 50 C row of the deposited ``11-4_Arrhenius.csv``;
-#:     ``K_6`` to ``K_10`` are the values printed in the script; ``k_3`` and
-#:     ``k_4``, for which the deposit has no value, are the least-squares
-#:     fit to the 50 C data table of the script with the other eight held
-#:     (``fit_simplified_reversible_constants``), to five significant
-#:     digits.
+#:     The default of the Antimony file and of the loader: every constant
+#:     the deposit gives, used as given (where it gives one twice, the
+#:     full-precision value), and the one it does not give fitted. ``k_1``,
+#:     ``k_2`` and ``k_5`` are ``exp()`` of the 50 C row of the deposited
+#:     ``11-4_Arrhenius.csv``, the full-precision source of the three (the
+#:     vector ``k0`` written in the script has them to four
+#:     decimals, 0.0021, 0.0001 and 0.0010; the last disagrees with the
+#:     table's 1.0625e-3, which would round to 0.0011). ``k_4`` = 0.0023 (two
+#:     significant digits) and ``K_6`` to ``K_10`` are those of ``k0``,
+#:     their only source. ``k_3``, which ``k0`` writes as 0.0000 (below
+#:     5e-5), is the least-squares fit to the 50 C data table of the script
+#:     with the other nine held (``fit_simplified_reversible_constants``),
+#:     to five significant digits.
 #: ``'k0_printed'``
-#:     The vector ``k0`` printed in the script, to its four decimals
-#:     (``k_3`` reads 0). For reference only: the script takes the bounds of
-#:     its search from it (0 to 1.5 times ``k0``); it is not a result.
+#:     The vector ``k0`` written in the script, to its four decimals
+#:     (``k_3`` reads 0). The script uses it only for the bounds of its
+#:     particle swarm (0 to 1.5 times ``k0``); whether it holds the result
+#:     of an earlier run is not stated. Its five equilibrium constants and
+#:     its ``k_4`` are those of the ``'deposit'`` set. Run as a constant set,
+#:     it is far from the published Fig. 11.
 SIMPLIFIED_REVERSIBLE_PARAMETER_SETS = {
     name: dict(zip(_SIMPLIFIED_REVERSIBLE_NAMES, values))
     for name, values in (
-        ('deposit', (2.139999e-3, 5.199984e-5, 1.4200e-5, 2.3204e-3,
+        ('deposit', (2.139999e-3, 5.199984e-5, 1.4215e-5, 0.0023,
                      1.062501e-3, 4.7840, 0.5918, 3.5116, 81.6870, 52.0472)),
         ('k0_printed', (0.0021, 0.0001, 0.0000, 0.0023, 0.0010,
                         4.7840, 0.5918, 3.5116, 81.6870, 52.0472)),
@@ -441,20 +451,25 @@ def load_o2_model(parameter_set='table3'):
 
 def load_o2_simplified_reversible_model(T=None, parameter_set='deposit',
                                         initial_condition='heatmap'):
-    """Load the authors' simplified reversible O2 model (the model of Fig. 11).
+    """Load the simplified reversible O2 model (the model of Fig. 11).
 
-    Source: the authors' deposited heat-map script, not the paper. Of the
-    ten 50 C constants, eight are values the deposit gives (``k_1``,
-    ``k_2`` and ``k_5`` from the 50 C row of the deposited Arrhenius table
-    of Fig. 10d, ``K_6`` to ``K_10`` as printed in the script). The other
-    two, ``k_3`` and ``k_4``, are not in the deposit and are fitted to the
-    50 C data of the script (``fit_simplified_reversible_constants``).
+    Source: the authors' deposited heat-map script, not the paper; the name
+    "simplified reversible model" is this package's. Every constant the
+    deposit gives is used as given, and where the deposit gives one twice,
+    the full-precision value: ``k_1``, ``k_2`` and ``k_5`` from the 50 C
+    row of the deposited Arrhenius table of Fig. 10d (not the four-decimal
+    values of ``k0``), ``k_4`` = 0.0023 and ``K_6`` to ``K_10`` from the
+    vector ``k0`` written in the script, their only source.
+    The one constant without a value in the deposit, ``k_3`` (``k0`` writes
+    0.0000), is fitted to the 50 C data of the script
+    (``fit_simplified_reversible_constants``); see
+    :data:`SIMPLIFIED_REVERSIBLE_PARAMETER_SETS`.
 
     This is the five-reaction model of the authors' heat-map script, with
     no OPA intermediate and a reverse term in every step. It is not the
     Table 3 / Fig. 9b model (:func:`load_o2_model`) and is not written out
     in the paper. Run as the script runs it, with the default constants,
-    its contour lines lie 0.35 px (Fig. 11b) and 1.11 px (Fig. 11a) rms
+    its contour lines lie 0.30 px (Fig. 11b) and 1.05 px (Fig. 11a) rms
     from those of the published heat maps, whose reading uncertainty is
     about 0.3 px (see ``NOTES.md``).
 
@@ -520,7 +535,7 @@ def load_o2_simplified_reversible_model(T=None, parameter_set='deposit',
     temperatures the model is the script's extrapolation. That
     extrapolation does not describe the paper's experiments at 25, 75 and
     100 C: the pooled R2 against the deposited points of Fig. 10a-c is
-    0.652, 0.641 and 0.756 with the ``'fitting'`` initial condition, where
+    0.653, 0.641 and 0.757 with the ``'fitting'`` initial condition, where
     it is 0.9939 at 50 C (see ``NOTES.md``, "Limits of the temperature
     dependence").
 
