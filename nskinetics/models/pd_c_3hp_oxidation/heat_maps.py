@@ -142,10 +142,15 @@ def fig11_heat_maps():
 
     Returns
     -------
-    T_C, times, selectivity, MA_yield
-        As :func:`simulate_heat_maps`, on the 71 x 300 grid of the figure.
-        ``times`` are plotted times, i.e. reaction times plus
-        :data:`FIG11_TIME_OFFSET`.
+    T_C : numpy.ndarray
+        Row temperatures in degrees Celsius, :data:`FIG11_T_C`.
+    times : numpy.ndarray
+        Column plotted times in min, :data:`FIG11_TIMES`: reaction times
+        plus :data:`FIG11_TIME_OFFSET`.
+    selectivity : numpy.ndarray
+        ``X_MA``, shape 71 x 300.
+    MA_yield : numpy.ndarray
+        ``(1 - X_HP3)*X_MA``, same shape.
     """
     return simulate_heat_maps(load_o2_simplified_reversible_model(),
                               time_offset=FIG11_TIME_OFFSET)
@@ -156,10 +161,12 @@ def heat_map_maximum(T_C, times, matrix):
 
     Parameters
     ----------
-    T_C, times, matrix
-        A heat map: row temperatures in degrees Celsius, column times in
-        min and one of the two matrices returned by
-        :func:`simulate_heat_maps`.
+    T_C : numpy.ndarray
+        Row temperatures of the map in degrees Celsius.
+    times : numpy.ndarray
+        Column times of the map in min.
+    matrix : numpy.ndarray
+        One of the two matrices returned by :func:`simulate_heat_maps`.
 
     Returns
     -------
@@ -179,9 +186,10 @@ def heat_map_ridge(times, matrix):
 
     Parameters
     ----------
-    times, matrix
-        Column times in min and one of the two matrices returned by
-        :func:`simulate_heat_maps`.
+    times : numpy.ndarray
+        Column times of the map in min.
+    matrix : numpy.ndarray
+        One of the two matrices returned by :func:`simulate_heat_maps`.
 
     Returns
     -------
@@ -207,15 +215,24 @@ def contour_offsets(T_C, times, matrix, level, sample_times, sample_T_C,
 
     Parameters
     ----------
-    T_C, times, matrix
-        A heat map, as returned by :func:`simulate_heat_maps`.
+    T_C : numpy.ndarray
+        Row temperatures of the map in degrees Celsius.
+    times : numpy.ndarray
+        Column times of the map in min.
+    matrix : numpy.ndarray
+        One of the two matrices returned by :func:`simulate_heat_maps`.
     level : float
         Level of the digitized contour line.
-    sample_times, sample_T_C : array-like
-        Plotted times (min) and temperatures (degrees Celsius) of the
-        digitized samples.
-    min_per_px, C_per_px : float, optional
-        Scale of the raster the samples were read from.
+    sample_times : array-like
+        Plotted times of the digitized samples in min.
+    sample_T_C : array-like
+        Temperatures of the digitized samples in degrees Celsius.
+    min_per_px : float, optional
+        Minutes per pixel of the raster the samples were read from, by
+        default :data:`FIG11_MIN_PER_PX`.
+    C_per_px : float, optional
+        Degrees Celsius per pixel of that raster, by default
+        :data:`FIG11_C_PER_PX`.
     max_offset : float, optional
         If given, offsets are clipped to ``-max_offset .. max_offset`` px,
         so that samples where the map is nearly flat do not dominate an
@@ -259,17 +276,22 @@ def contour_shifts(T_C, times, matrix, level, branch, sample_times,
 
     Parameters
     ----------
-    T_C, times, matrix
-        A heat map, as returned by :func:`simulate_heat_maps`.
+    T_C : numpy.ndarray
+        Row temperatures of the map in degrees Celsius.
+    times : numpy.ndarray
+        Column times of the map in min.
+    matrix : numpy.ndarray
+        One of the two matrices returned by :func:`simulate_heat_maps`.
     level : float
         Level of the digitized contour line.
     branch : {'early', 'late'}
         Side of the ridge the samples are on: ``'early'`` is the rising
         flank of the map in time (left of the red dashed line), ``'late'``
         the falling flank.
-    sample_times, sample_T_C : array-like
-        Plotted times (min) and temperatures (degrees Celsius) of the
-        digitized samples.
+    sample_times : array-like
+        Plotted times of the digitized samples in min.
+    sample_T_C : array-like
+        Temperatures of the digitized samples in degrees Celsius.
     along : {'time', 'T_C'}, optional
         ``'time'`` (default): shift in min at the temperature of each
         sample. ``'T_C'``: shift in degrees Celsius at the time of each

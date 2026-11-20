@@ -365,10 +365,9 @@ Figures
 ``figures`` draws Fig. 9, SI Fig. S12 and Fig. 11 of the paper from the
 models, and two verification figures. Each ``plot_*`` function returns a
 new matplotlib figure; each ``draw_*`` function draws one panel on an
-existing axes. Run
-the module as a script to write the figures to a folder (``--figures``,
-``--formats`` and ``--dpi`` select the figures, the file formats and the
-resolution of the PNG files)::
+existing axes. Run the module as a script to write the figures to a folder
+(``--figures``, ``--formats`` and ``--dpi`` select the figures, the file
+formats and the resolution of the PNG files)::
 
     python -m nskinetics.models.pd_c_3hp_oxidation.figures OUTPUT_DIR
 

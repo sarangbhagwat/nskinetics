@@ -487,7 +487,7 @@ def test_simplified_model_is_too_fast_at_25_75_and_100C():
         assert peak[T][0] == pytest.approx(value, abs=1e-4)
         assert peak[T][1] == pytest.approx(time, abs=0.06)
     # 25 C, last sample (1890 min): 0.876 of the 3-HP is left and the MA
-    # fraction is 0.023; the model has 0.161 and 0.397.
+    # fraction is 0.023; the model has 0.160 and 0.397.
     experiment = pkg.read_fig10_o2(25)['experiment']
     km = load_o2_simplified_reversible_model(T=298.15,
                                              initial_condition='fitting')

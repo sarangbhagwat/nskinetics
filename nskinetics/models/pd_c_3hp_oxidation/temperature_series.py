@@ -66,10 +66,12 @@ def pooled_r2(observed, modeled):
 
     Parameters
     ----------
-    observed, modeled : pandas.DataFrame
-        Tables with the columns :data:`.NORMALIZED` and the same rows (for
-        example an ``'experiment'`` table of ``reference`` and the output
-        of ``simulate_at_times`` at its times).
+    observed : pandas.DataFrame
+        Table with the columns :data:`.NORMALIZED`, for example an
+        ``'experiment'`` table of ``reference``.
+    modeled : pandas.DataFrame
+        Table with the same columns and rows, for example the output of
+        ``simulate_at_times`` at the times of ``observed``.
 
     Returns
     -------
@@ -90,7 +92,9 @@ def rms_difference(observed, modeled):
 
     Parameters
     ----------
-    observed, modeled : pandas.DataFrame
+    observed : pandas.DataFrame
+        As for :func:`pooled_r2`.
+    modeled : pandas.DataFrame
         As for :func:`pooled_r2`.
 
     Returns

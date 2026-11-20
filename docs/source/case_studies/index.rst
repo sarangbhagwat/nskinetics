@@ -56,9 +56,9 @@ what agrees with the publication and what does not.
       disagree. **The constants of the third model are the values the
       deposit gives, used as given (where it gives one twice, the
       full-precision value: k_1, k_2 and k_5 from its Arrhenius table, not
-      the rounded values of the script's k0), plus one (k_3, which the
-      deposit does not give) fitted to the 50 °C data; none is fitted to a
-      published figure. Its temperature dependence, the one
+      the four-decimal values written in the script's k0), plus one (k_3,
+      which the deposit does not give) fitted to the 50 °C data; none is
+      fitted to a published figure. Its temperature dependence, the one
       behind the paper's heat maps, does not describe the paper's
       experiments at 25, 75 and 100 °C.**
 

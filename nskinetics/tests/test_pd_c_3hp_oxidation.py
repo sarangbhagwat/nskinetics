@@ -263,6 +263,19 @@ def test_o2_oxidant_depletion(o2_model):
     assert sim['yO2'][3] == pytest.approx(0.999472, abs=5e-6)
 
 
+def test_simulate_at_times_needs_a_time_after_zero(o2_model):
+    # one time after t = 0 is enough; t = 0 alone, no time or a single
+    # number is refused with a message of the package, not of the solver
+    sim = simulate_at_times(o2_model, [240.])
+    assert list(sim['time']) == [240.]
+    for times in ([0.], [], 0., 240.):
+        with pytest.raises(ValueError) as error:
+            simulate_at_times(o2_model, times)
+        assert str(error.value) == (
+            'times must be a one-dimensional sequence with at least one '
+            f'time after t = 0, not {np.asarray(times, float).tolist()!r}')
+
+
 # --- 3. O2 model against the deposit (Fig. 9b, SI Fig. S12b) ----------------
 
 def test_o2_model_matches_the_deposited_fig9b_curve(o2_model, fig9b):

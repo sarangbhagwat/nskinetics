@@ -38,7 +38,7 @@ from .reference import read_heatmap_script_data
 __all__ = ('fit_simplified_reversible_constants',)
 
 # Starting value of a constant that the script's vector k0 writes as zero
-# (k_3, 0.0000, i.e. below 5e-5): a fit cannot be scaled by 0.
+# (k_3, 0.0000): a fit cannot be scaled by 0.
 _START_IF_ZERO = 1e-5
 
 
@@ -104,8 +104,9 @@ def fit_simplified_reversible_constants(free=('k_3',), values=None,
             the number of residuals minus the number of fitted constants
             (the script divides by twice the number of residuals minus
             ten). A linearized measure of how well the data determine each
-            constant with the others held; ``nan`` where ``J.T @ J`` is
-            singular or nearly so.
+            constant with the others held. ``nan`` where ``J.T @ J`` is
+            singular to working precision (as with all ten constants
+            free); very large, or ``nan``, where it is nearly singular.
         ``'sum_of_squares'``
             The sum of the squared residuals at the optimum.
         ``'n_residuals'``
@@ -118,9 +119,13 @@ def fit_simplified_reversible_constants(free=('k_3',), values=None,
     ------
     ValueError
         If ``free`` is empty or names a constant twice, if a name in
-        ``free`` or ``values`` is not a constant of the model (the message
-        gives it as it was passed), or if ``start`` does not have one
-        finite, positive value per free constant.
+        ``free`` or ``values`` is not the name of a constant of the model
+        (the message gives it as it was passed), if ``start`` does not
+        have one finite, positive value per free constant, or, without
+        ``start``, if ``values`` gives a free constant a starting value
+        that is not finite and positive.
+    TypeError
+        If ``free`` is neither a string nor a sequence.
 
     Notes
     -----
@@ -137,16 +142,22 @@ def fit_simplified_reversible_constants(free=('k_3',), values=None,
     with scipy's default two-point Jacobian the iteration stops early
     (``k_3`` 2.8e-4 of its value lower from the default start, up to
     3.6e-3 away from others). From other starting points the optimum is
-    found again to 1e-5 of ``k_3``. With the defaults the fit takes less
+    found again within 1e-5 of ``k_3`` (7.0e-6 at most over fourteen
+    starts from 1e-6 to 1e-3). With the defaults the fit takes less
     than a second and returns ``k_3`` = 1.4215e-5 1/min, the value of the
     ``'deposit'`` set, with a standard error of 31 %.
     """
     names = tuple(SIMPLIFIED_REVERSIBLE_PARAMETER_SETS['deposit'])
     if isinstance(free, str):
         free = (free,)
+    try:
+        free = tuple(free)
+    except TypeError:
+        raise TypeError('free must be a constant name or a sequence of '
+                        f'names, not {free!r}') from None
     given = list(free) + list(values or {})
-    unknown = [name for name in given
-               if _model_parameter_name(name) not in names]
+    unknown = [name for name in given if not isinstance(name, str)
+               or _model_parameter_name(name) not in names]
     if unknown:
         raise ValueError(
             f'unknown constants {unknown} of the simplified reversible '
@@ -165,13 +176,19 @@ def fit_simplified_reversible_constants(free=('k_3',), values=None,
               for name, value in (values or {}).items()}
     constants = dict(SIMPLIFIED_REVERSIBLE_PARAMETER_SETS['deposit'])
     constants.update(values)
-    if start is None:
+    from_values = start is None
+    if from_values:
         printed = SIMPLIFIED_REVERSIBLE_PARAMETER_SETS['k0_printed']
         start = [values[name] if name in values
                  else printed[name] or _START_IF_ZERO for name in free]
     start = np.asarray(start, dtype=float)
     if (start.shape != (len(free),) or not np.isfinite(start).all()
             or not (start > 0.).all()):
+        if from_values:
+            starts = {name: values[name] for name in free if name in values}
+            raise ValueError(
+                'values must give each free constant a finite, positive '
+                f'value (its start), not {starts}')
         raise ValueError(
             'start must hold one finite, positive value per free constant, '
             f'not {start!r}')

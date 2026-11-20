@@ -258,8 +258,12 @@ def emulate_authors_run(te_r, t_end, rtol=1e-3, atol=1e-6,
     t_end : float
         End of the run in min. The authors' script integrates to 1.1
         times the last sampling time of the experiment.
-    rtol, atol : float, optional
-        Tolerances of :func:`ode23s`, by default those of MATLAB.
+    rtol : float, optional
+        Relative tolerance of :func:`ode23s`, by default that of MATLAB
+        (1e-3).
+    atol : float, optional
+        Absolute tolerance of :func:`ode23s`, by default that of MATLAB
+        (1e-6).
     script_states : bool, optional
         Whether the states of the posted script that the model does not
         have are integrated along (default). They enter no rate, and

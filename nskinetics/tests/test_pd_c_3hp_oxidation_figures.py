@@ -27,6 +27,7 @@ import numpy as np
 import pytest
 from matplotlib.colors import to_hex
 from matplotlib.contour import ContourSet
+from matplotlib.lines import Line2D
 from matplotlib.text import Text
 
 import nskinetics.models.pd_c_3hp_oxidation as pkg
@@ -80,41 +81,153 @@ def _assert_lines_are_the_model(lines, km, selections):
         assert np.allclose(line.get_ydata(), sim[name], rtol=0., atol=1e-12)
 
 
+def _assert_species_series(ax, sim, experiment):
+    """Each species is drawn with its own data in its own colour.
+
+    For every name of ``NORMALIZED``: the one solid line of colour
+    ``figures._COLORS[name]`` holds ``sim[name]``, and the one series of
+    circles with that edge colour holds ``experiment[name]`` at the
+    samples on the time axis.
+    """
+    drawn = experiment[experiment['time'] <= figures._T_END]
+    for name in pkg.NORMALIZED:
+        color = figures._COLORS[name]
+        (model,) = [line for line in ax.get_lines()
+                    if line.get_linestyle() == '-'
+                    and line.get_marker() == 'None'
+                    and to_hex(line.get_color()) == color]
+        assert np.array_equal(model.get_xdata(), sim['time']), name
+        assert np.allclose(model.get_ydata(), sim[name], rtol=0.,
+                           atol=1e-12), name
+        (circles,) = [line for line in _marker_only_lines(ax)
+                      if line.get_marker() == 'o'
+                      and to_hex(line.get_markeredgecolor()) == color]
+        assert circles.get_markerfacecolor() == 'none', name
+        assert np.array_equal(circles.get_xdata(), drawn['time']), name
+        assert np.array_equal(circles.get_ydata(), drawn[name]), name
+
+
+def _texts(ax):
+    return [text.get_text() for text in ax.texts]
+
+
+# Oxidant tags: text, box face and box edge (the face colours are those of
+# the published Fig. 9).
+_TAG_BOXES = {'H2O2': ('H$_2$O$_2$', '#fbb4b4', '#e98686'),
+              'O2': ('O$_2$', '#c3c3dc', '#8f8fb8')}
+
+
+def _assert_tag(ax, oxidant):
+    """The oxidant tag of ``ax`` has the text and box colours of
+    ``oxidant``."""
+    text, face, edge = _TAG_BOXES[oxidant]
+    (tag,) = [t for t in ax.texts if t.get_text() == text]
+    box = tag.get_bbox_patch()
+    assert to_hex(box.get_facecolor()) == face, oxidant
+    assert to_hex(box.get_edgecolor()) == edge, oxidant
+
+
 def _png_size(path):
     with open(path, 'rb') as f:
         header = f.read(24)
     return struct.unpack('>II', header[16:24])
 
 
+def test_series_colours_and_labels_are_those_of_the_published_figures():
+    # The colours of the species series as published (Fig. 9, SI Fig. S12;
+    # the solver-emulation figure uses the same), one per species, and the
+    # contour colours of Fig. 11. The figure tests below look the series
+    # up by these colours.
+    assert figures._COLORS == {
+        'X_HP3': '#4d4d4d', 'X_MA': '#a66bd6', 'X_AAc': '#1f6fdb',
+        'X_OXA': '#f26a1b', 'X_D': '#5b9bd5'}
+    assert figures._LABELS == {'X_HP3': '3HP', 'X_MA': 'MA', 'X_AAc': 'AAc',
+                               'X_OXA': 'OXA', 'X_D': 'Others'}
+    assert (figures._C_H2O2, figures._C_OPA) == ('#f28e8e', '#2aa35a')
+    assert figures._CONTOUR_COLORS == {0.1: (0.30, 0.50, 0.82),
+                                       0.3: (0.35, 0.57, 0.40),
+                                       0.5: (0.82, 0.56, 0.09)}
+    assert (figures._C_RIDGE, figures._C_RED_STAR,
+            figures._C_PURPLE_STAR) == ('#e41a1c', '#f0525a', '#7b6fc4')
+
+
+# Reaction lists of the published Fig. 9, (reactants, products) per
+# reaction, as drawn.
+FIG9_REACTIONS = {
+    'H2O2': [('3-HP + H$_2$O$_2$', 'OPA + 2H$_2$O'),
+             ('OPA + H$_2$O$_2$', 'MA + H$_2$O'),
+             ('MA', 'AAc + CO$_2$'),
+             ('MA + H$_2$O$_2$', 'OXA + 2H$_2$ + CO$_2$'),
+             ('3-HP', 'Others'), ('MA', 'Others'),
+             ('H$_2$O$_2$', 'H$_2$O + 0.5 O$_2$')],
+    'O2': [('3-HP + 0.5 O$_2$', 'OPA + H$_2$O'),
+           ('OPA + 0.5 O$_2$', 'MA'),
+           ('MA', 'AAc + CO$_2$'),
+           ('MA + O$_2$', 'OXA + H$_2$ + CO$_2$'),
+           ('3-HP', 'Others'), ('MA', 'Others')]}
+
+
 def test_fig9_draws_model_experiment_and_deposited_curve():
     fig = figures.plot_fig9()
     try:
         panel_a, reactions_a, panel_b, reactions_b = fig.axes
-        for panel, read, load in (
-                (panel_a, pkg.read_fig9a_h2o2, pkg.load_h2o2_model),
-                (panel_b, pkg.read_fig9b_o2, pkg.load_o2_model)):
+        for panel, letter, tag, oxidant, read, load in (
+                (panel_a, 'a', 'H$_2$O$_2$', 'H2O2', pkg.read_fig9a_h2o2,
+                 pkg.load_h2o2_model),
+                (panel_b, 'b', 'O$_2$', 'O2', pkg.read_fig9b_o2,
+                 pkg.load_o2_model)):
             # 5 model lines + 5 experimental series + 5 deposited polylines
             assert len(_lines_with_data(panel)) == 15
             # the model lines are the Table 3 model of the panel's oxidant
             _assert_lines_are_the_model(
                 _model_lines(panel, len(figures._T_DENSE)), load(),
                 pkg.NORMALIZED)
-            assert panel.get_xlim() == (-30., 1440.)
-            assert panel.get_xlabel() == 'Time (min)'
-            # markers are drawn whole on the frame, so no sample taken
-            # after the end of the time axis may be drawn (Fig. 9b has
-            # samples at 1470 and 1680 min)
-            experiment = read()['experiment']
-            drawn = experiment[experiment['time'] <= figures._T_END]
-            markers = _marker_only_lines(panel)
-            assert len(markers) == 5
-            for line in markers:
-                assert np.array_equal(line.get_xdata(), drawn['time'])
+            # each species: its model line and its experimental circles, in
+            # its colour. Markers are drawn whole on the frame, so no sample
+            # taken after the end of the time axis may be drawn (Fig. 9b has
+            # samples at 1470 and 1680 min).
+            _assert_species_series(
+                panel, pkg.simulate_at_times(load(), figures._T_DENSE),
+                read()['experiment'])
+            assert len(_marker_only_lines(panel)) == 5
+            # the five deposited polylines, in the order of NORMALIZED,
+            # black and dotted, with their key
             deposited = read()['model']
             drawn = [line for line in panel.get_lines()
                      if len(line.get_xdata()) == len(deposited)]
             assert len(drawn) == 5
-            assert np.array_equal(drawn[0].get_ydata(), deposited['X_HP3'])
+            for line, name in zip(drawn, pkg.NORMALIZED):
+                assert np.array_equal(line.get_xdata(), deposited['time'])
+                assert np.array_equal(line.get_ydata(), deposited[name]), name
+                assert to_hex(line.get_color()) == '#000000'
+                # matplotlib has no public getter of the dash sequence;
+                # this attribute holds it unscaled (matplotlib 3.10, 3.11)
+                assert line.is_dashed()
+                assert line._unscaled_dash_pattern == (0, (1, 2))
+            legend = panel.get_legend()
+            assert [text.get_text() for text in legend.get_texts()] == [
+                'Deposited model curve']
+            (handle,) = legend.legend_handles
+            assert to_hex(handle.get_color()) == '#000000'
+            assert handle.is_dashed()
+            assert handle._unscaled_dash_pattern == (0, (1, 2))
+            # species key: a line ('mod') and a circle ('exp') per species,
+            # in the colour of its series
+            key = _species_key(panel)
+            _key_labels(key)
+            handles = key.findobj(Line2D)
+            colors = [figures._COLORS[name] for name in pkg.NORMALIZED]
+            assert [to_hex(line.get_color()) for line in handles] == 2*colors
+            assert [(line.get_linestyle(), line.get_marker())
+                    for line in handles] == (5*[('-', 'None')]
+                                             + 5*[('None', 'o')])
+            # oxidant tag and panel letter
+            assert _texts(panel) == [tag, letter]
+            _assert_tag(panel, oxidant)
+            assert panel.get_xlim() == (-30., 1440.)
+            assert panel.get_ylim() == (-0.05, 1.)
+            assert panel.get_xlabel() == 'Time (min)'
+            assert panel.get_ylabel() == 'Normalized\nConcentration'
             # inward ticks with minor ticks half-way, as published
             assert list(panel.get_xticks()) == [0, 500, 1000]
             assert 250. in panel.xaxis.get_minorticklocs()
@@ -123,19 +236,22 @@ def test_fig9_draws_model_experiment_and_deposited_curve():
                 'direction'] == 'in'
         # five pieces of text per reaction: "Rxn n" (navy, as published),
         # reactants, arrow, k over the arrow (red), products
-        for reactions, n in ((reactions_a, 7), (reactions_b, 6)):
+        for reactions, oxidant in ((reactions_a, 'H2O2'),
+                                   (reactions_b, 'O2')):
             texts = reactions.texts
+            n = len(FIG9_REACTIONS[oxidant])
             assert len(texts) == 5*n
             assert [text.get_text() for text in texts[::5]] == [
                 'Rxn %d' % i for i in range(1, n + 1)]
             assert [text.get_text() for text in texts[3::5]] == [
                 'k$_%d$' % i for i in range(1, n + 1)]
+            assert list(zip([text.get_text() for text in texts[1::5]],
+                            [text.get_text() for text in texts[4::5]])) == (
+                FIG9_REACTIONS[oxidant])
             assert {to_hex(text.get_color()) for text in texts[::5]} == {
                 '#3653a0'}
             assert {to_hex(text.get_color()) for text in texts[3::5]} == {
                 '#ee2c32'}
-        assert reactions_a.texts[1].get_text() == '3-HP + H$_2$O$_2$'
-        assert reactions_b.texts[4].get_text() == 'OPA + H$_2$O'
     finally:
         plt.close(fig)
 
@@ -191,17 +307,59 @@ def test_figS12_draws_the_insets(tmp_path):
                          (panel_b, pkg.load_o2_model)):
             _assert_lines_are_the_model(_model_lines(ax, n), load(),
                                         pkg.NORMALIZED)
-        # the dashed lines are the predicted H2O2 and OPA of those models
-        for ax, load, name, scale in (
-                (panel_a, pkg.load_h2o2_model, 'eq_H2O2', 1.),
-                (inset_a, pkg.load_h2o2_model, 'eq_H2O2', 1.),
-                (panel_b, pkg.load_o2_model, 'x_OPA', 1.),
-                (inset_b, pkg.load_o2_model, 'x_OPA', 1e5)):
+        # each species: its model line and its experimental circles, in its
+        # colour, on the main axes and in inset a (inset b holds no species)
+        for ax, load, read in ((panel_a, pkg.load_h2o2_model,
+                                pkg.read_fig9a_h2o2),
+                               (inset_a, pkg.load_h2o2_model,
+                                pkg.read_fig9a_h2o2),
+                               (panel_b, pkg.load_o2_model,
+                                pkg.read_fig9b_o2)):
+            _assert_species_series(
+                ax, pkg.simulate_at_times(load(), figures._T_DENSE),
+                read()['experiment'])
+        assert not _marker_only_lines(inset_b)
+        # the dashed lines are the predicted H2O2 and OPA of those models, in
+        # the colours of the published panels
+        for ax, load, name, scale, color in (
+                (panel_a, pkg.load_h2o2_model, 'eq_H2O2', 1., '#f28e8e'),
+                (inset_a, pkg.load_h2o2_model, 'eq_H2O2', 1., '#f28e8e'),
+                (panel_b, pkg.load_o2_model, 'x_OPA', 1., '#2aa35a'),
+                (inset_b, pkg.load_o2_model, 'x_OPA', 1e5, '#2aa35a')):
             (dashed,) = [line for line in ax.get_lines()
                          if line.get_linestyle() == '--']
             sim = pkg.simulate_at_times(load(), dashed.get_xdata(), [name])
             assert np.allclose(dashed.get_ydata(), scale*sim[name],
                                rtol=0., atol=1e-12*scale)
+            assert to_hex(dashed.get_color()) == color
+        # panel letters and oxidant tags
+        assert (_texts(panel_a), _texts(panel_b)) == (['a'], ['b'])
+        assert _texts(inset_a) == ['H$_2$O$_2$']
+        assert _texts(inset_b) == [r'$\times10^{-5}$', 'O$_2$']
+        _assert_tag(inset_a, 'H2O2')
+        _assert_tag(inset_b, 'O2')
+        # key of panel b: line and circle of each species in its colour,
+        # labelled as published (D for "Others")
+        legend = panel_b.get_legend()
+        assert [text.get_text() for text in legend.get_texts()] == [
+            '3HP', 'MA', 'AAc', 'OXA', 'D']
+        assert [to_hex(handle.get_color())
+                for handle in legend.legend_handles] == [
+            figures._COLORS[name] for name in pkg.NORMALIZED]
+        # keys of the insets: each label on the handle of its series
+        for ax, keys in (
+                (inset_a, [('H$_2$O$_2$$^{predicted}$', '#f28e8e', '--',
+                            'None'),
+                           ('Published (digitized)', '#1a1a1a', '-', 'None'),
+                           ('Deposited trace', '#1a1a1a', 'None', 's')]),
+                (inset_b, [('OPA$^{predicted}$', '#2aa35a', '--', 'None'),
+                           ('Published (digitized)', '#1a1a1a', '-',
+                            'D')])):
+            legend = ax.get_legend()
+            assert [(text.get_text(), to_hex(handle.get_color()),
+                     handle.get_linestyle(), handle.get_marker())
+                    for text, handle in zip(legend.get_texts(),
+                                            legend.legend_handles)] == keys
         h2o2 = inset_a.get_lines()[-1]
         assert h2o2.get_ydata()[0] == pytest.approx(15.)
         # (a) the 'Published (digitized)' line is the digitized inset of SI
@@ -217,9 +375,6 @@ def test_figS12_draws_the_insets(tmp_path):
                       if line.get_marker() == 's']
         assert np.array_equal(squares.get_xdata(), trace['time'])
         assert np.array_equal(squares.get_ydata(), trace['eq_H2O2'])
-        labels = [text.get_text()
-                  for text in inset_a.get_legend().get_texts()]
-        assert labels[1:] == ['Published (digitized)', 'Deposited trace']
         # (b) published polyline and predicted OPA, on the 1e-5 axis
         published, opa = inset_b.get_lines()
         digitized = pkg.read_figS12b_opa_inset_digitized()
@@ -268,15 +423,57 @@ def _star_positions(ax):
             if line.get_marker() == '*' and line.get_markerfacecolor() != 'none']
 
 
+def _assert_heat_map_lines(ax, T_C, times, matrix):
+    """Contour lines at 0.1, 0.3 and 0.5 in their colours, the red dashed
+    line through the row maxima, the red star on the largest cell and the
+    purple star on the maximum of the 50 C row."""
+    (contours,) = [c for c in ax.collections if isinstance(c, ContourSet)]
+    assert list(contours.levels) == [0.1, 0.3, 0.5]
+    assert [to_hex(color) for color in contours.get_edgecolor()] == [
+        to_hex(figures._CONTOUR_COLORS[level]) for level in (0.1, 0.3, 0.5)]
+    (ridge,) = [line for line in ax.get_lines()
+                if len(line.get_xdata()) == len(T_C)]
+    assert np.array_equal(ridge.get_xdata(), pkg.heat_map_ridge(times, matrix))
+    assert np.array_equal(ridge.get_ydata(), T_C)
+    assert (to_hex(ridge.get_color()), ridge.get_linestyle()) == (
+        '#e41a1c', '--')
+    stars = {to_hex(line.get_markerfacecolor()): (line.get_xdata()[0],
+                                                  line.get_ydata()[0])
+             for line in ax.get_lines() if line.get_marker() == '*'
+             and line.get_markerfacecolor() != 'none'}
+    _, T_max, t_max = pkg.heat_map_maximum(T_C, times, matrix)
+    row = list(T_C).index(50.)
+    assert stars == {'#f0525a': (t_max, T_max),
+                     '#7b6fc4': (times[np.argmax(matrix[row])], 50.)}
+
+
 def test_fig11_draws_both_heat_maps_with_the_default_constant_set():
     fig = figures.plot_fig11()
     try:
         panel_a, panel_b = _heat_map_axes(fig)
         T_C, times, selectivity, MA_yield = pkg.fig11_heat_maps()
-        for panel, matrix, label, value in (
-                (panel_a, selectivity, 'MA Selectivity', 0.5931),
-                (panel_b, MA_yield, 'MA Yield', 0.5484)):
+        # contour labels of the main panels as published: (level, side of
+        # the red dashed line) and how many labels it carries
+        published_labels = {
+            'a': {(0.1, True): 1, (0.3, True): 1, (0.5, True): 1,
+                  (0.1, False): 1, (0.3, False): 1, (0.5, False): 1},
+            'b': {(0.1, True): 1, (0.3, True): 1, (0.5, True): 2,
+                  (0.1, False): 2, (0.3, False): 2, (0.5, False): 2}}
+        for panel, letter, matrix, label, value in (
+                (panel_a, 'a', selectivity, 'MA Selectivity', 0.5931),
+                (panel_b, 'b', MA_yield, 'MA Yield', 0.5484)):
             assert np.array_equal(_mesh(panel), matrix)
+            _assert_heat_map_lines(panel, T_C, times, matrix)
+            assert _texts(panel)[-1] == letter
+            ridge_times = pkg.heat_map_ridge(times, matrix)
+            labels = {}
+            for text in panel.texts:
+                if text.get_text() in ('0.1', '0.3', '0.5'):
+                    t_label, T_label = text.get_position()
+                    key = (float(text.get_text()),
+                           t_label < np.interp(T_label, T_C, ridge_times))
+                    labels[key] = labels.get(key, 0) + 1
+            assert labels == published_labels[letter]
             assert panel.get_xlim() == (7.2, 1682.8)
             assert panel.get_ylim() == (29.5, 100.5)
             # inward ticks on all four sides, as published
@@ -302,6 +499,7 @@ def test_fig11_draws_both_heat_maps_with_the_default_constant_set():
             # inset: a zoom of the same matrix on 47 to 57 C
             colorbar, inset = panel.child_axes
             assert np.array_equal(_mesh(inset), matrix)
+            _assert_heat_map_lines(inset, T_C, times, matrix)
             assert inset.get_ylim() == (46.5, 57.5)
             # inset contour labels as published: every level on both sides
             # of the red dashed line, turned along the steep lines of the
@@ -336,11 +534,25 @@ def test_fig11_verification_overlays_the_digitized_lines():
             digitized = read()
             # both panels are the maps of the one default constant set
             assert np.array_equal(_mesh(top), matrix)
+            T_C, times = maps[:2]
+            _assert_heat_map_lines(top, T_C, times, matrix)
+            # the digitized contour lines and red dashed line as black dots,
+            # the digitized stars as open black stars
+            for samples in (digitized['contours'], digitized['ridge']):
+                (dots,) = [line for line in top.get_lines()
+                           if len(line.get_xdata()) == len(samples)]
+                assert np.array_equal(dots.get_xdata(), samples['time'])
+                assert np.array_equal(dots.get_ydata(), samples['T_C'])
+                assert to_hex(dots.get_color()) == '#000000'
+            (stars,) = [line for line in top.get_lines()
+                        if line.get_marker() == '*'
+                        and line.get_markerfacecolor() == 'none']
+            assert np.array_equal(stars.get_xdata(),
+                                  digitized['stars']['time'])
+            assert np.array_equal(stars.get_ydata(),
+                                  digitized['stars']['T_C'])
             drawn = [line for line in top.get_lines()
                      if len(line.get_xdata()) == len(digitized['contours'])]
-            assert len(drawn) == 1
-            assert np.array_equal(drawn[0].get_ydata(),
-                                  digitized['contours']['T_C'])
             # the digitized dots (a '.' marker is half its size wide) are
             # narrower than the lines of the map, which stay visible
             (contours,) = [c for c in top.collections
@@ -355,6 +567,24 @@ def test_fig11_verification_overlays_the_digitized_lines():
             groups = [line for line in bottom.get_lines()
                       if len(line.get_xdata()) > 2]
             assert len(groups) == 6
+            # each group: the offsets of its own samples from the contour of
+            # its level, in the colour of that level, filled on the late side
+            # of the red dashed line and open on the early side
+            for line, ((level, branch), samples) in zip(
+                    groups, digitized['contours'].groupby(['level',
+                                                           'branch'])):
+                assert line.get_label() == '%g, %s' % (level, branch)
+                inside = samples[samples['time'].between(times[0], times[-1])
+                                 & samples['T_C'].between(T_C[0], T_C[-1])]
+                assert np.array_equal(line.get_xdata(), inside['T_C'])
+                assert np.array_equal(line.get_ydata(), pkg.contour_offsets(
+                    T_C, times, matrix, level, inside['time'],
+                    inside['T_C']))
+                color = to_hex(figures._CONTOUR_COLORS[level])
+                assert to_hex(line.get_markeredgecolor()) == color
+                assert (line.get_marker(), line.get_markerfacecolor()) == (
+                    ('o', 'none') if branch == 'early'
+                    else ('s', line.get_markeredgecolor()))
             offsets = np.concatenate([line.get_ydata() for line in groups])
             assert np.sqrt(np.mean(offsets**2)) == pytest.approx(rms,
                                                                  abs=0.005)
@@ -367,7 +597,20 @@ def test_fig11_verification_overlays_the_digitized_lines():
                 % (matched, rms))
             assert [text.get_text() for text in bottom.texts][0].startswith(
                 'rms %.2f px' % rms)
-            assert top.get_legend() is not None
+            # key of the overlay: the model's lines and stars in their
+            # colours, the published ones in black
+            legend = top.get_legend()
+            assert [text.get_text() for text in legend.get_texts()] == [
+                'Model: contours 0.1, 0.3, 0.5', 'Model: row maxima',
+                'Model: maximum, 50 \N{DEGREE SIGN}C maximum',
+                'Published: lines (digitized)',
+                'Published: stars (digitized)']
+            assert [(to_hex(line.get_color()), line.get_marker())
+                    for line in legend.findobj(Line2D)] == [
+                (to_hex(figures._CONTOUR_COLORS[level]), 'None')
+                for level in (0.1, 0.3, 0.5)] + [
+                ('#e41a1c', 'None'), ('#f0525a', '*'), ('#7b6fc4', '*'),
+                ('#000000', 'None'), ('#000000', '*')]
             assert bottom.get_legend() is not None
     finally:
         plt.close(fig)
@@ -381,15 +624,34 @@ def test_solver_emulation_figure_marks_the_emulated_steps_on_the_nodes():
         assert len(tops) == len(bottoms) == 3 and len(fig.axes) == 6
         assert [ax.get_title().split('\n')[1].split(';')[0]
                 for ax in tops] == ['23 steps', '19 steps', '24 steps']
-        for top, bottom, nodes in zip(
+        colors = dict(figures._COLORS, eq_H2O2='#f28e8e')
+        for top, bottom, nodes, km in zip(
                 tops, bottoms,
                 (pkg.read_fig9a_h2o2()['model'], pkg.read_fig9b_o2()['model'],
-                 pkg.read_fig9a_h2o2()['h2o2_trace'])):
+                 pkg.read_fig9a_h2o2()['h2o2_trace']),
+                (pkg.load_h2o2_model('fig9a_nodes'),
+                 pkg.load_o2_model('fig9b_nodes'),
+                 pkg.load_h2o2_model('figS12a_h2o2_nodes'))):
+            columns = list(nodes.columns[1:])
             circles = [line for line in top.get_lines()
                        if line.get_marker() == 'o']
             crosses = [line for line in top.get_lines()
                        if line.get_marker() == '+']
             assert len(circles) == len(crosses) == nodes.shape[1] - 1
+            # per plotted quantity, in its colour: the deposited nodes and
+            # the accurate solution of the model that carries the constants
+            # inferred from them
+            lines = [line for line in top.get_lines()
+                     if line.get_marker() == 'None']
+            assert len(lines) == len(columns)
+            for circle, line, name in zip(circles, lines, columns):
+                assert np.array_equal(circle.get_ydata(), nodes[name]), name
+                assert to_hex(circle.get_markeredgecolor()) == colors[name]
+                assert to_hex(line.get_color()) == colors[name]
+                accurate = pkg.simulate_at_times(km, line.get_xdata(),
+                                                 [name])
+                assert np.allclose(line.get_ydata(), accurate[name],
+                                   rtol=0., atol=1e-12), name
             # every deposited node carries a cross
             n = len(nodes)
             for circle, cross in zip(circles, crosses):
@@ -402,12 +664,18 @@ def test_solver_emulation_figure_marks_the_emulated_steps_on_the_nodes():
             # printed decimal, the accurate solution rises above it
             accurate, emulated = [line for line in bottom.get_lines()
                                   if line.get_marker() in ('o', '+')]
+            assert (accurate.get_marker(), emulated.get_marker()) == ('o', '+')
             assert emulated.get_ydata().max() <= 1e-5
             assert accurate.get_ydata().max() > 1e-4
             low, high = bottom.get_ylim()
             assert low < emulated.get_ydata().min()
             assert accurate.get_ydata().max() < high
-        assert len(fig.legends) == 1
+        (legend,) = fig.legends
+        assert [(text.get_text(), to_hex(handle.get_color()))
+                for text, handle in zip(legend.get_texts()[:6],
+                                        legend.legend_handles)] == [
+            (figures._LABELS[name], figures._COLORS[name])
+            for name in pkg.NORMALIZED] + [('H$_2$O$_2$', '#f28e8e')]
     finally:
         plt.close(fig)
 

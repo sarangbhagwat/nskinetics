@@ -186,10 +186,12 @@ _SIMPLIFIED_REVERSIBLE_NAMES = (
 #:     decimals, 0.0021, 0.0001 and 0.0010; the last disagrees with the
 #:     table's 1.0625e-3, which would round to 0.0011). ``k_4`` = 0.0023 (two
 #:     significant digits) and ``K_6`` to ``K_10`` are those of ``k0``,
-#:     their only source. ``k_3``, which ``k0`` writes as 0.0000 (below
-#:     5e-5), is the least-squares fit to the 50 C data table of the script
-#:     with the other nine held (``fit_simplified_reversible_constants``),
-#:     to five significant digits.
+#:     their only source. ``k_3``, which ``k0`` writes as 0.0000 (zero as
+#:     written; below 5e-5 if ``k0`` is a four-decimal print of an earlier
+#:     value, which the deposit does not state), is the least-squares fit
+#:     to the 50 C data table of the script with the other nine held
+#:     (``fit_simplified_reversible_constants``), to five significant
+#:     digits.
 #: ``'k0_printed'``
 #:     The vector ``k0`` written in the script, to its four decimals
 #:     (``k_3`` reads 0). The script uses it only for the bounds of its
@@ -257,11 +259,20 @@ def _load(antimony_filename, values=None):
 
 
 def _check_T(T):
-    """Raise ValueError for a temperature that cannot be meant in kelvin."""
+    """Raise ValueError for a temperature that cannot be meant in kelvin.
+
+    A positive value that is in the range once 273.15 is added (up to
+    176.85) is taken to be degrees Celsius, and the message gives it in
+    kelvin.
+    """
     if not _T_RANGE[0] <= T <= _T_RANGE[1]:
+        if 0. < T and _T_RANGE[0] <= T + 273.15 <= _T_RANGE[1]:
+            hint = f': for {T:g} C pass T={T + 273.15:g} ({T:g} + 273.15)'
+        else:
+            hint = ' (degrees Celsius + 273.15)'
         raise ValueError(
             f'T = {T!r} is outside {_T_RANGE[0]:g} to {_T_RANGE[1]:g} K. '
-            'T is in kelvin: for 75 C pass T=348.15 (75 + 273.15).')
+            f'T is in kelvin{hint}.')
 
 
 def _table3_or_node_set(parameter_set, node_sets, model):
@@ -582,8 +593,8 @@ def simulate_at_times(te_r, times, selections=None):
     te_r : nskinetics.KineticModel
         Model from one of the loaders of this module.
     times : array-like
-        Increasing times in min. The integration starts at t = 0 whether
-        or not 0 is listed.
+        Increasing times in min, at least one of them after t = 0. The
+        integration starts at t = 0 whether or not 0 is listed.
     selections : list of str, optional
         Quantities to record. Defaults to the Fig. 9 normalized
         concentrations (:data:`NORMALIZED`).
@@ -593,8 +604,19 @@ def simulate_at_times(te_r, times, selections=None):
     pandas.DataFrame
         Column ``time`` followed by one column per selection, one row per
         requested time.
+
+    Raises
+    ------
+    ValueError
+        If ``times`` is not a one-dimensional sequence (a single number
+        included), is empty or holds only t = 0 (the solver needs an
+        interval to integrate over).
     """
     times = np.asarray(times, dtype=float)
+    if times.ndim != 1 or not (times > 0.).any():
+        raise ValueError('times must be a one-dimensional sequence with at '
+                         'least one time after t = 0, not '
+                         f'{times.tolist()!r}')
     if selections is None:
         selections = list(NORMALIZED)
     start_at_zero = times[0] == 0.

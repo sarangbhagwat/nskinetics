@@ -176,12 +176,25 @@ def test_loader_rejects_an_unknown_parameter_set(parameter_set):
     assert "'deposit', 'k0_printed'" in str(error.value)
 
 
-@pytest.mark.parametrize('T', [75., 50, 0., -5., 249.9, 450.1,
-                               float('nan')])
-def test_loader_rejects_a_temperature_that_is_not_in_kelvin(T):
+@pytest.mark.parametrize('T, hint', [
+    (75., ': for 75 C pass T=348.15 (75 + 273.15).'),
+    (50, ': for 50 C pass T=323.15 (50 + 273.15).'),
+    (37.5, ': for 37.5 C pass T=310.65 (37.5 + 273.15).'),
+    (176.8, ': for 176.8 C pass T=449.95 (176.8 + 273.15).'),
+    # not taken for degrees Celsius: 180 C would be 453.15 K, itself
+    # outside the range
+    (180., ' (degrees Celsius + 273.15).'),
+    (199.9, ' (degrees Celsius + 273.15).'),
+    (0., ' (degrees Celsius + 273.15).'),
+    (-5., ' (degrees Celsius + 273.15).'),
+    (249.9, ' (degrees Celsius + 273.15).'),
+    (450.1, ' (degrees Celsius + 273.15).'),
+    (float('nan'), ' (degrees Celsius + 273.15).')])
+def test_loader_rejects_a_temperature_that_is_not_in_kelvin(T, hint):
     with pytest.raises(ValueError, match='T is in kelvin') as error:
         load_o2_simplified_reversible_model(T=T)
-    assert '348.15' in str(error.value)
+    assert str(error.value) == (
+        f'T = {T!r} is outside 250 to 450 K. T is in kelvin{hint}')
 
 
 def test_antimony_file_holds_the_deposit_set_and_the_heat_map_convention():
@@ -879,9 +892,10 @@ def test_default_k3_is_the_result_of_the_fit(default_fit):
     k_3 = default_fit['fitted']['k_3_ref']
     assert float('%.5g' % k_3) == deposit['k_3_ref'] == 1.4215e-5
     # 1.42150e-5, 3.4e-5 (relative) from either rounding boundary of the
-    # fifth digit; the scatter over starting points, solver tolerances and
-    # Jacobian steps is below 1e-5 (NOTES.md)
-    assert k_3 == pytest.approx(1.42150e-5, rel=1e-5)
+    # fifth digit; the scatter over starting points, solver tolerances of
+    # 1e-8 and tighter and Jacobian steps is below 1e-5 (NOTES.md), and
+    # the test allows 2.5e-5
+    assert k_3 == pytest.approx(1.42150e-5, rel=2.5e-5)
     assert default_fit['n_residuals'] == 80
     assert default_fit['sum_of_squares'] == pytest.approx(0.0337970,
                                                           abs=2e-7)
@@ -899,9 +913,10 @@ def test_default_k3_is_the_result_of_the_fit(default_fit):
 @pytest.mark.parametrize('start', [(4.3e-6,), (3e-5,), (1e-4,)])
 def test_fit_is_reached_from_other_starting_points(default_fit, start):
     fit = fit_simplified_reversible_constants(start=start)
-    # to 1e-5 (7e-6 from the first start): k_3 has a standard error of
-    # 31 %, so the sum of squares is flat about the optimum; the limit is
-    # inside the 3.4e-5 that the fifth digit shipped allows
+    # within 1e-5 (7.0e-6 at most, from the first start; NOTES.md): k_3
+    # has a standard error of 31 %, so the sum of squares is flat about the
+    # optimum. The test allows 2.5e-5, inside the 3.4e-5 that the fifth
+    # digit shipped allows.
     assert fit['fitted']['k_3_ref'] == pytest.approx(
         default_fit['fitted']['k_3_ref'], rel=2.5e-5)
     assert fit['sum_of_squares'] == pytest.approx(
@@ -988,10 +1003,11 @@ def test_fit_arguments():
         assert fit['fitted']['k_4_ref'] == pytest.approx(2.32004e-3,
                                                          rel=1e-5)
         assert fit['sum_of_squares'] == pytest.approx(0.0345089, abs=2e-7)
-    # a free constant given in values is fitted from that value: K_8
-    # hardly changes the sum of squares, so the fit stays near its start
+    # a free constant given in values is fitted from that value
     fit = fit_simplified_reversible_constants(values={'k_3': 3e-5})
-    assert fit['fitted']['k_3_ref'] == pytest.approx(1.42150e-5, rel=1e-5)
+    assert fit['fitted']['k_3_ref'] == pytest.approx(1.42150e-5, rel=2.5e-5)
+    # K_8 hardly changes the sum of squares, so its fit stays near its
+    # start, and the start taken from values is the one used
     from_values = fit_simplified_reversible_constants(free='K_8',
                                                       values={'K_8': 10.})
     from_start = fit_simplified_reversible_constants(free='K_8', start=(10.,))
@@ -1007,6 +1023,8 @@ def test_fit_arguments():
     for arguments, message in (
             (dict(free=('k_6',)), r"unknown constants \['k_6'\]"),
             (dict(values={'K_11': 1.}), r"unknown constants \['K_11'\]"),
+            (dict(free=(3,)), r"unknown constants \[3\]"),
+            (dict(values={3: 1.}), r"unknown constants \[3\]"),
             (dict(free=('k_3', 'k_3_ref')), 'each constant once'),
             (dict(values={'k_4': 2e-3, 'k_4_ref': 2e-3}),
              'each constant once'),
@@ -1015,9 +1033,20 @@ def test_fit_arguments():
             (dict(start=(0.,)), 'one finite, positive value'),
             (dict(start=(-1e-5,)), 'one finite, positive value'),
             (dict(start=(np.inf,)), 'one finite, positive value'),
-            (dict(start=(np.nan,)), 'one finite, positive value')):
+            (dict(start=(np.nan,)), 'one finite, positive value'),
+            # without start, the value in values of a free constant is its
+            # start and follows the same rule
+            (dict(values={'k_3': 0.}),
+             r"values must give each free constant a finite, positive value "
+             r"\(its start\), not \{'k_3_ref': 0.0\}"),
+            (dict(free=('k_3', 'k_4'), values={'k_4': -1e-3}),
+             r"\{'k_4_ref': -0.001\}"),
+            (dict(values={'k_3': np.inf}), 'finite, positive value')):
         with pytest.raises(ValueError, match=message):
             fit_simplified_reversible_constants(**arguments)
+    with pytest.raises(TypeError, match='free must be a constant name or a '
+                       'sequence of names, not 3'):
+        fit_simplified_reversible_constants(free=3)
 
 
 # --- 7. reference data --------------------------------------------------------

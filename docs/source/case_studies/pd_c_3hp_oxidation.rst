@@ -61,14 +61,14 @@ other than redrawing the figures:
   script's run fitted are not in the deposit. Here every constant the
   deposit gives is used as given (nine of ten; where the deposit gives one
   twice, the full-precision value: ``k_1``, ``k_2`` and ``k_5`` from its
-  Arrhenius table, not the rounded values of the script's ``k0``), and the
-  one it does not give, ``k_3``, is fitted to the 50 °C data with the
-  authors' fitting set-up (`The constants of the simplified reversible
-  model`_). No constant is fitted to a published figure. The model comes close to the
-  published Fig. 11 without being fitted to it, and it does **not** describe
-  the paper's experiments at 25, 75 and 100 °C (`Limits of the temperature
-  dependence`_). The model curves of Fig. 10a–c are not reproduced by this
-  package.
+  Arrhenius table, not the four-decimal values written in the script's
+  ``k0``), and the one it does not give, ``k_3``, is fitted to the 50 °C
+  data with the authors' fitting set-up (`The constants of the simplified
+  reversible model`_). No constant is fitted to a published figure. The
+  model comes close to the published Fig. 11 without being fitted to it,
+  and it does **not** describe the paper's experiments at 25, 75 and
+  100 °C (`Limits of the temperature dependence`_). The model curves of
+  Fig. 10a–c are not reproduced by this package.
 - Several statements on this page rest on analyses that are not in the
   repository. They are marked "(not shipped)"; `What is not in the
   repository`_ lists them. The repeat of the authors' solver run and the
@@ -308,8 +308,9 @@ should be left alone unless you know why you are changing it.
      - 3.5
      - Pressure of the authors' heat-map script (the captions of the paper
        give 3 bar of O2). Do not use it to explore pressure: the model was
-       fitted at no other pressure, and the paper's Fig. 3a contradicts its
-       trend above 3 bar (see below).
+       fitted at no other pressure, and it disagrees with the screening
+       experiments of the paper's Fig. 3a in trend above 3 bar and in
+       level (87.7 against 21.7 % conversion at 1 bar; see below).
 
 .. code-block:: python
 
@@ -1105,7 +1106,9 @@ does not give is fitted to the 50 °C data with the authors' fitting set-up.
    * - ``k_3``
      - 1.4215e-5 1/min
      - **Fitted** to the 50 °C data table of the script, the other nine
-       held; standard error 31 %. ``k0`` writes 0.0000 (below 5e-5).
+       held; standard error 31 %. ``k0`` writes 0.0000 (zero as written;
+       below 5e-5 if ``k0`` is a four-decimal print of an earlier value,
+       which the deposit does not state).
    * - ``Ea_1`` to ``Ea_5``
      - 59781.2, 91594.6, 10000, 51788.73, 59549.8 J/mol
      - **Deposit**: as written in the heat-map script. ``Ea_i`` scales

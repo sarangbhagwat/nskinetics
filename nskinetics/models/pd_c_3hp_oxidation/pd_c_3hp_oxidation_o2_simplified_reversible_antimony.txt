@@ -206,7 +206,8 @@ model *kim2026_o2_simplified_reversible()
   k_1_ref has per_min;
   k_2_ref = 5.199984e-5;
   k_2_ref has per_min;
-  // k_3: k0 writes 0.0000 (below 5e-5), so the deposit gives no value.
+  // k_3: k0 writes 0.0000 (zero as written), so the deposit gives no
+  //   value.
   //   FITTED by least squares to the 50 C data table of the script, in the
   //   script's fitting convention, with the other nine constants held
   //   (fit_simplified_reversible_constants in fitting.py; five significant
@@ -364,7 +365,10 @@ the 50 C data table of the script with the other nine constants held.
 The Arrhenius factors are applied to the rate constants and to the equilibrium constants,
 as in the script. The constants were fitted at 50 C only: at 25, 75 and 100 C the model does
 not describe the paper's experiments (Fig. 10a-c; pooled R2 0.56 to 0.76). Do not use P to
-explore pressure: the paper's screening experiments (Fig. 3a) contradict the model above 3 bar.
+explore pressure: the model disagrees with the paper's screening experiments (Fig. 3a) in
+trend above 3 bar (they fall, the model rises) and in level (87.7 against 21.7 % conversion
+at 1 bar); NOTES.md says why the screening runs and the time courses are not on the same
+footing.
 ```
 end
 

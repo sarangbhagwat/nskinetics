@@ -157,7 +157,7 @@ page has the same table with a worked example):
 | all three | `C0` | M | 0.06 | initial 3-HP concentration (takes effect at the next `reset()`) |
 | H2O2 | `eq_H2O2_0` | - | 15 | initial H2O2 in equivalents of `C0` (0.9 M; takes effect at the next `reset()`) |
 | simplified | `T` | K | 323.15 | temperature. The model was fitted at 50 C only and does not describe the experiments at 25, 75 and 100 C (see "Limits of the temperature dependence") |
-| simplified | `P` | bar | 3.5 | pressure of the heat-map script. Not for exploring pressure: the paper's Fig. 3a contradicts the model above 3 bar (see below) |
+| simplified | `P` | bar | 3.5 | pressure of the heat-map script. Not for exploring pressure: the model disagrees with the screening experiments of the paper's Fig. 3a in trend above 3 bar and in level (87.7 against 21.7 % conversion at 1 bar; see below, also on why the screening runs and the time courses are not on the same footing) |
 
 Rate constants: `k_1` to `k_6` of the Table 3 models are in 1/(g_cat min)
 and `k_7` (H2O2) in 1/min. The rate constants of the simplified model are
@@ -1015,10 +1015,11 @@ deposit gives a constant twice, the full-precision value is used: `k_1`,
 `k0` gives to four decimals as 0.0021, 0.0001 and 0.0010 (the last
 disagrees with the table's 1.0625e-3, which would round to 0.0011).
 `K_6` to `K_10` are those of `k0`, and so is `k_4` = 0.0023, its only
-source (two significant digits). `k_3`, which `k0` writes as 0.0000 (below
-5e-5), is the only constant fitted: to the 50 C data table of the script,
-with the script's fitting convention. Rate constants in 1/min; they are
-lumped (no catalyst mass).
+source (two significant digits). `k_3`, which `k0` writes as 0.0000 (zero
+as written; below 5e-5 if `k0` is a four-decimal print of an earlier value,
+which the deposit does not state), is the only constant fitted: to the
+50 C data table of the script, with the script's fitting convention. Rate
+constants in 1/min; they are lumped (no catalyst mass).
 
 | Constant | Value (`'deposit'`, the default) | Source |
 |---|---|---|
@@ -1052,27 +1053,30 @@ held; by default `k_3` alone. Its set-up is that of the script's own fit:
   those of the table at the 16 sample times, all 80 values, unweighted (the
   five of the t = 0 row are zero).
 
-With the other nine constants held at the values above, the fit gives
-`k_3` = 1.42150e-5 1/min, shipped to five significant digits, with a sum
-of squares of 0.033797 (pooled R2 0.9939, rms 0.0206). The same optimum is
-reached from other starting points to 1e-5 of the value (7e-6 at most over
-eleven starts from 1e-6 to 1e-3; three are tested), and an independent
-scipy implementation of the script's equations (not shipped; Radau and
-LSODA, scalar minimization and least squares) gives 1.42150e-5 as well.
-The test suite checks that the shipped `k_3` is the rounded result of the
-function. The result is at least 3.4e-5 (relative) from a rounding
-boundary of the fifth digit; tolerances of the integration and the step of
-the central-difference Jacobian move it by less than 1e-5, whereas scipy's
-default two-point Jacobian stops the iteration early: 2.8e-4 lower
-(1.4211e-5) from the default start, and from the starts 1e-6, 4.3e-6,
-3e-5 and 1e-4 between 1.1e-3 lower and 3.6e-3 higher. A two-point Jacobian
-with a step of 1e-6 comes closer but still crosses the rounding boundary
-from the start 3e-5 (1.42145e-5, -3.8e-5). The standard error (from the
-Jacobian at the optimum, 79 degrees of freedom; the script divides by
-twice the number of residuals minus ten) says how well the data determine
-`k_3` with the others held: to 31 % only. The product of step 3, OXA, is at
-most 3.2 % of the liquid in the data, so they hold little information on
-`k_3`.
+With the other nine constants held at the values above, the fit gives `k_3`
+= 1.42150e-5 1/min, shipped to five significant digits, with a sum of
+squares of 0.033797 (pooled R2 0.9939, rms 0.0206). The same optimum is
+reached from other starting points within 1e-5 of the value (7.0e-6 at most
+over fourteen starts from 1e-6 to 1e-3: eleven spaced evenly in the
+logarithm and the three that are tested; the test allows 2.5e-5), and an
+independent scipy implementation of the script's equations (not shipped;
+Radau and LSODA, scalar minimization and least squares) gives 1.42150e-5 as
+well. The test suite checks that the shipped `k_3` is the rounded result of
+the function. The result is at least 3.4e-5 (relative) from a rounding
+boundary of the fifth digit. Relative tolerances of the integration of 1e-8
+and tighter, and steps of the central-difference Jacobian from 1e-3 to 1e-6,
+move it by less than 1e-5 (at most 1.1e-6); at a relative tolerance of 1e-6
+(absolute 1e-10) it moves by 1.4e-3 (scipy 1.18, libroadrunner 2.11), which
+changes its fourth digit. Scipy's default two-point Jacobian stops the
+iteration early: 2.8e-4 lower (1.4211e-5) from the default start, and from
+the starts 1e-6, 4.3e-6, 3e-5 and 1e-4 between 1.1e-3 lower and 3.6e-3
+higher. A two-point Jacobian with a step of 1e-6 comes closer but still
+crosses the rounding boundary from the start 3e-5 (1.42145e-5, -3.8e-5). The
+standard error (from the Jacobian at the optimum, 79 degrees of freedom; the
+script divides by twice the number of residuals minus ten) says how well the
+data determine `k_3` with the others held: to 31 % only. The product of step
+3, OXA, is at most 3.2 % of the liquid in the data, so they hold little
+information on `k_3`.
 
 **Alternative: `k_4` fitted as well** (`free=('k_3', 'k_4')`; tested, not
 the shipped set). With the other eight held, the fit gives `k_3` =
@@ -1085,10 +1089,11 @@ contours, with maxima of 0.592 and 0.548 (against 1.05 and 0.30 px and
 0.593 and 0.548 with the shipped set).
 
 **What is not the authors' procedure.** The script obtains its constants in
-two stages, all ten constants free: a particle swarm (`particleswarm`, 100
-particles, three iterations, bounds 0 to 1.5 times `k0`) and, from its
-result, a least-squares refinement (`lsqcurvefit`, lower bound 0) with
-options that set a maximum of five iterations. Every trajectory is integrated
+two stages: a particle swarm (`particleswarm`, 100 particles, three
+iterations, bounds 0 to 1.5 times `k0`, which hold `k_3` at 0) and, from its
+result, a least-squares refinement of all ten constants (`lsqcurvefit`,
+lower bound 0, no upper bound) with options that set a maximum of five
+iterations. Every trajectory is integrated
 with `ode23s` at default tolerances, restarted at each sample. The swarm is
 random, and neither stage is run to convergence, so the authors' constants
 cannot be recomputed from the deposit: another run of the same script gives
@@ -1136,7 +1141,7 @@ below were computed with the package unless marked "(not shipped)".
 4. *Fits to the published contour lines agree with the data fit* (not
    shipped). With the other nine constants held, `k_3` fitted to the
    contour lines digitized from Fig. 11b comes out as 1.449e-5, 1.9 %
-   above the value fitted to the data (rms offset 0.28 px in panel b,
+   above the value fitted to the data (rms offset 0.27 px in panel b,
    1.08 px in panel a); fitted to the lines of both panels together, as
    1.418e-5, 0.3 % below it. With `k_3` and `k_4` both fitted to the panel
    b lines (the other eight held), they come out as 1.433e-5 and
