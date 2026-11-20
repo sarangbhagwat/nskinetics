@@ -20,10 +20,10 @@ The points are taken to be rate constants of the authors' simplified
 reversible model (``load_o2_simplified_reversible_model``): with the 50 C
 point as three of its rate constants that model reproduces Fig. 11b, and
 refits of that model to the experiments come close to the other points.
-This assumes that the plotted constants follow the rate law of the authors'
-heat-map script, which is not established (``NOTES.md``). The points are not
-constants of the model that reproduces the curves of Fig. 10a-c
-(``load_o2_reversible_model``).
+Taking them so means that the plotted constants follow the rate law of the
+authors' heat-map script, which these reasons support but do not establish
+(``NOTES.md``). The points are not constants of the model that reproduces
+the curves of Fig. 10a-c (``load_o2_reversible_model``).
 """
 import numpy as np
 import pandas as pd

@@ -681,9 +681,9 @@ MA → OXA, a round value) appear only in the authors' heat-map script. The
 text says that the three it quotes were obtained from the Arrhenius plot of
 Fig. 10d; the lines of that plot give 59.9, 69.0 and 52.1 kJ/mol (see
 `Fig. 10d and the activation energies of the text`_). Applying the five
-values to this six-reaction model is an NSKinetics addition: the
-text describes Fig. 11 this way, but none of the paper's temperature
-results is reproduced with it.
+values to this six-reaction model is an NSKinetics addition: the text
+describes Fig. 11 this way, but none of the paper's temperature results is
+reproduced with it.
 
 **It does not reproduce the published heat maps.** Computed with this model
 on the grid of Fig. 11 (``table3_o2_heat_maps``), the maps have the shape of
@@ -961,11 +961,11 @@ lines are straight segments between the nodes. A Python port of MATLAB
 ``ode23s`` at its default tolerances returns those nodes to their printed
 digits (next section), so they are consistent with being that solver's raw
 steps; MATLAB itself was not run. They are not converged solutions: the
-nodes are up to 2.0e-3 (Fig. 9b) and 2.7e-3 (Fig. 10b and c) away from the
-accurately solved model, and the segments between them up to 0.010. The
-models here are solved to a relative tolerance of 1e-9, so they do not lie
-exactly on the published polylines, and the package tests that solve the
-models accurately allow for that solver error.
+nodes are up to 2.0e-3 (Fig. 9b) and 2.5e-3 and 2.7e-3 (Fig. 10b and c)
+away from the accurately solved model, and the segments between them up to
+0.010. The models here are solved to a relative tolerance of 1e-9, so they
+do not lie exactly on the published polylines, and the package tests that
+solve the models accurately allow for that solver error.
 
 Repeating the authors' solver run
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1190,14 +1190,18 @@ of each temperature. Three things support this: the figure names a one-step
 3-HP → MA reaction, which only that model has; with the 50 °C row as three
 of its five rate constants and the other two fitted, that model reproduces
 the contour lines of Fig. 11b (with all five fitted to those lines, the
-constant of MA → D came out 0.1 % from the tabulated value; not shipped);
-and refits of that model to the experiments at 50, 75 and 100 °C come
-within 9 % of the points (not shipped; the refit at 25 °C is
-ill-determined). The assignment assumes that the plotted constants follow
-the rate law of the heat-map script, which is not established; the
-comparison of the 50 °C points with the Table 3 constants below is made
-with and without that rate law. The points are not constants of the model
-that reproduces the curves of panels a to c.
+constants of 3-HP → MA, MA → AAc and MA → D came out 0.03 % above, 2.2 %
+below and 0.10 % below the tabulated values; not shipped; of these, the
+first is the one that multiplies the O2 activity of the heat-map script, and
+the lines determine the second least well); and refits of that model to the
+experiments at 50, 75 and 100 °C come within 9 % of the points (not shipped;
+the refit at 25 °C is ill-determined). Taking the points as constants of
+that model means that they follow the rate law of the heat-map script. The
+three reasons support that and do not establish it: the fits behind the
+second and third are not shipped, and neither the paper nor the deposit says
+it. The comparison of the 50 °C points with the Table 3 constants below is
+made with and without that rate law. The points are not constants of the
+model that reproduces the curves of panels a to c.
 
 Each dashed line of the figure is a regression through three of the four
 points: it leaves out the 50 °C point for 3-HP → MA and the 25 °C point for
@@ -1232,13 +1236,14 @@ MA → AAc and 1.104e-3 for MA → D at 50 °C; the plotted values are 2.14e-3,
   model's and within the interval.
 
 So if the plotted constants follow the rate law of the heat-map script,
-which is not established (the README of the deposit describes that script
-as "expanded from 10. Arrhenius plot data", which is consistent with it and
-no more), the solid lines of panel d are the O2 model's own ``k_j(T)`` to
-within the uncertainty of Table 3. If the plotted constant of 3-HP → MA is
-instead taken as it stands, the model's line for this step runs parallel to
-the drawn one and a factor of 3.39 higher. The comparison of the slopes
-holds in either case.
+which is supported by the reasons given for the assignment but not
+established (the README of the deposit describes that script as "expanded
+from 10. Arrhenius plot data", which is consistent with it and no more),
+the solid lines of panel d are the O2 model's own ``k_j(T)`` to within the
+uncertainty of Table 3. If the plotted constant of 3-HP → MA is instead
+taken as it stands, the model's line for this step runs parallel to the
+drawn one and a factor of 3.39 higher. The comparison of the slopes holds
+in either case.
 
 Fig. 11 is reproduced with the simplified model of the deposited script
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1350,8 +1355,10 @@ from the repository:
   of reaction 1, the O2 fraction held constant). The tests show that the
   shipped constants return the nodes, not that no other constants or rate
   laws would. MATLAB itself was never run;
-- the fits to the digitized contour lines of Fig. 11 that gave the inferred
-  constants of the simplified reversible model;
+- the fits to the digitized contour lines of Fig. 11: those that gave the
+  inferred constants of the simplified reversible model, and the fits of
+  its five rate constants to the lines of Fig. 11b quoted for the reading
+  of the Fig. 10d points (all five free, and with one held);
 - the refits to the experiments: of the O2 constants without the 120 min
   row, and of the simplified reversible model behind the reading of the
   Fig. 10d points;

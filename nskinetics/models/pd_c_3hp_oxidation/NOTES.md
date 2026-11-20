@@ -96,8 +96,8 @@ and digitized data overlaid; no image of the paper is in the repository.
 
 ## Model basis
 
-This section and the next six are about the two Table 3 models. The
-simplified reversible model and the reversible O2 variant have their own
+This section and the next seven are mainly about the two Table 3 models.
+The simplified reversible model and the reversible O2 variant have their own
 sections further down.
 
 Conditions of both models: 60 mM 3-HP, NaOH/3-HP = 1:1, 0.2 g Pd/C, 50 C;
@@ -904,14 +904,14 @@ six-reaction model. The Fig. 11 heat maps are those of the simplified
 reversible model of the deposited script
 (`pd_c_3hp_oxidation_o2_simplified_reversible_antimony.txt`, next section),
 and the points of the Arrhenius plot (Fig. 10d) are taken to be constants of
-that model too. The model curves at 25, 75 and 100 C (Fig. 10a-c) are reproduced
-by a reversible six-reaction variant with a separate constant set for each
-curve (`pd_c_3hp_oxidation_o2_reversible_antimony.txt`; section "Reversible
-O2 variant" below). Predictions of this file away from 50 C are therefore an
-extrapolation. They are compared with the published heat maps in the section
-after next and with the experiments at 25, 75 and 100 C in the section
-"Temperature-extended Table 3 O2 model versus the 25, 75 and 100 C
-experiments"; they reproduce neither.
+that model too. The model curves at 25, 75 and 100 C (Fig. 10a-c) are
+reproduced by a reversible six-reaction variant with a separate constant set
+for each curve (`pd_c_3hp_oxidation_o2_reversible_antimony.txt`; section
+"Reversible O2 variant" below). Predictions of this file away from 50 C are
+therefore an extrapolation. They are compared with the published heat maps
+in the section after next and with the experiments at 25, 75 and 100 C in
+the section "Temperature-extended Table 3 O2 model versus the 25, 75 and
+100 C experiments"; they reproduce neither.
 
 ## Simplified reversible O2 model (the model of the heat-map script)
 
@@ -1043,11 +1043,17 @@ vectors cannot be recovered beyond this: the script obtains them from a
 particle swarm (3 iterations) followed by five least-squares iterations.
 
 That the column "ln k3" of `11-4_Arrhenius.csv` is this model's `k_5` is
-supported by the figure: fitted freely to the contours of Fig. 11b (not
-shipped), `k_5` came out as 1.0613e-3, 0.1 % from the value in the table.
-That value, 1.0625e-3, would print as 0.0011, not as the 0.0010 of the
-script's starting vector, so that vector and the table are not from the same
-run.
+supported by the figure: with all five rate constants fitted to the contours
+of Fig. 11b (not shipped; the same optimum from five starting points, rms
+offset 0.254 px), `k_5` came out as 1.0614e-3, 0.10 % below the value in the
+table (0.30 % below with `k_1` and `k_2` held at their values in the 50 C
+row). In the fit of all five, `k_1` came out 0.03 % above its value in that
+row and `k_2` 2.2 % below. The contours determine `k_2` least well of the
+three: moved by 2.2 % either way with the other four refitted, `k_2` raises
+the rms offset from 0.254 to 0.255 px, `k_5` to 0.38 px and `k_1` to 0.9 px.
+The value of `k_5` in the table, 1.0625e-3, would print as 0.0011, not as
+the 0.0010 of the script's starting vector, so that vector and the table are
+not from the same run.
 
 **The two panels need different sets.** Since yield <= selectivity
 everywhere, the late side of a yield contour must lie earlier than that of
@@ -1532,15 +1538,19 @@ The points are taken here as `k_1` (3-HP -> MA), `k_2` (MA -> AAc) and `k_5`
 fitted to the experiment of each temperature, for three reasons: the figure
 labels name a one-step 3-HP -> MA reaction, which only that model has; with
 the 50 C row as `k_1`, `k_2` and `k_5` and its other two rate constants
-fitted, that model reproduces the contour lines of Fig. 11b, and with all
-five rate constants fitted to those lines `k_5` comes out 0.1 % from the row
-("Constants at 50 C" above); and refits of that model to the experiments
-come close to the other points (below). The assignment assumes that the
-plotted constants follow the rate law of that script, which is not
-established (previous paragraph). They are not constants of the model that
-reproduces the curves of Fig. 10a-c: at 25 C, for example, the plotted `k_1`
-is 7.75e-5 1/min, while the constant set of the Fig. 10a curve has a forward
-constant of 0.047 1/min for 3-HP -> OPA with a fast reverse.
+fitted, that model reproduces the contour lines of Fig. 11b, and with all five
+rate constants fitted to those lines `k_1`, `k_2` and `k_5` come out 0.03 %
+above, 2.2 % below and 0.10 % below the row (not shipped; of the three, `k_1`
+is the one that multiplies the O2 activity of the script, and the lines
+determine `k_2` least well; "Constants at 50 C" above); and refits of that
+model to the experiments come close to the other points (below). Taking the
+points as constants of that model means that they follow the rate law of its
+script. The three reasons support that and do not establish it: the fits
+behind the second and third are not shipped, and neither the paper nor the
+deposit says it (previous paragraph). They are not constants of the model
+that reproduces the curves of Fig. 10a-c: at 25 C, for example, the plotted
+`k_1` is 7.75e-5 1/min, while the constant set of the Fig. 10a curve has a
+forward constant of 0.047 1/min for 3-HP -> OPA with a fast reverse.
 
 **The unit of k is inferred.** No source prints it: the file labels its
 ordinate columns "exp" and "fitting" and gives a unit ("/K") for the
@@ -1589,8 +1599,8 @@ stated, so the two are compared on two bases (tested):
 | MA -> AAc (`k_2`; model R3) | 5.2e-5 | 6.32e-5 | 3.52e-5 to 9.12e-5 | 0.823, inside | 0.823, inside |
 | MA -> D (`k_5`; model R6) | 1.0625e-3 | 1.104e-3 | 1.044e-3 to 1.164e-3 | 0.962, inside | 0.962, inside |
 
-- *Table 3 interval.* Table 3 prints the O2 constants as 7.14 (± 0.4),
-  3.16 (± 1.4)e-4 and 5.52 (± 0.3)e-3 per g and min and calls the ± values
+- *Table 3 interval.* Table 3 prints the O2 constants as 7.14 (+- 0.4),
+  3.16 (+- 1.4)e-4 and 5.52 (+- 0.3)e-3 per g and min and calls the +- values
   "the 95 % confidence interval". They are read here as half-widths in the
   units of the printed mantissa (the posted O2 script prints its intervals
   as a lower and an upper value of each constant), and scaled like the
@@ -1610,9 +1620,10 @@ stated, so the two are compared on two bases (tested):
 So the 50 C points of MA -> AAc and MA -> D agree with the O2 model within
 the confidence intervals of Table 3 on either basis, and the 50 C point of
 3-HP -> MA does if the plotted constant follows the rate law of the heat-map
-script. That it follows that rate law is not established: the README's
-"expanded from" (above) is consistent with it and no more. It is what the
-assignment to the simplified reversible model above assumes.
+script. That it follows that rate law is what the assignment to the
+simplified reversible model above means; it is supported by the reasons
+given for the assignment but not established (the README's "expanded from",
+above, is consistent with it and no more).
 
 ### The lines
 
@@ -1685,13 +1696,14 @@ four points misses the first row of the line by 0.013 or more; tested).
    3-HP -> MA the drawn line runs 1.22 below the model's if the plotted
    constant is taken as it stands, and 0.02 above it, inside the interval
    (-0.06 to +0.05), with the O2 activity of the heat-map script. So if
-   the plotted constants follow the rate law of that script, which is not
-   established (the README's "expanded from" is consistent with it and no
-   more; section "What is plotted"), the solid lines of panel d are the O2
-   model's own `k_j(T)` to within the uncertainty of Table 3. In either
-   case a constant factor does not change a slope, so the comparison of the
-   activation energies holds for the model. These lines are also how the
-   heat-map script extrapolates the three constants from 50 C (Fig. 11).
+   the plotted constants follow the rate law of that script, which is
+   supported by the reasons given for the assignment but not established
+   (the README's "expanded from" is consistent with it and no more; section
+   "What is plotted"), the solid lines of panel d are the O2 model's own
+   `k_j(T)` to within the uncertainty of Table 3. In either case a constant
+   factor does not change a slope, so the comparison of the activation
+   energies holds for the model. These lines are also how the heat-map
+   script extrapolates the three constants from 50 C (Fig. 11).
 
 ## Temperature-extended Table 3 O2 model versus the 25, 75 and 100 C experiments
 
@@ -1814,7 +1826,10 @@ these numbers cannot be re-derived from the repository:
   assignment of the Fig. 10d points.
 - **Fits to the digitized contour lines of Fig. 11:** `k_3` and `k_4` of the
   `'fig11b'` set and `k_3`, `k_4`, `k_5` and `K_10` of the `'fig11a'` set,
-  their spreads, and the offsets "after refitting".
+  their spreads, the offsets "after refitting", and the fits of the five
+  rate constants to the contour lines of Fig. 11b quoted in "Constants at
+  50 C" and for the assignment of the Fig. 10d points (all five free, and
+  with one or two held).
 - **Other solver runs.** The repeat of the heat-map script's solver runs
   for the rows of Fig. 11 other than 100 C (the tests repeat the 100 C
   row), and the independent scipy implementations quoted for the simplified

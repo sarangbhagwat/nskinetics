@@ -165,7 +165,7 @@ selective oxidation of 3-hydroxypropionic acid (3-HP) to malonic acid (MA)
 over 10 % Pd/C, after S. Y. Kim, J. E. Chavarrio, J. Install and G. W. Huber,
 *Appl. Catal. B: Environ. Energy* 386 (2026) 126403, together with the
 authors' deposited data, curves digitized from the published figures and the
-functions that redraw the paper's Figs. 9, 10 and 11.
+functions that redraw the paper's Figs. 9, 10 and 11 and SI Fig. S12.
 :doc:`/case_studies/pd_c_3hp_oxidation` presents the models, the reproduced
 figures, how to change the operating conditions, and what does not match the
 paper; ``NOTES.md`` in the package folder is the full record.

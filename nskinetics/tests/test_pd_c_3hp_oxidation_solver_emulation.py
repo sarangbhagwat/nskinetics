@@ -12,8 +12,9 @@ et al., Appl. Catal. B: Environ. Energy 386 (2026) 126403.
 
 The deposited curves are solver steps, reproduced step for step by the
 method of MATLAB ``ode23s`` at default tolerances (emulated; MATLAB was not
-run), and lie up to 2.7e-3 from the converged solution, so the tests
-that solve the models accurately (``test_pd_c_3hp_oxidation.py``,
+run), and lie up to 2.7e-3 in the plotted fractions (0.012 equivalents for
+the H2O2 trace) from the converged solution, so the tests that solve the
+models accurately (``test_pd_c_3hp_oxidation.py``,
 ``test_pd_c_3hp_oxidation_fig10.py``) can hold them only to that error.
 Here the authors' solver run is repeated with the rates of the shipped
 models, and the result is compared with the deposited nodes one by one:
@@ -35,9 +36,9 @@ can exceed it (measured outside the tests; the Fig. 10 runs tolerate
 times therefore points to rounding, not to the model.
 
 The limit on the values is 18 to 270 times smaller than the solver error
-that the accurate-solver tests have to allow for (1.8e-4 to 2.7e-3). The
-constants are the six-digit sets of the reversible O2 variant and, for
-Fig. 9, the sets of ``O2_NODE_PARAMETER_SETS`` and
+that the accurate-solver tests have to allow for in the plotted fractions
+(1.8e-4 to 2.7e-3). The constants are the six-digit sets of the reversible
+O2 variant and, for Fig. 9, the sets of ``O2_NODE_PARAMETER_SETS`` and
 ``H2O2_NODE_PARAMETER_SETS``, which were inferred from the nodes; with
 Table 3 as printed the run comes within 4.0e-4 (O2) and 4.4e-4 (H2O2),
 which is what the rounding of Table 3 costs.
@@ -308,7 +309,7 @@ def test_ode23s_rejected_step_rules_on_a_quadrature():
 
 
 def test_ode23s_tolerances_other_than_the_defaults_miss_the_nodes():
-    nodes, t_end, columns, time_limit = _reference('fig9b')
+    nodes, t_end, columns, _ = _reference('fig9b')
     km = _load('fig9b')
     for options in (dict(rtol=5e-4), dict(rtol=2e-3), dict(atol=5e-7),
                     dict(atol=2e-6)):

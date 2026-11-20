@@ -30,9 +30,9 @@ Figures
     extended with the Arrhenius relation (as the text of the paper
     describes for Fig. 11), with the per-temperature constant sets as
     dashed lines and, in a box in each panel, the pooled R2 of the model
-    and of those sets against the experimental points; and the
-    Arrhenius plot (Fig. 10d) with the lines that the activation energies
-    quoted in the text imply next to the regression lines.
+    and of those sets against the experimental points; and the Arrhenius
+    plot (Fig. 10d) with the lines that the activation energies quoted in
+    the text imply next to the regression lines.
 ``figS12``
     SI Fig. S12: the same profiles with the predicted (a) H2O2 and (b) OPA
     as dashed lines and in the insets. The insets also show the published
@@ -860,9 +860,9 @@ def plot_fig10_table3_o2():
     sets (dashed lines; the reversible O2 variant, which reproduces the
     published curves). The box gives the pooled R2 of each against all
     deposited experimental rows of that temperature (the Table 3 model
-    first). The time axis ends at 1440 min, as in the published
-    panels; the samples after it (1740 and 1890 min at 25 C, 1560 min at
-    100 C) are not drawn but are counted in R2.
+    first). The time axis ends at 1440 min, as in the published panels; the
+    samples after it (1740 and 1890 min at 25 C, 1560 min at 100 C) are not
+    drawn but are counted in R2.
 
     Panel d: the points of Fig. 10d with the published regression lines
     (dashed) and the lines that the activation energies quoted in the text
