@@ -27,15 +27,14 @@ and the authors' data deposit (Dryad,
 https://doi.org/10.5061/dryad.jsxksn0q4, CC0), called *the deposit* below.
 The package provides:
 
-- two models, each an Antimony file with its generated SBML file and a
+- four models, each an Antimony file with its generated SBML file and a
   loader that returns a :class:`~nskinetics.KineticModel` (time in min,
   concentrations in M, temperatures in K);
-- the deposited tables of Figs. 9 and 10 (verbatim copies), curves
-  digitized from SI Fig. S12, and readers for them;
-- functions that redraw Fig. 9 and SI Fig. S12 from the models, one figure
-  that compares the O2 model with the experiments at 25, 75 and 100 °C and
-  with the Arrhenius plot of Fig. 10d, and one that verifies the models
-  against the deposited model nodes;
+- the deposited tables of Figs. 9 and 10 (verbatim copies), curves digitized
+  from SI Fig. S12 and Fig. 11, and readers for them;
+- functions that redraw Fig. 9, SI Fig. S12, Fig. 10 and Fig. 11 from the
+  models, three figures that compare the models with the published ones,
+  and one that verifies them against the deposited model nodes;
 - ``NOTES.md``, the full record of what is printed in the paper, what was
   inferred from the deposit and where the two disagree. This page
   summarizes it.
@@ -43,39 +42,36 @@ The package provides:
 The package needs no optional dependencies, and importing it loads no
 model. Its API is documented on :doc:`the shipped-models page </API/models>`.
 
-The paper describes one model per oxidant, and these are the two models
-here. Redrawing the model curves of its Fig. 9 took one factor that is
-stated in neither the paper nor the deposit. Two cautions apply, and `What
-does not match the paper, and what is inferred`_ gives the details; read it
-before using a model for anything other than redrawing the figures:
+The paper describes one model per oxidant. Redrawing the model curves of its
+Figs. 9, 10 and 11 took four models, two of which are not in the paper, and
+one factor that is stated in neither the paper nor the deposit. Two cautions
+apply, and `What does not match the paper, and what is inferred`_ gives the
+details; read it before using a model for anything other than redrawing the
+figures:
 
 - Only Fig. 9 and SI Fig. S12b are reproduced with constants printed in the
-  paper (for O2, together with the inferred factor ``x_O2_ref``).
+  paper (for O2, together with the inferred factor ``x_O2_ref``). Fig. 10a–c
+  are reproduced with constants that were all fitted to the very curves
+  being reproduced. Fig. 11 is reproduced with ten constants at 50 °C, of
+  which two (panel b) or four (panel a) were fitted to the contour lines
+  being reproduced; the others, and the five activation energies, are taken
+  from the deposited Arrhenius table and the heat-map script. That agreement
+  shows consistency, not that those models are right. The points of Fig. 10d
+  are deposited data and its lines are regressions through them; neither is
+  computed with a model of this package.
 - Several statements on this page rest on analyses that are not in the
-  repository (fits to the deposited curves). They are marked "(not
-  shipped)"; `What is not in the repository`_ lists them. The repeat of the
-  authors' solver run is in the repository: see `Repeating the authors'
-  solver run`_.
-
-**This page does not cover the model curves of the paper's Fig. 10a–c (25,
-75 and 100 °C) and the heat maps of its Fig. 11.** They are not produced by
-the two Table 3 models and are not reproduced by this package: extended to
-25, 75 and 100 °C, the O2 model reaches a pooled R2 of 0.58 to 0.75 against
-the experiments, where the published panels of Fig. 10a–c print 0.99 for
-their curves, and the heat-map script in the deposit uses another model (see
-`Limits of the temperature-extended O2 model`_). The points and lines of the
-Arrhenius plot (Fig. 10d) are deposited data, not curves computed with a
-model of this package: they are shipped and compared with the lines that the
-activation energies of the O2 model give through the 50 °C points (see
-`Fig. 10d and the activation energies of the text`_).
+  repository (fits to the deposited curves and to digitized lines). They
+  are marked "(not shipped)"; `What is not in the repository`_ lists them.
+  The repeat of the authors' solver run is in the repository: see
+  `Repeating the authors' solver run`_.
 
 .. warning::
 
    ``load_o2_model(T)`` extends the published 50 °C O2 model to other
    temperatures with the Arrhenius relation of the paper. Only the 50 °C
-   model is a published one. Away from 50 °C it does not reproduce the
-   experiments at 25, 75 and 100 °C (Fig. 10): see `Limits of the
-   temperature-extended O2 model`_.
+   model is a published one. Away from 50 °C it reproduces neither the
+   published heat maps (Fig. 11) nor the experiments at 25, 75 and 100 °C
+   (Fig. 10): see `Limits of the temperature-extended O2 model`_.
 
    The paper numbers two equations (6). "The Arrhenius relation of the
    paper" means the second one, ``k(T) = k_ref*exp[-(Ea/R)*(1/T - 1/T_ref)]``,
@@ -83,12 +79,13 @@ activation energies of the O2 model give through the 50 °C points (see
    initial rates (see `The initial-rate ratio of 0.204 is not reproduced`_),
    and Fig. 6 of the paper is unrelated (XPS and reusability data).
 
-The two models
---------------
+The four models
+---------------
 
-The paper presents one kinetic model per oxidant (Table 3). Each is an
-Antimony file with the SBML file generated from it next to it (same name,
-ending in ``_sbml.xml``).
+The paper presents one kinetic model per oxidant (Table 3). Each of the four
+models here is shipped because it is needed to reproduce a published item.
+Each is an Antimony file with the SBML file generated from it next to it
+(same name, ending in ``_sbml.xml``).
 
 .. list-table::
    :header-rows: 1
@@ -113,7 +110,23 @@ ending in ``_sbml.xml``).
      - Fig. 9b and SI Fig. S12b (50 °C)
      - **Paper**: Table 3, O2 column, as printed, in the rate form of SI
        Fig. S2 with one **inferred** factor (``x_O2_ref``) in place of the
-       O2 activity. Its temperature dependence is an NSKinetics addition.
+       O2 activity. Its temperature dependence is an NSKinetics addition
+       that reproduces no published item.
+   * - Reversible O2 variant
+     - | ``load_o2_reversible_model(parameter_set)``
+       | ``pd_c_3hp_oxidation_o2_reversible_antimony.txt``
+     - The model curves of Fig. 10a–c (25, 75 and 100 °C), one constant set
+       per curve: ``'25C'``, ``'75C'``, ``'100C'``
+     - **Inferred** from the deposited curves: structure and all constants.
+       It is in neither the paper nor the authors' scripts.
+   * - Simplified reversible O2 model
+     - | ``load_o2_simplified_reversible_model()``
+       | ``pd_c_3hp_oxidation_o2_simplified_reversible_antimony.txt``
+     - Fig. 11; the 50 °C point of Fig. 10d supplies three of its rate
+       constants
+     - **Deposit**: the authors' heat-map script. It is not in the paper.
+       The constants that are not in the deposit were **inferred** from the
+       published contour lines.
 
 The two Table 3 models describe the batch of the Fig. 9 caption: 60 mM 3-HP,
 NaOH/3-HP = 1:1, 0.2 g Pd/C, 50 °C, and 3 bar O2 or 15 equivalents of H2O2
@@ -127,10 +140,11 @@ species (OPA is left out of the sum, as in the authors' post-processing).
 
 **Units.** Time is in min and concentrations are in M. Temperatures are in
 K wherever an argument or a model parameter is named ``T``, and in °C
-wherever a name ends in ``_C`` (``temperature_C``). The rate
+wherever a name ends in ``_C`` (``T_C``, ``temperature_C``). The rate
 constants ``k_1`` to ``k_6`` of the two Table 3 models are in
 1/(g\ :sub:`cat` min), as printed in Table 3, and ``k_7`` of the H2O2 model
-is in 1/min.
+is in 1/min. The constants of the reversible variant and the rate constants
+of the simplified model are lumped for the paper's batch and are in 1/min.
 
 Using the models
 ----------------
@@ -207,43 +221,52 @@ the H2O2 left in equivalents of the initial 3-HP (SI Fig. S12a):
 
 The O2 model takes a temperature **in K** (``load_o2_model(T=...)``, or
 ``km.set_value('T', ...)`` on a loaded model), which scales its six rate
-constants by Arrhenius factors. ``read_fig10_o2`` takes the temperature of
-one of the O2 experiments at other temperatures in °C (25, 75 or 100). The
-example compares the model with the 75 °C experiment. Read `Limits of the
-temperature-extended O2 model`_ before relying on it:
+constants by Arrhenius factors. The reversible O2 variant has no
+temperature: ``load_o2_reversible_model`` takes the *name* of one of its
+three constant sets, ``'25C'``, ``'75C'`` or ``'100C'``, each of which
+belongs to one experiment. ``read_fig10_o2`` and the other functions that
+take the temperature of one of these experiments (``emulate_fig10abc``,
+``figures.draw_fig10abc``) accept the number in °C (25, 75 or 100) or the
+same label. The example compares the two models with the 75 °C experiment.
+Read `Limits of the temperature-extended O2 model`_ before relying on the
+first:
 
 .. code-block:: python
 
-   from nskinetics.models.pd_c_3hp_oxidation import read_fig10_o2
+   from nskinetics.models.pd_c_3hp_oxidation import (
+       load_o2_reversible_model, read_fig10_o2)
 
    km_75 = load_o2_model(T=75 + 273.15)           # kelvin
    factor = km_75.get_value('k_1')/km_75.get_value('k_1_ref')
    print(f'k_1(75 C)/k_1(50 C) = {factor:.2f}')
 
    experiment = read_fig10_o2(75)['experiment']   # deposited points, Fig. 10b
-   sim = simulate_at_times(km_75, experiment['time'])
-   print('Table 3 O2 model at 75 C: pooled R2 = '
-         f'{pooled_r2(experiment, sim):.3f}')
+   for name, model in (('Table 3 O2 model at 75 C', km_75),
+                       ("constant set '75C'", load_o2_reversible_model('75C'))):
+       sim = simulate_at_times(model, experiment['time'])
+       print(f'{name}: pooled R2 = {pooled_r2(experiment, sim):.3f}')
 
 .. code-block:: text
 
    k_1(75 C)/k_1(50 C) = 4.94
    Table 3 O2 model at 75 C: pooled R2 = 0.644
+   constant set '75C': pooled R2 = 0.990
 
-A temperature given to the loader in the wrong unit is refused:
+A temperature given to a loader in the wrong unit is refused:
 ``load_o2_model(T=75)`` raises a ``ValueError`` (``T`` must lie within 250
-to 450 K). This range only catches that mistake; it is not a range of
+to 450 K), and ``simulate_heat_maps`` refuses temperatures outside −50 to
+200 °C. These ranges only catch that mistake; they are not ranges of
 validity. ``set_value('T', ...)`` is not checked.
 
 Set and read model values with ``set_value`` and ``get_value``, not through
 attributes of the underlying RoadRunner object: attribute access is
 unreliable once more than one model has been loaded in a process.
 
-What a loader selects (a temperature, a constant set) is part of the model
-it builds, so it survives both ``reset()`` and ``compile_events()``. Values
-that *you* set afterwards with ``set_value`` behave as for any
-:class:`~nskinetics.KineticModel`: ``reset()`` restores the species and
-keeps a changed parameter such as ``T`` or ``m_cat``, and
+What a loader selects (a temperature, a constant set, an initial condition)
+is part of the model it builds, so it survives both ``reset()`` and
+``compile_events()``. Values that *you* set afterwards with ``set_value``
+behave as for any :class:`~nskinetics.KineticModel`: ``reset()`` restores
+the species and keeps a changed parameter such as ``T`` or ``m_cat``, and
 ``compile_events()`` regenerates the model and discards them, so set values
 after compiling events. A parameter changed by an event during a simulation
 also stays changed after ``reset()``: set it back with ``set_value`` before
@@ -271,7 +294,7 @@ paper and should be left alone unless you know why you are changing it.
      - 0.2
      - Catalyst mass (10 % Pd/C) **of the paper's batch**, not a mass per
        litre. The rates of reactions 1 to 6 are proportional to it.
-   * - H2O2 model, O2 model
+   * - all four
      - ``C0``
      - M
      - 0.06
@@ -284,11 +307,19 @@ paper and should be left alone unless you know why you are changing it.
      - Initial H2O2 in equivalents of ``C0`` (0.9 M). The initial H2O2
        concentration is ``eq_H2O2_0*C0``. Takes effect at the next
        ``reset()``, like ``C0``.
-   * - O2 model
+   * - O2 model, simplified reversible model
      - ``T``
      - K
      - 323.15
      - Temperature (50 °C by default).
+   * - simplified reversible model
+     - ``P``
+     - bar
+     - 3.5
+     - Pressure of the authors' heat-map script (the captions of the paper
+       give 3 bar of O2). Do not use it to explore pressure: the model was
+       fitted at no other pressure, and the paper's Fig. 3a contradicts its
+       trend above 3 bar (see below).
 
 .. code-block:: python
 
@@ -322,24 +353,24 @@ Read this before changing them:
   were fitted by the authors to one experiment each: 60 mM 3-HP, 0.2 g of
   catalyst, 50 °C, with 15 equivalents of H2O2 (samples up to 1440 min) or
   3 bar O2 (samples up to 1680 min). Any other value of ``m_cat``, ``C0``,
-  ``eq_H2O2_0`` or ``T``, and any time beyond the last sample, is an
+  ``eq_H2O2_0``, ``T`` or ``P``, and any time beyond the last sample, is an
   extrapolation of the fitted rate laws. The example above shows what the
   models compute, not what was measured. For ``T`` with O2 the comparison
   with the time courses of Fig. 10 is poor (`Limits of the
   temperature-extended O2 model`_). For ``m_cat`` and ``C0`` no experiment
   was found in the paper or the deposit to compare with.
 - **The paper's screening experiments contradict some of these
-  extrapolations.** The time courses behind the models are those of Fig. 9;
-  the O2 one is at 3 bar of O2. The paper also has experiments analysed
-  once, after 8 h, in which the H2O2 charge, the temperature or the O2
-  pressure was varied (its Figs. 2 and 3; SI Table S2 has the temperature
-  series with O2, and SI Table S1 other catalysts), and experiments with
-  malonic acid alone (its Fig. 4). The deposit holds the values of Figs. 2
-  to 4. The models were not built on these experiments and do not describe
-  them (``NOTES.md`` has the table; the model values are pinned by the
-  package tests). The 3-HP conversions and MA yields of the models below
-  are ``1 - [HP3]/C0`` and ``[MA]/C0``, the quantities of the paper's
-  Eqs. 1 and 3:
+  extrapolations.** The time courses behind the models are those of Figs. 9
+  and 10; all O2 ones are at 3 bar of O2. The paper also has experiments
+  analysed once, after 8 h, in which the H2O2 charge, the temperature or
+  the O2 pressure was varied (its Figs. 2 and 3; SI Table S2 has the
+  temperature series with O2, and SI Table S1 other catalysts), and
+  experiments with malonic acid alone (its Fig. 4). The deposit holds the
+  values of Figs. 2 to 4. The models were not built on these experiments
+  and do not describe them (``NOTES.md`` has the table; the model values
+  are pinned by the package tests). The 3-HP conversions and MA yields of
+  the models below are ``1 - [HP3]/C0`` and ``[MA]/C0``, the quantities of
+  the paper's Eqs. 1 and 3:
 
   - *O2 pressure* (Fig. 3a: 1, 3, 5, 10 and 20 bar at 50 °C). The measured
     conversion is 21.7, 72.8, 63.2, 25.0 and 25.9 %, and the MA yield 2.7,
@@ -347,8 +378,14 @@ Read this before changing them:
     calls the decline "likely due to catalyst poisoning by excess O2". (The
     deposited 5 bar values equal an entry of SI Table S1 for another
     catalyst under 3 bar, see ``NOTES.md``; the 10 and 20 bar values show
-    the decline as well.) The O2 model has no pressure parameter, and
-    ``x_O2_ref`` is not one.
+    the decline as well.) The simplified reversible model was fitted at no
+    other pressure, and its rate form only speeds up with ``P``: after
+    480 min it gives 87.7, 98.2, 99.7, 99.9 and 100.0 % conversion with an
+    MA fraction of 0.30, 0.48, 0.51, 0.53 and 0.51 (and at 240 min ``X_MA``
+    is 0.27, 0.57 and 0.70 for 1, 3.5 and 10 bar). Its pressure dependence
+    is therefore contradicted by the paper, not merely untested: **do not
+    use** ``P`` **to explore pressure.** The O2 model has no pressure
+    parameter, and ``x_O2_ref`` is not one.
   - *H2O2 charge* (Fig. 2a). The measured conversion and MA yield are
     highest at 15 equivalents (78.4 and 58.5 %) and fall beyond (56.4 and
     28.4 % in the next experiment, at 20 equivalents by the axis of the
@@ -360,7 +397,7 @@ Read this before changing them:
     converted 53 % where 8.5 % was measured (from the plotted fraction,
     ``1 - X_HP3``, it would be 51.7 %, because the OPA of the model is not
     in the plotted sum); at 75 °C it has an MA yield of 4.7 % where 35.7 %
-    was measured.
+    was measured (the simplified reversible model: 53.5 and 6.0 %).
   - *Malonic acid alone* (Fig. 4). Without 3-HP, 3.8 % (Fig. 4a) or 1.2 %
     (the time course of Fig. 4b) of the MA was converted after 1300 min at
     50 °C; the O2 model started from 60 mM MA converts 80 %. At 100 °C,
@@ -398,13 +435,56 @@ Read this before changing them:
   plotted fractions hardly depend on ``C0`` (halving or doubling it changes
   them by less than 1e-4), because every rate is first order in its liquid
   species. In the H2O2 model, changing ``C0`` alone also changes the H2O2
-  concentration and with it the rates.
+  concentration and with it the rates. In the simplified reversible model
+  ``x_per_M`` has to be changed together with ``C0`` (see the loader's
+  docstring).
+- **The two reproduction models have lumped constants.** The reversible O2
+  variant and the simplified reversible model have no catalyst-mass
+  parameter; their constants are effective ones for the paper's batch. The
+  reversible variant has no temperature or pressure either, and each of its
+  constant sets belongs to one experiment (samples up to 1890, 1440 and
+  1560 min at 25, 75 and 100 °C).
 - **Inputs are not validated.** ``set_value`` is the generic NSKinetics
   call and checks nothing: zero or negative ``m_cat``, ``C0`` or
   ``eq_H2O2_0`` run without an error and give meaningless results.
 
-Figures
--------
+Heat maps and figures
+---------------------
+
+The heat maps of Fig. 11 are computed by ``fig11_heat_maps``, which runs the
+simplified reversible model as the authors' script does, once per
+temperature, for each of the two panels with that panel's constant set
+(2 × 71 integrations). Its time axis is the *plotted* time of the published
+figure, which is the reaction time plus 10 min (``FIG11_TIME_OFFSET``).
+``simulate_heat_maps`` does the same for any model with a temperature
+parameter on any grid; its time axis is the reaction time unless a
+``time_offset`` is given, and its temperatures are in °C:
+
+.. code-block:: python
+
+   from nskinetics.models.pd_c_3hp_oxidation import (
+       FIG11_TIME_OFFSET, fig11_heat_maps, heat_map_maximum,
+       load_o2_simplified_reversible_model, simulate_heat_maps)
+
+   T_C, times, selectivity, MA_yield = fig11_heat_maps()   # 71 x 300 grids
+   for matrix in (selectivity, MA_yield):
+       value, T_max, t_max = heat_map_maximum(T_C, times, matrix)
+       print(f'{value:.4f} at {T_max:g} C, plotted time {t_max:.1f} min '
+             f'(reaction time {t_max - FIG11_TIME_OFFSET:.1f} min)')
+
+   # rows: 50, 75 and 100 C; columns: reaction times of 30, 60, 120, 240 min
+   T_C, times, selectivity, MA_yield = simulate_heat_maps(
+       load_o2_simplified_reversible_model(), T_C=[50, 75, 100],
+       times=[30, 60, 120, 240])
+   print(selectivity.round(3))
+
+.. code-block:: text
+
+   0.5906 at 95 C, plotted time 26.8 min (reaction time 16.8 min)
+   0.5483 at 84 C, plotted time 49.1 min (reaction time 39.1 min)
+   [[0.189 0.324 0.483 0.571]
+    [0.535 0.584 0.449 0.226]
+    [0.441 0.207 0.045 0.004]]
 
 The figure module writes every figure of this page, including the
 verification figure ``solver_emulation`` (see `Repeating the authors' solver
@@ -416,7 +496,7 @@ files:
 
    python -m nskinetics.models.pd_c_3hp_oxidation.figures OUTPUT_DIR
    python -m nskinetics.models.pd_c_3hp_oxidation.figures OUTPUT_DIR \
-       --figures fig9 fig10_table3_o2 --formats png --dpi 150
+       --figures fig10 fig10_table3_o2 --formats png --dpi 150
 
 In Python, ``figures.plot_fig9()`` and its siblings return the matplotlib
 figure, and ``figures.draw_fig9a(ax)`` and its siblings draw one panel on an
@@ -487,13 +567,108 @@ Table 3 model does not reproduce the published trace: it lies up to 0.38
 equivalents (rms 0.22) above it (see `The H2O2 curve of SI Fig. S12a is
 matched only with other constants`_).
 
+Fig. 10: O2 at 25, 75 and 100 °C, and the Arrhenius plot
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. figure:: /_static/images/pd_c_3hp_oxidation/pd_c_3hp_oxidation_fig10.png
+   :target: ../_static/images/pd_c_3hp_oxidation/pd_c_3hp_oxidation_fig10.png
+   :alt: Four panels. Panels a to c: normalized concentration against time
+         with O2 at 25, 75 and 100 degrees C. At 25 degrees 3-HP falls only
+         to about 0.9; at 75 degrees malonic acid peaks near 0.4 at about 130
+         min; at 100 degrees it peaks near 0.55 at about 40 min, and the
+         other by-products end near 0.9. The solid model lines lie on the
+         black dotted deposited curves. Panel d: ln k against 1000/T for
+         three rate constants at four temperatures, with three dashed
+         regression lines; each line passes close to three of its four
+         points, and the fourth lies 1.4 to 4.6 above it.
+   :class: pub-figure
+   :width: 100%
+
+   Fig. 10, drawn by ``plot_fig10``. (a–c) Experiment (circles), the
+   reversible O2 variant with the constant set of each curve (solid lines)
+   and the deposited model curves (black dotted lines); the box gives the
+   pooled R2 against the experimental points to three decimals. (d) The
+   deposited points of the Arrhenius plot and the three dashed lines,
+   recomputed by least squares.
+
+The reversible O2 variant differs from the deposited curves by at most
+1.8e-4 (25 °C), 2.5e-3 (75 °C) and 2.7e-3 (100 °C) at their nodes, again the
+solver error of those curves: with the authors' solver run repeated it
+returns the nodes within 7.2e-6 (see `Repeating the authors' solver run`_).
+Its pooled R2 against the experimental points is 0.9996, 0.990 and 0.993;
+the published panels print 0.99. This variant was inferred from the very
+curves it is compared with, so the agreement shows that the inference is
+consistent, not that the model is right (see `Fig. 10a–c are reproduced by
+an inferred reversible variant`_).
+
+The points of panel d cannot be recomputed and are read from the deposit.
+The lines are recomputed and agree with the deposited ones to 7e-6 in
+``ln k`` at their 100 °C ends.
+
+Fig. 11: heat maps over temperature and time
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. figure:: /_static/images/pd_c_3hp_oxidation/pd_c_3hp_oxidation_fig11.png
+   :target: ../_static/images/pd_c_3hp_oxidation/pd_c_3hp_oxidation_fig11.png
+   :alt: Two heat maps over time (10 to 1680 min) and temperature (30 to 100
+         degrees C), panel a for malonic acid selectivity and panel b for
+         yield, on a colour scale from 0 to 1. In both, a ridge of values
+         above 0.5 runs from short times at high temperature to long times
+         at low temperature, marked by a red dashed line, with contour lines
+         at 0.1, 0.3 and 0.5 on both sides. A red star marks the largest
+         cell, 0.591 at 95 degrees and 27 min in panel a and 0.548 at 84
+         degrees and 49 min in panel b; a purple star marks the maximum of
+         the 50 degree row. An inset in each panel zooms in on 47 to 57
+         degrees.
+   :class: pub-figure
+   :width: 100%
+
+   Fig. 11, drawn by ``plot_fig11``: (a) MA "selectivity" (``X_MA``) and
+   (b) MA "yield" (``(1 - X_HP3)*X_MA``), computed with the simplified
+   reversible model as the authors' heat-map script runs it, each panel with
+   its own constant set. Two things differ from the published figure on
+   purpose: the largest cell of each map is annotated with its value, and
+   the colour-bar label of panel a is spelled "MA Selectivity" (published:
+   "MA Selectvity"). The stars sit on the computed maxima, and the insets
+   are zooms of the same matrices (``NOTES.md`` gives the differences from
+   the published stars and insets).
+
+The deposit holds no table of the heat maps, so the reference is the
+published figure: its contour lines at 0.1, 0.3 and 0.5, digitized. The
+reproduced contours lie within an rms of 0.17 px (panel a) and 0.27 px
+(panel b) of them, in pixels of the published raster (1 px = 3.07 min or
+0.148 °C); the digitization itself is good to about 0.3 px. The red dashed
+line, which joins the row maxima and is therefore defined to one column of
+the time grid (1.82 px), lies 0.6 px (panel a) and 0.15 px (panel b) from
+the digitized one in the mean along the time axis. The largest cell of the
+selectivity map, 0.5906 at 95 °C and 26.8 min, is the 59.1 % (95 °C, 27 min)
+of the text. The largest cell of the yield map is the one the text names
+(84 °C, 49 min), but its value is 0.548, not the 55.2 % of the text.
+
+.. figure:: /_static/images/pd_c_3hp_oxidation/pd_c_3hp_oxidation_fig11_verification.png
+   :target: ../_static/images/pd_c_3hp_oxidation/pd_c_3hp_oxidation_fig11_verification.png
+   :alt: Top row: the two reproduced heat maps with the digitized published
+         contour lines, ridge line and stars drawn on top as fine black
+         dots; the dots lie on the wide reproduced lines everywhere.
+         Bottom row: the offset of every digitized contour sample from the
+         reproduced contour against the temperature of the sample. All
+         offsets lie within about 1 px, with an rms of 0.17 px in panel a
+         and 0.27 px in panel b.
+   :class: pub-figure
+   :width: 100%
+
+   Drawn by ``plot_fig11_verification``. Top: the reproduced maps with the
+   lines and stars digitized from the published panels in black. Bottom: the
+   offset of each digitized contour sample from the reproduced contour.
+
 Limits of the temperature-extended O2 model
 -------------------------------------------
 
 .. warning::
 
    Use ``load_o2_model`` at temperatures other than 50 °C only as what it
-   is: an extrapolation that misses the experiments at 25, 75 and 100 °C.
+   is: an extrapolation that reproduces no published result and misses the
+   experiments at 25, 75 and 100 °C.
 
 **What it is.** In ``load_o2_model(T)`` each of the six rate constants of
 the Table 3 O2 model follows the Arrhenius relation of the paper,
@@ -506,15 +681,61 @@ MA → OXA, a round value) appear only in the authors' heat-map script. The
 text says that the three it quotes were obtained from the Arrhenius plot of
 Fig. 10d; the lines of that plot give 59.9, 69.0 and 52.1 kJ/mol (see
 `Fig. 10d and the activation energies of the text`_). Applying the five
-values to this six-reaction model is an NSKinetics addition. The text of
-the paper presents its heat maps (Fig. 11) as the O2 model extended in this
-way; the heat-map script in the deposit computes them with a model of its
-own (five reactions, no OPA, a reverse term in every step), which is not
-part of this package.
+values to this six-reaction model is an NSKinetics addition: the text
+describes Fig. 11 this way, but none of the paper's temperature results is
+reproduced with it.
+
+**It does not reproduce the published heat maps.** Computed with this model
+on the grid of Fig. 11 (``table3_o2_heat_maps``), the maps have the shape of
+the published ones and maxima 0.003 to 0.006 lower, but their contour lines
+are elsewhere:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 46 27 27
+
+   * -
+     - Table 3 O2 model at T
+     - Simplified reversible model
+   * - rms offset from the published contours, panel a / b
+     - 7.6 / 7.6 px
+     - 0.17 / 0.27 px
+   * - Largest cell, "selectivity"
+     - 0.587 at 91 °C, 21 min
+     - 0.591 at 95 °C, 27 min
+   * - Largest cell, "yield"
+     - 0.542 at 84 °C, 38 min
+     - 0.548 at 84 °C, 49 min
+
+Offsets above about 1 px are not distances. They are the linearized
+estimate of ``contour_offsets`` (value difference over gradient), clipped at
+30 px per sample (``max_offset=30``), and are indicative only; without the
+clip, panel b of the Table 3 model reads 8.8 px. Measured on the lines
+themselves (``contour_shifts``), the late side of every contour is earlier
+than published by 8 to 11 % of the time in the median per line (28 to
+74 min), which is the same as 1.3 to 1.8 °C lower at a given time. Shifting
+its time axis by the 10 min of the published figure leaves 6.8 and 6.1 px.
+The difference is 20 times the reading uncertainty of the figure or more.
+
+.. figure:: /_static/images/pd_c_3hp_oxidation/pd_c_3hp_oxidation_fig11_table3_o2.png
+   :target: ../_static/images/pd_c_3hp_oxidation/pd_c_3hp_oxidation_fig11_table3_o2.png
+   :alt: The two heat maps computed with the Table 3 O2 model, with the
+         digitized published contour lines as fine black dots. On the late
+         side of the ridge the wide contour lines of the Table 3 model lie
+         visibly to the left of and below the published ones; the largest
+         cells are 0.587 at 91 degrees C and 21 min and 0.542 at 84 degrees C
+         and 38 min.
+   :class: pub-figure
+   :width: 100%
+
+   Drawn by ``plot_fig11_table3_o2``: the Fig. 11 quantities computed with
+   the temperature-extended Table 3 O2 model (colours and wide lines), with
+   the published contour lines, ridge line and stars (digitized, black).
 
 **It fits the experiments at 25, 75 and 100 °C poorly.** Against the
-deposited experimental points of Fig. 10a–c (the published panels print
-R2 = 0.99 for their model curves, which are therefore not this extension):
+deposited experimental points of Fig. 10a–c, next to the per-temperature
+constant sets that reproduce the published curves
+(``load_o2_reversible_model``):
 
 .. list-table::
    :header-rows: 1
@@ -528,11 +749,15 @@ R2 = 0.99 for their model curves, which are therefore not this extension):
      - 0.579 / 0.243
      - 0.644 / 0.174
      - 0.746 / 0.150
+   * - Per-temperature set: pooled R2 / rms
+     - 0.9996 / 0.008
+     - 0.990 / 0.029
+     - 0.993 / 0.026
    * - Time at which the plotted fraction ``X_HP3`` falls to 0.5, Table 3
-       at T
-     - 458 min
-     - 16.0 min
-     - 4.2 min
+       at T / per-temperature set
+     - 458 min / not reached
+     - 16.0 / 75.0 min
+     - 4.2 / 22.0 min
    * - Maximum MA fraction, Table 3 at T
      - 0.522 at 1479 min
      - 0.584 at 51.7 min
@@ -556,12 +781,14 @@ of the MA maximum is about right, but it comes at 13 min instead of 40 min.
 .. figure:: /_static/images/pd_c_3hp_oxidation/pd_c_3hp_oxidation_fig10_table3_o2.png
    :target: ../_static/images/pd_c_3hp_oxidation/pd_c_3hp_oxidation_fig10_table3_o2.png
    :alt: Four panels. Panels a to c: the experimental points at 25, 75 and
-         100 degrees C with the Table 3 O2 model as solid lines. The solid
-         lines run far from the points: at 25 degrees the model consumes
-         most of the 3-HP while the measured 3-HP stays near 0.9; at 75 and
-         100 degrees the model's malonic acid peak comes much earlier than
-         the measured one. The boxes give pooled R2 values of 0.579, 0.644
-         and 0.746. Panel d: the Arrhenius points with the dashed regression
+         100 degrees C with the Table 3 O2 model as solid lines and the
+         per-temperature constant sets as dashed lines. The solid lines run
+         far from the points: at 25 degrees the model consumes most of the
+         3-HP while the measured 3-HP stays near 0.9; at 75 and 100 degrees
+         the model's malonic acid peak comes much earlier than the measured
+         one. The boxes give pooled R2 values of 0.579, 0.644 and 0.746 for
+         the Table 3 model and 1.000, 0.990 and 0.993 for the reversible
+         variant. Panel d: the Arrhenius points with the dashed regression
          lines and solid lines with the activation energies of the text
          through the 50 degree points; the solid lines miss most of the
          other points.
@@ -569,8 +796,10 @@ of the MA maximum is about right, but it comes at 13 min instead of 40 min.
    :width: 100%
 
    Drawn by ``plot_fig10_table3_o2``. (a–c) The experiments of Fig. 10 with
-   the temperature-extended Table 3 O2 model (solid lines); the boxes give
-   its pooled R2, to three decimals. The time axes end at 1440 min as in
+   the temperature-extended Table 3 O2 model (solid lines) and the
+   reversible variant with its per-temperature constant sets (dashed
+   lines); the boxes give the pooled R2 of both, to three decimals. The
+   time axes of panels a to c end at 1440 min, as do the time axes of
    the published panels; the samples after that (1740 and 1890 min at
    25 °C, 1560 min at 100 °C) are not drawn but are counted in R2. (d) The
    points of Fig. 10d with the published regression lines (dashed) and the
@@ -600,8 +829,20 @@ this step (``Ea_5``) does the same with its 50 °C constant kept: a low one
 fits 75 and 100 °C and not 25 °C, a high one the reverse (0.26, 0.99 and
 0.93 for zero, and 0.96, 0.10 and 0.20 for 120 kJ/mol, with R1 and R2
 lowered by 4.3), and the lowest of the three values is 0.79 at best, near
-47 kJ/mol. In the model this step is too fast on both sides of 50 °C. For
-the 8 h screening experiments see `Changing the operating conditions`_.
+47 kJ/mol. In the model this step is too fast on both sides of 50 °C. Part
+of the difference from the published heat maps is also structural: the
+Table 3 model has the OPA intermediate and no reverse terms, and its O2
+factor stays above 0.999 where that of the simplified model falls to 0.83.
+
+**What to use instead.** For the curves of Fig. 10a–c use
+``load_o2_reversible_model``; its three constant sets are separate fits
+with no temperature law, so it exists only for the experiments at 25, 75
+and 100 °C. For Fig. 11 use ``load_o2_simplified_reversible_model``. The
+authors' heat-map script extrapolates that model from 50 °C in the same way
+(its 3-HP → MA constant at 75 and 100 °C is 4.3 and 4.2 times the value of
+the Fig. 10d points at those temperatures); how far the maps of Fig. 11 are
+from the time courses at 75 and 100 °C has not been measured here (for the
+8 h screening experiments see `Changing the operating conditions`_).
 
 What does not match the paper, and what is inferred
 ---------------------------------------------------
@@ -643,6 +884,15 @@ Fig. S2 also defines the R2 that ``pooled_r2`` computes.
      - The same, and **the O2 activity**: Fig. S2 gives ``y*P/f0`` = 2.96
        for 3 bar of O2; the model has the inferred constant ``x_O2_ref`` =
        0.005085 (times ``yO2``, which stays above 0.999).
+   * - Reversible O2 variant
+     - First-order terms.
+     - Reactions 1, 2, 5 and 6 are reversible; the constants are lumped, with
+       no activity of O2 and no catalyst mass.
+   * - Simplified reversible model
+     - Liquid activities are the script's mole fractions and the gas
+       activities are ``y*P/f0``, with the script's ``P`` = 3.5 bar.
+     - Every step has a reverse term with an "equilibrium constant" of 0.6
+       to 82 (not the ``Keq`` of Table S4); no OPA; lumped rate constants.
 
 With the literal O2 activity of Fig. S2 the Table 3 constants would make
 reactions 1, 2 and 4 of the O2 model 582 times faster: 3-HP would have a
@@ -705,17 +955,17 @@ deposited O2 curve. The values are kept as ``TABLE_S4`` for documentation.
 Published lines carry a solver error
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The deposited model curves of Fig. 9 have 19 and 23 unevenly spaced solver
-steps (20 and 24 nodes with the one at t = 0), and the published lines are
-straight segments between the nodes. A Python port of MATLAB ``ode23s`` at
-its default tolerances returns those nodes to their printed digits (next
-section), so they are consistent with being that solver's raw steps; MATLAB
-itself was not run. They are not converged solutions: the nodes are up to
-2.0e-3 (Fig. 9b) away from the accurately solved model, and the segments
-between them up to 0.010. The models here are solved to a relative
-tolerance of 1e-9, so they do not lie exactly on the published polylines,
-and the package tests that solve the models accurately allow for that
-solver error.
+The deposited model curves of Figs. 9 and 10 have 18 to 24 unevenly spaced
+solver steps each (19 to 25 nodes with the one at t = 0), and the published
+lines are straight segments between the nodes. A Python port of MATLAB
+``ode23s`` at its default tolerances returns those nodes to their printed
+digits (next section), so they are consistent with being that solver's raw
+steps; MATLAB itself was not run. They are not converged solutions: the
+nodes are up to 2.0e-3 (Fig. 9b) and 2.5e-3 and 2.7e-3 (Fig. 10b and c)
+away from the accurately solved model, and the segments between them up to
+0.010. The models here are solved to a relative tolerance of 1e-9, so they
+do not lie exactly on the published polylines, and the package tests that
+solve the models accurately allow for that solver error.
 
 Repeating the authors' solver run
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -734,7 +984,8 @@ verification only: to simulate a model, use the model.
 .. code-block:: python
 
    from nskinetics.models.pd_c_3hp_oxidation import (
-       emulate_fig9b, node_deviations, read_fig9b_o2)
+       emulate_fig9b, emulate_fig10abc, node_deviations, read_fig9b_o2,
+       read_fig10_o2)
 
    def report(label, emulated, nodes):
        d = node_deviations(emulated, nodes)
@@ -745,28 +996,36 @@ verification only: to simulate a model, use the model.
    nodes = read_fig9b_o2()['model']
    report('Fig. 9b, constants of the nodes', emulate_fig9b(), nodes)
    report('Fig. 9b, Table 3 as printed', emulate_fig9b('table3'), nodes)
+   for T_C in (25, 75, 100):
+       report(f'Fig. 10, {T_C} C', emulate_fig10abc(T_C),
+              read_fig10_o2(T_C)['model'])
 
 .. code-block:: text
 
    Fig. 9b, constants of the nodes: 19 steps (deposited 19), node times within 6e-06 min, values within 5.0e-06
    Fig. 9b, Table 3 as printed: 19 steps (deposited 19), node times within 4e-02 min, values within 4.0e-04
+   Fig. 10, 25 C: 18 steps (deposited 18), node times within 5e-03 min, values within 7.2e-06
+   Fig. 10, 75 C: 19 steps (deposited 19), node times within 5e-03 min, values within 6.3e-06
+   Fig. 10, 100 C: 24 steps (deposited 24), node times within 5e-03 min, values within 5.7e-06
 
-The deposited files print values and node times to five decimals, so the
-differences of the first run are the print rounding of the files. The same
-holds for Fig. 9a (23 steps, values within 6.8e-6) and for the H2O2 trace
-of SI Fig. S12a (24 steps, of which the file holds all but the last; within
-4.4e-6 equivalents). The package tests require the deposited number of
-steps, node times within 2e-5 min and values within 1e-5; the solver error
-that the accurate-solver tests have to allow for is 85 to 200 times larger
-for the plotted fractions (8.5e-4 for Fig. 9a and 2.0e-3 for Fig. 9b; for
-the H2O2 trace it is 0.012 equivalents).
+The deposited files print values to five decimals, and node times to five
+decimals (Fig. 9) or two (Fig. 10), so the differences of every run but the
+second are the print rounding of the files. The same holds for Fig. 9a (23
+steps, values within 6.8e-6) and for the H2O2 trace of SI Fig. S12a (24
+steps, of which the file holds all but the last; within 4.4e-6 equivalents).
+The package tests require the deposited number of steps, node times within
+2e-5 min (Fig. 9) or 0.01 min (Fig. 10) and values within 1e-5; the solver
+error that the accurate-solver tests have to allow for is 18 to 270 times
+larger for the plotted fractions (1.8e-4 for Fig. 10a to 2.7e-3 for
+Fig. 10c; for the H2O2 trace it is 0.012 equivalents).
 
-The constants matter at this level. They are sets inferred from the nodes
-(``O2_NODE_PARAMETER_SETS``, ``H2O2_NODE_PARAMETER_SETS``; selected with
-``parameter_set`` in the loaders), given to eight digits. They are not the
-published constants and are for this comparison only: the O2 set differs
-from Table 3 by 0.01 to 0.26 % and prints as Table 3 prints it; the H2O2
-set differs by 0.1 to 0.6 %, more than rounding allows for five of its
+The constants matter at this level. For Fig. 10 they are the six-digit sets
+of the reversible O2 variant. For Fig. 9 they are sets inferred from the
+nodes (``O2_NODE_PARAMETER_SETS``, ``H2O2_NODE_PARAMETER_SETS``; selected
+with ``parameter_set`` in the loaders), given to eight digits. They are not
+the published constants and are for this comparison only: the O2 set
+differs from Table 3 by 0.01 to 0.26 % and prints as Table 3 prints it; the
+H2O2 set differs by 0.1 to 0.6 %, more than rounding allows for five of its
 constants. The models' defaults are Table 3 as printed, with which the
 repeated run comes within 4.0e-4 (O2) and 4.4e-4 (H2O2) of the nodes.
 
@@ -787,32 +1046,44 @@ kept, and check that the repeated run then misses the nodes:
    * - ``k_7`` multiplied by the catalyst mass (Fig. 9a)
      - 0.39 (16 steps instead of 23)
    * - OPA included in the sum of the plotted fractions
-     - 0.038 (Fig. 9b), 0.094 (Fig. 9a)
+     - 0.038 (Fig. 9b), 0.094 (Fig. 9a), 0.029 to 0.157 (Fig. 10a–c)
+   * - Reversible variant without the reverse of reaction 1
+     - 0.94, 7.6e-5 and 0.011 at 25, 75 and 100 °C
+   * - Reversible variant with a linear reverse of reaction 1
+       (``k_1r*[OPA]``)
+     - 0.10, 8.3e-5 and 0.0095
+   * - Reversible variant with water formed by reaction 1 only
+     - 9.1e-4 at 25 °C; not detectable at 75 °C; at 100 °C only through
+       the node times, which move by 0.012 min (limit 0.01 min)
 
 What this shows is limited. The shipped constants return the deposited
 nodes, and most of them are pinned on their own (to between 1e-6 and 1e-3
-of their value; ``NOTES.md`` has the table). The exception is ``k_6`` of
-the H2O2 model, which is not identifiable: a change of 10 % leaves the
-nodes as they are. A control shows that the shipped constants need the
-shipped choice. It does not show that another choice could not do as well
-with other constants: that takes a refit of the alternative, and the refit
-that was made is not shipped (`What is not in the repository`_). For the O2
-fraction, a refit with the fraction held at 1 still left a difference of
-1.5e-5, three times that of the shipped model.
+of their value for the Fig. 9 sets, and to between 1e-4 and 0.1 for most
+constants of the reversible variant; ``NOTES.md`` has the tables). The
+exceptions are ``k_6`` of the H2O2 model, which is not identifiable, and
+``k_5r`` at 25 °C and ``k_5`` at 100 °C of the reversible variant: a change
+of 10 % in any of these leaves the nodes as they are. A control shows that
+the shipped constants need the shipped choice. It does not show that
+another choice could not do as well with other constants: that takes a
+refit of the alternative, and the refits that were made are not shipped
+(`What is not in the repository`_). For the O2 fraction, for example, a
+refit with the fraction held at 1 still left a difference of 1.5e-5, three
+times that of the shipped model.
 
 ``figures.plot_solver_emulation`` (``--figures solver_emulation`` on the
-command line) draws the three deposited curves with the emulated steps
-marked on their nodes and, below each, the differences of the emulated
-steps and of the accurate solution from the nodes on a logarithmic axis.
+command line) draws the six deposited curves with the emulated steps marked
+on their nodes and, below each, the differences of the emulated steps and
+of the accurate solution from the nodes on a logarithmic axis.
 
 .. figure:: /_static/images/pd_c_3hp_oxidation/pd_c_3hp_oxidation_solver_emulation.png
    :target: ../_static/images/pd_c_3hp_oxidation/pd_c_3hp_oxidation_solver_emulation.png
-   :alt: Three panels, one per deposited curve (Fig. 9a, Fig. 9b and the
-         H2O2 trace of SI Fig. S12a). In each, the emulated solver steps
-         fall on the deposited nodes. The lower axes show the emulated
-         steps within about 7e-6 of the nodes, and the accurate solution of
-         the same model up to about 2e-3 from them in the two panels of
-         plotted fractions and up to 1.2e-2 equivalents for the H2O2 trace.
+   :alt: Six panels, one per deposited curve (Fig. 9a, Fig. 9b, the H2O2
+         trace of SI Fig. S12a, and Fig. 10a to c). In each, the emulated
+         solver steps fall on the deposited nodes. The lower axes show the
+         emulated steps within about 7e-6 of the nodes, and the accurate
+         solution of the same model up to about 3e-3 from them in the five
+         panels of plotted fractions and up to 1.2e-2 equivalents for the
+         H2O2 trace.
    :class: pub-figure
    :width: 100%
 
@@ -820,12 +1091,14 @@ steps and of the accurate solution from the nodes on a logarithmic axis.
    the emulated solver steps of the shipped models (plus signs) and the
    accurate solution (lines). Lower axes: largest difference from each node
    of the emulated step and of the accurate solution; the dotted line is
-   the last printed decimal of the deposited files. The models carry the
-   constant sets inferred from these same nodes
-   (``H2O2_NODE_PARAMETER_SETS``, ``O2_NODE_PARAMETER_SETS``), not Table 3
-   as printed: with Table 3 the emulated steps are up to 4.4e-4 (Fig. 9a)
-   and 4.0e-4 (Fig. 9b) from the nodes, and the run of the H2O2 trace takes
-   23 steps instead of 24.
+   the last printed decimal of the deposited files. In the Fig. 9a, Fig. 9b
+   and S12a panels the models carry the constant sets inferred from these
+   same nodes (``H2O2_NODE_PARAMETER_SETS``, ``O2_NODE_PARAMETER_SETS``),
+   not Table 3 as printed: with Table 3 the emulated steps are up to 4.4e-4
+   (Fig. 9a) and 4.0e-4 (Fig. 9b) from the nodes, and the run of the H2O2
+   trace takes 23 steps instead of 24. In the Fig. 10 panels they carry the
+   constant sets of the reversible variant, which were inferred from the
+   nodes too.
 
 Parity R2 values (SI Fig. S11)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -852,8 +1125,10 @@ near 25 min and calls it negligible. The quantity plotted in SI Fig. S12b is
 a mole fraction that peaks at 1.4e-5, and 1.4e-5 times 60 mM is 8.4e-4 mM,
 which suggests that the printed value is that mole fraction multiplied by
 the feed concentration. As a concentration, the OPA peak of the model is 2.5
-mM, 4.2 % of the initial 3-HP, at 20.5 min. The H2O2 model holds more: 11.5
-% of the initial 3-HP at 84 min (7.8 % is still there at 1440 min).
+mM, 4.2 % of the initial 3-HP, at 20.5 min. The other models hold more: 11.5
+% of the initial 3-HP at 84 min in the H2O2 model (7.8 % is still there at
+1440 min), and peaks of 2.9, 12.6 and 20.1 % in the reversible O2 variant
+with the sets of 25, 75 and 100 °C.
 
 The H2O2 curve of SI Fig. S12a is matched only with other constants
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -873,6 +1148,27 @@ set; see `Repeating the authors' solver run`_). In the deposited file of
 this figure the blocks labelled ``exp`` and ``model`` are also swapped; the
 reader ``read_fig9a_h2o2`` corrects that.
 
+Fig. 10a–c are reproduced by an inferred reversible variant
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The paper prints no constants for 25, 75 or 100 °C, and its text treats all
+reactions as irreversible. Neither posted script produces the model curves
+deposited for these temperatures; the README of the deposit calls the
+posted codes "an example" whose details "were adjusted for each time". The
+curves are reproduced by the reaction network of the Table 3 O2 model with
+reactions 1, 2, 5 and 6 made reversible and a separate constant set for
+each curve. Its structure and all of its constants were inferred from the
+deposited curves, with fits made through a repeat of the authors' solver run
+(the fits are not shipped; the repeated run is, and with these constants it
+returns the deposited nodes to their printed digits, see `Repeating the
+authors' solver run`_). Nothing of it is printed in the paper, the SI or the
+deposit, and it is the only structure found that reproduces the curves,
+which does not prove that the authors used it. The three constant sets
+follow no temperature law (the forward constant of 3-HP → OPA is 0.047,
+0.0092 and 0.041 1/min in the sets of 25, 75 and 100 °C), so they are fit
+parameters of each curve, not kinetic quantities, and the loader takes the
+name of a set, not a temperature. The model is a reproduction aid.
+
 Fig. 10d and the activation energies of the text
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -887,6 +1183,25 @@ gives their unit; the package takes it to be 1/min, the time unit of the
 authors' scripts. The slopes of the lines do not depend on it. The package
 names the constants ``k_1``, ``k_2`` and ``k_5``, as the authors' heat-map
 script numbers these reactions; these are not the numbers of the O2 model.
+
+The points are taken here as three rate constants of the simplified
+reversible model (3-HP → MA, MA → AAc and MA → D), fitted to the experiment
+of each temperature. Three things support this: the figure names a one-step
+3-HP → MA reaction, which only that model has; with the 50 °C row as three
+of its five rate constants and the other two fitted, that model reproduces
+the contour lines of Fig. 11b (with all five fitted to those lines, the
+constants of 3-HP → MA, MA → AAc and MA → D came out 0.03 % above, 2.2 %
+below and 0.10 % below the tabulated values; not shipped; of these, the
+first is the one that multiplies the O2 activity of the heat-map script, and
+the lines determine the second least well); and refits of that model to the
+experiments at 50, 75 and 100 °C come within 9 % of the points (not shipped;
+the refit at 25 °C is ill-determined). Taking the points as constants of
+that model means that they follow the rate law of the heat-map script. The
+three reasons support that and do not establish it: the fits behind the
+second and third are not shipped, and neither the paper nor the deposit says
+it. The comparison of the 50 °C points with the Table 3 constants below is
+made with and without that rate law. The points are not constants of the
+model that reproduces the curves of panels a to c.
 
 Each dashed line of the figure is a regression through three of the four
 points: it leaves out the 50 °C point for 3-HP → MA and the 25 °C point for
@@ -921,13 +1236,79 @@ MA → AAc and 1.104e-3 for MA → D at 50 °C; the plotted values are 2.14e-3,
   model's and within the interval.
 
 So if the plotted constants follow the rate law of the heat-map script,
-which is not established (the README of the deposit describes that script
-as "expanded from 10. Arrhenius plot data", which is consistent with it and
-no more), the solid lines of panel d are the O2 model's own ``k_j(T)`` to
-within the uncertainty of Table 3. If the plotted constant of 3-HP → MA is
-instead taken as it stands, the model's line for this step runs parallel to
-the drawn one and a factor of 3.39 higher. The comparison of the slopes
-holds in either case.
+which is supported by the reasons given for the assignment but not
+established (the README of the deposit describes that script as "expanded
+from 10. Arrhenius plot data", which is consistent with it and no more),
+the solid lines of panel d are the O2 model's own ``k_j(T)`` to within the
+uncertainty of Table 3. If the plotted constant of 3-HP → MA is instead
+taken as it stands, the model's line for this step runs parallel to the
+drawn one and a factor of 3.39 higher. The comparison of the slopes holds
+in either case.
+
+Fig. 11 is reproduced with the simplified model of the deposited script
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The text presents the heat maps as the O2 model extended with the Arrhenius
+relation. The caption says that "Fig. 9b data was used as a reference kref
+of the Arrhenius equation", which matches the deposited heat-map script:
+the script fits a model of its own to the Fig. 9b data and extrapolates
+that model. It is a different model from that of Table 3 (five reactions,
+no OPA, a reverse term in every step) and is not written out in the paper.
+The published figure shows three properties of that script, which are
+reproduced here:
+
+- **Arrhenius factors on the equilibrium constants.** The script scales each
+  equilibrium constant with the Arrhenius factor of its rate constant, which
+  the paper does not mention.
+- **A start from unit mole fractions.** The heat maps start from a 3-HP mole
+  fraction of 1, not from the dilute solution the same script fits at 50 °C.
+  The 50 °C row of Fig. 11 is therefore not the 50 °C curve that the script
+  fits: the MA fraction peaks at 0.571 in the first and at 0.549 in the
+  second.
+- **A 10 min time offset.** The time axis of Fig. 11 is the reaction time
+  plus 10 min: the "27 min" and "49 min" of the text are 16.8 and 39.1 min of
+  reaction.
+
+The two panels of the published figure also need different constant vectors,
+for reasons that are not known (separate fits, or other settings). The
+fitted constants are not in the deposit, and no single set reproduces both
+panels: with the set of panel b panel a is off by 1.07 px, with the set of
+panel a panel b by 1.45 px. Two rate constants (and, for panel a, two more
+constants) were inferred by fitting the digitized contour lines (not
+shipped). The other constants are in the deposit: three (panel b) or two
+(panel a) rate constants are the 50 °C row of the deposited Arrhenius
+table, and the other equilibrium constants (all five for panel b, four for
+panel a, whose ``K_10`` is fitted) and the five activation energies are
+printed in the script.
+
+The script also uses a pressure of 3.5 bar (the captions give 3 bar of O2).
+What Fig. 11 calls "MA selectivity" and "MA yield" are ``X_MA`` and
+``(1 - X_HP3)*X_MA``.
+
+The maximum yield of 55.2 % is not reproduced
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The cell the text names for the maximum yield (84 °C, 49 min) is the largest
+of the reproduced map, but its value is 0.548. The crest is flat (13 cells
+between 76 and 90 °C lie within 0.001 of the maximum), so not much should
+be read into which cell is the largest. None of the constant sets found
+that match the contour lines gives 0.552, and the colour of the published
+map along its crest reads 0.549 ± 0.006 (both not shipped). The maximum
+selectivity of the text, 59.1 % (95 °C, 27 min), is reproduced (0.5906).
+
+The text sets two "observed" maxima against these: 56.9 % for the
+selectivity ("the observed maximum of 56.9 % at 50 °C (purple star on
+plot)") and 50.5 % for the yield. The abstract places both at 3 bar of O2
+and 50 °C, the condition of the Fig. 9b experiment, and the paper does not
+say how either was computed. The 50.5 % equals the quantity of panel b,
+``(1 - X_HP3)*X_MA``, of that experiment at 360 min (0.505), which is an
+inference from the match. The 56.9 % is not identified: the quantity of
+panel a, ``X_MA``, is at most 0.548 in that experiment (240 min), and MA
+per 3-HP converted, ``X_MA/(1 - X_HP3)``, is 0.621, 0.577 and 0.513 at 240,
+360 and 450 min and 0.569 at no sampling time. The 50 °C row of the
+reproduced selectivity map peaks at 0.5705 at 255.8 min, next to the purple
+star, but that is a model value. The match of the 50.5 % therefore stands
+alone and does not settle how the paper defines the two quantities.
 
 The initial-rate ratio of 0.204 is not reproduced
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -960,7 +1341,7 @@ What is not in the repository
 
 The package and its tests establish that the shipped models, with the
 constants as documented, agree with the deposited curves, the digitized
-curves and the experiments to the numbers given on this page, that with the
+lines and the experiments to the numbers given on this page, that with the
 authors' solver run repeated they return the deposited model nodes to
 their printed digits, and that each model implements its documented rate
 laws. They do not re-derive the inferred constants. The following were
@@ -968,12 +1349,21 @@ obtained with scripts that are not shipped, so they cannot be recomputed
 from the repository:
 
 - the least-squares fits made through the repeated solver run: the constant
-  sets of the Fig. 9 nodes, and the refit of the alternative with the O2
-  fraction held constant. The tests show that the shipped constants return
-  the nodes, not that no other constants or rate laws would. MATLAB itself
-  was never run;
-- the refit to the experiment of the O2 constants without the 120 min row;
+  sets of the Fig. 9 nodes, the thirty constants of the reversible O2
+  variant and their uncertainties, and the refits of the alternatives
+  excluded for it (other water stoichiometries, a refitted linear reverse
+  of reaction 1, the O2 fraction held constant). The tests show that the
+  shipped constants return the nodes, not that no other constants or rate
+  laws would. MATLAB itself was never run;
+- the fits to the digitized contour lines of Fig. 11: those that gave the
+  inferred constants of the simplified reversible model, and the fits of
+  its five rate constants to the lines of Fig. 11b quoted for the reading
+  of the Fig. 10d points (all five free, and with one held);
+- the refits to the experiments: of the O2 constants without the 120 min
+  row, and of the simplified reversible model behind the reading of the
+  Fig. 10d points;
 - the independent integrations behind the comparison with the Table S4
-  orders (``NOTES.md``);
-- the digitization of the published figure (the digitized curves
+  orders, and the repeat of the heat-map script's solver runs for the rows
+  of Fig. 11 other than 100 °C (``NOTES.md``);
+- the digitization of the published figures (the digitized curves
   themselves are shipped).

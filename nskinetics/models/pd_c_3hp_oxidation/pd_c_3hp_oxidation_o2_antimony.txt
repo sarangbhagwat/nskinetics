@@ -7,8 +7,9 @@
 // published 50 C constants.
 //
 // At the default T = T_ref = 323.15 K this file IS the published 50 C model.
-// Away from 50 C it is an NSKinetics extrapolation that does not reproduce
-// the experiments at 25, 75 and 100 C (Fig. 10); see NOTES.md.
+// Away from 50 C it is an NSKinetics extrapolation that reproduces neither
+// the published heat maps (Fig. 11) nor the experiments at 25, 75 and 100 C
+// (Fig. 10); see NOTES.md.
 // Units: time in min, liquid concentrations in M (mol/L), temperature in K,
 // catalyst mass in g per batch of the paper (not per litre).
 // See NOTES.md next to this file for what is printed in the paper, what is
@@ -286,10 +287,14 @@ Arrhenius relation of the paper, the second of its two equations numbered 6;
 T_ref = 50 C), with activation energies from the paper text and from the authors'
 heat-map script. The lines of the paper's Arrhenius plot (Fig. 10d) give 69.0 and
 52.1 kJ/mol where the text, and this file, have 91.6 (Ea_3) and 59.5 kJ/mol (Ea_6).
-The heat maps of the paper (Fig. 11) are computed by that script with a simplified
-reversible five-reaction model, not with this one. Away from 50 C this file is an
-extrapolation: the model curves of Fig. 10a-c are not this extension, and it does not
-reproduce the 25, 75 and 100 C experiments (see NOTES.md).
+The paper's own temperature results are not reproduced by this file:
+the heat maps (Fig. 11) are those of a simplified reversible five-reaction model
+(pd_c_3hp_oxidation_o2_simplified_reversible_antimony.txt), whose rate constants the
+points of the Arrhenius plot (Fig. 10d) are taken to be, and the 25/75/100 C curves
+(Fig. 10a-c) are reproduced by a reversible six-reaction variant with a separate
+constant set at each temperature (pd_c_3hp_oxidation_o2_reversible_antimony.txt). Away
+from 50 C this file is an extrapolation: the model curves of Fig. 10a-c are not this
+extension, and it does not reproduce the 25, 75 and 100 C experiments (see NOTES.md).
 ```
 end
 

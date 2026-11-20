@@ -26,9 +26,10 @@ the deposited curves and are pinned only by the comparison with Table 3 as
 printed), a missing catalyst-mass or oxidant factor, the SI Table S4
 reaction orders on any concentration basis, or a missing reaction.
 
-The Fig. 10 data (the experiments at 25, 75 and 100 C and the Arrhenius
-plot) and the O2 model at those temperatures are tested in
-``test_pd_c_3hp_oxidation_fig10.py``.
+The simplified reversible O2 model and the heat maps (Fig. 11) are tested in
+``test_pd_c_3hp_oxidation_heat_maps.py`` and the reversible O2 variant and
+the Fig. 10 data in ``test_pd_c_3hp_oxidation_fig10.py``; the checks of the
+shipped SBML and of ``compile_events`` cover all four models here.
 ``test_pd_c_3hp_oxidation_solver_emulation.py`` repeats the authors' solver
 run and holds the models to the deposited nodes within their print rounding.
 
@@ -48,8 +49,9 @@ import pytest
 import nskinetics as nsk
 import nskinetics.models.pd_c_3hp_oxidation as pkg
 from nskinetics.models.pd_c_3hp_oxidation import (
-    NORMALIZED, SPECIES, load_h2o2_model, load_o2_model, pooled_r2,
-    simulate_at_times)
+    NORMALIZED, SPECIES, load_h2o2_model, load_o2_model,
+    load_o2_reversible_model, load_o2_simplified_reversible_model,
+    pooled_r2, simulate_at_times)
 
 _PKG_DIR = os.path.dirname(os.path.abspath(pkg.__file__))
 _NORMALIZED = list(NORMALIZED)
@@ -156,12 +158,12 @@ def test_importing_the_package_is_lightweight():
     before, after = json.loads(line[len('MODULES '):])
     # ``import nskinetics`` does not import the package ...
     assert before == []
-    # ... and the package imports its four modules but not the figures
+    # ... and the package imports its five modules but not the figures
     prefix = 'nskinetics.models.pd_c_3hp_oxidation'
     assert after == sorted([prefix] + [
         prefix + '.' + name for name in (
-            'pd_c_3hp_oxidation', 'reference', 'temperature_series',
-            'solver_emulation')])
+            'pd_c_3hp_oxidation', 'reference', 'heat_maps',
+            'temperature_series', 'solver_emulation')])
 
 
 # --- 2. constants and rate laws ---------------------------------------------
@@ -464,6 +466,22 @@ def test_h2o2_model_survives_compile_events_and_reset():
                             _NORMALIZED + ['eq_H2O2'])
 
 
+def test_reversible_loader_set_survives_compile_events_and_reset():
+    for label, values in pkg.O2_REVERSIBLE_PARAMETER_SETS.items():
+        _compile_and_reset_keep(load_o2_reversible_model(label), values)
+
+
+def test_simplified_loader_selection_survives_compile_events_and_reset():
+    km = load_o2_simplified_reversible_model(
+        T=357.15, parameter_set='fig11a', initial_condition='fitting')
+    x_per_M = km.get_value('x_per_M')
+    assert x_per_M == pytest.approx(X_3HP_FEED/C0, rel=1e-14)
+    selected = dict(pkg.SIMPLIFIED_REVERSIBLE_PARAMETER_SETS['fig11a'],
+                    T=357.15, x_per_M=x_per_M)
+    _compile_and_reset_keep(km, selected,
+                            _NORMALIZED + ['fig11b_yield', 'yCO2'])
+
+
 def test_values_set_by_the_user_after_loading():
     # As for every KineticModel: reset() keeps a value set with set_value,
     # compile_events() discards it (the loader's own selection stays).
@@ -656,7 +674,11 @@ def test_digitized_inset_readers():
 # --- 8. shipped SBML in sync with the Antimony ------------------------------
 
 _MODEL_FILES = [(pkg.h2o2_antimony_filename, load_h2o2_model),
-                (pkg.o2_antimony_filename, load_o2_model)]
+                (pkg.o2_antimony_filename, load_o2_model),
+                (pkg.o2_reversible_antimony_filename,
+                 load_o2_reversible_model),
+                (pkg.o2_simplified_reversible_antimony_filename,
+                 load_o2_simplified_reversible_model)]
 
 
 def _sbml_path(antimony_filename):

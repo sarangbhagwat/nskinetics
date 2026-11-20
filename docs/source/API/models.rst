@@ -10,8 +10,8 @@ to the Python helpers documented here:
   fermentation model behind :doc:`/tutorial/05_real_model` and the
   :doc:`isobutanol biorefinery demonstration </case_studies/isobutanol/index>`.
 - `Pd/C oxidation of 3-HP to malonic acid`_
-  (``nskinetics.models.pd_c_3hp_oxidation``): the two kinetic models of a
-  published kinetic study, presented on
+  (``nskinetics.models.pd_c_3hp_oxidation``): four kinetic models that
+  reproduce the model curves of a published kinetic study, presented on
   :doc:`/case_studies/pd_c_3hp_oxidation`.
 
 ``import nskinetics`` imports neither package.
@@ -160,12 +160,12 @@ Pd/C oxidation of 3-HP to malonic acid
 
 .. currentmodule:: nskinetics.models.pd_c_3hp_oxidation
 
-``nskinetics.models.pd_c_3hp_oxidation`` holds two kinetic models of the
+``nskinetics.models.pd_c_3hp_oxidation`` holds four kinetic models of the
 selective oxidation of 3-hydroxypropionic acid (3-HP) to malonic acid (MA)
 over 10 % Pd/C, after S. Y. Kim, J. E. Chavarrio, J. Install and G. W. Huber,
 *Appl. Catal. B: Environ. Energy* 386 (2026) 126403, together with the
-authors' deposited data, curves digitized from a published figure and the
-functions that redraw the paper's Fig. 9 and SI Fig. S12.
+authors' deposited data, curves digitized from the published figures and the
+functions that redraw the paper's Figs. 9, 10 and 11 and SI Fig. S12.
 :doc:`/case_studies/pd_c_3hp_oxidation` presents the models, the reproduced
 figures, how to change the operating conditions, and what does not match the
 paper; ``NOTES.md`` in the package folder is the full record.
@@ -184,18 +184,23 @@ figure module is imported explicitly
 Loaders
 ~~~~~~~
 
-Each of the two models is an Antimony file with a generated SBML file next
-to it; the module attributes ``h2o2_antimony_filename`` and
-``o2_antimony_filename`` hold the file names. What a loader selects
-(temperature, constant set) is part of the model it builds and survives
-``reset()`` and ``compile_events()``; each docstring names the parameters
-meant to be changed with ``set_value``.
+Each of the four models is an Antimony file with a generated SBML file next
+to it; the module attributes ``h2o2_antimony_filename``,
+``o2_antimony_filename``, ``o2_reversible_antimony_filename`` and
+``o2_simplified_reversible_antimony_filename`` hold the file names. What a
+loader selects (temperature, constant set, initial condition) is part of the
+model it builds and survives ``reset()`` and ``compile_events()``; each
+docstring names the parameters meant to be changed with ``set_value``.
 
 .. currentmodule:: nskinetics.models.pd_c_3hp_oxidation.pd_c_3hp_oxidation
 
 .. autofunction:: load_h2o2_model
 
 .. autofunction:: load_o2_model
+
+.. autofunction:: load_o2_reversible_model
+
+.. autofunction:: load_o2_simplified_reversible_model
 
 .. autofunction:: simulate_at_times
 
@@ -212,6 +217,14 @@ Species, plotted quantities and constant sets
 .. autodata:: O2_NODE_PARAMETER_SETS
    :annotation:
 
+.. autodata:: O2_REVERSIBLE_PARAMETER_SETS
+   :annotation:
+
+.. autodata:: SIMPLIFIED_REVERSIBLE_PARAMETER_SETS
+   :annotation:
+
+.. autodata:: SIMPLIFIED_REVERSIBLE_INITIAL_CONDITIONS
+
 .. autodata:: TABLE_S4
    :annotation:
 
@@ -224,7 +237,7 @@ The readers return the reference data shipped in ``reference_data/`` as
 tidy tables whose columns carry the models' selection names. The deposited
 files (Dryad, https://doi.org/10.5061/dryad.jsxksn0q4, CC0) are verbatim
 copies; the readers undo their known quirks. Curves marked *digitized* were
-read from a published figure, and ``reference_data/README.md`` gives the
+read from the published figures, and ``reference_data/README.md`` gives the
 provenance of every file. ``reference_data_dir`` is the path of the folder.
 
 .. autofunction:: read_fig9a_h2o2
@@ -238,6 +251,50 @@ provenance of every file. ``reference_data_dir`` is the path of the folder.
 .. autofunction:: read_fig10_o2
 
 .. autofunction:: read_fig10d_arrhenius
+
+.. autofunction:: read_fig11a_selectivity_digitized
+
+.. autofunction:: read_fig11b_yield_digitized
+
+Heat maps (Fig. 11)
+~~~~~~~~~~~~~~~~~~~
+
+.. currentmodule:: nskinetics.models.pd_c_3hp_oxidation.heat_maps
+
+Temperature--time maps of the two quantities of Fig. 11, MA "selectivity"
+(``X_MA``) and MA "yield" (``(1 - X_HP3)*X_MA``), and the measures that
+compare a computed map with the contour lines digitized from the published
+figure.
+
+.. autodata:: FIG11_T_C
+   :annotation:
+
+.. autodata:: FIG11_TIMES
+   :annotation:
+
+.. autodata:: FIG11_TIME_OFFSET
+
+.. autodata:: FIG11_LEVELS
+
+.. autodata:: FIG11_MIN_PER_PX
+
+.. autodata:: FIG11_C_PER_PX
+
+.. autofunction:: simulate_heat_maps
+
+.. autofunction:: fig11_panel_heat_map
+
+.. autofunction:: fig11_heat_maps
+
+.. autofunction:: table3_o2_heat_maps
+
+.. autofunction:: heat_map_maximum
+
+.. autofunction:: heat_map_ridge
+
+.. autofunction:: contour_offsets
+
+.. autofunction:: contour_shifts
 
 Temperature series and Arrhenius plot (Fig. 10)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -271,14 +328,15 @@ Emulation of the authors' solver run
 
 .. currentmodule:: nskinetics.models.pd_c_3hp_oxidation.solver_emulation
 
-The model curves the authors deposited for Fig. 9 are solver steps that lie
-up to 2.0e-3 from the converged solutions; they are reproduced step for
-step by the method of MATLAB ``ode23s`` at default tolerances (emulated;
-MATLAB was not run). ``solver_emulation`` repeats that solver run with the
-rates of a shipped model, so that the models can be compared with the
-deposited nodes to the digits the files print. It is used for verification
-only (the package tests and :doc:`/case_studies/pd_c_3hp_oxidation`); it is
-not a general-purpose solver.
+The model curves the authors deposited for Fig. 9 and Fig. 10a–c are solver
+steps that lie up to 2.7e-3 from the converged solutions; they are
+reproduced step for step by the method of MATLAB ``ode23s`` at default
+tolerances (emulated; MATLAB was not run). ``solver_emulation`` repeats
+that solver run with the rates of a shipped model, so that the models can
+be compared with the deposited nodes to the digits the files print. It is
+used for verification only (the package tests and
+:doc:`/case_studies/pd_c_3hp_oxidation`); it is not a general-purpose
+solver.
 
 .. autofunction:: ode23s
 
@@ -288,6 +346,8 @@ not a general-purpose solver.
 
 .. autofunction:: emulate_fig9b
 
+.. autofunction:: emulate_fig10abc
+
 .. autofunction:: node_deviations
 
 Figures
@@ -295,12 +355,13 @@ Figures
 
 .. currentmodule:: nskinetics.models.pd_c_3hp_oxidation.figures
 
-``figures`` regenerates Fig. 9 and SI Fig. S12 of the paper from the
-models, and draws a comparison figure and a verification figure. Each
-``plot_*`` function returns a new matplotlib figure; each ``draw_*``
-function draws one panel on an existing axes. Run the module as a script to
-write the figures to a folder (``--figures``, ``--formats`` and ``--dpi``
-select the figures, the file formats and the resolution of the PNG files)::
+``figures`` regenerates Fig. 9, Fig. 10, SI Fig. S12 and Fig. 11 of the
+paper from the models, and draws three comparison figures and a
+verification figure. Each ``plot_*`` function returns a new matplotlib
+figure; each ``draw_*`` function draws one panel on an existing axes. Run
+the module as a script to write the figures to a folder (``--figures``,
+``--formats`` and ``--dpi`` select the figures, the file formats and the
+resolution of the PNG files)::
 
     python -m nskinetics.models.pd_c_3hp_oxidation.figures OUTPUT_DIR
 
@@ -310,7 +371,15 @@ select the figures, the file formats and the resolution of the PNG files)::
 
 .. autofunction:: plot_figS12
 
+.. autofunction:: plot_fig10
+
 .. autofunction:: plot_fig10_table3_o2
+
+.. autofunction:: plot_fig11
+
+.. autofunction:: plot_fig11_verification
+
+.. autofunction:: plot_fig11_table3_o2
 
 .. autofunction:: plot_solver_emulation
 
@@ -321,3 +390,11 @@ select the figures, the file formats and the resolution of the PNG files)::
 .. autofunction:: draw_figS12a
 
 .. autofunction:: draw_figS12b
+
+.. autofunction:: draw_fig10abc
+
+.. autofunction:: draw_fig10d
+
+.. autofunction:: draw_fig11a
+
+.. autofunction:: draw_fig11b

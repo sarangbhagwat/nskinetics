@@ -8,11 +8,11 @@
 """
 Emulation of the solver run behind the model curves that the authors of
 Kim et al., Appl. Catal. B: Environ. Energy 386 (2026) 126403, deposited
-for Fig. 9a, Fig. 9b and SI Fig. S12a (H2O2).
+for Fig. 9a, Fig. 9b, SI Fig. S12a (H2O2) and Fig. 10a-c.
 
-The deposited model curves are not converged solutions: they have 19 to
-23 unevenly spaced solver steps (20 to 24 nodes with the one at t = 0) that
-lie up to 2.0e-3 from the solution, and they are reproduced step for step
+The deposited model curves are not converged solutions: they have 18 to
+24 unevenly spaced solver steps (19 to 25 nodes with the one at t = 0) that
+lie up to 2.7e-3 from the solution, and they are reproduced step for step
 by the method of MATLAB ``ode23s`` at its default tolerances, the solver
 the paper names. An accurate solver can therefore reproduce them only to
 that error. This module repeats the authors' run instead: it integrates
@@ -37,11 +37,13 @@ import numpy as np
 import pandas as pd
 
 from .pd_c_3hp_oxidation import (
-    NORMALIZED, SPECIES, load_h2o2_model, load_o2_model)
-from .reference import read_fig9a_h2o2, read_fig9b_o2
+    NORMALIZED, SPECIES, load_h2o2_model, load_o2_model,
+    load_o2_reversible_model)
+from .reference import (
+    _fig10_temperature, read_fig9a_h2o2, read_fig9b_o2, read_fig10_o2)
 
 __all__ = ('ode23s', 'emulate_authors_run', 'emulate_fig9a', 'emulate_fig9b',
-           'node_deviations',)
+           'emulate_fig10abc', 'node_deviations',)
 
 
 #%% Solver
@@ -114,26 +116,28 @@ def ode23s(fun, t_end, y0, rtol=1e-3, atol=1e-6, max_step=None):
     The step is taken if the largest component of ``error``, each divided
     by ``max(|y|, |y_new|, atol/rtol)``, is at most ``rtol``. (The
     deposited runs do not test the ``|y_new|`` term of this weight: without
-    it all three take the same steps. The package tests check it on
+    it all six take the same steps. The package tests check it on
     ``y' = y``.) Step-size rules:
 
     * first step: ``1/h = 1.25*sqrt(0.5*max(|J f|/w))/rtol**(1/3)`` with
       ``w = max(|y0|, atol/rtol)``, at most ``max_step``;
     * after a step without a rejection the next step is the last one
       divided by ``1.25*(error/rtol)**(1/3)``, at most five times it (in
-      the three deposited runs the error is small enough for this limit
-      only in the last two steps, where the next step, if there is one, is
-      cut short at ``t_end``; the package tests check it on
+      the six deposited runs the error is small enough for this limit
+      only in the last step and in steps that are already of the largest
+      size, ``max_step``, a tenth of the run; the package tests check it on
       ``y' = -100 y``);
     * a rejected step is retried with the step multiplied by
       ``max(0.1, 0.8*(rtol/error)**(1/3))``, a second rejection onwards
       with half the step, and the step size is then kept for the next
-      step (none of the three deposited runs has a rejected step; the
-      package tests check these rules on ``y' = cos(10 t)``);
+      step (the 25 C run has the only rejected step of the six deposited
+      runs, a first retry; the package tests also check these rules on
+      ``y' = cos(10 t)``);
     * a step that would end within 10 % of its own length before
-      ``t_end`` is stretched to end there (the last step of each of the
-      three deposited runs is cut short at ``t_end`` instead; the package
-      tests check the stretching on ``y' = -y``).
+      ``t_end`` is stretched to end there (the last step of the 100 C
+      run is stretched this way; that of the other five deposited runs is
+      cut short at ``t_end`` instead; the package tests check the
+      stretching on ``y' = -y``).
     """
     y = np.array(y0, dtype=float)
     identity = np.eye(y.size)
@@ -212,6 +216,7 @@ def ode23s(fun, t_end, y0, rtol=1e-3, atol=1e-6, max_step=None):
 # estimate of the solver, which sets the step sizes, runs over all states.
 _SCRIPT_ROWS = {'H2O': {'R1': 1.},
                 'H2': {'R4': 1.},
+                'O2': {'R1': -1., 'R2': -1., 'R4': -1.},
                 'CO2': {'R3': 1., 'R4': 1.}}
 
 
@@ -228,11 +233,15 @@ def _state_names(te_r):
         # The authors posted the O2 version of their script only. The H2O2
         # run is taken as the six liquid species and H2O2.
         return species
+    if species == SPECIES + ('W',):
+        # Reversible O2 variant: W, the water formed by reaction, is the
+        # H2O state of the script, started at zero.
+        return species + ('H2', 'O2', 'CO2')
     if species == SPECIES and 'yO2' in variables:
         return species + ('H2O', 'H2', 'yO2', 'CO2')
     raise ValueError(
         'no deposited curve to emulate for this model: pass a model from '
-        'load_h2o2_model or load_o2_model')
+        'load_h2o2_model, load_o2_model or load_o2_reversible_model')
 
 
 def emulate_authors_run(te_r, t_end, rtol=1e-3, atol=1e-6,
@@ -250,10 +259,11 @@ def emulate_authors_run(te_r, t_end, rtol=1e-3, atol=1e-6,
     Parameters
     ----------
     te_r : nskinetics.KineticModel
-        A model from :func:`~.pd_c_3hp_oxidation.load_h2o2_model` or
-        :func:`~.pd_c_3hp_oxidation.load_o2_model`, with any values set on
-        it. It is reset before the run and again after it; values set with
-        ``set_value`` are kept.
+        A model from :func:`~.pd_c_3hp_oxidation.load_h2o2_model`,
+        :func:`~.pd_c_3hp_oxidation.load_o2_model` or
+        :func:`~.pd_c_3hp_oxidation.load_o2_reversible_model`, with any
+        values set on it. It is reset before the run and again after it;
+        values set with ``set_value`` are kept.
     t_end : float
         End of the run in min. The authors' script integrates to 1.1
         times the last sampling time of the experiment.
@@ -262,7 +272,7 @@ def emulate_authors_run(te_r, t_end, rtol=1e-3, atol=1e-6,
     script_states : bool, optional
         Whether the states of the posted script that the model does not
         have are integrated along (default). They enter no rate, and
-        leaving them out changes no step of the three deposited runs (see
+        leaving them out changes no step of the six deposited runs (see
         the Notes).
 
     Returns
@@ -277,17 +287,20 @@ def emulate_authors_run(te_r, t_end, rtol=1e-3, atol=1e-6,
     Raises
     ------
     ValueError
-        If ``te_r`` is not one of the two models named above.
+        If ``te_r`` is not one of the three models named above (there is
+        no deposited curve of the simplified reversible model).
 
     Notes
     -----
     The integrated states are, in this order: for the O2 model the ten
     states of the posted script, 3-HP, OPA, MA, AAc, OXA, D, H2O, H2, O2 and
-    CO2, with ``yO2`` of the model as the O2 state; for the H2O2 model
+    CO2, with ``yO2`` of the model as the O2 state; for the reversible O2
+    variant the same ten, with ``W`` of the model as the H2O state (it
+    starts at zero) and O2 integrated as in the script; for the H2O2 model
     the six liquid species and H2O2. States that the model does not have
-    (H2O, H2, CO2) follow the stoichiometric matrix of the script and
+    (H2O, H2, O2, CO2) follow the stoichiometric matrix of the script and
     do not enter any rate. They could matter only through the error
-    estimate of the solver, which runs over all states; in the three
+    estimate of the solver, which runs over all states; in the six
     deposited runs they never set it, and with ``script_states=False`` the
     steps are the same to 1e-12.
     """
@@ -328,6 +341,8 @@ def emulate_authors_run(te_r, t_end, rtol=1e-3, atol=1e-6,
     if 'H2O' in names:
         # Script: the liquid mole fractions add up to 1.
         y0[names.index('H2O')] = 1. - y0[:len(SPECIES)].sum()
+    if 'O2' in names:
+        y0[names.index('O2')] = 1.
     times, states, info = ode23s(fun, t_end, y0, rtol=rtol, atol=atol)
 
     plotted = list(NORMALIZED) + ['x_OPA']
@@ -395,6 +410,33 @@ def emulate_fig9b(parameter_set='fig9b_nodes'):
     """
     return emulate_authors_run(load_o2_model(parameter_set=parameter_set),
                                _t_end(read_fig9b_o2()))
+
+
+def emulate_fig10abc(temperature_C):
+    """Repeat the solver run behind a deposited curve of Fig. 10a-c (O2).
+
+    Parameters
+    ----------
+    temperature_C : {25, 75, 100} or {'25C', '75C', '100C'}
+        Temperature of the experiment in degrees Celsius, or the label of
+        its constant set. The model is the reversible O2 variant with the
+        constant set of that experiment.
+
+    Returns
+    -------
+    pandas.DataFrame
+        The steps of the run from 0 to 2079, 1584 or 1716 min, as returned
+        by :func:`emulate_authors_run`.
+
+    Raises
+    ------
+    ValueError
+        For any other temperature or label.
+    """
+    temperature_C = _fig10_temperature(temperature_C)   # refuses any other
+    return emulate_authors_run(
+        load_o2_reversible_model('%dC' % temperature_C),
+        _t_end(read_fig10_o2(temperature_C)))
 
 
 def node_deviations(emulated, deposited, columns=NORMALIZED):

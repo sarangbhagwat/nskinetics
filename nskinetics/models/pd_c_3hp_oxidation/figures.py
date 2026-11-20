@@ -6,9 +6,8 @@
 # https://github.com/sarangbhagwat/nskinetics/blob/main/LICENSE
 # for license details.
 """
-Regenerate Fig. 9 and SI Fig. S12 of Kim et al., Appl. Catal. B: Environ.
-Energy 386 (2026) 126403, from the NSKinetics models of this package, and
-draw a comparison figure and a verification figure.
+Regenerate the kinetic-model figures of Kim et al., Appl. Catal. B: Environ.
+Energy 386 (2026) 126403, from the NSKinetics models of this package.
 
 Figures
 -------
@@ -18,37 +17,67 @@ Figures
     points and solid lines are the NSKinetics model; the black dotted line
     is the model curve the authors deposited (a polyline through their
     solver's steps), drawn for comparison.
+``fig10``
+    Fig. 10: (a-c) normalized concentration profiles with O2 at 25, 75 and
+    100 C: experimental points, the reversible O2 variant that was inferred
+    from the deposited model curves (solid lines) and those deposited curves
+    (black dotted lines); (d) the Arrhenius plot: the deposited points
+    (taken to be rate constants of the simplified reversible model, see
+    ``NOTES.md``) and the three dashed lines, recomputed by least squares
+    through the points each line was fitted to.
 ``fig10_table3_o2``
     The experiments of Fig. 10a-c compared with the Table 3 O2 model
-    extended with the Arrhenius relation, with the pooled R2 of the model
-    against the experimental points in a box in each panel; and the
-    Arrhenius plot (Fig. 10d) with the lines that the activation energies
-    quoted in the text imply next to the regression lines.
+    extended with the Arrhenius relation (as the text of the paper
+    describes for Fig. 11), with the per-temperature constant sets as
+    dashed lines and, in a box in each panel, the pooled R2 of the model
+    and of those sets against the experimental points; and the Arrhenius
+    plot (Fig. 10d) with the lines that the activation energies quoted in
+    the text imply next to the regression lines.
 ``figS12``
     SI Fig. S12: the same profiles with the predicted (a) H2O2 and (b) OPA
     as dashed lines and in the insets. The insets also show the published
     inset curve, digitized from the SI figure, and in (a) the H2O2 trace
     the authors deposited.
+``fig11``
+    Fig. 11: heat maps of (a) MA "selectivity" and (b) MA "yield" over
+    temperature and time, computed with the authors' simplified reversible
+    model as their heat-map script runs it, each panel with its own
+    constant set. Contour lines at 0.1, 0.3 and 0.5, the red dashed line
+    through the row maxima, a red star at the largest cell and a purple
+    star at the maximum of the 50 C row; the insets are zooms of the same
+    matrix. Two things differ from the published figure on purpose: the
+    largest cell of each map is annotated with its value, and the
+    colour-bar label of panel a is spelled "MA Selectivity" (the published
+    panel prints "MA Selectvity").
+``fig11_verification``
+    The reproduced Fig. 11 maps with the contour lines, red dashed line
+    and stars digitized from the published figure drawn on top as fine
+    black dots, and the offset of every digitized contour sample from the
+    reproduced contour.
+``fig11_table3_o2``
+    The same two maps computed with the Table 3 O2 model extended with the
+    Arrhenius relation, which is what the text of the paper describes for
+    Fig. 11, with the published (digitized) contour lines drawn on top.
 
 ``solver_emulation``
-    Verification figure, not a figure of the paper: the three model curves
+    Verification figure, not a figure of the paper: the six model curves
     the authors deposited (Fig. 9a, Fig. 9b, the H2O2 trace of SI
-    Fig. S12a) as open circles at their nodes, the steps of the repeated
-    solver run (``solver_emulation``) as crosses on top, and the accurate
-    solution of the same model as lines. Below each panel, on a
-    logarithmic axis, how far the emulated steps and the accurate solution
-    are from the deposited nodes.
+    Fig. S12a, Fig. 10a-c) as open circles at their nodes, the steps of
+    the repeated solver run (``solver_emulation``) as crosses on top, and
+    the accurate solution of the same model as lines. Below each panel,
+    on a logarithmic axis, how far the emulated steps and the accurate
+    solution are from the deposited nodes.
 
-The layout of Fig. 9 and SI Fig. S12, the series colors, the colors of the
-reaction lists and the ticks (inward with minor ticks in Figs. 9 and 10,
-outward in SI Fig. S12) follow the published panels; the fonts are Arial
-where it is installed. Black dotted deposited curves, digitized overlays
-and the measured R2 values are additions, named in the entries above. Run
-as a script to write every figure (PNG and PDF) to a folder::
+The layout, the series colors, the colors of the reaction lists and the
+ticks (inward with minor ticks in Figs. 9 and 10, outward in SI Fig. S12,
+inward on all four sides in Fig. 11) follow the published panels; the fonts
+are Arial where it is installed. Black dotted deposited curves, digitized
+overlays and the measured R2 values are additions, named in the entries
+above. Run as a script to write every figure (PNG and PDF) to a folder::
 
     python -m nskinetics.models.pd_c_3hp_oxidation.figures OUTPUT_DIR
 
-Add ``--figures fig9 fig10_table3_o2`` to write only the figures named,
+Add ``--figures fig10 fig10_table3_o2`` to write only the figures named,
 ``--formats png`` to choose the formats and ``--dpi 100`` to set the
 resolution of the PNG files (default 600).
 """
@@ -57,23 +86,33 @@ import os
 
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.colors import LinearSegmentedColormap
+from matplotlib.legend_handler import HandlerTuple
 from matplotlib.lines import Line2D
 from matplotlib.offsetbox import (
     AnchoredOffsetbox, DrawingArea, HPacker, TextArea, VPacker)
 from matplotlib.ticker import MultipleLocator
 
+from .heat_maps import (
+    FIG11_C_PER_PX, FIG11_LEVELS, FIG11_MIN_PER_PX, contour_offsets,
+    fig11_panel_heat_map, heat_map_maximum, heat_map_ridge,
+    table3_o2_heat_maps)
 from .pd_c_3hp_oxidation import (
-    NORMALIZED, load_h2o2_model, load_o2_model, simulate_at_times)
+    NORMALIZED, load_h2o2_model, load_o2_model, load_o2_reversible_model,
+    simulate_at_times)
 from .reference import (
-    read_fig9a_h2o2, read_fig9b_o2, read_fig10_o2,
+    _fig10_temperature, read_fig9a_h2o2, read_fig9b_o2, read_fig10_o2,
+    read_fig11a_selectivity_digitized, read_fig11b_yield_digitized,
     read_figS12a_h2o2_inset_digitized, read_figS12b_opa_inset_digitized)
 from .solver_emulation import emulate_authors_run, node_deviations
 from .temperature_series import (
     FIG10_TEMPERATURES_C, FIG10D_LINE_ENDS_C, fig10d_points,
     fig10d_regression_lines, fig10d_text_lines, pooled_r2)
 
-__all__ = ('draw_fig9a', 'draw_fig9b', 'draw_figS12a', 'draw_figS12b',
-           'plot_fig9', 'plot_fig10_table3_o2', 'plot_figS12',
+__all__ = ('draw_fig9a', 'draw_fig9b', 'draw_fig10abc', 'draw_fig10d',
+           'draw_figS12a', 'draw_figS12b', 'draw_fig11a', 'draw_fig11b',
+           'plot_fig9', 'plot_fig10', 'plot_fig10_table3_o2', 'plot_figS12',
+           'plot_fig11', 'plot_fig11_verification', 'plot_fig11_table3_o2',
            'plot_solver_emulation', 'save_figures',)
 
 #%% Style
@@ -115,13 +154,54 @@ _TAGS = {'H2O2': ('H$_2$O$_2$', '#fbb4b4', '#e98686'),
 _TEMPERATURE_TAGS = {25: ('#b9d3e6', '#2f8fd0'), 75: ('#ffc9bb', '#ff7a3d'),
                      100: ('#ff8585', '#e5262b')}
 # Fig. 10d: the three plotted constants, named as read_fig10d_arrhenius
-# names them, with the label and the color of the published series.
+# names them (as the constants of the simplified reversible model they are
+# taken to be), with the label and the color of the published series.
 _FIG10D_SERIES = {'k_1': ('3-HP $\\rightarrow$ MA', _COLORS['X_MA']),
                   'k_2': ('MA $\\rightarrow$ AAc', _COLORS['X_AAc']),
                   'k_5': ('MA $\\rightarrow$ Others', _C_FIG10_OTHERS)}
 
 _T_END = 1440.                       # right edge of the published time axis
 _T_DENSE = np.linspace(0., _T_END, 2881)
+
+# Fig. 11: color map and contour colors of the authors' heat-map script.
+_HEAT_MAP_CMAP = LinearSegmentedColormap.from_list('kim2026_heat_map', [
+    (0.0, (0.737, 0.675, 0.89)), (0.15, (0.659, 0.788, 1.)),
+    (0.3, (0.69, 0.89, 0.776)), (0.5, (1., 0.922, 0.588)),
+    (0.7, (1., 0.584, 0.392)), (1.0, (1., 0.353, 0.353))])
+_CONTOUR_COLORS = {0.1: (0.30, 0.50, 0.82), 0.3: (0.35, 0.57, 0.40),
+                  0.5: (0.82, 0.56, 0.09)}
+_C_RIDGE = '#e41a1c'
+_C_RED_STAR = '#f0525a'
+_C_PURPLE_STAR = '#7b6fc4'
+# The two panels: mapped quantity, its index in the tuple returned by
+# simulate_heat_maps, and the reader of the lines digitized from the
+# published panel.
+_FIG11_PANELS = {
+    'a': ('MA Selectivity', 2, read_fig11a_selectivity_digitized),
+    'b': ('MA Yield', 3, read_fig11b_yield_digitized),
+    }
+# Where the contour labels sit in the published panels and insets, as
+# (font size, [(time in min, temperature in C), ...]) groups; each label
+# goes on the nearest line. The last group of each inset holds the labels
+# of the steep lines before the red dashed line.
+_FIG11_LABELS = {
+    'a': [(9, [(350., 76.5), (233., 71.), (156., 68.8), (25., 50.),
+               (58., 48.7), (227., 42.)])],
+    'b': [(9, [(683., 66.4), (522., 59.3), (359., 54.2), (236., 49.),
+               (1467., 54.9), (1298., 45.6), (1082., 36.4), (968., 32.),
+               (107., 40.), (282., 37.)])],
+    }
+_FIG11_INSET_LABELS = {
+    'a': [(7, [(430., 53.7), (800., 53.7), (1480., 55.)]),
+          (4, [(25., 49.6), (64., 50.4), (141., 50.)])],
+    'b': [(7, [(330., 55.4), (480., 49.5), (700., 55.3), (985., 49.5),
+               (1440., 55.5)]),
+          (7, [(65., 47.8), (131., 48.8), (262., 48.2)])],
+    }
+
+# Line widths of the computed maps in the overlay figures: wide, so that
+# the fine black dots of the digitized published lines show inside them.
+_OVERLAY_LINES = dict(contour_lw=2.6, ridge_lw=2.6)
 
 # Reaction lists of Fig. 9: (reactants, products) of each reaction.
 _REACTIONS = {
@@ -183,14 +263,14 @@ def _line_handle(color, label, **kwargs):
     return Line2D([], [], color=color, label=label, **kwargs)
 
 
-def _species_legend(ax, anchor):
+def _species_legend(ax, anchor, loc='upper left', colors=_COLORS):
     """Two key columns as published (model | experiment), rows aligned.
 
     The key is built cell by cell and not with ``ax.legend``: a legend
     packs each of its columns on its own, and the rows of the two columns
     then drift apart because a label with the superscript "mod" is taller
     than one with "exp". Here every cell has the same height, whatever the
-    font. ``anchor`` is the upper left corner, in axes fractions.
+    font. ``anchor`` is the corner named by ``loc``, in axes fractions.
     """
     size = 8.5                              # font size in points
     ascent, descent = 1.02*size, 0.24*size  # of a cell, about the baseline
@@ -205,14 +285,14 @@ def _species_legend(ax, anchor):
         for name in NORMALIZED:
             box = DrawingArea(width, ascent + descent, 0., descent)
             box.add_artist(Line2D(xdata, [0.33*size]*len(xdata),
-                                  color=_COLORS[name], **handle))
+                                  color=colors[name], **handle))
             label = TextArea(_LABELS[name] + '$^{%s}$' % superscript,
                              textprops=dict(size=size))
             cells.append(HPacker(children=[box, label], align='baseline',
                                  pad=0., sep=0.5*size))
         columns.append(VPacker(children=cells, align='left', pad=0., sep=0.))
     key = AnchoredOffsetbox(
-        'upper left', child=HPacker(children=columns, align='top', pad=0.,
+        loc, child=HPacker(children=columns, align='top', pad=0.,
                            sep=1.2*size),
         pad=0., borderpad=0., frameon=False, bbox_to_anchor=anchor,
         bbox_transform=ax.transAxes)
@@ -221,11 +301,11 @@ def _species_legend(ax, anchor):
     return key
 
 
-def _draw_fig9_panel(ax, km, reference, oxidant, legend_anchor,
-                     deposited_anchor):
-    """Experiment, model and deposited model curve of one panel of Fig. 9."""
+def _draw_profiles(ax, km, reference, legend_anchor, deposited_anchor,
+                   legend_loc='upper left', colors=_COLORS):
+    """Experiment, model and deposited model curve of one profile panel."""
     sim = simulate_at_times(km, _T_DENSE)
-    _species(ax, sim, reference['experiment'])
+    _species(ax, sim, reference['experiment'], colors=colors)
     deposited = reference['model']
     for name in NORMALIZED:
         ax.plot(deposited['time'], deposited[name], color='black', lw=0.9,
@@ -233,16 +313,21 @@ def _draw_fig9_panel(ax, km, reference, oxidant, legend_anchor,
     _frame(ax)
     # A separate key for the deposited curve, placed where the panel is
     # empty.
-    _species_legend(ax, legend_anchor)
+    _species_legend(ax, legend_anchor, legend_loc, colors)
     ax.legend(handles=[_line_handle('black', 'Deposited model curve',
                                     lw=0.9, ls=(0, (1, 2)))],
               loc='upper right', bbox_to_anchor=deposited_anchor,
               frameon=False, fontsize=8.5, handlelength=2.4,
               handletextpad=0.5, borderaxespad=0.)
+
+
+def _draw_fig9_panel(ax, km, reference, oxidant, legend_anchor,
+                     deposited_anchor):
+    _draw_profiles(ax, km, reference, legend_anchor, deposited_anchor)
     _tag(ax, oxidant)
 
 
-def _temperature_tag(ax, temperature_C, r2_text, y):
+def _temperature_tag(ax, temperature_C, r2_text, y=0.775):
     """Temperature box at height ``y`` (axes fraction) and, below it, a box
     with ``r2_text`` (the pooled R2 against the experiment)."""
     face, edge = _TEMPERATURE_TAGS[temperature_C]
@@ -297,6 +382,42 @@ def draw_fig9b(ax):
                      legend_anchor=(0.07, 0.97), deposited_anchor=(0.97, 0.50))
 
 
+# Where the species key (as published) and the key of the deposited curve
+# sit in the panels of Fig. 10a-c. The species key is anchored by its right
+# edge, so that a wider fallback font makes it grow away from the frame.
+_FIG10_LEGEND_ANCHOR = (0.975, 0.555)
+_FIG10_KEY_ANCHOR = (0.975, 0.215)
+
+
+def draw_fig10abc(ax, temperature_C):
+    """Draw Fig. 10a, b or c: O2 at 25, 75 or 100 C.
+
+    Circles are the experimental points, solid lines the reversible O2
+    variant with the constant set of that temperature, and the black dotted
+    line the model curve the authors deposited (a polyline through their
+    solver's steps), from which that variant was inferred. The box below
+    the temperature gives the pooled R2 of the solid lines against all
+    experimental points of the panel (the published panels print 0.99).
+
+    Parameters
+    ----------
+    ax : matplotlib.axes.Axes
+        Axes to draw on.
+    temperature_C : {25, 75, 100} or {'25C', '75C', '100C'}
+        Temperature of the experiment in degrees Celsius, or the label of
+        its constant set.
+    """
+    temperature_C = _fig10_temperature(temperature_C)   # refuses any other
+    reference = read_fig10_o2(temperature_C)
+    km = load_o2_reversible_model('%dC' % temperature_C)
+    _draw_profiles(ax, km, reference, _FIG10_LEGEND_ANCHOR,
+                   _FIG10_KEY_ANCHOR, legend_loc='upper right',
+                   colors=_FIG10_COLORS)
+    experiment = reference['experiment']
+    _temperature_tag(ax, temperature_C, 'R$^2$ = %.3f' % pooled_r2(
+        experiment, simulate_at_times(km, experiment['time'])))
+
+
 def _arrhenius_line(ax, line, ends_C, color, **kwargs):
     inv_T = 1./(np.asarray(ends_C) + 273.15)
     ax.plot(1000.*inv_T, line['slope']*inv_T + line['intercept'],
@@ -322,6 +443,37 @@ def _arrhenius_frame(ax):
     ax.tick_params(which='minor', length=3, width=1.2)
     ax.set_xlabel('1000/T (K$^{-1}$)', fontsize=15)
     ax.set_ylabel('ln k', fontsize=15)
+
+
+def draw_fig10d(ax):
+    """Draw Fig. 10d: the Arrhenius plot.
+
+    The circles are the deposited points: ``ln k`` (k taken as 1/min) of three
+    rate constants at 25, 50, 75 and 100 C, taken to be 3-HP to MA
+    (``k_1``), MA to AAc (``k_2``) and MA to others (``k_5``) of the
+    simplified reversible model (see ``NOTES.md``; the paper does not name
+    the model). Each dashed line is the least-squares line through three
+    of the four points, recomputed here and drawn over the range of the
+    published line: ``k_1`` through 25, 75 and 100 C, ``k_2`` and ``k_5``
+    through 50, 75 and 100 C.
+
+    Parameters
+    ----------
+    ax : matplotlib.axes.Axes
+        Axes to draw on.
+    """
+    lines = fig10d_regression_lines()
+    for name, (label, color) in _FIG10D_SERIES.items():
+        _arrhenius_line(ax, lines[name], FIG10D_LINE_ENDS_C[name], color,
+                        lw=1.4, ls=(0, (3, 2.5)), alpha=0.55, zorder=2)
+    _draw_arrhenius_points(ax)
+    _arrhenius_frame(ax)
+    ax.legend(handles=[
+        _line_handle(color, label, lw=1.4, ls=(0, (3, 2.5)), marker='o',
+                     ms=8, mfc='none', mew=1.8)
+        for label, color in _FIG10D_SERIES.values()],
+        loc='upper right', frameon=False, fontsize=12, handlelength=3.2,
+        handletextpad=0.5, labelspacing=0.25, borderaxespad=0.6)
 
 
 def draw_figS12a(ax):
@@ -447,6 +599,211 @@ def _draw_reactions(ax, oxidant):
             fontsize=size, color=_C_INK)
 
 
+#%% Heat-map panels (Fig. 11)
+def _star(ax, t, T, color, ms=13, **kwargs):
+    ax.plot([t], [T], ls='none', marker='*', ms=ms, mfc=color, mec=color,
+            mew=0.6, alpha=0.9, zorder=6, **kwargs)
+
+
+def _heat_map(ax, T_C, times, matrix, contour_lw=1.0, labels=(),
+              ridge_lw=1.6):
+    """Flat 1 C cells, contour lines, red dashed line and the two stars."""
+    mesh = ax.pcolormesh(times, T_C, matrix, shading='nearest',
+                         cmap=_HEAT_MAP_CMAP, vmin=0., vmax=1.,
+                         rasterized=True)
+    contours = ax.contour(times, T_C, matrix, levels=list(FIG11_LEVELS),
+                          colors=[_CONTOUR_COLORS[level]
+                                  for level in FIG11_LEVELS],
+                          linewidths=contour_lw)
+    for label_size, positions in labels:
+        ax.clabel(contours, fmt='%g', fontsize=label_size, manual=positions)
+    ax.plot(heat_map_ridge(times, matrix), T_C, color=_C_RIDGE, ls='--',
+            lw=ridge_lw, zorder=4)
+    _, T_max, t_max = heat_map_maximum(T_C, times, matrix)
+    _star(ax, t_max, T_max, _C_RED_STAR)
+    row_50 = matrix[np.argmin(np.abs(T_C - 50.))]
+    _star(ax, times[np.argmax(row_50)], 50., _C_PURPLE_STAR)
+    return mesh
+
+
+def _heat_map_frame(ax, labelsize=15):
+    ax.set_xlim(7.2, 1682.8)            # half a cell beyond the grid
+    ax.set_ylim(29.5, 100.5)
+    ax.set_xticks(np.arange(200, 1601, 200))
+    ax.set_yticks(np.arange(30, 101, 10))
+    # Inward ticks on all four sides, as published.
+    ax.tick_params(length=4, direction='in', top=True, right=True)
+    ax.set_xlabel('Time (min)', fontsize=labelsize)
+    ax.set_ylabel('Temperature (\N{DEGREE SIGN}C)', fontsize=labelsize)
+
+
+def _colorbar(ax, mesh, label, labelsize=15):
+    # Drawn beside the axes without shrinking them.
+    bar = ax.figure.colorbar(mesh, cax=ax.inset_axes([1.025, 0., 0.05, 1.]),
+                             ticks=np.arange(0., 1.01, 0.1), format='%g')
+    bar.ax.tick_params(length=3)
+    bar.set_label(label, fontsize=labelsize, rotation=270, labelpad=20)
+    return bar
+
+
+def _annotate_maximum(ax, T_C, times, matrix, xytext, prefix='Max'):
+    value, T_max, t_max = heat_map_maximum(T_C, times, matrix)
+    ax.annotate(
+        '%s %.3f\n%g \N{DEGREE SIGN}C, %.0f min' % (prefix, value, T_max,
+                                                    t_max),
+        (t_max, T_max), xytext=xytext, fontsize=9, color=_C_INK, zorder=7,
+        ha='left', va='center', linespacing=1.1,
+        arrowprops=dict(arrowstyle='-', color=_C_INK, lw=0.7, shrinkA=1,
+                        shrinkB=6))
+
+
+def _draw_fig11_panel(ax, panel, annotation_xytext):
+    label = _FIG11_PANELS[panel][0]
+    T_C, times, matrix = fig11_panel_heat_map(panel)
+    mesh = _heat_map(ax, T_C, times, matrix, labels=_FIG11_LABELS[panel])
+    _heat_map_frame(ax)
+    _annotate_maximum(ax, T_C, times, matrix, annotation_xytext)
+    _colorbar(ax, mesh, label)
+
+    # Inset as published: the 47 to 57 C rows over the whole time axis.
+    # The limits are set first: the contour labels are rotated and the
+    # lines opened for them as the axes are scaled when they are placed.
+    inset = ax.inset_axes([0.535, 0.525, 0.435, 0.435], zorder=5)
+    inset.set_xlim(7.2, 1682.8)
+    inset.set_ylim(46.5, 57.5)
+    _heat_map(inset, T_C, times, matrix, contour_lw=0.9,
+              labels=_FIG11_INSET_LABELS[panel], ridge_lw=1.3)
+    inset.set_xticks([200, 600, 1000, 1400])
+    inset.set_yticks([48, 50, 52, 54, 56])
+    # Inward ticks on all four sides, every 200 min and every 1 C, as
+    # published.
+    inset.xaxis.set_minor_locator(MultipleLocator(200))
+    inset.yaxis.set_minor_locator(MultipleLocator(1))
+    inset.tick_params(which='both', direction='in', top=True, right=True,
+                      length=3)
+    inset.tick_params(labelsize=8.5, pad=2)
+    inset.set_xlabel('Time (min)', fontsize=9, labelpad=0.5)
+    inset.set_ylabel('Temperature (\N{DEGREE SIGN}C)', fontsize=9, labelpad=1)
+
+
+def draw_fig11a(ax):
+    """Draw Fig. 11a: heat map of MA "selectivity" (``X_MA``).
+
+    Computed with the simplified reversible model and its ``'fig11a'``
+    constant set, as the authors' heat-map script runs it. The red star is
+    the largest cell of the map and the purple star the maximum of its
+    50 C row. The inset is a zoom of the same matrix; in the published
+    figure the inset lines sit 7 to 10 min later than those of the main
+    panel, which a zoom cannot reproduce.
+
+    Two things are not as in the published panel: the largest cell is
+    annotated with its value, temperature and plotted time, and the
+    colour-bar label reads "MA Selectivity" (published: "MA Selectvity").
+
+    Parameters
+    ----------
+    ax : matplotlib.axes.Axes
+        Axes to draw on. The colour bar is drawn beside it.
+    """
+    _draw_fig11_panel(ax, 'a', annotation_xytext=(130., 96.5))
+
+
+def draw_fig11b(ax):
+    """Draw Fig. 11b: heat map of MA "yield" (``(1 - X_HP3)*X_MA``).
+
+    Computed with the simplified reversible model and its ``'fig11b'``
+    constant set; see :func:`draw_fig11a`. In the published figure the
+    inset lines are up to 15 min off those of the main panel (41 min for
+    the 0.3 contour on the late side). The largest cell is annotated,
+    which the published panel does not do; the stars sit on the computed
+    maxima, whereas the published main panel draws them 7 and 13 min
+    later (see ``NOTES.md``).
+
+    Parameters
+    ----------
+    ax : matplotlib.axes.Axes
+        Axes to draw on. The colour bar is drawn beside it.
+    """
+    _draw_fig11_panel(ax, 'b', annotation_xytext=(240., 88.))
+
+
+def _draw_digitized(ax, digitized, ms=1.5):
+    """Lines and stars digitized from a published Fig. 11 panel, in black.
+
+    The line samples are drawn as fine dots, narrower than the lines of the
+    computed map they are compared with, so that both stay visible where
+    they coincide.
+    """
+    contours, ridge = digitized['contours'], digitized['ridge']
+    for samples in (contours, ridge):
+        ax.plot(samples['time'], samples['T_C'], ls='none', marker='.',
+                ms=ms, mew=0., color='black', zorder=5)
+    stars = digitized['stars']
+    ax.plot(stars['time'], stars['T_C'], ls='none', marker='*', ms=12,
+            mfc='none', mec='black', mew=0.8, zorder=7)
+
+
+def _overlay_legend(ax, model_label):
+    """Key of an overlay panel: computed map against the published lines."""
+    model_contours = tuple(_line_handle(_CONTOUR_COLORS[level], None, lw=2.6)
+                           for level in FIG11_LEVELS)
+    model_stars = tuple(_line_handle(color, None, ls='none', marker='*',
+                                     ms=10)
+                        for color in (_C_RED_STAR, _C_PURPLE_STAR))
+    handles = [
+        model_contours,
+        _line_handle(_C_RIDGE, None, lw=2.6, ls='--'),
+        model_stars,
+        _line_handle('black', None, lw=1.1, ls=(0, (0.1, 2.4)),
+                     dash_capstyle='round'),
+        _line_handle('black', None, ls='none', marker='*', ms=9, mfc='none',
+                     mew=0.8)]
+    labels = [model_label + ': contours 0.1, 0.3, 0.5',
+              model_label + ': row maxima',
+              model_label + ': maximum, 50 \N{DEGREE SIGN}C maximum',
+              'Published: lines (digitized)',
+              'Published: stars (digitized)']
+    ax.legend(handles, labels, loc='upper right', fontsize=8, frameon=True,
+              framealpha=0.85, edgecolor='none', handlelength=3.4,
+              labelspacing=0.25, borderaxespad=0.6,
+              handler_map={tuple: HandlerTuple(ndivide=None, pad=0.3)})
+
+
+def _draw_offsets(ax, T_C, times, matrix, digitized, ylim):
+    """Offset of each digitized contour sample from the map's contour."""
+    contours = digitized['contours']
+    rms = []
+    for (level, branch), samples in contours.groupby(['level', 'branch']):
+        inside = samples[samples['time'].between(times[0], times[-1])
+                         & samples['T_C'].between(T_C[0], T_C[-1])]
+        offsets = contour_offsets(T_C, times, matrix, level, inside['time'],
+                                  inside['T_C'])
+        rms.append(offsets)
+        early = branch == 'early'
+        ax.plot(inside['T_C'], offsets, ls='none',
+                marker='o' if early else 's', ms=2.6,
+                mfc='none' if early else _CONTOUR_COLORS[level],
+                mec=_CONTOUR_COLORS[level], mew=0.5,
+                label='%g, %s' % (level, branch))
+    rms = np.sqrt(np.mean(np.concatenate(rms)**2))
+    ax.axhline(0., color=_C_INK, lw=0.8)
+    ax.set_xlim(29.5, 100.5)
+    ax.set_ylim(*ylim)
+    ax.set_xticks(np.arange(30, 101, 10))
+    ax.tick_params(length=4, direction='in')
+    ax.set_xlabel('Temperature of the sample (\N{DEGREE SIGN}C)', fontsize=13)
+    ax.set_ylabel('Offset from the\ncomputed contour (px)', fontsize=13,
+                  linespacing=0.95)
+    ax.text(0.02, 0.05, 'rms %.2f px (1 px = %.2f min or %.3f '
+            '\N{DEGREE SIGN}C)' % (rms, FIG11_MIN_PER_PX, FIG11_C_PER_PX),
+            transform=ax.transAxes, va='bottom', fontsize=10, color=_C_INK)
+    ax.legend(title='Contour level, side of the red dashed line', ncol=3,
+              loc='upper right', fontsize=8, title_fontsize=8, frameon=False,
+              handletextpad=0.2, columnspacing=1.0, labelspacing=0.25,
+              markerscale=1.6)
+    return rms
+
+
 #%% Figures
 def plot_fig9():
     """Regenerate Fig. 9 (panel a: H2O2, panel b: O2, with reaction lists).
@@ -468,6 +825,24 @@ def plot_fig9():
     return fig
 
 
+def plot_fig10():
+    """Regenerate Fig. 10 (a-c: O2 at 25, 75 and 100 C; d: Arrhenius plot).
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+    """
+    with plt.rc_context(_RC_PARAMS):
+        fig, axes = plt.subplots(2, 2, figsize=(11.6, 9.0),
+                                 gridspec_kw=dict(wspace=0.36, hspace=0.30))
+        axes = axes.ravel()
+        for ax, temperature_C in zip(axes, FIG10_TEMPERATURES_C):
+            draw_fig10abc(ax, temperature_C)
+        draw_fig10d(axes[3])
+        _panel_letters(axes)
+    return fig
+
+
 # Height of the temperature tag in panels a to c of the comparison figure,
 # chosen so that the tag and the R2 box below it lie clear of the curves.
 _FIG10_TABLE3_TAG_Y = {25: 0.80, 75: 0.80, 100: 0.735}
@@ -479,12 +854,15 @@ def plot_fig10_table3_o2():
 
     Panels a to c: the experimental points of Fig. 10a-c with the Table 3
     O2 model at 25, 75 and 100 C (solid lines; the model of Fig. 9b
-    extended with the Arrhenius relation; the model curves of the
-    published panels are not this extension). The box gives the pooled R2
-    of the model against all deposited experimental rows of that
-    temperature. The time axis ends at 1440 min, as in the published
-    panels; the samples after it (1740 and 1890 min at 25 C, 1560 min at
-    100 C) are not drawn but are counted in R2.
+    extended with the Arrhenius relation, as the text of the paper
+    describes for Fig. 11; the model curves of the published panels are
+    not this extension) and the curves of the per-temperature constant
+    sets (dashed lines; the reversible O2 variant, which reproduces the
+    published curves). The box gives the pooled R2 of each against all
+    deposited experimental rows of that temperature (the Table 3 model
+    first). The time axis ends at 1440 min, as in the published panels; the
+    samples after it (1740 and 1890 min at 25 C, 1560 min at 100 C) are not
+    drawn but are counted in R2.
 
     Panel d: the points of Fig. 10d with the published regression lines
     (dashed) and the lines that the activation energies quoted in the text
@@ -512,11 +890,19 @@ def plot_fig10_table3_o2():
             table3 = load_o2_model(T=temperature_C + 273.15)
             _species(ax, simulate_at_times(table3, _T_DENSE), experiment,
                      colors=_FIG10_COLORS)
+            reversible = load_o2_reversible_model('%dC' % temperature_C)
+            fit = simulate_at_times(reversible, _T_DENSE)
+            for name in NORMALIZED:
+                ax.plot(fit['time'], fit[name], color=_FIG10_COLORS[name],
+                        lw=1.0, ls=(0, (4, 2)), zorder=2)
             _frame(ax)
+            r2 = [pooled_r2(experiment,
+                            simulate_at_times(km, experiment['time']))
+                  for km in (table3, reversible)]
             _temperature_tag(
-                ax, temperature_C, 'R$^2$ = %.3f' % pooled_r2(
-                    experiment, simulate_at_times(table3,
-                                                  experiment['time'])),
+                ax, temperature_C,
+                'R$^2$ = %.3f (Table 3)\n'
+                'R$^2$ = %.3f (reversible variant)' % tuple(r2),
                 y=_FIG10_TABLE3_TAG_Y[temperature_C])
         for y, handles in (
                 (0.930, [_line_handle(_FIG10_COLORS[n], _LABELS[n], lw=1.8,
@@ -526,7 +912,10 @@ def plot_fig10_table3_o2():
                                       marker='o', ms=5, mfc='none', mew=1.3),
                          _line_handle(_C_MUTED, 'Table 3 O$_2$ model with '
                                       'Arrhenius temperature dependence',
-                                      lw=1.8)])):
+                                      lw=1.8),
+                         _line_handle(_C_MUTED, 'Reversible variant, one '
+                                      'constant set per temperature',
+                                      lw=1.0, ls=(0, (4, 2)))])):
             fig.legend(handles=handles, ncol=len(handles),
                        loc='lower center', bbox_to_anchor=(0.5, y),
                        bbox_transform=fig.transFigure, frameon=False,
@@ -573,11 +962,98 @@ def plot_figS12():
     return fig
 
 
+def plot_fig11():
+    """Regenerate Fig. 11 (a: MA "selectivity", b: MA "yield" heat maps).
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+    """
+    with plt.rc_context(_RC_PARAMS):
+        fig, axes = plt.subplots(1, 2, figsize=(13.2, 4.6),
+                                 gridspec_kw=dict(wspace=0.48))
+        for ax, letter, draw in zip(axes, 'ab', (draw_fig11a, draw_fig11b)):
+            draw(ax)
+            ax.text(-0.21, 1.03, letter, transform=ax.transAxes, fontsize=24,
+                    va='top', color=_C_INK)
+    return fig
+
+
+def plot_fig11_verification():
+    """Compare the reproduced Fig. 11 maps with the published figure.
+
+    Top row: the reproduced maps of :func:`plot_fig11` with the contour
+    lines, red dashed line and stars digitized from the published panels
+    drawn on top in black. Bottom row: the offset of every digitized
+    contour sample from the reproduced contour line, in pixels of the
+    published raster, against the temperature of the sample.
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+    """
+    with plt.rc_context(_RC_PARAMS):
+        fig, axes = plt.subplots(
+            2, 2, figsize=(13.2, 8.0),
+            gridspec_kw=dict(wspace=0.48, hspace=0.30,
+                             height_ratios=[1.6, 1.]))
+        for column, panel in enumerate('ab'):
+            label, _, read = _FIG11_PANELS[panel]
+            digitized = read()
+            T_C, times, matrix = fig11_panel_heat_map(panel)
+            top, bottom = axes[0, column], axes[1, column]
+            mesh = _heat_map(top, T_C, times, matrix, **_OVERLAY_LINES)
+            _draw_digitized(top, digitized)
+            _heat_map_frame(top)
+            _colorbar(top, mesh, label)
+            _overlay_legend(top, 'Reproduced')
+            top.text(-0.21, 1.03, panel, transform=top.transAxes,
+                     fontsize=24, va='top', color=_C_INK)
+            _draw_offsets(bottom, T_C, times, matrix, digitized,
+                          ylim=(-1.5, 1.5))
+    return fig
+
+
+def plot_fig11_table3_o2():
+    """Draw the Fig. 11 maps as the Table 3 O2 model predicts them.
+
+    The maps are computed with :func:`~.heat_maps.table3_o2_heat_maps`: the
+    six-reaction O2 model of Table 3 and Fig. 9b with its Arrhenius
+    temperature dependence, started from the feed at time 0. This is the
+    calculation the text of the paper describes; the authors' heat-map
+    script computes the maps with the simplified reversible model instead.
+    The published contour lines, red dashed line and stars (digitized) are
+    drawn on top in black for comparison, and the maximum of each computed
+    map is annotated.
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+    """
+    with plt.rc_context(_RC_PARAMS):
+        fig, axes = plt.subplots(1, 2, figsize=(13.2, 4.6),
+                                 gridspec_kw=dict(wspace=0.48))
+        maps = table3_o2_heat_maps()
+        T_C, times = maps[:2]
+        for ax, panel, xytext in zip(axes, 'ab', ((420., 80.), (560., 76.))):
+            label, index, read = _FIG11_PANELS[panel]
+            matrix = maps[index]
+            mesh = _heat_map(ax, T_C, times, matrix, **_OVERLAY_LINES)
+            _draw_digitized(ax, read())
+            _heat_map_frame(ax)
+            _annotate_maximum(ax, T_C, times, matrix, xytext)
+            _colorbar(ax, mesh, label)
+            _overlay_legend(ax, 'Table 3 O$_2$ model')
+            ax.text(-0.21, 1.03, panel, transform=ax.transAxes, fontsize=24,
+                    va='top', color=_C_INK)
+    return fig
+
+
 def _emulation_cases():
     """Title, model, deposited tables, name of the deposited nodes, compared
-    columns and colors of the three panels of the solver-emulation figure."""
+    columns and colors of the six panels of the solver-emulation figure."""
     fig9a = read_fig9a_h2o2()
-    return [
+    cases = [
         ('Fig. 9a (H$_2$O$_2$, 50 \N{DEGREE SIGN}C)',
          load_h2o2_model('fig9a_nodes'), fig9a, 'model', NORMALIZED, _COLORS),
         ('Fig. 9b (O$_2$, 50 \N{DEGREE SIGN}C)',
@@ -586,6 +1062,13 @@ def _emulation_cases():
         ('SI Fig. S12a, H$_2$O$_2$ (equivalents)',
          load_h2o2_model('figS12a_h2o2_nodes'), fig9a, 'h2o2_trace',
          ('eq_H2O2',), {'eq_H2O2': _C_H2O2})]
+    for letter, temperature_C in zip('abc', FIG10_TEMPERATURES_C):
+        cases.append((
+            'Fig. 10%s (O$_2$, %d \N{DEGREE SIGN}C)' % (letter,
+                                                        temperature_C),
+            load_o2_reversible_model('%dC' % temperature_C),
+            read_fig10_o2(temperature_C), 'model', NORMALIZED, _FIG10_COLORS))
+    return cases
 
 
 _NODE_MARKER = dict(ls='none', marker='o', ms=6, mfc='none', mew=1.2)
@@ -597,33 +1080,36 @@ def plot_solver_emulation():
 
     A verification figure, not a figure of the paper. One pair of panels
     for each deposited model curve (Fig. 9a, Fig. 9b, the H2O2 trace of SI
-    Fig. S12a). Upper panel: the deposited nodes (open circles), the steps
-    of the authors' solver run repeated with the shipped model
-    (:func:`~.solver_emulation.emulate_authors_run`; black crosses) and the
-    accurate solution of the same model (lines). Lower panel, logarithmic:
-    at each deposited node, the largest absolute difference over the
-    plotted quantities between the node and the emulated step (crosses) and
-    between the node and the accurate solution (circles), with a dotted
-    line at 1e-5, one unit of the last decimal the deposited files print.
-    Differences below 1e-8 (the initial state) are not drawn. The models
-    carry the constant sets with which the emulation returns the nodes
-    (the sets inferred from the nodes, not Table 3 as printed). The title
-    of each pair gives the number of steps and the largest difference of
-    the emulated steps from the nodes; it is kept short enough for the
-    widest fallback font (DejaVu Sans).
+    Fig. S12a, Fig. 10a-c). Upper panel: the deposited nodes (open
+    circles), the steps of the authors' solver run repeated with the
+    shipped model (:func:`~.solver_emulation.emulate_authors_run`; black
+    crosses) and the accurate solution of the same model (lines). Lower
+    panel, logarithmic: at each deposited node, the largest absolute
+    difference over the plotted quantities between the node and the
+    emulated step (crosses) and between the node and the accurate solution
+    (circles), with a dotted line at 1e-5, one unit of the last decimal the
+    deposited files print. Differences below 1e-8 (the initial state) are
+    not drawn. The models carry the constant sets with which the emulation
+    returns the nodes (for Fig. 9 the sets inferred from the nodes, not
+    Table 3 as printed). The title of each pair gives the number of steps
+    and the largest difference of the emulated steps from the nodes; it is
+    kept short enough for the widest fallback font (DejaVu Sans). The key
+    below the panels shows the colors of Fig. 9; "Others" is a grayer blue
+    in the Fig. 10 panels, as in the published figures.
 
     Returns
     -------
     matplotlib.figure.Figure
     """
     with plt.rc_context(_RC_PARAMS):
-        fig = plt.figure(figsize=(13.2, 5.2))
-        grid = fig.add_gridspec(2, 3, height_ratios=[2.2, 1.3], hspace=0.10,
-                                wspace=0.30, bottom=0.245, top=0.86)
-        for column, (title, km, tables, nodes_name, columns,
-                     colors) in enumerate(_emulation_cases()):
-            top = fig.add_subplot(grid[0, column])
-            bottom = fig.add_subplot(grid[1, column], sharex=top)
+        fig = plt.figure(figsize=(13.2, 10.2))
+        grid = fig.add_gridspec(5, 3, height_ratios=[2.2, 1.3, 1.05, 2.2, 1.3],
+                                hspace=0.10, wspace=0.30)
+        for index, (title, km, tables, nodes_name, columns,
+                    colors) in enumerate(_emulation_cases()):
+            row, column = 3*(index//3), index % 3
+            top = fig.add_subplot(grid[row, column])
+            bottom = fig.add_subplot(grid[row + 1, column], sharex=top)
             columns = list(columns)
             nodes = tables[nodes_name]
             t_end = 1.1*tables['experiment']['time'].iloc[-1]
@@ -690,8 +1176,12 @@ def plot_solver_emulation():
 
 
 # Name and plot function of every figure of this module.
-_FIGURES = {'fig9': plot_fig9, 'fig10_table3_o2': plot_fig10_table3_o2,
-            'figS12': plot_figS12, 'solver_emulation': plot_solver_emulation}
+_FIGURES = {'fig9': plot_fig9, 'fig10': plot_fig10,
+            'fig10_table3_o2': plot_fig10_table3_o2, 'figS12': plot_figS12,
+            'fig11': plot_fig11,
+            'fig11_verification': plot_fig11_verification,
+            'fig11_table3_o2': plot_fig11_table3_o2,
+            'solver_emulation': plot_solver_emulation}
 
 
 def save_figures(output_dir, formats=('png', 'pdf'), figures=None, dpi=600):
@@ -741,9 +1231,9 @@ def save_figures(output_dir, formats=('png', 'pdf'), figures=None, dpi=600):
 def main():
     parser = argparse.ArgumentParser(
         prog='python -m nskinetics.models.pd_c_3hp_oxidation.figures',
-        description='Regenerate Fig. 9 and SI Fig. S12 of Kim et al. '
-                    '(2026) from the NSKinetics models, and draw the '
-                    'comparison and verification figures.')
+        description='Regenerate Fig. 9, Fig. 10, SI Fig. S12 and Fig. 11 '
+                    'of Kim et al. (2026) from the NSKinetics models, and '
+                    'draw the comparison and verification figures.')
     parser.add_argument('output_dir', help='folder to write the figures to')
     parser.add_argument('--formats', nargs='+', default=['png', 'pdf'],
                         help='file formats (default: png pdf)')

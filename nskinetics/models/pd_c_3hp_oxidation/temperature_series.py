@@ -15,6 +15,15 @@ The paper does not say of which model the points of Fig. 10d are rate
 constants. They cannot be recomputed and are read from the deposited table
 (``read_fig10d_arrhenius``, which also explains their names); the lines
 drawn through them are recomputed here.
+
+The points are taken to be rate constants of the authors' simplified
+reversible model (``load_o2_simplified_reversible_model``): with the 50 C
+point as three of its rate constants that model reproduces Fig. 11b, and
+refits of that model to the experiments come close to the other points.
+Taking them so means that the plotted constants follow the rate law of the
+authors' heat-map script, which these reasons support but do not establish
+(``NOTES.md``). The points are not constants of the model that reproduces
+the curves of Fig. 10a-c (``load_o2_reversible_model``).
 """
 import numpy as np
 import pandas as pd
@@ -114,6 +123,8 @@ def fig10d_points():
         ``ln_k_2``, ``ln_k_5`` as deposited (natural logarithms of three
         rate constants, taken to be in 1/min and named as by
         :func:`.read_fig10d_arrhenius`: 3-HP to MA, MA to AAc and MA to D).
+        They are taken to be ``k_1``, ``k_2`` and ``k_5`` of the simplified
+        reversible model.
 
     Notes
     -----
@@ -172,7 +183,8 @@ def fig10d_text_lines():
     confidence intervals of Table 3 (its +- values read as half-widths), and
     that of ``'k_1'`` does if it multiplies the O2 activity of the authors'
     heat-map script; taken as it stands it is 3.39 times smaller than the
-    model's constant (``NOTES.md``).
+    model's constant (``NOTES.md``). The lines are also how the authors'
+    heat-map script extrapolates the three constants from 50 C (Fig. 11).
 
     Returns
     -------

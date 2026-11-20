@@ -8,9 +8,9 @@
 """
 Readers for the reference data shipped in ``reference_data/``: the authors'
 deposited Fig. 9 and Fig. 10 tables (Dryad,
-https://doi.org/10.5061/dryad.jsxksn0q4, CC0, copied verbatim) and two
-curves digitized from SI Fig. S12 of Kim et al., Appl. Catal. B: Environ.
-Energy 386 (2026) 126403.
+https://doi.org/10.5061/dryad.jsxksn0q4, CC0, copied verbatim), two curves
+digitized from SI Fig. S12 and the contour lines digitized from Fig. 11 of
+Kim et al., Appl. Catal. B: Environ. Energy 386 (2026) 126403.
 
 The readers return tidy tables whose column names are the model's selection
 names (``X_HP3``, ``X_MA``, ``X_AAc``, ``X_OXA``, ``X_D``, ``eq_H2O2``,
@@ -27,7 +27,9 @@ __all__ = ('reference_data_dir',
            'read_fig9a_h2o2', 'read_fig9b_o2',
            'read_figS12a_h2o2_inset_digitized',
            'read_figS12b_opa_inset_digitized',
-           'read_fig10_o2', 'read_fig10d_arrhenius',)
+           'read_fig10_o2', 'read_fig10d_arrhenius',
+           'read_fig11a_selectivity_digitized',
+           'read_fig11b_yield_digitized',)
 
 reference_data_dir = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), 'reference_data')
@@ -167,19 +169,24 @@ def read_figS12b_opa_inset_digitized():
 
 _FIG10_FILES = {25: '11-1_25C_Kinetic.csv', 75: '11-2_75C_Kinetic.csv',
                 100: '11-3_100C_Kinetic.csv'}
+# The labels of the constant sets of the reversible O2 variant ('25C', ...)
+# name the same three experiments.
+_FIG10_LABELS = {'%dC' % T_C: T_C for T_C in _FIG10_FILES}
 
 
 def _fig10_temperature(temperature_C):
-    """Return 25, 75 or 100 for the temperature of a Fig. 10 panel."""
+    """Return 25, 75 or 100 for the temperature or label of a Fig. 10 panel."""
     try:
-        known = temperature_C in _FIG10_FILES
+        T_C = _FIG10_LABELS.get(temperature_C, temperature_C)
+        known = T_C in _FIG10_FILES
     except TypeError:               # not hashable, e.g. a list
         known = False
     if not known:
         raise ValueError(
             f'no Fig. 10 data for {temperature_C!r}: the panels are at 25, '
-            '75 and 100 C (for 50 C, Fig. 9b, use read_fig9b_o2)')
-    return int(temperature_C)
+            "75 and 100 C (pass the number or the label '25C', '75C' or "
+            "'100C'; for 50 C, Fig. 9b, use read_fig9b_o2)")
+    return int(T_C)
 
 
 def read_fig10_o2(temperature_C):
@@ -187,10 +194,12 @@ def read_fig10_o2(temperature_C):
 
     Parameters
     ----------
-    temperature_C : {25, 75, 100}
+    temperature_C : {25, 75, 100} or {'25C', '75C', '100C'}
         Temperature of the experiment in degrees Celsius: Fig. 10a
         (``11-1_25C_Kinetic.csv``), Fig. 10b (``11-2_75C_Kinetic.csv``) or
-        Fig. 10c (``11-3_100C_Kinetic.csv``).
+        Fig. 10c (``11-3_100C_Kinetic.csv``). The label of the constant set
+        of that experiment, as ``load_o2_reversible_model`` takes it, is
+        accepted as well.
 
     Returns
     -------
@@ -200,23 +209,25 @@ def read_fig10_o2(temperature_C):
             ``X_HP3, X_MA, X_AAc, X_OXA, X_D``: 14 rows (0 to 1890 min) at
             25 C, 12 (0 to 1440 min) at 75 C, 11 (0 to 1560 min) at 100 C.
         ``'model'``
-            The authors' model curve, same columns: 19 nodes (0 to
-            2079 min) at 25 C, 20 nodes (0 to 1584 min) at 75 C and 25
-            nodes (0 to 1716 min) at 100 C, the node at t = 0 included.
+            The authors' model curve, same columns: the steps of a
+            solver run, 19 nodes (18 steps, 0 to 2079 min) at 25 C, 20
+            nodes (19 steps, 0 to 1584 min) at 75 C and 25 nodes (24
+            steps, 0 to 1716 min) at 100 C, the node at t = 0 included.
             The last time is 1.1 times the last sampling time.
 
     Raises
     ------
     ValueError
-        For any other temperature.
+        For any other temperature or label.
 
     Notes
     -----
     The files are labelled correctly (columns 1-6 experiment, 7-12 model)
     and need no correction. The model curves are coarse polylines of 19
-    to 25 nodes. Neither model of this package produces them: the O2
-    model at these temperatures is compared with the experimental points
-    only (see ``NOTES.md``).
+    to 25 nodes (18 to 24 solver steps). The reversible O2 variant
+    (``load_o2_reversible_model``), solved accurately, lies within 2.7e-3
+    of the nodes; with the authors' solver run repeated
+    (``solver_emulation``) it returns them within 1e-5 (see ``NOTES.md``).
     """
     rows = _rows(_FIG10_FILES[_fig10_temperature(temperature_C)])
     return {'experiment': _block(rows, 0, _COLUMNS),
@@ -251,6 +262,11 @@ def read_fig10d_arrhenius():
     plotted 50 C values are not numerically the Table 3 constants;
     ``NOTES.md`` compares the two.
 
+    The model of that script is the simplified reversible model of this
+    package, and the constants are taken to be its ``k_1``, ``k_2`` and
+    ``k_5`` (see ``NOTES.md``). The 50 C row supplies ``k_1``, ``k_2`` and
+    ``k_5`` of the ``'fig11b'`` constant set of that model.
+
     Neither the file nor the paper gives the unit of the constants. The
     package takes them to be in 1/min, the time unit of the authors'
     scripts (``NOTES.md``).
@@ -263,3 +279,61 @@ def read_fig10d_arrhenius():
     for first, name in ((4, 'k_1'), (6, 'k_2'), (8, 'k_5')):
         tables['line_' + name] = _block(rows, first, ['inv_T', 'ln_' + name])
     return tables
+
+
+def _read_fig11_digitized(filename):
+    df = pd.read_csv(os.path.join(reference_data_dir, filename))
+    df = df.rename(columns={'t_min': 'time'})
+    contours = df[df['series'] == 'contour']
+    stars = df[df['series'].isin(['red_star', 'purple_star'])]
+    return {
+        'contours': contours[['level', 'branch', 'time', 'T_C']].reset_index(
+            drop=True),
+        'ridge': df.loc[df['series'] == 'ridge', ['time', 'T_C']].reset_index(
+            drop=True),
+        'stars': stars.set_index('series')[['time', 'T_C']].rename_axis(None),
+        }
+
+
+def read_fig11a_selectivity_digitized():
+    """Read the lines digitized from the published Fig. 11a (selectivity map).
+
+    Returns
+    -------
+    dict of pandas.DataFrame
+        ``'contours'``
+            Samples along the 0.1, 0.3 and 0.5 contour lines of the main
+            panel: ``level``, ``branch`` (``'early'``: left of the red
+            dashed line, ``'late'``: right of it), ``time`` (plotted time,
+            min) and ``T_C`` (C).
+        ``'ridge'``
+            Samples along the red dashed line: ``time`` and ``T_C``.
+        ``'stars'``
+            Centres of the red and purple stars, indexed ``'red_star'``
+            and ``'purple_star'``: ``time`` and ``T_C``.
+
+    Notes
+    -----
+    Digitized from the published figure, not deposited data; every second
+    sample of the digitization is kept, and samples the digitization marked
+    as uncertain (crowded lines by the left frame and around the red star)
+    are left out. Reading uncertainty: about 0.3 px normal to a line, i.e.
+    1 min or 0.05 C. The plotted time is the reaction time plus 10 min.
+    """
+    return _read_fig11_digitized('fig11a_selectivity_digitized.csv')
+
+
+def read_fig11b_yield_digitized():
+    """Read the lines digitized from the published Fig. 11b (yield map).
+
+    Returns
+    -------
+    dict of pandas.DataFrame
+        ``'contours'``, ``'ridge'`` and ``'stars'``, as returned by
+        :func:`read_fig11a_selectivity_digitized`.
+
+    Notes
+    -----
+    See :func:`read_fig11a_selectivity_digitized`.
+    """
+    return _read_fig11_digitized('fig11b_yield_digitized.csv')

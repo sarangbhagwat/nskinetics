@@ -28,26 +28,27 @@ check their SHA-256.
 | `11-1_25C_Kinetic.csv` | Fig. 10a (O2, 25 C): experimental points and the authors' model curve |
 | `11-2_75C_Kinetic.csv` | Fig. 10b (O2, 75 C): the same |
 | `11-3_100C_Kinetic.csv` | Fig. 10c (O2, 100 C): the same |
-| `11-4_Arrhenius.csv` | Fig. 10d (Arrhenius plot, O2): logarithms of three rate constants at 25, 50, 75 and 100 C, and the straight lines drawn through them. The paper does not say of which model the constants are (see `../NOTES.md`) |
+| `11-4_Arrhenius.csv` | Fig. 10d (Arrhenius plot, O2): logarithms of three rate constants at 25, 50, 75 and 100 C, and the straight lines drawn through them. The paper does not say of which model the constants are; they are taken to be constants of the authors' simplified reversible model (see `../NOTES.md`) |
 
 In `10-1`, `10-2` and `11-1` to `11-3` all values are normalized
 concentrations (each species over the sum of 3-HP, MA, AAc, OXA and D); the
 H2O2 trace is in equivalents of the initial 3-HP. Time is in min.
 
-The model curves of `10-1` and `10-2` are solver steps, not converged
+The model curves of these five files are solver steps, not converged
 solutions: they are reproduced step for step by the method of the solver the
 paper names (MATLAB `ode23s`) at default tolerances, in a Python port; MATLAB
 itself was not run. `solver_emulation.py` in the parent folder repeats those
 runs with the shipped models, and the package tests check that it returns
 every deposited node: the same number of steps (one fewer than the node
-counts below, which include t = 0), node times within 2e-5 min (printed to
-five decimals), and values within 1e-5, one unit of the last printed decimal
-(see `../NOTES.md`, "Emulation of the authors' solver run"). The constants
-used for the species curves of `10-1` and `10-2` are sets inferred from the
-nodes, 0.01 to 0.6 % off Table 3 as printed; with Table 3 as printed those
-values agree within 4.4e-4. The H2O2 trace of `10-1` needs a separate
-inferred set, 4 to 22 % off Table 3 (`k_6` unchanged); with Table 3 as
-printed that run takes 23 steps instead of 24.
+counts below, which include t = 0), node times within 2e-5 min (`10-1`,
+`10-2`, printed to five decimals) or 0.01 min (`11-1` to `11-3`, printed to
+two), and values within 1e-5, one unit of the last printed decimal (see
+`../NOTES.md`, "Emulation of the authors' solver run"). The constants used
+for the species curves of `10-1` and `10-2` are sets inferred from the nodes,
+0.01 to 0.6 % off Table 3 as printed; with Table 3 as printed those values
+agree within 4.4e-4. The H2O2 trace of `10-1` needs a separate inferred set,
+4 to 22 % off Table 3 (`k_6` unchanged); with Table 3 as printed that run
+takes 23 steps instead of 24.
 
 Layout and known quirks:
 
@@ -67,11 +68,11 @@ Layout and known quirks:
 - `11-1`, `11-2`, `11-3`: laid out like `10-2` and labelled correctly; no
   quirks. Columns 1-6 are the experiment (14, 12 and 11 rows; last sampling
   times 1890, 1440 and 1560 min) and columns 7-12 the model curve (19, 20 and
-  25 nodes; it ends at 1.1 times the last sampling time: 2079, 1584
+  25 solver nodes; it ends at 1.1 times the last sampling time: 2079, 1584
   and 1716 min). The model times are printed to two decimals and the model
   values to five, or to six decimals (shown with three digits) below 1e-3.
-  These model curves are produced by neither of the two models of this
-  package; only the experimental points are used (see `../NOTES.md`).
+  These model curves are produced by neither of the scripts in the deposit
+  as posted; see `../NOTES.md`.
 - `11-4`: two header rows. Columns 1-4 hold the points: 1/T in 1/K, printed
   to five decimals (0.00335, 0.00309, 0.00287, 0.00268, i.e. 25, 50, 75 and
   100 C), and the natural logarithms of three rate constants, labelled
@@ -85,7 +86,10 @@ Layout and known quirks:
   as `k_5`. These are not the numbers of the O2 model of this package (3-HP
   to MA is its R1 followed by R2, MA to AAc its R3 and MA to D its R6), and
   the 50 C row is not numerically the Table 3 constants (`../NOTES.md`
-  compares the two).
+  compares the two). The constants are taken to be those of the simplified
+  reversible model, the model of that script (see `../NOTES.md`); the 50 C
+  row supplies `k_1`, `k_2` and `k_5` of the `'fig11b'` constant set of that
+  model.
 
 ## Digitized from SI Fig. S12 (not deposited data)
 
@@ -104,3 +108,56 @@ Columns of `figS12a_h2o2_inset_digitized.csv`: `t_min`, `h2o2_norm`,
 `source_axes`, `kind` (how the point was located), `flag` (reading caveats).
 Columns of `figS12b_opa_inset_digitized.csv`: `t_min`, `t_unc`, `OPA`, `HP3`,
 `ratio_OPA_over_3HP`.
+
+## Digitized from Fig. 11 (not deposited data)
+
+The deposit contains the script that draws the heat maps of Fig. 11 but not
+the heat-map matrices. The lines of the two main panels were therefore read
+off the published figure (the embedded 1604 x 596 px raster), twice and
+independently, and the two readings, which agree within 0.02 to 0.5 px on
+the contour lines, were merged. The scripts that read the figure are not
+shipped. Axes were calibrated on the tick marks by least squares (residuals
+below 0.07 px):
+
+| Panel | Time axis | Temperature axis |
+|---|---|---|
+| a | t = 3.0723 col - 289.16 min | T = -0.14760 row + 105.244 C |
+| b | t = 3.0763 col - 2809.3 min | T = -0.14801 row + 105.227 C |
+
+(0-based pixel centres of the full image.) One pixel is 3.07 min or 0.148 C;
+the comparison of a computed map with these lines uses the scale of panel a,
+3.0723 min/px and 0.1476 C/px, for both panels (`FIG11_MIN_PER_PX` and
+`FIG11_C_PER_PX` in `../heat_maps.py`; a test checks them against the table
+above).
+
+| File | Content |
+|---|---|
+| `fig11a_selectivity_digitized.csv` | Fig. 11a (MA "selectivity"): contour lines 0.1, 0.3 and 0.5, red dashed line, red and purple star |
+| `fig11b_yield_digitized.csv` | Fig. 11b (MA "yield"): the same |
+
+Columns: `series` (`contour`, `ridge` for the red dashed line, `red_star`,
+`purple_star`), `level` (contours only), `branch` (contours only: `early` is
+the part of a contour left of the red dashed line, `late` the part right of
+it), `t_min` (time as plotted, which is the reaction time plus 10 min, see
+`../NOTES.md`) and `T_C`.
+
+What is and is not in these files:
+
+- Every second sample of the digitization is kept (one sample per about
+  2 px along a line), to keep the files small.
+- Samples that the digitization flagged as uncertain are left out. They lie
+  where lines run within 3 px of each other or within 4 to 5 px of the left
+  frame (short times, mostly above 75 C in panel a and 70 C in panel b), and
+  next to the red star. Their reading uncertainty is about 1 px (3 min).
+- There are gaps where the published contour labels and the stars interrupt
+  the lines.
+- Reading uncertainty of the samples kept: about 0.3 px normal to a line
+  (1 min where a line is steep, 0.05 C where it is flat); the steep early
+  branches are quantized to pixel columns (0.5 px, 1.5 min). Stars: 0.3 px.
+- The insets of the published panels are not included. They are not exact
+  magnifications of the main panels: at equal temperature the inset lines of
+  panel a lie 7 to 10 min later than those of the main panel, and in panel b
+  the inset and main lines differ by up to 15 min (41 min for the late 0.3
+  contour).
+- The colour field of the maps was also digitized but is not shipped (several
+  MB); numbers read from it are quoted in `../NOTES.md`.
