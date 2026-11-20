@@ -206,8 +206,9 @@ model *kim2026_o2_simplified_reversible()
   k_1_ref has per_min;
   k_2_ref = 5.199984e-5;
   k_2_ref has per_min;
-  // k_3: k0 writes 0.0000 (zero as written), so the deposit gives no
-  //   value.
+  // k_3: k0 writes 0.0000, but k0 only bounds the script's search (its
+  //   swarm holds k_3 at 0, lsqcurvefit then frees it), and the value the
+  //   run ended with is not deposited (NOTES.md).
   //   FITTED by least squares to the 50 C data table of the script, in the
   //   script's fitting convention, with the other nine constants held
   //   (fit_simplified_reversible_constants in fitting.py; five significant

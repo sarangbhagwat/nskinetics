@@ -1065,13 +1065,13 @@ well. The test suite checks that the shipped `k_3` is the rounded result of
 the function. The result is at least 3.4e-5 (relative) from a rounding
 boundary of the fifth digit. Relative tolerances of the integration of 1e-8
 and tighter, and steps of the central-difference Jacobian from 1e-3 to 1e-6,
-move it by less than 1e-5 (at most 1.1e-6); at a relative tolerance of 1e-6
+move it by less than 1e-5; at a relative tolerance of 1e-6
 (absolute 1e-10) it moves by 1.4e-3 (scipy 1.18, libroadrunner 2.11), which
 changes its fourth digit. Scipy's default two-point Jacobian stops the
 iteration early: 2.8e-4 lower (1.4211e-5) from the default start, and from
 the starts 1e-6, 4.3e-6, 3e-5 and 1e-4 between 1.1e-3 lower and 3.6e-3
 higher. A two-point Jacobian with a step of 1e-6 comes closer but still
-crosses the rounding boundary from the start 3e-5 (1.42145e-5, -3.8e-5). The
+crosses the rounding boundary from the start 3e-5 (1.42145e-5, -3.9e-5). The
 standard error (from the Jacobian at the optimum, 79 degrees of freedom; the
 script divides by twice the number of residuals minus ten) says how well the
 data determine `k_3` with the others held: to 31 % only. The product of step
