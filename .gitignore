@@ -87,6 +87,7 @@ nskinetics/biorefineries/isobutanol/plots/voronoi/node_modules/
 # The demonstration docs figures ARE tracked (*.png is ignored above); Read the
 # Docs builds from git, so an untracked figure would be missing there.
 !docs/source/_static/images/isobutanol/**/*.png
+!docs/source/_static/images/pd_c_3hp_oxidation/*.png
 # The per-figure manuscript folders under analyses/results/publication/ ARE
 # tracked (one folder per manuscript figure: make_figure.py, code/, data/ and
 # comparison notes, plus the index README.md), so the figures can be
