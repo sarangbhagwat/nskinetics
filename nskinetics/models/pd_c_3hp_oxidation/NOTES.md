@@ -1547,10 +1547,10 @@ model to the experiments come close to the other points (below). Taking the
 points as constants of that model means that they follow the rate law of its
 script. The three reasons support that and do not establish it: the fits
 behind the second and third are not shipped, and neither the paper nor the
-deposit says it (previous paragraph). They are not constants of the model
-that reproduces the curves of Fig. 10a-c: at 25 C, for example, the plotted
-`k_1` is 7.75e-5 1/min, while the constant set of the Fig. 10a curve has a
-forward constant of 0.047 1/min for 3-HP -> OPA with a fast reverse.
+deposit says it (previous paragraph). The points are not constants of the
+model that reproduces the curves of Fig. 10a-c: at 25 C, for example, the
+plotted `k_1` is 7.75e-5 1/min, while the constant set of the Fig. 10a curve
+has a forward constant of 0.047 1/min for 3-HP -> OPA with a fast reverse.
 
 **The unit of k is inferred.** No source prints it: the file labels its
 ordinate columns "exp" and "fitting" and gives a unit ("/K") for the
